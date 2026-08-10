@@ -29,6 +29,11 @@
 			path = gomelan;
 			sourceTree = "<group>";
 		};
+		CE10F6183020889C00E24208 /* documentation */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = documentation;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,6 +50,7 @@
 		CE10F5B8301FAAE600E24208 = {
 			isa = PBXGroup;
 			children = (
+				CE10F6183020889C00E24208 /* documentation */,
 				CE10F5C3301FAAE700E24208 /* gomelan */,
 				CE10F5C2301FAAE600E24208 /* Products */,
 			);
@@ -75,6 +81,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				CE10F5C3301FAAE700E24208 /* gomelan */,
+				CE10F6183020889C00E24208 /* documentation */,
 			);
 			name = gomelan;
 			packageProductDependencies = (
