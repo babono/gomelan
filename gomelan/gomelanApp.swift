@@ -2,31 +2,32 @@
 //  gomelanApp.swift
 //  gomelan
 //
-//  Created by Muhammad Nurul Akbar on 03/08/26.
+//  Play gamelan anywhere — no sekaa required.
 //
 
 import SwiftUI
-import SwiftData
 
 @main
 struct gomelanApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    init() {
+        // The audio session is the fiddliest piece of the project — configure it
+        // once at launch, before any capture (PRD §13.2).
+        AudioSessionManager.configure()
+    }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
-        .modelContainer(sharedModelContainer)
+    }
+}
+
+/// Landscape-locked during the whole experience (PRD §6.2, §13.1).
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        .landscape
     }
 }

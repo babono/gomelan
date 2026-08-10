@@ -29,6 +29,11 @@
 			path = gomelan;
 			sourceTree = "<group>";
 		};
+		CE10F6183020889C00E24208 /* documentation */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = documentation;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,6 +50,7 @@
 		CE10F5B8301FAAE600E24208 = {
 			isa = PBXGroup;
 			children = (
+				CE10F6183020889C00E24208 /* documentation */,
 				CE10F5C3301FAAE700E24208 /* gomelan */,
 				CE10F5C2301FAAE600E24208 /* Products */,
 			);
@@ -75,6 +81,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				CE10F5C3301FAAE700E24208 /* gomelan */,
+				CE10F6183020889C00E24208 /* documentation */,
 			);
 			name = gomelan;
 			packageProductDependencies = (
@@ -146,13 +153,16 @@
 				CODE_SIGN_ENTITLEMENTS = gomelan/gomelan.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = U96VKD93X4;
+				DEVELOPMENT_TEAM = AJZ4M225KH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = gomelan/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Gomelan uses the camera to see your gangsa and show you which key to play.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Gomelan listens to your gangsa so it can tell which key you played.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -160,7 +170,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = me.babono.gomelan;
+				PRODUCT_BUNDLE_IDENTIFIER = me.rhea.gomelan;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -180,13 +190,16 @@
 				CODE_SIGN_ENTITLEMENTS = gomelan/gomelan.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = U96VKD93X4;
+				DEVELOPMENT_TEAM = AJZ4M225KH;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = gomelan/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Gomelan uses the camera to see your gangsa and show you which key to play.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Gomelan listens to your gangsa so it can tell which key you played.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -194,7 +207,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = me.babono.gomelan;
+				PRODUCT_BUNDLE_IDENTIFIER = me.rhea.gomelan;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
