@@ -2,114 +2,153 @@
 //  KeyClassifier.swift
 //  gomelan
 //
-//  Identifies which calibrated key was struck (PRD §6.3). §6.3 established that
-//  keys on this instrument are reliably separable by fundamental alone (closest
-//  separation 126 cents, need ~60 to be safe); the harmonic profile is kept as a
-//  tiebreaker.
+//  Port of `Calibration.match` in gamelan_dsp.py.
+//
+//  Cosine similarity against the stored per-key fingerprints — which, because
+//  both sides are L2-normalised, is just a dot product. Ten keys x 120 floats is
+//  trivial work; this is not where any time goes.
+//
+//  Replaces the earlier fundamental-frequency-in-cents matcher. That approach
+//  assumes a harmonic series to find a fundamental with, and gamelan bronze is
+//  inharmonic — see Fingerprinter for the partial ratios. It also assumed key
+//  pitches are known in advance, but every gamelan is tuned differently, so the
+//  only reliable reference is the instrument in front of the user.
 //
 
-import Foundation
+import Accelerate
 
 struct KeyMatch {
     let keyIndex: Int
-    let fundamentalHz: Double
-    let confidence: Double
+    /// Cosine similarity of the winning template, 0...1.
+    let similarity: Double
+    /// How far the winner beat the runner-up. This is the number that decides
+    /// whether the match is trustworthy.
+    let gap: Double
+    /// Estimated fundamental, for display only. Never used for matching.
+    var fundamentalHz: Double = 0
+
+    /// Kept for call sites that show a 0...1 confidence. Derived from the margin
+    /// over the runner-up, since a high similarity means nothing on its own if
+    /// two keys score equally.
+    var confidence: Double { min(1, max(0, gap / 0.3)) }
 }
 
 final class KeyClassifier {
-    /// Fundamental search band covering low to high gangsa keys (Pemade & Kantilan).
-    /// Starts at 275 Hz to completely exclude low-frequency room/mic rumble (e.g. 245 Hz AC noise).
-    var searchBandHz: ClosedRange<Double> = 275...3500
 
-    /// Minimum peak magnitude in FFT spectrum required to consider a peak valid (filters room noise).
-    var minPeakMagnitude: Float = 0.04
+    private var config: DSPConfig
+    private var indices: [Int] = []
+    private var templates: [[Float]] = []
 
-    /// Minimum peak prominence ratio: peak magnitude must be at least 2.0x the average bin magnitude in search band.
-    var minProminenceRatio: Float = 2.0
-
-    private let fft: FFTProcessor
-    private let sampleRate: Double
-    private var keys: [InstrumentKey]
-
-    init(fft: FFTProcessor, sampleRate: Double, keys: [InstrumentKey]) {
-        self.fft = fft
-        self.sampleRate = sampleRate
-        self.keys = keys
+    init(config: DSPConfig, keys: [InstrumentKey]) {
+        self.config = config
+        updateKeys(keys)
     }
 
-    func updateKeys(_ keys: [InstrumentKey]) { self.keys = keys }
-
-    /// Classify a magnitude spectrum captured just after an onset.
-    func classify(spectrum: [Float]) -> KeyMatch? {
-        guard !keys.isEmpty else { return nil }
-        guard let fundamental = fundamental(spectrum: spectrum) else { return nil }
-
-        // Nearest-neighbour match on fundamental, measured in cents so the metric
-        // matches pitch perception rather than raw Hz.
-        var best: (key: InstrumentKey, cents: Double)?
+    /// Keys without a stored fingerprint are skipped — they cannot be matched
+    /// and must be re-run through calibration.
+    func updateKeys(_ keys: [InstrumentKey]) {
+        indices.removeAll(keepingCapacity: true)
+        templates.removeAll(keepingCapacity: true)
         for key in keys {
-            let cents = abs(1200 * log2(fundamental / key.fundamentalHz))
-            if best == nil || cents < best!.cents {
-                best = (key, cents)
-            }
+            guard let vector = key.fingerprint, vector.count == config.fpBands else { continue }
+            indices.append(key.index)
+            templates.append(vector)
         }
-        guard let match = best else { return nil }
-
-        // Confidence: 1.0 at a perfect match, decaying to 0 at ~120 cents (about
-        // the closest key separation on this instrument).
-        let confidence = max(0, 1 - match.cents / 120)
-        return KeyMatch(keyIndex: match.key.index,
-                        fundamentalHz: fundamental,
-                        confidence: confidence)
     }
 
-    /// Peak-picking fundamental estimate within the search band. Exposed so the
-    /// calibration flow can record raw pitches without matching against keys.
-    func fundamental(spectrum: [Float]) -> Double? {
-        let lowBin = max(1, fft.bin(forFrequency: searchBandHz.lowerBound, sampleRate: sampleRate))
-        let highBin = min(spectrum.count - 1, fft.bin(forFrequency: searchBandHz.upperBound, sampleRate: sampleRate))
-        guard lowBin < highBin else { return nil }
+    var calibratedKeyCount: Int { templates.count }
 
-        var peakBin = lowBin
-        var maxWeightedValue: Float = 0
-        var totalMagnitude: Float = 0
-
-        for bin in lowBin...highBin {
-            let mag = spectrum[bin]
-            totalMagnitude += mag
-            let freq = fft.frequency(ofBin: bin, sampleRate: sampleRate)
-            // Weighting: slightly favors metallic frequencies so low room rumble doesn't overshadow key hits
-            let weight = Float(sqrt(max(1.0, freq / 275.0)))
-            let weighted = mag * weight
-            if weighted > maxWeightedValue {
-                maxWeightedValue = weighted
-                peakBin = bin
-            }
-        }
-        let peakValue = spectrum[peakBin]
-        guard peakValue >= minPeakMagnitude else { return nil }
-
-        let count = Float(highBin - lowBin + 1)
-        let avgMagnitude = totalMagnitude / count
-        guard avgMagnitude > 0 else { return nil }
-
-        // Prominence check: genuine metallic key ringing has a sharp peak standing out above the spectrum floor
-        let prominence = peakValue / avgMagnitude
-        guard prominence >= minProminenceRatio else { return nil }
-
-        // Parabolic interpolation around the peak for sub-bin accuracy.
-        let refined = interpolatedBin(spectrum: spectrum, peakBin: peakBin)
-        return fft.frequency(ofBin: 0, sampleRate: sampleRate) + refined * sampleRate / Double(fft.size)
+    /// Every template's score, best first. For diagnostics and calibration UI.
+    func scores(for vector: [Float]) -> [(keyIndex: Int, similarity: Double)] {
+        zip(indices, templates)
+            .map { (keyIndex: $0.0, similarity: Double(dot($0.1, vector))) }
+            .sorted { $0.similarity > $1.similarity }
     }
 
-    private func interpolatedBin(spectrum: [Float], peakBin: Int) -> Double {
-        guard peakBin > 0, peakBin < spectrum.count - 1 else { return Double(peakBin) }
-        let a = Double(spectrum[peakBin - 1])
-        let b = Double(spectrum[peakBin])
-        let c = Double(spectrum[peakBin + 1])
-        let denom = a - 2 * b + c
-        guard denom != 0 else { return Double(peakBin) }
-        let delta = 0.5 * (a - c) / denom
-        return Double(peakBin) + delta
+    /// Returns nil when the top two templates are too close to call.
+    /// This "unclear" state is deliberate: telling a student they played a wrong
+    /// note when they didn't is worse than saying nothing.
+    func classify(vector: [Float]) -> KeyMatch? {
+        guard !templates.isEmpty else { return nil }
+
+        var bestIndex = -1
+        var best: Float = -.greatestFiniteMagnitude
+        var second: Float = -.greatestFiniteMagnitude
+
+        for (i, template) in templates.enumerated() {
+            let score = dot(template, vector)
+            if score > best {
+                second = best
+                best = score
+                bestIndex = i
+            } else if score > second {
+                second = score
+            }
+        }
+        guard bestIndex >= 0 else { return nil }
+
+        // A single calibrated key has no runner-up to be confused with.
+        let gap = templates.count == 1 ? 1 : best - second
+        guard gap >= config.confidenceGap else { return nil }
+
+        return KeyMatch(keyIndex: indices[bestIndex],
+                        similarity: Double(best),
+                        gap: Double(gap))
+    }
+
+    private func dot(_ a: [Float], _ b: [Float]) -> Float {
+        guard a.count == b.count else { return 0 }
+        var result: Float = 0
+        vDSP_dotpr(a, 1, b, 1, &result, vDSP_Length(a.count))
+        return result
+    }
+
+    // MARK: - Calibration support
+
+    /// Average several fingerprints of the same key into one template.
+    ///
+    /// Averaging across dynamics is the single biggest accuracy win available —
+    /// hard strikes are brighter than soft ones, and one template per key
+    /// captures only whichever dynamic happened to be used on the day.
+    static func averageFingerprints(_ vectors: [[Float]]) -> [Float]? {
+        guard let first = vectors.first, !first.isEmpty else { return nil }
+        var sum = [Float](repeating: 0, count: first.count)
+        let n = vDSP_Length(sum.count)
+        for vector in vectors where vector.count == first.count {
+            sum.withUnsafeMutableBufferPointer { dst in
+                vDSP_vadd(dst.baseAddress!, 1, vector, 1, dst.baseAddress!, 1, n)
+            }
+        }
+        var norm: Float = 0
+        vDSP_svesq(sum, 1, &norm, n)
+        norm = sqrt(norm)
+        guard norm > 1e-9 else { return nil }
+        var inverse = 1 / norm
+        sum.withUnsafeMutableBufferPointer { dst in
+            vDSP_vsmul(dst.baseAddress!, 1, &inverse, dst.baseAddress!, 1, n)
+        }
+        return sum
+    }
+
+    /// Worst-case similarity between any two calibrated keys.
+    ///
+    /// With few hits per key this is the only accuracy figure available — a real
+    /// leave-one-out test needs repeats. Want < 0.5; the pair reported here is
+    /// the one most likely to be confused during play.
+    func separability() -> (worst: Double, mean: Double, pair: (Int, Int))? {
+        guard templates.count >= 2 else { return nil }
+        var worst = -Double.greatestFiniteMagnitude
+        var total = 0.0
+        var count = 0
+        var pair = (0, 0)
+        for i in 0..<templates.count {
+            for j in (i + 1)..<templates.count {
+                let score = Double(dot(templates[i], templates[j]))
+                total += score
+                count += 1
+                if score > worst { worst = score; pair = (indices[i], indices[j]) }
+            }
+        }
+        return (worst, total / Double(count), pair)
     }
 }

@@ -17,6 +17,7 @@ final class AppState {
         case checkingPermissions
         case permissionsBlocked
         case framing
+        case choosingKeyCount
         case aligning
         case songList
         case songDetail
@@ -72,8 +73,25 @@ final class AppState {
         screen = granted ? .framing : .permissionsBlocked
     }
 
-    func framingConfirmed() { screen = .aligning }
-    func alignmentConfirmed() { screen = .songList }
+    func framingConfirmed() { screen = .choosingKeyCount }
+
+    /// Set how many keys this instrument has, then go and position them.
+    /// Gangsa are commonly 10, but a smaller set is normal for practice and for
+    /// testing, so the count is the user's to choose rather than a constant.
+    func keyCountChosen(_ count: Int) {
+        var updated = profile
+        updated.resize(to: count)
+        profile = updated
+        saveProfile()
+        screen = .aligning
+    }
+
+    /// Alignment leads into calibration: the app cannot recognise a single key
+    /// until it has heard it on THIS instrument. Every gamelan is tuned
+    /// differently, so there is no useful default to fall back on.
+    func alignmentConfirmed() {
+        screen = profile.isFullyCalibrated ? .songList : .calibrating
+    }
 
     func select(_ song: Song) {
         selectedSong = song

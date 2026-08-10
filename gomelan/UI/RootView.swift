@@ -35,6 +35,8 @@ struct RootView: View {
             PermissionsBlockedView()
         case .framing:
             FramingView(camera: camera)
+        case .choosingKeyCount:
+            KeyCountView(camera: camera)
         case .aligning:
             AligningView(camera: camera)
         case .songList:

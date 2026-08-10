@@ -19,11 +19,23 @@ struct CalibrationView: View {
     private let strikesNeeded = 3
     private let similarityThresholdCents = 60.0
     private let outlierThresholdCents = 50.0
+    /// Two calibrated keys whose fingerprints score above this are too alike to
+    /// tell apart at play time. Matches the bar the Python notebook scores
+    /// against; real gangsa keys land around 0.42 at worst.
+    private let maxTemplateSimilarity: Float = 0.5
 
     @State private var keyIndex = 0
     @State private var strikes: [Double] = []
     @State private var captured: [Int: Double] = [:]
+    /// Fingerprints for the strikes recorded on the current key, and the averaged
+    /// template per finished key. The fingerprint — not the pitch — is what the
+    /// key is actually recognised by at play time.
+    @State private var strikeFingerprints: [[Float]] = []
+    @State private var capturedFingerprints: [Int: [Float]] = [:]
     @State private var message: String?
+    /// Non-blocking note about a calibration that will probably work but is worth
+    /// knowing about — currently only "these two keys sound alike".
+    @State private var warning: String?
     @State private var lastHz: Double?
     @State private var finished = false
 
@@ -84,6 +96,16 @@ struct CalibrationView: View {
                     .foregroundStyle(Theme.wrong)
                     .padding(.vertical, 8)
                     .padding(.horizontal, 16)
+                    .background(.black.opacity(0.6), in: Capsule())
+            }
+
+            if let warning {
+                Text(warning)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Theme.accent)
+                    .multilineTextAlignment(.center)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 14)
                     .background(.black.opacity(0.6), in: Capsule())
             }
 
@@ -218,10 +240,10 @@ struct CalibrationView: View {
 
     private func setup() {
         camera.start()
-        audio.onRawOnset = { hz, _ in
+        audio.onCalibrationStrike = { fingerprint, hz, _ in
             Task { @MainActor in
                 if isListening {
-                    registerStrike(hz)
+                    registerStrike(fingerprint: fingerprint, hz: hz)
                 }
             }
         }
@@ -230,7 +252,7 @@ struct CalibrationView: View {
 
     private func teardown() {
         timeoutTask?.cancel()
-        audio.onRawOnset = nil
+        audio.onCalibrationStrike = nil
         audio.stop()
     }
 
@@ -268,10 +290,11 @@ struct CalibrationView: View {
         if let msg { message = msg }
     }
 
-    private func registerStrike(_ hz: Double) {
+    private func registerStrike(fingerprint: [Float], hz: Double) {
         stopListening(message: nil)
         lastHz = hz
         strikes.append(hz)
+        strikeFingerprints.append(fingerprint)
 
         if strikes.count >= strikesNeeded {
             finalizeKey()
@@ -282,30 +305,51 @@ struct CalibrationView: View {
         let median = strikes.sorted()[strikes.count / 2]
 
         // Discard outliers: strikes more than ~50 cents off the median are mis-hits.
-        let clean = strikes.filter { abs(1200 * log2($0 / median)) <= outlierThresholdCents }
-        guard clean.count >= 2 else {
-            strikes = []
-            message = "Strikes were inconsistent — tap Record to redo key \(keyIndex + 1)"
+        // Pitch is a crude test but a serviceable one for "did they hit a
+        // different key by mistake", which is all this is being asked to catch.
+        var cleanIndices = strikes.indices.filter {
+            abs(1200 * log2(strikes[$0] / median)) <= outlierThresholdCents
+        }
+        // Also non-blocking: if the strikes disagree badly, keep all three and
+        // say so rather than sending the user round again. Averaging a slightly
+        // noisy set beats stalling the flow during testing.
+        if cleanIndices.count < 2 {
+            cleanIndices = Array(strikes.indices)
+            warning = "Strikes on key \(keyIndex + 1) were inconsistent — recalibrate it if it misreads"
+        }
+
+        let avgPitch = cleanIndices.map { strikes[$0] }.reduce(0, +) / Double(cleanIndices.count)
+
+        // Average the clean fingerprints into one template. Averaging across
+        // several strikes is the biggest accuracy win available — hard strikes
+        // are brighter than soft ones, and a single hit captures only whichever
+        // dynamic happened to be used.
+        guard let template = KeyClassifier.averageFingerprints(cleanIndices.map { strikeFingerprints[$0] }) else {
+            resetCurrentKeyStrikes()
+            message = "Could not read those strikes — tap Record to redo key \(keyIndex + 1)"
             return
         }
 
-        // Calculate average pitch of clean strikes
-        let avgPitch = clean.reduce(0.0, +) / Double(clean.count)
-
-        // Check similarity to existing keys
-        if let clash = captured.first(where: { abs(1200 * log2(avgPitch / $0.value)) < similarityThresholdCents }) {
-            strikes = []
-            message = "Too close to key \(clash.key + 1) (\(String(format: "%.1f", clash.value)) Hz) — check you struck the highlighted key"
-            return
+        // Two keys whose templates score above the bar cannot be told apart
+        // during play. Deliberately NOT blocking for now — it is reported and
+        // the user moves on, rather than being forced to re-strike mid-session.
+        // Revisit once there is real evidence of how often it fires.
+        if let clash = capturedFingerprints.first(where: {
+            cosine($0.value, template) >= maxTemplateSimilarity
+        }) {
+            warning = "Key \(keyIndex + 1) sounds close to key \(clash.key + 1) — they may get confused"
         }
 
         captured[keyIndex] = avgPitch
-        
+        capturedFingerprints[keyIndex] = template
+
         // Brief pause so user sees the 3rd strike checked before advancing
         Task {
             try? await Task.sleep(for: .milliseconds(700))
             await MainActor.run {
                 strikes = []
+                strikeFingerprints = []
+                warning = nil
                 if keyIndex + 1 < app.profile.keyCount {
                     keyIndex += 1
                 } else {
@@ -320,9 +364,19 @@ struct CalibrationView: View {
         return list.reduce(0.0, +) / Double(list.count)
     }
 
+    /// Cosine similarity between two L2-normalised fingerprints — a dot product,
+    /// since both sides already have unit length.
+    private func cosine(_ a: [Float], _ b: [Float]) -> Float {
+        guard a.count == b.count else { return 0 }
+        var total: Float = 0
+        for i in a.indices { total += a[i] * b[i] }
+        return total
+    }
+
     private func resetCurrentKeyStrikes() {
         stopListening(message: nil)
         strikes = []
+        strikeFingerprints = []
     }
 
     private func redoPreviousKey() {
@@ -330,7 +384,9 @@ struct CalibrationView: View {
         stopListening(message: nil)
         keyIndex -= 1
         captured[keyIndex] = nil
+        capturedFingerprints[keyIndex] = nil
         strikes = []
+        strikeFingerprints = []
         message = nil
     }
 
@@ -338,9 +394,12 @@ struct CalibrationView: View {
         stopListening(message: nil)
         keyIndex = 0
         strikes = []
+        strikeFingerprints = []
         captured = [:]
+        capturedFingerprints = [:]
         finished = false
         message = nil
+        warning = nil
     }
 
     private func save() {
@@ -349,6 +408,10 @@ struct CalibrationView: View {
             if let hz = captured[profile.keys[i].index] {
                 profile.keys[i].fundamentalHz = hz
                 profile.keys[i].confidence = 1.0
+            }
+            // The template is what matching actually uses.
+            if let template = capturedFingerprints[profile.keys[i].index] {
+                profile.keys[i].fingerprint = template
             }
         }
         profile.createdAt = ISO8601DateFormatter().string(from: .now)
