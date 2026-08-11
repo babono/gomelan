@@ -18,6 +18,9 @@ struct PlayView: View {
 
     @State private var engine = PlayEngine()
     @State private var displayLink = DisplayLink()
+    @State private var fusion: StrikeFusion?
+    /// Full-bleed size of the overlay/preview, for the vision crop mapping.
+    @State private var overlaySize: CGSize = .zero
 
     @State private var countdown: Int? = 3
     @State private var paused = false
@@ -35,7 +38,7 @@ struct PlayView: View {
 
     var body: some View {
         ZStack {
-            CameraPreview(session: camera.session)
+            CameraPreview(session: camera.session, controller: camera)
                 .ignoresSafeArea()
 
             OverlayView(keys: app.profile.keys,
@@ -53,6 +56,17 @@ struct PlayView: View {
                 pauseOverlay
             }
         }
+        .background {
+            // Measures the full-bleed layout the preview/overlay fill, so the
+            // vision crop maps back onto the frame in the same coordinate space.
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { overlaySize = proxy.size }
+                    .onChange(of: proxy.size) { _, new in overlaySize = new }
+            }
+            .ignoresSafeArea()
+        }
+        .onChange(of: overlaySize) { _, new in fusion?.viewSize = new }
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
     }
@@ -140,6 +154,12 @@ struct PlayView: View {
             engine.configure(song: song, mode: app.playMode, profile: app.profile, tempoScale: app.tempoScale)
         }
 
+        // Vision fusion. viewSize is filled in by the GeometryReader measurement
+        // (onChange keeps it current); until then resolve() no-ops safely.
+        fusion = StrikeFusion(frames: camera.frameBuffer,
+                              keys: app.profile.keys,
+                              viewSize: overlaySize)
+
         // Live strikes → judgement. hostTime is captured at detection, so the
         // hop to the main queue doesn't skew timing.
         audio.onStrike = { key, hostTime, confidence in
@@ -150,11 +170,20 @@ struct PlayView: View {
                 engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
             }
         }
-        audio.onUnclearStrike = { hostTime in
+        audio.onUnclearStrike = { hostTime, candidates in
             Task { @MainActor in
-                unclearAt = hostTime
-                // Not scored: guessing here would tell the student they played a
-                // wrong note when the app simply could not tell.
+                // Audio couldn't call the key. Ask vision to break the tie from
+                // the frame at this strike's time; only then do we score it.
+                if let decision = await fusion?.resolve(candidates: candidates, hostTime: hostTime) {
+                    lastKey = decision.keyIndex
+                    lastConfidence = decision.hitProbability
+                    unclearAt = nil
+                    engine.registerStrike(keyIndex: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
+                } else {
+                    unclearAt = hostTime
+                    // Neither audio nor vision could tell: report nothing rather
+                    // than guess a wrong note.
+                }
             }
         }
         try? audio.start(profile: app.profile)

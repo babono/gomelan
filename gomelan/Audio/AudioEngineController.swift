@@ -28,7 +28,11 @@ final class AudioEngineController {
 
     /// Called on the main queue for each onset whose key could not be called —
     /// either no template won by enough margin, or nothing is calibrated yet.
-    var onUnclearStrike: ((_ hostTime: Double) -> Void)?
+    ///
+    /// `candidates` carries the ranked audio matches (best first) so the vision
+    /// fusion layer can try to break the tie; empty when there was nothing to
+    /// fingerprint at all.
+    var onUnclearStrike: ((_ hostTime: Double, _ candidates: [(keyIndex: Int, similarity: Double)]) -> Void)?
 
     /// Called on the main queue for every onset, with the fingerprint that the
     /// calibration flow should store, plus a display-only pitch estimate.
@@ -331,7 +335,7 @@ final class AudioEngineController {
         strikeAmplitudePeak = max(strikeAmplitudePeak * amplitudePeakDecay, peak)
 
         guard let vector = fingerprinter.fingerprint(onsetSample: onset.sampleIndex, ring: ring) else {
-            DispatchQueue.main.async { [weak self] in self?.onUnclearStrike?(hostTime) }
+            DispatchQueue.main.async { [weak self] in self?.onUnclearStrike?(hostTime, []) }
             return
         }
 
@@ -363,7 +367,11 @@ final class AudioEngineController {
                 self?.onStrike?(match.keyIndex, hostTime, match.confidence)
             }
         } else {
-            DispatchQueue.main.async { [weak self] in self?.onUnclearStrike?(hostTime) }
+            // Unclear: hand the vision layer the top audio candidates to break
+            // the tie. prefix(3) is enough — a real strike is never confusable
+            // with more than a couple of neighbouring keys.
+            let candidates = Array((classifier?.scores(for: vector) ?? []).prefix(3))
+            DispatchQueue.main.async { [weak self] in self?.onUnclearStrike?(hostTime, candidates) }
         }
     }
 
