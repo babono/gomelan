@@ -95,6 +95,7 @@ final class PlayEngine {
     // Tunables
     private let approachWindowMs: Double = 2200          // upcoming fill lead-in
     private let missWindowMs: Double = 200               // §5.1
+    private let practiceWindowMs: Double = 350           //R generous, practice is no-fail
     private let flashDuration: Double = 0.3
     
     // One full colotomic cycle of gong before anything else happens.
@@ -130,8 +131,11 @@ final class PlayEngine {
     }
     
     func start() {
-        startHostTime = CACurrentMediaTime()
+        //R Booting the audio engine loads and decodes 13 samples, which took
+        //R long enough that the clock had already run on without the cues.
+        //R Start the cue player first, then stamp the clock.
         cue?.start()
+        startHostTime = CACurrentMediaTime()
     }
     
     /// Shift the clock forward to absorb a pause (§13.4 .paused).
@@ -163,6 +167,8 @@ final class PlayEngine {
         
         let beatMs = 60000.0 / Double(song.bpm) / tempoScale
         
+        let previousPhase = phase   //R
+
         //phase and loop bookkeeping
         if currentTimeMs < introMs {
             phase = .countIn
@@ -182,7 +188,14 @@ final class PlayEngine {
                 if mode == .practice { practiceIndex = 0 }
             }
         }
-        
+
+        //R The gangsa samples belong to the example. Cut whatever is still
+        //R ringing the moment "Your turn" starts, so the player isn't listening
+        //R to the app while they're supposed to be playing.
+        if phase != previousPhase, previousPhase == .example {
+            cue?.stopKeySamples()
+        }
+
         var states: [Int: KeyRenderState] = [:]
         
         for (key, entry) in flashes where now <= entry.1 {
@@ -207,7 +220,7 @@ final class PlayEngine {
                 cue?.playKempur()
 
             default:
-                cue?.playClick()
+                break   //R off-beats got a click here AND from the metronome below
             }
             if metronomeEnabled { cue?.playClick() }
         }
@@ -220,10 +233,16 @@ final class PlayEngine {
         case .example:
             tickExample(now: now, patternTime: patternTime, states: &states)
         case .userTurn:
+            //R The bilah cue in "Your turn" is now driven purely by the clock, so
+            //R it always names the same key as the number sitting on the strike
+            //R line below. Play judges first, so a note it retires this frame
+            //R doesn't get cued.
             if mode == .practice {
+                tickUserTurnCue(patternTime: patternTime, beatMs: beatMs, states: &states)
                 tickPractice(patternTime: patternTime, states: &states)
             } else {
                 tickPlay(now: now, patternTime: patternTime, states: &states)
+                tickUserTurnCue(patternTime: patternTime, beatMs: beatMs, states: &states)
             }
         }
         
@@ -255,15 +274,85 @@ final class PlayEngine {
     //        checkCompletion(now: now)
     //    }
     
+    //R The bilah cue itself: fill + approach ring for every note inside the
+    //R lead-in window. Shared by the example and by "Your turn" (both modes) so
+    //R the guidance is identical and unbroken across the phase change.
+    private func applyTimedCues(patternTime: Double, states: inout [Int: KeyRenderState]) {
+        for i in notes.indices where !judged[i] {
+            let until = scaledTime(notes[i]) - patternTime
+            if until <= approachWindowMs && until >= -missWindowMs {
+                applyCue(&states, key: notes[i].keyIndex, until: until)
+            }
+        }
+    }
+
+    //R --------------------------------------------------------------------
+    //R "Your turn" cue.
+    //R
+    //R The bottom row and the bilah are both mapped from the same clock, so the
+    //R rule is simply: whichever number is on the strike line, that bilah is lit.
+    //R The note that has just arrived holds a solid highlight, then releases in
+    //R time for the next note's fill to read (otherwise a 4→4 repeat looks like
+    //R one long highlight). Nothing here waits on onset detection — that hold was
+    //R what pinned the highlight to one bilah while the row scrolled on.
+    //R --------------------------------------------------------------------
+
+    /// The note the row is showing at the strike line: the latest one whose time
+    /// has arrived. `notes` is sorted, so scan forward and keep the last match.
+    private func currentNoteIndex(patternTime: Double) -> Int? {
+        var current: Int?
+        for i in notes.indices {
+            guard scaledTime(notes[i]) <= patternTime else { break }
+            current = i
+        }
+        if let current, judged[current] { return nil }   // already hit or missed
+        return current
+    }
+
+    /// The next note still to come — the one the fill counts down to.
+    private func nextNoteIndex(patternTime: Double) -> Int? {
+        notes.indices.first { scaledTime(notes[$0]) > patternTime && !judged[$0] }
+    }
+
+    private func tickUserTurnCue(patternTime: Double, beatMs: Double, states: inout [Int: KeyRenderState]) {
+        // Lead-in on the next note. It fills across the gap since the previous
+        // note, so the countdown matches the spacing of the numbers on the row
+        // instead of washing every key at once with a fixed 2.2s window.
+        if let next = nextNoteIndex(patternTime: patternTime) {
+            let dueAt = scaledTime(notes[next])
+            let previous = next > 0 ? scaledTime(notes[next - 1]) : dueAt - beatMs
+            let window = max(120, dueAt - previous)
+            let until = dueAt - patternTime
+            if until <= window {
+                let fill = min(1, max(0, 1 - until / window))
+                var s = states[notes[next].keyIndex] ?? KeyRenderState()
+                s.fill = max(s.fill, fill)
+                s.approachScale = 1.6 - 0.6 * fill
+                states[notes[next].keyIndex] = s
+            }
+        }
+
+        // Solid highlight on the note that is due right now.
+        if let current = currentNoteIndex(patternTime: patternTime) {
+            let dueAt = scaledTime(notes[current])
+            let gap = current + 1 < notes.count ? scaledTime(notes[current + 1]) - dueAt : beatMs
+            let hold = min(max(gap * 0.55, 90), 400)
+            if patternTime < dueAt + hold {
+                var s = states[notes[current].keyIndex] ?? KeyRenderState()
+                s.strikeNow = true
+                s.fill = 1
+                states[notes[current].keyIndex] = s
+            }
+        }
+    }
+
     // The app demonstrates: highlight the bilah AND play its recorded sample.
     private func tickExample(now: Double, patternTime: Double, states: inout [Int: KeyRenderState]) {
+        applyTimedCues(patternTime: patternTime, states: &states)   //R
         for i in notes.indices where !judged[i] {
             let until = scaledTime(notes[i]) - patternTime
             let key = notes[i].keyIndex
-            
-            if until <= approachWindowMs && until >= -missWindowMs {
-                applyCue(&states, key: key, until: until)
-            }
+
             if until <= 0, until > -40 {
                 judged[i] = true
 
@@ -273,7 +362,7 @@ final class PlayEngine {
             }
         }
     }
-    
+
     private func tickPlay(now: Double, patternTime: Double, states: inout [Int: KeyRenderState]) {
         // Auto-miss notes whose window has fully passed.
         for i in notes.indices where !judged[i] {
@@ -284,12 +373,7 @@ final class PlayEngine {
         }
         // Upcoming fills + strike-now, plus reference-tone one beat ahead.
         //        let beatMs = 60000.0 / Double(song.bpm) / tempoScale
-        for i in notes.indices where !judged[i] {
-            let until = scaledTime(notes[i]) - patternTime
-            if until <= approachWindowMs && until >= -missWindowMs {
-                applyCue(&states, key: notes[i].keyIndex, until: until)
-            }
-        }
+        //R The fills now come from tickUserTurnCue, which is locked to the row.
         //
         //        /** BATAS*/
         //        // Metronome on the beat (§5.4).
@@ -303,22 +387,17 @@ final class PlayEngine {
     }
     
     private func tickPractice(patternTime: Double, states: inout [Int: KeyRenderState]) {
-        guard practiceIndex < notes.count else { return }
-        let note = notes[practiceIndex]
-        
-        // Expected key pulses.
-        var s = states[note.keyIndex] ?? KeyRenderState()
-        s.strikeNow = true
-        s.fill = 1
-        states[note.keyIndex] = s
-        
+        //R The expected-key hold lived here; it froze on one bilah until onset
+        //R detection fired, which is what looked like lag. The highlight comes
+        //R from tickUserTurnCue now, so all practice adds is the damp hint.
+        guard let current = currentNoteIndex(patternTime: patternTime), current > 0 else { return }
+
         // Damp hint on the previous key (§5.5) — teach it, don't score it.
-        if practiceIndex > 0 {
-            let prev = notes[practiceIndex - 1].keyIndex
-            var ps = states[prev] ?? KeyRenderState()
-            ps.damp = true
-            states[prev] = ps
-        }
+        let prev = notes[current - 1].keyIndex
+        guard prev != notes[current].keyIndex else { return }
+        var ps = states[prev] ?? KeyRenderState()
+        ps.damp = true
+        states[prev] = ps
     }
     
     private func applyCue(_ states: inout [Int: KeyRenderState], key: Int, until: Double) {
@@ -362,14 +441,19 @@ final class PlayEngine {
     }
     
     private func registerPracticeStrike(keyIndex: Int, hostTime: Double) {
-        guard practiceIndex < notes.count else { return }
-        if keyIndex == notes[practiceIndex].keyIndex {
-            flash(.hit, at: keyIndex, now: hostTime)
-            cue?.playHit()
-            practiceIndex += 1
-        } else {
-//            flash(.wrong, at: keyIndex, now: hostTime)
+        //R Practice no longer walks an index the player has to unlock, so judge a
+        //R strike against whichever note is nearest in time. Still no-fail: a
+        //R wrong or stray strike is simply ignored.
+        let atMs = (hostTime - startHostTime) * 1000 - patternOriginMs
+        var target: Int?
+        var bestErr = practiceWindowMs
+        for i in notes.indices {
+            let err = abs(scaledTime(notes[i]) - atMs)
+            if err <= bestErr { bestErr = err; target = i }
         }
+        guard let i = target, notes[i].keyIndex == keyIndex else { return }
+        flash(.hit, at: keyIndex, now: hostTime)
+        cue?.playHit()
     }
     
     // MARK: - Bottom track
