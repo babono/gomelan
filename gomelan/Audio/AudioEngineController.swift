@@ -23,16 +23,25 @@ import AVFoundation
 
 final class AudioEngineController {
 
-    /// Called on the main queue for each identified strike.
-    var onStrike: ((_ keyIndex: Int, _ hostTime: Double, _ confidence: Double) -> Void)?
+    /// Called on the main queue for every gated onset — a real strike happened at
+    /// `hostTime`, regardless of which key. This is the trigger for the vision-first
+    /// path: audio says *when*, vision decides *which key* from the frame at that
+    /// time. Fires independently of the audio key classification above, so it works
+    /// even when nothing is audio-calibrated.
+    var onStrikeDetected: ((_ hostTime: Double) -> Void)?
 
-    /// Called on the main queue for each onset whose key could not be called —
-    /// either no template won by enough margin, or nothing is calibrated yet.
-    ///
-    /// `candidates` carries the ranked audio matches (best first) so the vision
-    /// fusion layer can try to break the tie; empty when there was nothing to
-    /// fingerprint at all.
-    var onUnclearStrike: ((_ hostTime: Double, _ candidates: [(keyIndex: Int, similarity: Double)]) -> Void)?
+    /// Diagnostic feed for the audio test screen. Reports EVERY onset the detector
+    /// surfaces — including ones rejected by the amplitude gate — so the gate,
+    /// noise floor and strike loudness are all visible. Only dispatched when a
+    /// listener is attached, so it costs nothing in normal play.
+    struct OnsetDebug {
+        let hostTime: Double
+        let amplitude: Float
+        let gate: Float
+        let passedGate: Bool
+        let fingerprinted: Bool
+    }
+    var onOnsetDebug: ((OnsetDebug) -> Void)?
 
     /// Called on the main queue for every onset, with the fingerprint that the
     /// calibration flow should store, plus a display-only pitch estimate.
@@ -88,6 +97,12 @@ final class AudioEngineController {
     /// judges against.
     private var anchorHostSeconds: Double?
     private var anchorSampleIndex = 0
+
+    /// Recent onset times (host seconds), for the vision path to snap its strike
+    /// timing onto when a clean onset exists. Written on the DSP queue, read from
+    /// the main actor, so guarded by a lock.
+    private var recentOnsets: [Double] = []
+    private let recentOnsetsLock = NSLock()
 
     private(set) var isRunning = false
 
@@ -328,16 +343,34 @@ final class AudioEngineController {
         let peak = amplitude(atSample: onset.sampleIndex)
 
         // Too quiet to be a mallet strike. Silent by design — this fires on room
-        // noise many times a second and is not something to report.
+        // noise many times a second and is not something to report (except to the
+        // audio test screen, which wants to see the noise floor vs the gate).
         let gate = max(config.minStrikeAmplitude,
                        config.minAmplitudeRelative * strikeAmplitudePeak)
-        guard peak >= gate else { return }
-        strikeAmplitudePeak = max(strikeAmplitudePeak * amplitudePeakDecay, peak)
-
-        guard let vector = fingerprinter.fingerprint(onsetSample: onset.sampleIndex, ring: ring) else {
-            DispatchQueue.main.async { [weak self] in self?.onUnclearStrike?(hostTime, []) }
+        guard peak >= gate else {
+            reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: false, fingerprinted: false)
             return
         }
+        strikeAmplitudePeak = max(strikeAmplitudePeak * amplitudePeakDecay, peak)
+
+        // Record the onset time so the vision path can snap its (frame-grained)
+        // strike timing onto this (sub-ms) onset when the two line up.
+        recordOnset(hostTime)
+
+        // The strike trigger. Detection identifies the key from vision now, so
+        // this is all a normal strike needs — no per-key audio classification.
+        DispatchQueue.main.async { [weak self] in self?.onStrikeDetected?(hostTime) }
+
+        // The fingerprint is only needed for calibration (capture / live feed) and
+        // the audio test's quality readout. Skip the 4096-pt FFT entirely in normal
+        // play — nothing consumes it there anymore.
+        guard capture != nil || onCalibrationStrike != nil || onOnsetDebug != nil else { return }
+
+        guard let vector = fingerprinter.fingerprint(onsetSample: onset.sampleIndex, ring: ring) else {
+            reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: false)
+            return
+        }
+        reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: true)
 
         // A capture window collects candidates rather than reporting the first.
         if capture != nil {
@@ -361,23 +394,60 @@ final class AudioEngineController {
                 self?.onCalibrationStrike?(vector, hz, hostTime)
             }
         }
-
-        if let match = classifier?.classify(vector: vector) {
-            DispatchQueue.main.async { [weak self] in
-                self?.onStrike?(match.keyIndex, hostTime, match.confidence)
-            }
-        } else {
-            // Unclear: hand the vision layer the top audio candidates to break
-            // the tie. prefix(3) is enough — a real strike is never confusable
-            // with more than a couple of neighbouring keys.
-            let candidates = Array((classifier?.scores(for: vector) ?? []).prefix(3))
-            DispatchQueue.main.async { [weak self] in self?.onUnclearStrike?(hostTime, candidates) }
-        }
     }
 
     /// Absolute sample index → CACurrentMediaTime seconds.
     private func hostSeconds(forSample index: Int) -> Double {
         guard let anchor = anchorHostSeconds else { return CACurrentMediaTime() }
         return anchor + Double(index - anchorSampleIndex) / config.sampleRate
+    }
+
+    // MARK: - Onset timing (for the vision path)
+
+    // MARK: - Live gate tuning (audio test screen)
+
+    /// The current amplitude-gate settings, read on the DSP queue so it never
+    /// races with `emit`. Lets the audio test screen seed its sliders.
+    func gateSettings() -> (floor: Float, relative: Float) {
+        queue.sync { (config.minStrikeAmplitude, config.minAmplitudeRelative) }
+    }
+
+    /// Adjust the amplitude gate live. Applied on the DSP queue, so it takes
+    /// effect on the next onset without a restart.
+    func setGate(floor: Float, relative: Float) {
+        queue.async { [weak self] in
+            self?.config.minStrikeAmplitude = floor
+            self?.config.minAmplitudeRelative = relative
+        }
+    }
+
+    private func reportOnsetDebug(hostTime: Double, amplitude: Float, gate: Float,
+                                  passedGate: Bool, fingerprinted: Bool) {
+        guard onOnsetDebug != nil else { return }
+        let debug = OnsetDebug(hostTime: hostTime, amplitude: amplitude, gate: gate,
+                               passedGate: passedGate, fingerprinted: fingerprinted)
+        DispatchQueue.main.async { [weak self] in self?.onOnsetDebug?(debug) }
+    }
+
+    private func recordOnset(_ hostTime: Double) {
+        recentOnsetsLock.lock()
+        defer { recentOnsetsLock.unlock() }
+        recentOnsets.append(hostTime)
+        // Keep only the last ~2s; older onsets can't match a current strike.
+        let cutoff = hostTime - 2.0
+        if recentOnsets.first ?? .greatestFiniteMagnitude < cutoff {
+            recentOnsets.removeAll { $0 < cutoff }
+        }
+    }
+
+    /// The onset time closest to `hostTime` within `tolerance` seconds, or nil.
+    /// The vision path uses this to sharpen its strike timing without ever
+    /// depending on it — nil just means "keep the visual time".
+    func nearestOnset(to hostTime: Double, within tolerance: Double) -> Double? {
+        recentOnsetsLock.lock()
+        defer { recentOnsetsLock.unlock() }
+        return recentOnsets
+            .filter { abs($0 - hostTime) <= tolerance }
+            .min { abs($0 - hostTime) < abs($1 - hostTime) }
     }
 }

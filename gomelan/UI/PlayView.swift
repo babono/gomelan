@@ -19,6 +19,7 @@ struct PlayView: View {
     @State private var engine = PlayEngine()
     @State private var displayLink = DisplayLink()
     @State private var fusion: StrikeFusion?
+    @State private var visionDetector = VisionStrikeDetector()
     /// Full-bleed size of the overlay/preview, for the vision crop mapping.
     @State private var overlaySize: CGSize = .zero
 
@@ -69,6 +70,7 @@ struct PlayView: View {
         .onChange(of: overlaySize) { _, new in fusion?.viewSize = new }
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
+        .task { await runVisionDetection() }
     }
 
     // MARK: - Chrome
@@ -160,32 +162,10 @@ struct PlayView: View {
                               keys: app.profile.keys,
                               viewSize: overlaySize)
 
-        // Live strikes → judgement. hostTime is captured at detection, so the
-        // hop to the main queue doesn't skew timing.
-        audio.onStrike = { key, hostTime, confidence in
-            Task { @MainActor in
-                lastKey = key
-                lastConfidence = confidence
-                unclearAt = nil
-                engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
-            }
-        }
-        audio.onUnclearStrike = { hostTime, candidates in
-            Task { @MainActor in
-                // Audio couldn't call the key. Ask vision to break the tie from
-                // the frame at this strike's time; only then do we score it.
-                if let decision = await fusion?.resolve(candidates: candidates, hostTime: hostTime) {
-                    lastKey = decision.keyIndex
-                    lastConfidence = decision.hitProbability
-                    unclearAt = nil
-                    engine.registerStrike(keyIndex: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
-                } else {
-                    unclearAt = hostTime
-                    // Neither audio nor vision could tell: report nothing rather
-                    // than guess a wrong note.
-                }
-            }
-        }
+        // Detection is vision self-triggering now (see runVisionDetection); the
+        // audio engine is left running only for the calibrated-mic HUD/cues, not
+        // as the strike trigger — that's what broke in a noisy room.
+        visionDetector.reset()
         try? audio.start(profile: app.profile)
 
         runCountdown()
@@ -205,6 +185,31 @@ struct PlayView: View {
         }
     }
 
+    /// Vision self-triggering loop. Polls the latest frame, classifies every key,
+    /// and turns rising edges into strikes — no audio onset, so background noise
+    /// can't gate it out. Runs on the main actor between sleeps, like the mallet
+    /// test screen; the model is small enough not to stall the overlay.
+    private func runVisionDetection() async {
+        while !Task.isCancelled {
+            if countdown == nil, !paused, !engine.isFinished,
+               let (scores, hostTime) = fusion?.latestScores() {
+                let fired = visionDetector.process(scores: scores)
+                // If several keys cross at once, take the most confident.
+                if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
+                    // Vision decides which key + that it happened. If a clean audio
+                    // onset sits within 80ms, snap to its precise time; otherwise
+                    // keep the frame time. Audio only sharpens, never blocks.
+                    let strikeTime = audio.nearestOnset(to: hostTime, within: 0.08) ?? hostTime
+                    lastKey = key
+                    lastConfidence = scores[key] ?? 0
+                    unclearAt = nil
+                    engine.registerStrike(keyIndex: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
+                }
+            }
+            try? await Task.sleep(for: .milliseconds(60))
+        }
+    }
+
     private func pause() {
         guard countdown == nil, !paused else { return }
         paused = true
@@ -216,14 +221,14 @@ struct PlayView: View {
     private func resume() {
         engine.adjustStart(by: CACurrentMediaTime() - pauseStartedAt)
         try? audio.start(profile: app.profile)
+        visionDetector.reset() // don't fire on a mallet left resting during pause
         displayLink.start()
         paused = false
     }
 
     private func teardown() {
         displayLink.stop()
-        audio.onStrike = nil
-        audio.onUnclearStrike = nil
+        audio.onStrikeDetected = nil
         audio.stop()
         cue.stop()
     }

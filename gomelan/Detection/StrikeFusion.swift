@@ -2,18 +2,21 @@
 //  StrikeFusion.swift
 //  gomelan
 //
-//  Combines the audio and vision detectors. Audio stays the master: it owns
-//  timing, and any strike it can identify confidently flows straight through.
-//  Vision is only asked to help when audio reports an UNCLEAR strike — it heard a
-//  hit but two key templates were too close to call (see KeyClassifier.classify).
+//  Scores camera frames against the per-key hit classifier and reconciles them
+//  with the calibrated key layout. Detection strategy lives in the caller:
 //
-//  In that case we take the frame nearest the strike's hostTime, crop each of
-//  audio's top candidate keys, and let MalletHitClassifier say which region is
-//  actually being struck. If vision can't tell either, we keep today's behaviour
-//  and report nothing rather than guess.
+//  - VISION-FIRST / self-triggering (primary): the play loop polls `latestScores`
+//    continuously and feeds a VisionStrikeDetector (rising edge). No audio onset
+//    is involved, so it's immune to background noise.
+//  - Audio-triggered helpers (`resolveVisionFirst`, `resolve(candidates:)`) score
+//    the frame at a given strike time; kept for the audio-master fallback.
+//
+//  All paths share `decide()`. Vision answers *which key by location* (we choose
+//  the crops), never by pitch identity.
 //
 
 import CoreGraphics
+import QuartzCore
 
 final class StrikeFusion {
 
@@ -38,6 +41,39 @@ final class StrikeFusion {
         self.classifier = MalletHitClassifier()
         self.keys = keys
         self.viewSize = viewSize
+    }
+
+    /// Hit probability for every key in the most recent buffered frame, tagged
+    /// with that frame's host time. Drives the self-triggering play loop. Returns
+    /// nil until vision + a laid-out view + a frame are all available.
+    func latestScores() -> (scores: [Int: Double], hostTime: Double)? {
+        guard viewSize.width > 0, viewSize.height > 0,
+              let frame = frames.nearest(to: CACurrentMediaTime()) else { return nil }
+        return (scores(in: frame), frame.hostTime)
+    }
+
+    /// Vision-first resolution: on an audio-triggered strike, classify EVERY key
+    /// at the frame nearest `hostTime` and return the one most clearly being hit
+    /// (argmax over the threshold). Audio contributes only the trigger + timing.
+    /// Returns nil when vision is unavailable, the view isn't laid out, no frame
+    /// is buffered, or no key clears the threshold.
+    func resolveVisionFirst(hostTime: Double) async -> Decision? {
+        guard viewSize.width > 0, viewSize.height > 0,
+              let frame = frames.nearest(to: hostTime) else { return nil }
+        return Self.decide(visionScores: scores(in: frame), threshold: minHitProbability)
+    }
+
+    /// Classify all keys in a single frame.
+    private func scores(in frame: FrameBuffer.Frame) -> [Int: Double] {
+        guard let classifier else { return [:] }
+        var scores: [Int: Double] = [:]
+        for key in keys {
+            let cropRect = CropMapper.bufferRect(overlay: key.rect,
+                                                 bufferSize: frame.size,
+                                                 viewSize: viewSize)
+            scores[key.index] = classifier.hitProbability(in: frame.image, cropRect: cropRect)
+        }
+        return scores
     }
 
     /// Try to resolve an unclear audio strike using vision. Returns nil when

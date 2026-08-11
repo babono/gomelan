@@ -29,6 +29,8 @@ struct SettingsView: View {
                     SecondaryButton(title: "Record key pitches", systemImage: "waveform") { app.openCalibration() }
                     SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") { app.realign() }
                     SecondaryButton(title: "Test Mallet", systemImage: "scope") { app.openMalletTest() }
+                    SecondaryButton(title: "Test Detection", systemImage: "dot.radiowaves.left.and.right") { app.openDetectionTest() }
+                    SecondaryButton(title: "Test Audio", systemImage: "waveform.circle") { app.openAudioTest() }
                 }
             }
 
