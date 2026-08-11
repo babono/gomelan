@@ -31,6 +31,18 @@ final class SpectralFlux {
     private(set) var runningPeak: Float = 0
     private let peakDecay: Float = 0.9995
 
+    /// Frames to observe before reporting anything.
+    ///
+    /// Without this the very first frame after a reset sets `runningPeak` to its
+    /// own value, so `normalised` returns exactly 1.0 — the largest value
+    /// possible — out of silence, and the detector fires immediately. The
+    /// warm-up both suppresses that and lets the peak settle to something that
+    /// reflects the room rather than one arbitrary frame.
+    private var warmupRemaining = 0
+    private var warmupFrames: Int
+
+    var isWarmedUp: Bool { warmupRemaining <= 0 }
+
     init(config: DSPConfig, fft: FFTProcessor) {
         self.config = config
         self.fft = fft
@@ -39,11 +51,15 @@ final class SpectralFlux {
         self.firstBin = max(0, Int(ceil(config.fluxFloorHz * Double(fft.size) / config.sampleRate)))
         self.logSpectrum = [Float](repeating: 0, count: fft.binCount)
         self.previousLog = [Float](repeating: 0, count: fft.binCount)
+        // ~250ms of room before anything counts.
+        self.warmupFrames = max(8, Int(0.25 * config.sampleRate / Double(config.onsetHop)))
+        self.warmupRemaining = warmupFrames
     }
 
     func reset() {
         hasPrevious = false
         runningPeak = 0
+        warmupRemaining = warmupFrames
         for i in previousLog.indices { previousLog[i] = 0 }
     }
 
@@ -80,11 +96,14 @@ final class SpectralFlux {
         hasPrevious = true
 
         runningPeak = max(runningPeak * peakDecay, flux)
+        if warmupRemaining > 0 { warmupRemaining -= 1 }
         return flux
     }
 
     /// Flux scaled into roughly 0...1, the range Python's thresholds assume.
+    /// Returns 0 during warm-up so nothing can trigger off the bootstrap frame.
     func normalised(_ flux: Float) -> Float {
-        runningPeak > 0 ? flux / runningPeak : 0
+        guard isWarmedUp, runningPeak > 0 else { return 0 }
+        return flux / runningPeak
     }
 }

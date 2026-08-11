@@ -23,6 +23,9 @@ struct CalibrationView: View {
     /// tell apart at play time. Matches the bar the Python notebook scores
     /// against; real gangsa keys land around 0.42 at worst.
     private let maxTemplateSimilarity: Float = 0.5
+    /// How long the mic stays open after arming. Long enough to line up the
+    /// mallet and strike without hurrying, and to let the note ring.
+    private let captureSeconds: TimeInterval = 2.5
 
     @State private var keyIndex = 0
     @State private var strikes: [Double] = []
@@ -240,42 +243,43 @@ struct CalibrationView: View {
 
     private func setup() {
         camera.start()
-        audio.onCalibrationStrike = { fingerprint, hz, _ in
-            Task { @MainActor in
-                if isListening {
-                    registerStrike(fingerprint: fingerprint, hz: hz)
-                }
-            }
-        }
         try? audio.start(profile: app.profile)
     }
 
     private func teardown() {
         timeoutTask?.cancel()
+        audio.cancelCapture()
         audio.onCalibrationStrike = nil
         audio.stop()
     }
 
     private func startListeningForStrike() {
         message = nil
+        warning = nil
         isArming = true
         isListening = false
-        audio.resetDetector()
         timeoutTask?.cancel()
         timeoutTask = Task {
             // 350ms arming delay: ignores the finger-tap click sound on screen glass
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                audio.resetDetector()
                 isArming = false
                 isListening = true
-            }
-            try? await Task.sleep(for: .seconds(6))
-            if !Task.isCancelled {
-                await MainActor.run {
-                    if isListening {
-                        stopListening(message: "No strike heard — tap Record and strike Key \(keyIndex + 1)")
+
+                // Record a fixed window and keep the LOUDEST strike in it, rather
+                // than stopping at the first onset. Onset detection reports plenty
+                // of things that are not mallet strikes — room noise, the mallet
+                // approaching, reflections — and the first of them almost never is
+                // the hit. Amplitude tells them apart; timing does not.
+                audio.captureStrongestStrike(duration: captureSeconds) { strike in
+                    Task { @MainActor in
+                        guard isListening else { return }
+                        if let strike {
+                            registerStrike(fingerprint: strike.fingerprint, hz: strike.fundamentalHz)
+                        } else {
+                            stopListening(message: "No strike heard — tap Record and strike Key \(keyIndex + 1)")
+                        }
                     }
                 }
             }
@@ -283,6 +287,7 @@ struct CalibrationView: View {
     }
 
     private func stopListening(message msg: String?) {
+        if isListening || isArming { audio.cancelCapture() }
         isArming = false
         isListening = false
         timeoutTask?.cancel()

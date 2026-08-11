@@ -34,6 +34,22 @@ final class AudioEngineController {
     /// calibration flow should store, plus a display-only pitch estimate.
     var onCalibrationStrike: ((_ fingerprint: [Float], _ fundamentalHz: Double, _ hostTime: Double) -> Void)?
 
+    /// One captured strike, with the loudness used to pick between candidates.
+    struct CapturedStrike {
+        let fingerprint: [Float]
+        let fundamentalHz: Double
+        let hostTime: Double
+        let amplitude: Float
+    }
+
+    private struct Capture {
+        let endSample: Int
+        let completion: (CapturedStrike?) -> Void
+        var best: CapturedStrike?
+        var candidateCount = 0
+    }
+    private var capture: Capture?
+
     private let engine = AVAudioEngine()
     private let queue = DispatchQueue(label: "gomelan.audio.dsp")
 
@@ -112,6 +128,44 @@ final class AudioEngineController {
         queue.async { [weak self] in self?.classifier?.updateKeys(keys) }
     }
 
+    /// Listen for `duration` and report the STRONGEST strike heard, or nil if
+    /// nothing was heard at all.
+    ///
+    /// Taking the loudest rather than the first is not a refinement — it is the
+    /// only thing that makes calibration work. Real recordings produce 6-12
+    /// onsets where there was one strike (handling noise, the mallet approach,
+    /// room reflections, decay ripple), and no threshold setting separates them:
+    /// swept thresh_mult 1.6-5.0 x thresh_floor 0.04-0.30 in Python and the
+    /// spurious onsets stay flux-comparable to the real one. Amplitude does
+    /// separate them cleanly — the true strike measured 3-10x every false
+    /// positive across all five reference recordings.
+    ///
+    /// Mirrors `strongest_onset` in gamelan_dsp.py.
+    func captureStrongestStrike(duration: TimeInterval,
+                                completion: @escaping (CapturedStrike?) -> Void) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            // Start clean, then wait out the warm-up before the window opens.
+            self.ring.reset()
+            self.flux?.reset()
+            self.detector?.reset()
+            self.pending.removeAll(keepingCapacity: true)
+            self.nextWindowStart = 0
+            self.anchorHostSeconds = nil
+
+            let samples = Int(duration * self.config.sampleRate)
+            self.capture = Capture(endSample: samples, completion: completion)
+        }
+    }
+
+    func cancelCapture() {
+        queue.async { [weak self] in
+            guard let self, let capture = self.capture else { return }
+            self.capture = nil
+            DispatchQueue.main.async { capture.completion(nil) }
+        }
+    }
+
     /// Worst-case similarity between calibrated keys. Want < 0.5.
     func separability(completion: @escaping ((worst: Double, mean: Double, pair: (Int, Int))?) -> Void) {
         queue.async { [weak self] in
@@ -169,6 +223,19 @@ final class AudioEngineController {
         ring.write(channel, count: frames)
         processAvailableWindows()
         drainPending()
+        finishCaptureIfDue()
+    }
+
+    /// Close the capture window once the last strike inside it has had time to be
+    /// fingerprinted — otherwise a hit right at the end would be discarded.
+    private func finishCaptureIfDue() {
+        guard let current = capture else { return }
+        let settled = current.endSample + config.fingerprintLatencySamples
+        guard ring.totalWritten >= settled, pending.isEmpty else { return }
+
+        capture = nil
+        let best = current.best
+        DispatchQueue.main.async { current.completion(best) }
     }
 
     private func processAvailableWindows() {
@@ -203,11 +270,36 @@ final class AudioEngineController {
         pending = stillPending
     }
 
+    /// Loudest sample in the 60ms after an onset — how "real" the strike is.
+    private func amplitude(atSample index: Int) -> Float {
+        let span = Int(0.060 * config.sampleRate)
+        var scratch = [Float]()
+        guard ring.read(from: index, count: span, into: &scratch) else { return 0 }
+        var peak: Float = 0
+        for value in scratch { peak = max(peak, abs(value)) }
+        return peak
+    }
+
     private func emit(_ onset: OnsetDetector.Onset, fingerprinter: Fingerprinter) {
         let hostTime = hostSeconds(forSample: onset.sampleIndex)
 
         guard let vector = fingerprinter.fingerprint(onsetSample: onset.sampleIndex, ring: ring) else {
             DispatchQueue.main.async { [weak self] in self?.onUnclearStrike?(hostTime) }
+            return
+        }
+
+        // A capture window collects candidates rather than reporting the first.
+        if capture != nil {
+            let hz = fingerprinter.topPeaks(onsetSample: onset.sampleIndex, ring: ring, count: 1)
+                .first?.hz ?? 0
+            let strike = CapturedStrike(fingerprint: vector,
+                                        fundamentalHz: hz,
+                                        hostTime: hostTime,
+                                        amplitude: amplitude(atSample: onset.sampleIndex))
+            capture?.candidateCount += 1
+            if strike.amplitude > (capture?.best?.amplitude ?? -1) {
+                capture?.best = strike
+            }
             return
         }
 
