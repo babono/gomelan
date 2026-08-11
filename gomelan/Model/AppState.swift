@@ -26,6 +26,7 @@ final class AppState {
         case results
         case settings
         case calibrating
+        case malletTest
     }
 
     var screen: Screen = .welcome
@@ -116,6 +117,8 @@ final class AppState {
     func closeSettings() { screen = .songList }
     func openCalibration() { screen = .calibrating }
     func calibrationFinished() { screen = .songList }
+    func openMalletTest() { screen = .malletTest }
+    func closeMalletTest() { screen = .settings }
 
     /// The persistent re-alignment affordance (§13.4).
     func realign() { screen = .aligning }

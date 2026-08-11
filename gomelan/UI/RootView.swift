@@ -51,6 +51,8 @@ struct RootView: View {
             SettingsView()
         case .calibrating:
             CalibrationView(camera: camera, audio: audio)
+        case .malletTest:
+            MalletTestView(camera: camera)
         }
     }
 }

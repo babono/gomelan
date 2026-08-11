@@ -14,7 +14,7 @@ import AVFoundation
 import Observation
 
 @Observable
-final class CameraController {
+final class CameraController: NSObject {
     enum Status: Equatable {
         case idle
         case configuring
@@ -24,11 +24,13 @@ final class CameraController {
     }
 
     private(set) var status: Status = .idle
+    private(set) var latestMallet: DetectedMallet?
 
     /// Exposed for the preview layer.
     @ObservationIgnored let session = AVCaptureSession()
 
     @ObservationIgnored private let sessionQueue = DispatchQueue(label: "com.gomelan.camera.session")
+    @ObservationIgnored private let detectionService = DetectionService()
     @ObservationIgnored private var device: AVCaptureDevice?
     @ObservationIgnored private var isConfigured = false
 
@@ -111,6 +113,13 @@ final class CameraController {
             return
         }
 
+        let videoOutput = AVCaptureVideoDataOutput()
+        videoOutput.alwaysDiscardsLateVideoFrames = true
+        videoOutput.setSampleBufferDelegate(self, queue: sessionQueue)
+        if session.canAddOutput(videoOutput) {
+            session.addOutput(videoOutput)
+        }
+
         session.commitConfiguration()
         isConfigured = true
     }
@@ -119,3 +128,18 @@ final class CameraController {
         DispatchQueue.main.async { [weak self] in self?.status = new }
     }
 }
+
+// MARK: - Frame Processing (Detection)
+
+extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let mallet = detectionService.detectMallet(in: pixelBuffer)
+        if let mallet {
+            DispatchQueue.main.async { [weak self] in
+                self?.latestMallet = mallet
+            }
+        }
+    }
+}
+
