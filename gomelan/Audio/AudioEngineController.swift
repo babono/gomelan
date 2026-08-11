@@ -69,6 +69,12 @@ final class AudioEngineController {
     /// Onsets waiting for enough audio to fingerprint.
     private var pending: [OnsetDetector.Onset] = []
 
+    /// Loudest strike heard recently, for the relative half of the amplitude
+    /// gate. Decays slowly so one hard hit does not deafen the app to the
+    /// quieter playing that follows.
+    private var strikeAmplitudePeak: Float = 0
+    private let amplitudePeakDecay: Float = 0.995
+
     /// Maps absolute sample index to the CACurrentMediaTime clock that PlayEngine
     /// judges against.
     private var anchorHostSeconds: Double?
@@ -121,6 +127,7 @@ final class AudioEngineController {
             self.pending.removeAll(keepingCapacity: true)
             self.nextWindowStart = 0
             self.anchorHostSeconds = nil
+            self.strikeAmplitudePeak = 0
         }
     }
 
@@ -152,6 +159,7 @@ final class AudioEngineController {
             self.pending.removeAll(keepingCapacity: true)
             self.nextWindowStart = 0
             self.anchorHostSeconds = nil
+            self.strikeAmplitudePeak = 0
 
             let samples = Int(duration * self.config.sampleRate)
             self.capture = Capture(endSample: samples, completion: completion)
@@ -272,7 +280,7 @@ final class AudioEngineController {
 
     /// Loudest sample in the 60ms after an onset — how "real" the strike is.
     private func amplitude(atSample index: Int) -> Float {
-        let span = Int(0.060 * config.sampleRate)
+        let span = Int(config.amplitudeMeasureSeconds * config.sampleRate)
         var scratch = [Float]()
         guard ring.read(from: index, count: span, into: &scratch) else { return 0 }
         var peak: Float = 0
@@ -282,6 +290,14 @@ final class AudioEngineController {
 
     private func emit(_ onset: OnsetDetector.Onset, fingerprinter: Fingerprinter) {
         let hostTime = hostSeconds(forSample: onset.sampleIndex)
+        let peak = amplitude(atSample: onset.sampleIndex)
+
+        // Too quiet to be a mallet strike. Silent by design — this fires on room
+        // noise many times a second and is not something to report.
+        let gate = max(config.minStrikeAmplitude,
+                       config.minAmplitudeRelative * strikeAmplitudePeak)
+        guard peak >= gate else { return }
+        strikeAmplitudePeak = max(strikeAmplitudePeak * amplitudePeakDecay, peak)
 
         guard let vector = fingerprinter.fingerprint(onsetSample: onset.sampleIndex, ring: ring) else {
             DispatchQueue.main.async { [weak self] in self?.onUnclearStrike?(hostTime) }
@@ -295,7 +311,7 @@ final class AudioEngineController {
             let strike = CapturedStrike(fingerprint: vector,
                                         fundamentalHz: hz,
                                         hostTime: hostTime,
-                                        amplitude: amplitude(atSample: onset.sampleIndex))
+                                        amplitude: peak)
             capture?.candidateCount += 1
             if strike.amplitude > (capture?.best?.amplitude ?? -1) {
                 capture?.best = strike

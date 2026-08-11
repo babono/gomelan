@@ -195,6 +195,17 @@ struct CalibrationView: View {
                 .font(.caption.monospaced())
                 .foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.center)
+
+            // How confusable the finished templates are with each other. Worth
+            // showing while the instrument is still in front of the user — a
+            // pair that cannot be told apart here will misread every session
+            // afterwards, and redoing two keys now costs seconds.
+            if let quality = qualityLine {
+                Text(quality)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(worstSimilarity ?? 0 < maxTemplateSimilarity ? Theme.hit : Theme.accent)
+                    .multilineTextAlignment(.center)
+            }
             HStack(spacing: 16) {
                 PrimaryButton(title: "Save calibration", systemImage: "checkmark.circle.fill") {
                     save()
@@ -208,6 +219,33 @@ struct CalibrationView: View {
         .padding(20)
         .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 16))
         .padding(.bottom, 16)
+    }
+
+    /// Worst cosine similarity between any two finished templates.
+    private var worstPair: (Float, Int, Int)? {
+        let entries = capturedFingerprints.sorted { $0.key < $1.key }
+        guard entries.count >= 2 else { return nil }
+        var worst: (Float, Int, Int)?
+        for a in 0..<entries.count {
+            for b in (a + 1)..<entries.count {
+                let score = cosine(entries[a].value, entries[b].value)
+                if score > (worst?.0 ?? -1) {
+                    worst = (score, entries[a].key, entries[b].key)
+                }
+            }
+        }
+        return worst
+    }
+
+    private var worstSimilarity: Float? { worstPair?.0 }
+
+    private var qualityLine: String? {
+        guard let (score, a, b) = worstPair else { return nil }
+        if score < maxTemplateSimilarity {
+            return String(format: "Keys are well separated (closest pair %.2f)", score)
+        }
+        return String(format: "Keys %d and %d sound alike (%.2f) — redo them if they misread",
+                      a + 1, b + 1, score)
     }
 
     private var summaryLine: String {

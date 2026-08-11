@@ -26,6 +26,12 @@ struct PlayView: View {
     // Debug HUD (Phase 3, §9): last detected key + confidence.
     @State private var lastKey: Int?
     @State private var lastConfidence: Double = 0
+    /// A strike was heard but no template won by enough margin. Distinct from
+    /// hearing nothing at all — the two have completely different fixes (an
+    /// unclear strike means the calibration cannot separate those keys; silence
+    /// means the mic is too far away or the gate is too high), and treating both
+    /// as "nothing happened" makes them impossible to tell apart on the day.
+    @State private var unclearAt: Double?
 
     var body: some View {
         ZStack {
@@ -79,14 +85,16 @@ struct PlayView: View {
             Circle()
                 .fill(audio.isRunning ? Theme.hit : Theme.miss)
                 .frame(width: 8, height: 8)
-            if let lastKey {
+            if unclearAt != nil {
+                Text("heard a strike — couldn't tell which key")
+            } else if let lastKey {
                 Text("key \(lastKey) · \(Int(lastConfidence * 100))%")
             } else {
                 Text("listening…")
             }
         }
         .font(.caption.monospaced())
-        .foregroundStyle(.white.opacity(0.7))
+        .foregroundStyle(unclearAt != nil ? Theme.accent : .white.opacity(0.7))
         .padding(.vertical, 6)
         .padding(.horizontal, 12)
         .background(.black.opacity(0.4), in: Capsule())
@@ -138,7 +146,15 @@ struct PlayView: View {
             Task { @MainActor in
                 lastKey = key
                 lastConfidence = confidence
+                unclearAt = nil
                 engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
+            }
+        }
+        audio.onUnclearStrike = { hostTime in
+            Task { @MainActor in
+                unclearAt = hostTime
+                // Not scored: guessing here would tell the student they played a
+                // wrong note when the app simply could not tell.
             }
         }
         try? audio.start(profile: app.profile)
@@ -178,6 +194,7 @@ struct PlayView: View {
     private func teardown() {
         displayLink.stop()
         audio.onStrike = nil
+        audio.onUnclearStrike = nil
         audio.stop()
         cue.stop()
     }
