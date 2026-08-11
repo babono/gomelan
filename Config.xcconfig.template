@@ -1,0 +1,5 @@
+// Local, per-developer settings — do NOT commit this file.
+// Copy from Config.xcconfig.template and fill in your own values.
+
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.gomelan
