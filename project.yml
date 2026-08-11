@@ -86,11 +86,9 @@ targets:
     platform: iOS
     sources:
       - path: gomelan
-        type: folder
         excludes:
           - Info.plist
       - path: documentation
-        type: folder
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
