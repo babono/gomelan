@@ -46,6 +46,10 @@ struct CalibrationView: View {
     @State private var isArming = false
     @State private var timeoutTask: Task<Void, Never>?
 
+    /// Diagnostics for the debug panel — most recent strike first.
+    @State private var debugLog: [StrikeDebug] = []
+    @State private var showDebug = false
+
     var body: some View {
         ZStack {
             CameraPreview(session: camera.session)
@@ -59,9 +63,123 @@ struct CalibrationView: View {
                 if finished { summary } else { recordControlPanel }
             }
             .padding(24)
+
+            if showDebug {
+                debugPanel
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                    .padding(.top, 92)
+                    .padding(.trailing, 16)
+            }
+
+            debugToggle
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(24)
         }
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
+    }
+
+    // MARK: - Debug panel
+
+    private var debugToggle: some View {
+        Button {
+            showDebug.toggle()
+        } label: {
+            Image(systemName: showDebug ? "ladybug.fill" : "ladybug")
+                .font(.title2)
+                .foregroundStyle(.white)
+                .padding(12)
+                .background(.black.opacity(0.5), in: Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var debugPanel: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("STRIKE DEBUG")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white.opacity(0.6))
+            if debugLog.isEmpty {
+                Text("Record a strike to see how it looks digitally.")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.5))
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(debugLog) { entry in
+                            debugRow(entry)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .frame(width: 320, alignment: .leading)
+        .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func debugRow(_ e: StrikeDebug) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Key \(e.keyIndex + 1) · strike \(e.strikeNumber)")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+            Text(String(format: "f0 %.0f Hz · amp %.3f", e.fundamentalHz, e.amplitude))
+                .font(.caption2.monospaced())
+                .foregroundStyle(.white.opacity(0.7))
+            Text("partials: " + partialText(e.partials))
+                .font(.caption2.monospaced())
+                .foregroundStyle(.white.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
+            if !e.selfScores.isEmpty {
+                // Same key, earlier strikes — high means this key records consistently.
+                Text("self: " + scoreText(e.selfScores))
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(Theme.hit)
+            }
+            // Other keys — anything at/above the similarity bar is confusable.
+            ForEach(e.crossScores, id: \.key) { c in
+                Text(String(format: "vs K%d: %.2f", c.key + 1, c.score))
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(c.score >= maxTemplateSimilarity ? Theme.wrong : .white.opacity(0.55))
+            }
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func partialText(_ partials: [(hz: Double, strength: Double)]) -> String {
+        partials.map { String(format: "%.0f(%.2f)", $0.hz, $0.strength) }.joined(separator: " ")
+    }
+
+    private func scoreText(_ scores: [Float]) -> String {
+        scores.map { String(format: "%.2f", $0) }.joined(separator: " ")
+    }
+
+    // MARK: - Record button state
+    //
+    // Pulled out of the view body as plainly-typed properties. Inlined as nested
+    // ternaries these forced the type-checker to explore every Color/String/Image
+    // combination and pushed `recordControlPanel` past 850ms to type-check.
+
+    private var recordButtonSymbol: String {
+        if isArming { return "hourglass" }
+        return isListening ? "waveform.circle.fill" : "mic.fill"
+    }
+
+    private var recordButtonTitle: String {
+        if isArming { return "Readying mic..." }
+        if isListening { return "Listening... Strike Key \(keyIndex + 1) Now" }
+        return "Tap to Record Strike \(strikes.count + 1) of 3"
+    }
+
+    private var recordButtonForeground: Color {
+        (isListening || isArming) ? .white : .black
+    }
+
+    private var recordButtonBackground: Color {
+        if isListening { return .red }
+        return isArming ? .orange : Theme.accent
     }
 
     // MARK: - Chrome
@@ -144,17 +262,17 @@ struct CalibrationView: View {
                     }
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: isArming ? "hourglass" : (isListening ? "waveform.circle.fill" : "mic.fill"))
+                        Image(systemName: recordButtonSymbol)
                             .font(.title2)
-                        Text(isArming ? "Readying mic..." : (isListening ? "Listening... Strike Key \(keyIndex + 1) Now" : "Tap to Record Strike \(strikes.count + 1) of 3"))
+                        Text(recordButtonTitle)
                             .fontWeight(.semibold)
                     }
                     .font(.headline)
-                    .foregroundStyle(isListening || isArming ? .white : .black)
+                    .foregroundStyle(recordButtonForeground)
                     .padding(.vertical, 14)
                     .padding(.horizontal, 24)
                     .frame(maxWidth: 420)
-                    .background(isListening ? Color.red : (isArming ? Color.orange : Theme.accent), in: RoundedRectangle(cornerRadius: 14))
+                    .background(recordButtonBackground, in: RoundedRectangle(cornerRadius: 14))
                 }
                 .buttonStyle(.plain)
             } else {
@@ -276,7 +394,7 @@ struct CalibrationView: View {
                     Task { @MainActor in
                         guard isListening else { return }
                         if let strike {
-                            registerStrike(fingerprint: strike.fingerprint, hz: strike.fundamentalHz)
+                            registerStrike(strike)
                         } else {
                             stopListening(message: "No strike heard — tap Record and strike Key \(keyIndex + 1)")
                         }
@@ -295,15 +413,37 @@ struct CalibrationView: View {
         if let msg { message = msg }
     }
 
-    private func registerStrike(fingerprint: [Float], hz: Double) {
+    private func registerStrike(_ strike: AudioEngineController.CapturedStrike) {
         stopListening(message: nil)
-        lastHz = hz
-        strikes.append(hz)
-        strikeFingerprints.append(fingerprint)
+        recordDebug(for: strike)
+        lastHz = strike.fundamentalHz
+        strikes.append(strike.fundamentalHz)
+        strikeFingerprints.append(strike.fingerprint)
 
         if strikes.count >= strikesNeeded {
             finalizeKey()
         }
+    }
+
+    /// Capture how this strike looks digitally, for the debug panel: its partials,
+    /// how consistent it is with earlier strikes on the SAME key (self-similarity,
+    /// want high), and how close it is to the OTHER keys already calibrated this
+    /// session (cross-similarity, want low — high means confusable).
+    private func recordDebug(for strike: AudioEngineController.CapturedStrike) {
+        let selfScores = strikeFingerprints.map { cosine($0, strike.fingerprint) }
+        let crossScores = capturedFingerprints
+            .map { (key: $0.key, score: cosine($0.value, strike.fingerprint)) }
+            .sorted { $0.score > $1.score }
+
+        let entry = StrikeDebug(keyIndex: keyIndex,
+                                strikeNumber: strikes.count + 1,
+                                fundamentalHz: strike.fundamentalHz,
+                                amplitude: strike.amplitude,
+                                partials: strike.topPartials,
+                                selfScores: selfScores,
+                                crossScores: crossScores)
+        debugLog.insert(entry, at: 0)
+        if debugLog.count > 8 { debugLog.removeLast(debugLog.count - 8) }
     }
 
     private func finalizeKey() {
@@ -424,4 +564,18 @@ struct CalibrationView: View {
         app.saveProfile()
         app.calibrationFinished()
     }
+}
+
+/// One strike's diagnostics, snapshotted for the debug panel.
+private struct StrikeDebug: Identifiable {
+    let id = UUID()
+    let keyIndex: Int
+    let strikeNumber: Int
+    let fundamentalHz: Double
+    let amplitude: Float
+    let partials: [(hz: Double, strength: Double)]
+    /// Cosine vs earlier strikes on the same key (want high — consistent).
+    let selfScores: [Float]
+    /// Cosine vs other calibrated keys, best first (want low — separable).
+    let crossScores: [(key: Int, score: Float)]
 }

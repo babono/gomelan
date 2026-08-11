@@ -56,6 +56,12 @@ struct DSPConfig: Equatable {
     /// didn't. Real templates clear their nearest rival by 0.58-0.64.
     var confidenceGap: Float = 0.02
 
+    /// Peak amplitude (abs sample, 0...~1) a capture must reach to count as a real
+    /// strike. Below this it is a missed/too-soft hit or room noise — measured
+    /// noise captures land near 0.002 while real strikes are 0.3+. Averaging a
+    /// noise capture into a key template destroys it, so reject instead.
+    var minStrikeAmplitude: Float = 0.03
+
     // MARK: Derived
 
     var minGapFrames: Int { Int(minGapSeconds * sampleRate / Double(onsetHop)) }
