@@ -130,9 +130,46 @@ final class Fingerprinter {
         return vector
     }
 
+    /// A partial's strength must clear this fraction of the strongest partial to
+    /// be considered the fundamental. Keeps the estimate off low-frequency noise
+    /// wiggles while still preferring a genuine low partial over a louder high one.
+    private let fundamentalStrengthFraction: Float = 0.3
+
     /// Strongest partials in the fingerprint window, as (hz, relative strength).
     /// For display and calibration feedback only — never for matching.
     func topPeaks(onsetSample: Int, ring: SampleRing, count wanted: Int = 4) -> [(hz: Double, strength: Double)] {
+        let peaks = spectrumPeaks(onsetSample: onsetSample, ring: ring)
+        guard let strongest = peaks.map({ $0.mag }).max(), strongest > 0 else { return [] }
+
+        return peaks.sorted { $0.mag > $1.mag }.prefix(wanted).map {
+            (hz: fft.frequency(ofBin: $0.bin, sampleRate: config.sampleRate),
+             strength: Double($0.mag / strongest))
+        }
+    }
+
+    /// Best guess at the note's fundamental, in Hz. For display and calibration
+    /// feedback only — never for matching.
+    ///
+    /// The fundamental is NOT the loudest partial. On inharmonic bronze the
+    /// loudest partial hops between the ~1x, 2.76x and 5.42x modes depending on
+    /// how the bar was struck, so a plain "loudest peak" reading swings wildly —
+    /// 500Hz on one strike, 5kHz on the next, on the same key. The fundamental is
+    /// reliably the LOWEST partial that still carries real energy, so pick the
+    /// lowest peak whose strength clears a fraction of the strongest.
+    func estimateFundamental(onsetSample: Int, ring: SampleRing) -> Double {
+        let peaks = spectrumPeaks(onsetSample: onsetSample, ring: ring)
+        guard let strongest = peaks.map({ $0.mag }).max(), strongest > 0 else { return 0 }
+
+        let floor = strongest * fundamentalStrengthFraction
+        guard let lowest = peaks.filter({ $0.mag >= floor }).min(by: { $0.bin < $1.bin }) else {
+            return 0
+        }
+        return fft.frequency(ofBin: lowest.bin, sampleRate: config.sampleRate)
+    }
+
+    /// Local-maxima peaks within the fingerprint band, as (bin, magnitude).
+    /// Shared by the top-partials display and the fundamental estimate.
+    private func spectrumPeaks(onsetSample: Int, ring: SampleRing) -> [(bin: Int, mag: Float)] {
         let start = onsetSample + config.fpDelaySamples
         guard ring.read(from: start, count: config.fpWindow, into: &segment) else { return [] }
         fft.magnitudeSpectrum(segment, into: &magnitude)
@@ -141,16 +178,11 @@ final class Fingerprinter {
         let hiBin = min(magnitude.count - 2, Int(config.fpHiHz * Double(fft.size) / config.sampleRate))
         guard loBin < hiBin else { return [] }
 
-        var peaks: [(Int, Float)] = []
+        var peaks: [(bin: Int, mag: Float)] = []
         for bin in loBin...hiBin where magnitude[bin] >= magnitude[bin - 1]
                                     && magnitude[bin] >= magnitude[bin + 1] {
-            peaks.append((bin, magnitude[bin]))
+            peaks.append((bin: bin, mag: magnitude[bin]))
         }
-        guard let strongest = peaks.map({ $0.1 }).max(), strongest > 0 else { return [] }
-
-        return peaks.sorted { $0.1 > $1.1 }.prefix(wanted).map {
-            (hz: fft.frequency(ofBin: $0.0, sampleRate: config.sampleRate),
-             strength: Double($0.1 / strongest))
-        }
+        return peaks
     }
 }

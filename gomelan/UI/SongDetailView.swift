@@ -53,16 +53,19 @@ private struct PatternStrip: View {
 
     var body: some View {
         GeometryReader { geo in
-            let maxTime = Double(max(song.durationMs, 1))
+            let width: CGFloat = geo.size.width
+            let height: CGFloat = geo.size.height
+            let maxTime: CGFloat = CGFloat(max(song.durationMs, 1))
+            let rowH: CGFloat = height / CGFloat(max(keyCount, 1))
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 10).fill(.white.opacity(0.05))
                 ForEach(song.notes) { note in
-                    let x = geo.size.width * (Double(note.timeMs) / maxTime)
-                    let rowH = geo.size.height / Double(max(keyCount, 1))
-                    let y = rowH * Double(keyCount - 1 - note.keyIndex)
+                    let x: CGFloat = width * CGFloat(note.timeMs) / maxTime
+                    let y: CGFloat = rowH * CGFloat(keyCount - 1 - note.keyIndex)
+                    let barWidth: CGFloat = max(6, width * CGFloat(note.durationMs) / maxTime)
                     RoundedRectangle(cornerRadius: 3)
                         .fill(Theme.accent.opacity(0.85))
-                        .frame(width: max(6, geo.size.width * Double(note.durationMs) / maxTime), height: max(6, rowH - 6))
+                        .frame(width: barWidth, height: max(6, rowH - 6))
                         .position(x: x + 6, y: y + rowH / 2)
                 }
             }

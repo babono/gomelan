@@ -40,6 +40,9 @@ final class AudioEngineController {
         let fundamentalHz: Double
         let hostTime: Double
         let amplitude: Float
+        /// Strongest partials (hz, relative strength), for the calibration debug
+        /// readout only. Matching never looks at these.
+        var topPartials: [(hz: Double, strength: Double)] = []
     }
 
     private struct Capture {
@@ -47,6 +50,8 @@ final class AudioEngineController {
         let completion: (CapturedStrike?) -> Void
         var best: CapturedStrike?
         var candidateCount = 0
+        /// Whether the detector has been flushed at window end (see below).
+        var flushed = false
     }
     private var capture: Capture?
 
@@ -237,13 +242,39 @@ final class AudioEngineController {
     /// Close the capture window once the last strike inside it has had time to be
     /// fingerprinted — otherwise a hit right at the end would be discarded.
     private func finishCaptureIfDue() {
-        guard let current = capture else { return }
+        guard var current = capture else { return }
+
+        // Once the listening window has fully elapsed, flush the onset detector so
+        // a strike still held as its "best pending candidate" gets committed. The
+        // detector only releases a held candidate when a LATER peak arrives after
+        // it, so a clean single strike with nothing after it would otherwise never
+        // be reported — which is why an isolated key seemed undetectable while a
+        // noisier one worked. Fingerprint the flushed onset immediately if enough
+        // audio exists; otherwise it waits in `pending` like any other.
+        if !current.flushed && ring.totalWritten >= current.endSample {
+            current.flushed = true
+            capture = current
+            if let flushed = detector?.flush(), !flushed.isEmpty {
+                pending.append(contentsOf: flushed)
+                drainPending()
+            }
+            return
+        }
+
         let settled = current.endSample + config.fingerprintLatencySamples
         guard ring.totalWritten >= settled, pending.isEmpty else { return }
 
         capture = nil
+        // Reject a capture whose loudest candidate is really just noise — a missed
+        // or too-soft strike. Averaging one of these into a template wrecks it
+        // (observed: an amp 0.002 "strike" scored 0.36 self-similarity against a
+        // real hit at amp 1.1). Report nothing so the user strikes again.
         let best = current.best
-        DispatchQueue.main.async { current.completion(best) }
+        if let best, best.amplitude >= config.minStrikeAmplitude {
+            DispatchQueue.main.async { current.completion(best) }
+        } else {
+            DispatchQueue.main.async { current.completion(nil) }
+        }
     }
 
     private func processAvailableWindows() {
@@ -306,12 +337,13 @@ final class AudioEngineController {
 
         // A capture window collects candidates rather than reporting the first.
         if capture != nil {
-            let hz = fingerprinter.topPeaks(onsetSample: onset.sampleIndex, ring: ring, count: 1)
-                .first?.hz ?? 0
+            let hz = fingerprinter.estimateFundamental(onsetSample: onset.sampleIndex, ring: ring)
+            let partials = fingerprinter.topPeaks(onsetSample: onset.sampleIndex, ring: ring, count: 4)
             let strike = CapturedStrike(fingerprint: vector,
                                         fundamentalHz: hz,
                                         hostTime: hostTime,
-                                        amplitude: peak)
+                                        amplitude: peak,
+                                        topPartials: partials)
             capture?.candidateCount += 1
             if strike.amplitude > (capture?.best?.amplitude ?? -1) {
                 capture?.best = strike
@@ -320,8 +352,7 @@ final class AudioEngineController {
         }
 
         if onCalibrationStrike != nil {
-            let hz = fingerprinter.topPeaks(onsetSample: onset.sampleIndex, ring: ring, count: 1)
-                .first?.hz ?? 0
+            let hz = fingerprinter.estimateFundamental(onsetSample: onset.sampleIndex, ring: ring)
             DispatchQueue.main.async { [weak self] in
                 self?.onCalibrationStrike?(vector, hz, hostTime)
             }

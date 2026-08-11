@@ -47,7 +47,10 @@ struct DSPConfig: Equatable {
     // second and none afterwards.
     //
     /// Absolute floor on the post-attack peak. Meaningful as an absolute number
-    /// because samples are already scaled to full-scale = 1.0.
+    /// because samples are already scaled to full-scale = 1.0. Confirmed on
+    /// device: noise captures land near 0.002 where real strikes are 0.3+, and
+    /// averaging a noise capture into a key template wrecks it (an amp-0.002
+    /// "strike" scored 0.36 self-similarity against a real hit).
     var minStrikeAmplitude: Float = 0.04
     /// And relative to recent strikes, so a quiet passage after a loud one does
     /// not flood with false positives.
