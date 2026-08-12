@@ -22,7 +22,7 @@ struct KeyCountView: View {
         VStack(spacing: 0) {
             TopBar(title: "Set up your gamelan",
                    backTitle: "Back",
-                   onBack: { app.screen = .welcome },
+                   onBack: { app.cancelInstrumentSetup() },
                    trailingText: "1 / 3")
 
             HStack(alignment: .center, spacing: 0) {

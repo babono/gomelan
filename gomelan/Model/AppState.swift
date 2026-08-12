@@ -94,15 +94,37 @@ final class AppState {
         screen = .chooseKotekan
     }
 
+    private var isAddingNewInstrument = false
+    private var previousProfile: InstrumentProfile? = nil
+
     func addNewInstrument() {
         let count = savedProfiles.count + 1
         let newID = UUID().uuidString
         let name = "Gangsa #\(count)"
         let dateStr = ISO8601DateFormatter().string(from: Date())
         let newProfile = InstrumentProfile(id: newID, name: name, keyCount: 10, createdAt: dateStr, keys: InstrumentProfile.layout(count: 10))
+
+        isAddingNewInstrument = true
+        previousProfile = profile
         profile = newProfile
-        saveProfile()
         screen = .choosingKeyCount
+    }
+
+    func cancelInstrumentSetup() {
+        if isAddingNewInstrument {
+            if let prev = previousProfile {
+                profile = prev
+                ProfileStore.setSelectedID(prev.id)
+            }
+            isAddingNewInstrument = false
+            previousProfile = nil
+        }
+        savedProfiles = ProfileStore.loadAll()
+        if savedProfiles.isEmpty {
+            screen = .welcome
+        } else {
+            screen = .chooseInstrument
+        }
     }
 
     func realignInstrument(_ p: InstrumentProfile) {
@@ -131,7 +153,11 @@ final class AppState {
 
     func begin() {
         savedProfiles = ProfileStore.loadAll()
-        screen = .chooseInstrument
+        if savedProfiles.isEmpty {
+            addNewInstrument()
+        } else {
+            screen = .chooseInstrument
+        }
     }
 
     func permissionsResolved(granted: Bool) {
@@ -139,7 +165,7 @@ final class AppState {
             if !savedProfiles.isEmpty {
                 screen = .chooseInstrument
             } else {
-                screen = .choosingKeyCount
+                addNewInstrument()
             }
         } else {
             screen = .permissionsBlocked
@@ -152,7 +178,9 @@ final class AppState {
         var updated = profile
         updated.resize(to: count)
         profile = updated
-        saveProfile()
+        if !isAddingNewInstrument {
+            saveProfile()
+        }
         screen = .framing
     }
 
@@ -164,6 +192,10 @@ final class AppState {
     /// learned this session, re-aligning skips straight back to the picker.
     func alignmentConfirmed() {
         saveProfile()
+        if isAddingNewInstrument {
+            isAddingNewInstrument = false
+            previousProfile = nil
+        }
         screen = baselineLearned ? .chooseKotekan : .calibrating
     }
 
