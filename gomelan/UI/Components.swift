@@ -218,10 +218,18 @@ struct CountStepper: View {
     private func circle(system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: system)
-                .font(.sans(18, weight: .medium))
+                .font(.sans(24, weight: .semibold))
                 .foregroundStyle(enabled ? tint : lineColor.opacity(0.3))
-                .frame(width: 52, height: 52)
-                .overlay(Circle().strokeBorder(enabled ? tint.opacity(0.6) : lineColor.opacity(0.2), lineWidth: 1.5))
+                .frame(width: 64, height: 64)
+                .background(
+                    Circle()
+                        .fill(enabled ? tint.opacity(0.08) : Color.clear)
+                )
+                .overlay(
+                    Circle()
+                        .strokeBorder(enabled ? tint.opacity(0.75) : lineColor.opacity(0.2), lineWidth: 2)
+                )
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
