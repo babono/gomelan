@@ -155,7 +155,7 @@ struct TopBar: View {
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.top, compact ? 6 : 14)
+            .padding(.top, compact ? 10 : 24)
             .padding(.bottom, compact ? 8 : 16)
 
             if !compact {

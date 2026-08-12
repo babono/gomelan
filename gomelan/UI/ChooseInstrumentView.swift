@@ -36,13 +36,16 @@ struct ChooseInstrumentView: View {
                         }
                     }
                     .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, 12)
                 }
                 .frame(maxHeight: .infinity)
             }
 
-            footer
+            if editingProfileId == nil {
+                footer
+            }
         }
+        .animation(.spring(duration: 0.25), value: editingProfileId)
         .background(Theme.cream)
         .confirmationDialog("Delete Instrument?",
                             isPresented: $showDeleteConfirm,
@@ -188,8 +191,8 @@ struct ChooseInstrumentView: View {
                 }
             }
         }
-        .padding(20)
-        .frame(width: 260, height: 260)
+        .padding(18)
+        .frame(width: isEditing ? 310 : 260, height: isEditing ? 220 : 250)
         .background(isSelected ? Theme.creamSunken : Color.white.opacity(0.7),
                     in: RoundedRectangle(cornerRadius: 16))
         .overlay(
