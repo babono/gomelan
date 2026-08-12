@@ -14,7 +14,7 @@ import AVFoundation
 import Observation
 
 @Observable
-final class CameraController {
+final class CameraController: NSObject {
     enum Status: Equatable {
         case idle
         case configuring
@@ -28,8 +28,13 @@ final class CameraController {
     /// Exposed for the preview layer.
     @ObservationIgnored let session = AVCaptureSession()
 
+    /// Short rolling history of frames, keyed by host time, for vision fusion
+    /// (StrikeFusion looks up the frame nearest an audio strike).
+    @ObservationIgnored let frameBuffer = FrameBuffer()
+
     @ObservationIgnored private let sessionQueue = DispatchQueue(label: "com.gomelan.camera.session")
     @ObservationIgnored private var device: AVCaptureDevice?
+    @ObservationIgnored private var videoOutput: AVCaptureVideoDataOutput?
     @ObservationIgnored private var isConfigured = false
 
     // MARK: - Permissions
@@ -88,6 +93,41 @@ final class CameraController {
         }
     }
 
+    /// Undo a previous lock and let the camera focus/expose continuously again.
+    ///
+    /// The device is shared hardware: once `lockFocusAndExposure()` runs (in the
+    /// aligning flow) the lock persists across every screen that reuses this
+    /// controller, so a later screen shows a frozen — often blurry — image until
+    /// focus is handed back. Screens that don't need a frozen overlay call this.
+    func enableContinuousAutoFocus() {
+        sessionQueue.async { [weak self] in
+            guard let device = self?.device else { return }
+            do {
+                try device.lockForConfiguration()
+                if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
+                if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
+                if device.isSmoothAutoFocusSupported { device.isSmoothAutoFocusEnabled = true }
+                device.unlockForConfiguration()
+            } catch {
+                // Non-fatal: leave whatever mode the device is already in.
+            }
+        }
+    }
+
+    // MARK: - Orientation
+
+    /// Rotate delivered buffers to the given angle so the frames we classify
+    /// match what the preview shows and the coordinate space the overlay rects
+    /// live in. Driven by CameraPreview, which is the single source of truth for
+    /// orientation — a fixed angle here breaks the moment the device rotates.
+    func setVideoRotationAngle(_ angle: CGFloat) {
+        sessionQueue.async { [weak self] in
+            guard let connection = self?.videoOutput?.connection(with: .video),
+                  connection.isVideoRotationAngleSupported(angle) else { return }
+            connection.videoRotationAngle = angle
+        }
+    }
+
     // MARK: - Configuration (session queue)
 
     private func configureIfNeeded() {
@@ -111,6 +151,22 @@ final class CameraController {
             return
         }
 
+        // Start in continuous autofocus/exposure. Framing later opts into a lock.
+        if (try? device.lockForConfiguration()) != nil {
+            if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
+            if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
+            if device.isSmoothAutoFocusSupported { device.isSmoothAutoFocusEnabled = true }
+            device.unlockForConfiguration()
+        }
+
+        let videoOutput = AVCaptureVideoDataOutput()
+        videoOutput.alwaysDiscardsLateVideoFrames = true
+        videoOutput.setSampleBufferDelegate(self, queue: sessionQueue)
+        if session.canAddOutput(videoOutput) {
+            session.addOutput(videoOutput)
+        }
+        self.videoOutput = videoOutput
+
         session.commitConfiguration()
         isConfigured = true
     }
@@ -119,3 +175,16 @@ final class CameraController {
         DispatchQueue.main.async { [weak self] in self?.status = new }
     }
 }
+
+// MARK: - Frame Processing
+
+extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        // Presentation timestamps ride the same host clock as the audio strike's
+        // hostTime, so fusion can align the two without extra bookkeeping.
+        let hostTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
+        frameBuffer.ingest(pixelBuffer: pixelBuffer, hostTime: hostTime)
+    }
+}
+

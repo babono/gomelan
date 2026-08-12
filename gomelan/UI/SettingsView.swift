@@ -12,6 +12,7 @@ struct SettingsView: View {
 
     var body: some View {
         @Bindable var app = app
+        ScrollView {
         VStack(alignment: .leading, spacing: 28) {
             HStack {
                 Text("Settings").font(.largeTitle.weight(.bold)).foregroundStyle(.white)
@@ -28,6 +29,9 @@ struct SettingsView: View {
                     Spacer()
                     SecondaryButton(title: "Record key pitches", systemImage: "waveform") { app.openCalibration() }
                     SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") { app.realign() }
+                    SecondaryButton(title: "Test Mallet", systemImage: "scope") { app.openMalletTest() }
+                    SecondaryButton(title: "Test Detection", systemImage: "dot.radiowaves.left.and.right") { app.openDetectionTest() }
+                    SecondaryButton(title: "Test Audio", systemImage: "waveform.circle") { app.openAudioTest() }
                 }
             }
 
@@ -48,9 +52,18 @@ struct SettingsView: View {
                     .tint(Theme.accent).frame(maxWidth: 360).foregroundStyle(.white)
             }
 
-            Spacer()
+            section("Detection") {
+                Toggle("Require strike sound", isOn: $app.requireStrikeSound)
+                    .tint(Theme.accent).frame(maxWidth: 360).foregroundStyle(.white)
+                Text(app.requireStrikeSound
+                     ? "A hit only counts with a real gangsa strike sound — blocks hovering, but needs a learned baseline (Test Audio)."
+                     : "Vision alone counts the hit. More forgiving; a hovered mallet can register.")
+                    .font(.caption).foregroundStyle(.white.opacity(0.5)).frame(maxWidth: 360)
+            }
+
         }
         .padding(40)
+        }
     }
 
     @ViewBuilder

@@ -5,25 +5,36 @@
 //  UIViewRepresentable hosting the AVCaptureVideoPreviewLayer (PRD §6.1).
 //  Fills the view with an aspect-fill preview; the overlay is drawn above it.
 //
+//  When a `controller` is supplied, the same orientation applied to the preview
+//  is forwarded to the video-data-output connection, so the frames handed to the
+//  vision classifier are rotated identically to what's on screen.
+//
 
 import SwiftUI
 import AVFoundation
 
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
+    /// Optional: keep this controller's detection buffers rotated to match the
+    /// preview. Only the detection screens need it.
+    var controller: CameraController? = nil
 
     func makeUIView(context: Context) -> PreviewView {
         let view = PreviewView()
         view.videoPreviewLayer.session = session
         view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        view.controller = controller
         return view
     }
 
     func updateUIView(_ uiView: PreviewView, context: Context) {
+        uiView.controller = controller
         uiView.updateOrientation()
     }
 
     final class PreviewView: UIView {
+        weak var controller: CameraController?
+
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var videoPreviewLayer: AVCaptureVideoPreviewLayer {
             layer as! AVCaptureVideoPreviewLayer
@@ -57,6 +68,9 @@ struct CameraPreview: UIViewRepresentable {
                     @unknown default: connection.videoOrientation = .portrait
                     }
                 }
+
+                // Rotate the detection frames the same way as the preview.
+                controller?.setVideoRotationAngle(targetAngle)
             }
         }
     }

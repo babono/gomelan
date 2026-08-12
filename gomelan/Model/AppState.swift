@@ -17,6 +17,7 @@ final class AppState {
         case checkingPermissions
         case permissionsBlocked
         case framing
+        case choosingKeyCount
         case aligning
         case songList
         case songDetail
@@ -25,6 +26,9 @@ final class AppState {
         case results
         case settings
         case calibrating
+        case malletTest
+        case detectionTest
+        case audioTest
     }
 
     var screen: Screen = .welcome
@@ -41,6 +45,11 @@ final class AppState {
     // Audio cue toggles (§5.4)
     var metronomeEnabled: Bool = true
     var referenceToneEnabled: Bool = true
+
+    /// Require a real gangsa strike sound (spectral baseline) to register a hit.
+    /// On = blocks hovering/screams but needs a learned baseline; off = vision
+    /// alone counts the hit (more lenient, no sound needed).
+    var requireStrikeSound: Bool = false
 
     init() {
         // A profile calibrated on the real instrument takes precedence over the
@@ -72,8 +81,25 @@ final class AppState {
         screen = granted ? .framing : .permissionsBlocked
     }
 
-    func framingConfirmed() { screen = .aligning }
-    func alignmentConfirmed() { screen = .songList }
+    func framingConfirmed() { screen = .choosingKeyCount }
+
+    /// Set how many keys this instrument has, then go and position them.
+    /// Gangsa are commonly 10, but a smaller set is normal for practice and for
+    /// testing, so the count is the user's to choose rather than a constant.
+    func keyCountChosen(_ count: Int) {
+        var updated = profile
+        updated.resize(to: count)
+        profile = updated
+        saveProfile()
+        screen = .aligning
+    }
+
+    /// Alignment leads into calibration: the app cannot recognise a single key
+    /// until it has heard it on THIS instrument. Every gamelan is tuned
+    /// differently, so there is no useful default to fall back on.
+    func alignmentConfirmed() {
+        screen = profile.isFullyCalibrated ? .songList : .calibrating
+    }
 
     func select(_ song: Song) {
         selectedSong = song
@@ -98,6 +124,12 @@ final class AppState {
     func closeSettings() { screen = .songList }
     func openCalibration() { screen = .calibrating }
     func calibrationFinished() { screen = .songList }
+    func openMalletTest() { screen = .malletTest }
+    func closeMalletTest() { screen = .settings }
+    func openDetectionTest() { screen = .detectionTest }
+    func closeDetectionTest() { screen = .settings }
+    func openAudioTest() { screen = .audioTest }
+    func closeAudioTest() { screen = .settings }
 
     /// The persistent re-alignment affordance (§13.4).
     func realign() { screen = .aligning }

@@ -35,6 +35,8 @@ struct RootView: View {
             PermissionsBlockedView()
         case .framing:
             FramingView(camera: camera)
+        case .choosingKeyCount:
+            KeyCountView(camera: camera)
         case .aligning:
             AligningView(camera: camera)
         case .songList:
@@ -49,6 +51,12 @@ struct RootView: View {
             SettingsView()
         case .calibrating:
             CalibrationView(camera: camera, audio: audio)
+        case .malletTest:
+            MalletTestView(camera: camera)
+        case .detectionTest:
+            DetectionTestView(camera: camera, audio: audio)
+        case .audioTest:
+            AudioTestView(audio: audio)
         }
     }
 }

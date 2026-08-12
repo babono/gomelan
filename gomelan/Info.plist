@@ -1,15 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>NSCameraUsageDescription</key>
-	<string>Gomelan uses the camera to see your gangsa and show you which key to play.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Gomelan listens to your gangsa so it can tell which key you played.</string>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-</dict>
+<dict/>
 </plist>

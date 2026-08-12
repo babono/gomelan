@@ -18,6 +18,13 @@ struct PlayView: View {
 
     @State private var engine = PlayEngine()
     @State private var displayLink = DisplayLink()
+    @State private var fusion: StrikeFusion?
+    @State private var visionDetector = VisionStrikeDetector()
+    /// When a gangsa-strike baseline is learned, audio confirms strikes (blocks
+    /// hovers/screams) and drives the trigger; otherwise vision self-triggers.
+    @State private var useAudioConfirmation = false
+    /// Full-bleed size of the overlay/preview, for the vision crop mapping.
+    @State private var overlaySize: CGSize = .zero
 
     @State private var countdown: Int? = 3
     @State private var paused = false
@@ -26,10 +33,16 @@ struct PlayView: View {
     // Debug HUD (Phase 3, §9): last detected key + confidence.
     @State private var lastKey: Int?
     @State private var lastConfidence: Double = 0
+    /// A strike was heard but no template won by enough margin. Distinct from
+    /// hearing nothing at all — the two have completely different fixes (an
+    /// unclear strike means the calibration cannot separate those keys; silence
+    /// means the mic is too far away or the gate is too high), and treating both
+    /// as "nothing happened" makes them impossible to tell apart on the day.
+    @State private var unclearAt: Double?
 
     var body: some View {
         ZStack {
-            CameraPreview(session: camera.session)
+            CameraPreview(session: camera.session, controller: camera)
                 .ignoresSafeArea()
 
             OverlayView(keys: app.profile.keys,
@@ -47,8 +60,20 @@ struct PlayView: View {
                 pauseOverlay
             }
         }
+        .background {
+            // Measures the full-bleed layout the preview/overlay fill, so the
+            // vision crop maps back onto the frame in the same coordinate space.
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { overlaySize = proxy.size }
+                    .onChange(of: proxy.size) { _, new in overlaySize = new }
+            }
+            .ignoresSafeArea()
+        }
+        .onChange(of: overlaySize) { _, new in fusion?.viewSize = new }
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
+        .task { await runVisionDetection() }
     }
 
     // MARK: - Chrome
@@ -79,14 +104,16 @@ struct PlayView: View {
             Circle()
                 .fill(audio.isRunning ? Theme.hit : Theme.miss)
                 .frame(width: 8, height: 8)
-            if let lastKey {
+            if unclearAt != nil {
+                Text("heard a strike — couldn't tell which key")
+            } else if let lastKey {
                 Text("key \(lastKey) · \(Int(lastConfidence * 100))%")
             } else {
                 Text("listening…")
             }
         }
         .font(.caption.monospaced())
-        .foregroundStyle(.white.opacity(0.7))
+        .foregroundStyle(unclearAt != nil ? Theme.accent : .white.opacity(0.7))
         .padding(.vertical, 6)
         .padding(.horizontal, 12)
         .background(.black.opacity(0.4), in: Capsule())
@@ -113,6 +140,9 @@ struct PlayView: View {
 
     private func setup() {
         camera.start()
+        // The aligning flow locks focus on the shared device; hand it back so the
+        // vision classifier (and the learner) see a sharp image during play.
+        camera.enableContinuousAutoFocus()
 
         engine.cue = cue
         engine.metronomeEnabled = app.metronomeEnabled
@@ -132,16 +162,29 @@ struct PlayView: View {
             engine.configure(song: song, mode: app.playMode, profile: app.profile, tempoScale: app.tempoScale)
         }
 
-        // Live strikes → judgement. hostTime is captured at detection, so the
-        // hop to the main queue doesn't skew timing.
-        audio.onStrike = { key, hostTime, confidence in
-            Task { @MainActor in
-                lastKey = key
-                lastConfidence = confidence
-                engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
+        // Vision fusion. viewSize is filled in by the GeometryReader measurement
+        // (onChange keeps it current); until then resolve() no-ops safely.
+        fusion = StrikeFusion(frames: camera.frameBuffer,
+                              keys: app.profile.keys,
+                              viewSize: overlaySize)
+
+        visionDetector.reset()
+        try? audio.start(profile: app.profile)
+
+        // Require an audio-confirmed strike only when the user asked for it AND a
+        // baseline exists to check against. Then audio drives the trigger (blocks
+        // hovering/screams) and vision picks the key. Otherwise vision alone.
+        useAudioConfirmation = app.requireStrikeSound && audio.hasStrikeBaseline
+        if useAudioConfirmation {
+            audio.onConfirmedStrike = { hostTime in
+                Task { @MainActor in
+                    guard countdown == nil, !paused, !engine.isFinished else { return }
+                    if let decision = await fusion?.resolveVisionFirst(hostTime: hostTime) {
+                        applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
+                    }
+                }
             }
         }
-        try? audio.start(profile: app.profile)
 
         runCountdown()
     }
@@ -160,6 +203,38 @@ struct PlayView: View {
         }
     }
 
+    /// Vision self-triggering loop. Polls the latest frame, classifies every key,
+    /// and turns rising edges into strikes — no audio onset, so background noise
+    /// can't gate it out. Runs on the main actor between sleeps, like the mallet
+    /// test screen; the model is small enough not to stall the overlay.
+    private func runVisionDetection() async {
+        while !Task.isCancelled {
+            // When audio confirmation is on, strikes come from onConfirmedStrike
+            // instead — don't also self-trigger here (would double-register).
+            if !useAudioConfirmation, countdown == nil, !paused, !engine.isFinished,
+               let (scores, hostTime) = fusion?.latestScores() {
+                let fired = visionDetector.process(scores: scores)
+                // If several keys cross at once, take the most confident.
+                if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
+                    // Vision decides which key + that it happened. If a clean audio
+                    // onset sits within 80ms, snap to its precise time; otherwise
+                    // keep the frame time. Audio only sharpens, never blocks.
+                    let strikeTime = audio.nearestOnset(to: hostTime, within: 0.08) ?? hostTime
+                    applyStrike(key: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
+                }
+            }
+            try? await Task.sleep(for: .milliseconds(60))
+        }
+    }
+
+    /// Feed a detected strike to the engine and the debug HUD.
+    private func applyStrike(key: Int, hostTime: Double, confidence: Double) {
+        lastKey = key
+        lastConfidence = confidence
+        unclearAt = nil
+        engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
+    }
+
     private func pause() {
         guard countdown == nil, !paused else { return }
         paused = true
@@ -171,13 +246,15 @@ struct PlayView: View {
     private func resume() {
         engine.adjustStart(by: CACurrentMediaTime() - pauseStartedAt)
         try? audio.start(profile: app.profile)
+        visionDetector.reset() // don't fire on a mallet left resting during pause
         displayLink.start()
         paused = false
     }
 
     private func teardown() {
         displayLink.stop()
-        audio.onStrike = nil
+        audio.onStrikeDetected = nil
+        audio.onConfirmedStrike = nil
         audio.stop()
         cue.stop()
     }
