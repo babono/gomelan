@@ -26,6 +26,7 @@ final class AppState {
         case results
         case settings
         case calibrating
+        case baseline
         case malletTest
         case detectionTest
         case audioTest
@@ -94,11 +95,12 @@ final class AppState {
         screen = .aligning
     }
 
-    /// Alignment leads into calibration: the app cannot recognise a single key
-    /// until it has heard it on THIS instrument. Every gamelan is tuned
-    /// differently, so there is no useful default to fall back on.
+    /// Alignment leads into the strike baseline. Vision now decides which key was
+    /// hit, so the app no longer fingerprints each key by pitch — it only learns
+    /// what *a* gangsa strike sounds like, enough to tell a real strike from a
+    /// scream/clap/hover. The baseline is per-session, so this runs each time.
     func alignmentConfirmed() {
-        screen = profile.isFullyCalibrated ? .songList : .calibrating
+        screen = .baseline
     }
 
     func select(_ song: Song) {
@@ -124,6 +126,8 @@ final class AppState {
     func closeSettings() { screen = .songList }
     func openCalibration() { screen = .calibrating }
     func calibrationFinished() { screen = .songList }
+    func openBaseline() { screen = .baseline }
+    func baselineFinished() { screen = .songList }
     func openMalletTest() { screen = .malletTest }
     func closeMalletTest() { screen = .settings }
     func openDetectionTest() { screen = .detectionTest }

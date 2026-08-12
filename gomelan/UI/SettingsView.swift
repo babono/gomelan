@@ -27,7 +27,7 @@ struct SettingsView: View {
                         Text("\(app.profile.keyCount) keys").font(.subheadline).foregroundStyle(.white.opacity(0.6))
                     }
                     Spacer()
-                    SecondaryButton(title: "Record key pitches", systemImage: "waveform") { app.openCalibration() }
+                    SecondaryButton(title: "Record strike baseline", systemImage: "waveform.badge.plus") { app.openBaseline() }
                     SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") { app.realign() }
                     SecondaryButton(title: "Test Mallet", systemImage: "scope") { app.openMalletTest() }
                     SecondaryButton(title: "Test Detection", systemImage: "dot.radiowaves.left.and.right") { app.openDetectionTest() }
