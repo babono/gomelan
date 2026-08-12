@@ -17,7 +17,6 @@
 import SwiftUI
 
 enum Theme {
-
     // MARK: - Palette
 
     /// Warm cream — the "paper" background (Neutral #F2E8DF).
@@ -52,7 +51,10 @@ enum Theme {
     static let miss = Color(hex: 0x9E4B3A)// muted red-brown, still warm
     static let wrong = Color(hex: 0xC9A227)// amber, wrong key
 
-    // MARK: - Overlay geometry
+    // MARK: - Colotomic layer (gong / kempur / kemong)
+    static let gong = Color(hex: 0xFFCA28)       // gold
+    static let kempur = Color(hex: 0xFF7043)     // orange
+    static let kemong = Color(hex: 0xAB47BC)     // purple
 
     static let keyOutlineWidth: CGFloat = 3
     static let keyCornerRadius: CGFloat = 6

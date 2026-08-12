@@ -23,6 +23,7 @@ final class AppState {
         case framing            // setup 2/3
         case aligning           // setup 3/3
         case calibrating        // baseline · learn the voice
+        case baseline
         case chooseKotekan
         case chooseHalf
         case chooseCycles       // Dedicated repetition/cycles screen
@@ -189,8 +190,7 @@ final class AppState {
     func framingConfirmed() { screen = .aligning }
 
     /// Step 3/3 leads into the baseline: the app learns what a real gangsa strike
-    /// sounds like on THIS instrument before it can tell strikes from noise. Once
-    /// learned this session, re-aligning skips straight back to the picker.
+    /// sounds like on THIS instrument before it can tell strikes from noise.
     func alignmentConfirmed() {
         saveProfile()
         if isAddingNewInstrument {
@@ -253,6 +253,8 @@ final class AppState {
     func openSettings() { screen = .settings }
     func closeSettings() { screen = .chooseKotekan }
     func openCalibration() { screen = .calibrating }
+    func calibrationFinished() { screen = .chooseKotekan }
+    func openBaseline() { screen = .baseline }
     func openMalletTest() { screen = .malletTest }
     func closeMalletTest() { screen = .settings }
     func openDetectionTest() { screen = .detectionTest }

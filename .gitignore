@@ -118,6 +118,11 @@ fastlane/test_output
 
 iOSInjectionProject/
 
+### SwiftPackageManager ###
+Packages
+xcuserdata
+*.xcodeproj
+
 # End of https://www.toptal.com/developers/gitignore/api/swift,swiftpm,swiftpackagemanager,xcode,macos
 
 ###

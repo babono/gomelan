@@ -41,10 +41,27 @@ struct PlayView: View {
                 .ignoresSafeArea()
 
             // 2. Key rect guidance overlay edge-to-edge (matching AligningView geometry)
-            OverlayView(keys: app.profile.keys, states: engine.renderStates)
+            OverlayView(keys: app.profile.keys,
+                        states: engine.renderStates,
+                        approachNotes: engine.approachNotes,
+                        trackMarkers: engine.trackMarkers)
                 .ignoresSafeArea()
 
-            // Geometry measurement over full screen coordinate space
+            if countdown == nil, !paused {
+                phaseBanner
+            }
+
+            if let countdown {
+                CountdownOverlay(value: countdown)
+            }
+
+            if paused {
+                pauseOverlay
+            }
+        }
+        .background {
+            // Measures the full-bleed layout the preview/overlay fill, so the
+            // vision crop maps back onto the frame in the same coordinate space.
             GeometryReader { proxy in
                 Color.clear
                     .onAppear { overlaySize = proxy.size }
@@ -106,6 +123,17 @@ struct PlayView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 14)
+    }
+
+    /// Names the current session phase so the demo → hand-over reads clearly.
+    /// Uses the shared `PhaseBanner` chrome component.
+    private var phaseBanner: some View {
+        VStack {
+            Spacer().frame(height: 70)
+            PhaseBanner(phase: engine.phase)
+                .animation(.easeInOut(duration: 0.25), value: engine.phase)
+            Spacer()
+        }
     }
 
     private var pauseOverlay: some View {

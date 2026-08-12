@@ -33,7 +33,7 @@ struct RootView: View {
         case .welcome, .permissionsBlocked, .choosingKeyCount,
              .chooseInstrument, .chooseKotekan, .chooseHalf, .chooseCycles, .results, .settings:
             return true
-        case .checkingPermissions, .framing, .aligning, .calibrating,
+        case .checkingPermissions, .framing, .aligning, .calibrating, .baseline,
              .countdown, .playing, .malletTest, .detectionTest, .audioTest:
             return false
         }
@@ -70,6 +70,8 @@ struct RootView: View {
             ResultsView()
         case .settings:
             SettingsView()
+        case .baseline:
+            StrikeBaselineView(camera: camera, audio: audio)
         case .malletTest:
             MalletTestView(camera: camera)
         case .detectionTest:

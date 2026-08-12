@@ -240,3 +240,170 @@ struct CalibrationView: View {
         audio.stop()
     }
 }
+
+// MARK: - Strike baseline
+
+/// A single generic "strike baseline" capture, replacing the per-key pitch
+/// calibration. Vision decides *which* key was hit, so the app no longer needs a
+/// fingerprint per key — only what *a* gangsa strike sounds like, enough to tell
+/// a real strike from a scream, clap, or a mallet hovering over the keys. The
+/// user strikes any keys a few times; the averaged spectrum becomes the optional
+/// strike gate used during play.
+struct StrikeBaselineView: View {
+    @Environment(AppState.self) private var app
+    let camera: CameraController
+    let audio: AudioEngineController
+
+    @State private var capturing = false
+    /// nil until a capture has completed; then the number of strikes learned.
+    @State private var strikeCount: Int?
+
+    var body: some View {
+        ZStack {
+            CameraPreview(session: camera.session)
+                .ignoresSafeArea()
+
+            keyOutlines.ignoresSafeArea()
+
+            VStack {
+                header
+                Spacer()
+                panel
+            }
+            .padding(24)
+        }
+        .onAppear(perform: setup)
+        .onDisappear(perform: teardown)
+    }
+
+    // MARK: Chrome
+
+    private var header: some View {
+        HStack {
+            SecondaryButton(title: "Skip", systemImage: "chevron.right") {
+                finish(enableGate: false)
+            }
+            Spacer()
+            Text("Strike baseline")
+                .font(.headline)
+                .foregroundStyle(.white)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 18)
+                .background(.black.opacity(0.55), in: Capsule())
+            Spacer()
+            Spacer().frame(width: 90)
+        }
+    }
+
+    private var panel: some View {
+        VStack(spacing: 16) {
+            Text(statusText)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 440)
+
+            Button(action: toggleCapture) {
+                HStack(spacing: 10) {
+                    Image(systemName: capturing ? "checkmark" : "waveform.badge.plus")
+                        .font(.title2)
+                    Text(recordTitle).fontWeight(.semibold)
+                }
+                .font(.headline)
+                .foregroundStyle(capturing ? .white : .black)
+                .padding(.vertical, 14)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: 420)
+                .background(capturing ? Color.red : Theme.accent, in: RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.plain)
+
+            if let count = strikeCount, count > 0, !capturing {
+                PrimaryButton(title: "Continue", systemImage: "checkmark.circle.fill") {
+                    finish(enableGate: true)
+                }
+                .frame(width: 280)
+            }
+        }
+        .padding(20)
+        .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 18))
+        .padding(.bottom, 16)
+    }
+
+    private var statusText: String {
+        if capturing { return "Keep striking the keys a few times…" }
+        switch strikeCount {
+        case .none:
+            return "Strike any keys a few times so the app learns what a real gangsa strike sounds like."
+        case .some(0):
+            return "No strikes heard — tap Start and hit a few keys."
+        case .some(let n):
+            return "Learned from \(n) strike\(n == 1 ? "" : "s"). You can re-record or continue."
+        }
+    }
+
+    private var recordTitle: String {
+        if capturing { return "Done" }
+        return strikeCount == nil ? "Start listening" : "Re-record"
+    }
+
+    private var keyOutlines: some View {
+        GeometryReader { geo in
+            ForEach(app.profile.keys) { key in
+                let rect = key.rect.rect(in: geo.size)
+                RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
+                    .stroke(.white.opacity(0.3), lineWidth: Theme.keyOutlineWidth)
+                    .frame(width: rect.width, height: rect.height)
+                    .position(x: rect.midX, y: rect.midY)
+            }
+        }
+    }
+
+    // MARK: Capture
+
+    private func toggleCapture() {
+        if capturing {
+            audio.finishBaselineCapture { count, _ in
+                strikeCount = count
+                capturing = false
+            }
+        } else {
+            audio.startBaselineCapture()
+            capturing = true
+        }
+    }
+
+    private func setup() {
+        camera.start()
+        try? audio.start(profile: app.profile)
+    }
+
+    private func teardown() {
+        if capturing { audio.finishBaselineCapture { _, _ in } }
+        audio.stop()
+    }
+
+    /// Leave for the song list. When a baseline was actually learned, turn the
+    /// strike-sound gate on so it is used in play; skipping leaves vision-only
+    /// (the more lenient default).
+    private func finish(enableGate: Bool) {
+        if enableGate, audio.hasStrikeBaseline {
+            app.requireStrikeSound = true
+        }
+        app.baselineFinished()
+    }
+}
+
+/// One strike's diagnostics, snapshotted for the debug panel.
+private struct StrikeDebug: Identifiable {
+    let id = UUID()
+    let keyIndex: Int
+    let strikeNumber: Int
+    let fundamentalHz: Double
+    let amplitude: Float
+    let partials: [(hz: Double, strength: Double)]
+    /// Cosine vs earlier strikes on the same key (want high — consistent).
+    let selfScores: [Float]
+    /// Cosine vs other calibrated keys, best first (want low — separable).
+    let crossScores: [(key: Int, score: Float)]
+}
