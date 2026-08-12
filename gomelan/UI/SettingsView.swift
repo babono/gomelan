@@ -21,19 +21,24 @@ struct SettingsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 30) {
                     section("Instrument") {
-                        HStack {
+                        VStack(alignment: .leading, spacing: 12) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(app.profile.name)
                                     .font(.serif(22)).foregroundStyle(Theme.charcoal)
                                 Text("\(app.profile.keyCount) keys · \(app.profile.calibratedKeyCount) tuned")
                                     .font(.sans(14)).foregroundStyle(Theme.stone)
                             }
-                            Spacer()
+
+                            FlowLayout(spacing: 10) {
+                                SecondaryButton(title: "Switch Instrument", systemImage: "arrow.triangle.2.circlepath") { app.openChooseInstrument() }
+                                SecondaryButton(title: "Record voice baseline", systemImage: "waveform") { app.openCalibration() }
+                                SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") { app.realign() }
+                            }
                         }
-                        FlowButtons {
-                            SecondaryButton(title: "Switch Instrument", systemImage: "arrow.triangle.2.circlepath") { app.openChooseInstrument() }
-                            SecondaryButton(title: "Record voice baseline", systemImage: "waveform") { app.openCalibration() }
-                            SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") { app.realign() }
+                    }
+
+                    section("Debug") {
+                        FlowLayout(spacing: 10) {
                             SecondaryButton(title: "Test Mallet", systemImage: "scope") { app.openMalletTest() }
                             SecondaryButton(title: "Test Detection", systemImage: "dot.radiowaves.left.and.right") { app.openDetectionTest() }
                             SecondaryButton(title: "Test Audio", systemImage: "waveform.circle") { app.openAudioTest() }
@@ -81,13 +86,45 @@ struct SettingsView: View {
     }
 }
 
-/// Wraps utility buttons so a row of them flows on narrower widths.
-private struct FlowButtons<Content: View>: View {
-    @ViewBuilder let content: Content
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 12) { content }
-            VStack(alignment: .leading, spacing: 12) { content }
+/// Custom wrapping flow layout for inline-block wrapping of pill buttons.
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 10
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = arrangeSubviews(proposal: proposal, subviews: subviews)
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = arrangeSubviews(proposal: proposal, subviews: subviews)
+        for (index, point) in result.points.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y),
+                                  proposal: ProposedViewSize.unspecified)
         }
+    }
+
+    private func arrangeSubviews(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, points: [CGPoint]) {
+        let maxW = proposal.width ?? .infinity
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        var points: [CGPoint] = []
+        var totalWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(ProposedViewSize.unspecified)
+            if currentX + size.width > maxW, currentX > 0 {
+                currentX = 0
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+            points.append(CGPoint(x: currentX, y: currentY))
+            lineHeight = max(lineHeight, size.height)
+            currentX += size.width + spacing
+            totalWidth = max(totalWidth, currentX - spacing)
+        }
+
+        let totalHeight = currentY + lineHeight
+        return (CGSize(width: totalWidth, height: totalHeight), points)
     }
 }
