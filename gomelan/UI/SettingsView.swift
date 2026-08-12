@@ -60,6 +60,12 @@ struct SettingsView: View {
                             .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
                         Toggle("Reference tone (one beat ahead)", isOn: $app.referenceToneEnabled)
                             .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
+                        Toggle("Partner plays the other half", isOn: $app.partnerAudible)
+                            .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
+                        Text(app.partnerAudible
+                             ? "The app plays the half you're not playing, so the kotekan interlocks even when you practise alone. The gong layer is always there."
+                             : "You play against the gong alone.")
+                            .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
                     }
 
                     section("Detection") {

@@ -28,8 +28,19 @@ enum SessionPhase: Equatable {
     case countIn    // gong only
     case example    // app plays + shows
     case userTurn   // user plays, highlight only
-    
+
     var isUserPlaying: Bool { self == .userTurn }
+}
+
+/// Which half of the session this engine is running (§4 Flow C).
+///
+/// Demo and practice are separate screens: the demo loops the figure for as
+/// long as the player wants to watch and listen, and the practice run hands the
+/// instrument over straight after the count-in. One engine, two roles, so the
+/// timing, cues and overlay are identical in both.
+enum SessionRole: Equatable {
+    case demo
+    case practice
 }
 
 /// What the overlay should draw for a single key this frame.
@@ -41,11 +52,23 @@ struct KeyRenderState: Equatable {
     var approachScale: Double = 0
 }
 
-/// A note approaching on the bottom track (§13.5).
+/// Which of the two interlocking halves a note belongs to.
+enum NoteVoice: Equatable {
+    case yours      // the half you are learning
+    case partner    // the half the app plays beside you
+}
+
+/// A note travelling along the river (§13.5). Position is time (x) against
+/// pitch (the key index), so the two halves read as one woven line.
 struct ApproachNote: Identifiable, Equatable {
     let id: String
     let keyIndex: Int
+    let voice: NoteVoice
     let xFraction: Double       // 0…1 across the track; strike line at 0.15
+    /// How wide the stroke is in track units — the note's own duration.
+    let widthFraction: Double
+    /// Set once your note has been judged, so its trail shows how it went.
+    var outcome: JudgementResult? = nil
 }
 
 struct TrackMarker: Identifiable, Equatable {
@@ -67,6 +90,12 @@ final class PlayEngine {
     private(set) var isFinished = false
     private(set) var phase: SessionPhase = .countIn
     private(set) var loopIndex: Int = 0
+    private(set) var role: SessionRole = .practice
+    /// Fractional index into `notes` at the current pattern time: `2.5` is
+    /// halfway between the third and fourth stroke. Interpolated from the real
+    /// note times, so it stays honest on figures whose strokes are unevenly
+    /// spaced. Negative during the count-in, before the figure has started.
+    private(set) var noteProgress: Double = 0
     
     // Live judgement feed (for debug / practice feedback)
     private(set) var lastJudgement: NoteJudgement?
@@ -88,11 +117,24 @@ final class PlayEngine {
     // Play-mode state
     private var notes: [Note] = []
     private var judged: [Bool] = []
+    /// How each of your notes turned out this loop — colours its trail on the
+    /// river. Separate from `judged`, which the example also uses as a "fired".
+    private var outcomes: [JudgementResult?] = []
     private var results: [NoteJudgement] = []
     private var referencedNotes: Set<String> = []
     private var lastBeatIndex = -1
     
     
+    // The partner's half: sounded by the app, never judged (§7).
+    private var partnerNotes: [Note] = []
+    private var partnerFired: [Bool] = []
+    /// Whether the app sounds the partner's half. Always on for the demo — the
+    /// point of the demo is hearing the whole weave.
+    var partnerAudible = true
+    /// Stereo placement of the two halves, so they read as two players.
+    private let yourPan: Float = -0.32
+    private let partnerPan: Float = 0.32
+
     // Practice-mode state
     private(set) var practiceIndex = 0
     // Transient flash bookkeeping: keyIndex -> (kind, expiry host time)
@@ -108,8 +150,10 @@ final class PlayEngine {
     
     // One full colotomic cycle of gong before anything else happens.
     private let introBeats = 8
-    // Silent beats between loops so a repeat doesn't feel clipped.
-    private let loopGapBeats = 2
+    /// Silent beats between loops so a repeat doesn't feel clipped. The demo
+    /// repeats the same figure over and over, so it closes the gap and lets the
+    /// gong land exactly on the turn of the cycle.
+    private var loopGapBeats: Int { role == .demo ? 0 : 2 }
     
     private var introMs: Double = 0
     private var patternMs: Double = 0
@@ -118,13 +162,19 @@ final class PlayEngine {
     
     // MARK: - Lifecycle
     
-    func configure(song: Song, mode: PlayMode, profile: InstrumentProfile, tempoScale: Double) {
+    func configure(song: Song, partner: Song? = nil, mode: PlayMode, profile: InstrumentProfile,
+                   tempoScale: Double, role: SessionRole = .practice) {
+        self.role = role
         self.song = song
         self.mode = mode
         self.profile = profile
-        self.tempoScale = (mode == .practice) ? max(0.25, tempoScale) : 1
+        // A scored run is always at tempo; the demo and no-fail practice can slow down.
+        self.tempoScale = (role == .demo || mode == .practice) ? max(0.25, tempoScale) : 1
         self.notes = song.notes.sorted { $0.timeMs < $1.timeMs }
         self.judged = Array(repeating: false, count: notes.count)
+        self.outcomes = Array(repeating: nil, count: notes.count)
+        self.partnerNotes = (partner?.notes ?? []).sorted { $0.timeMs < $1.timeMs }
+        self.partnerFired = Array(repeating: false, count: partnerNotes.count)
         self.results = []
         self.referencedNotes = []
         self.practiceIndex = 0
@@ -135,6 +185,8 @@ final class PlayEngine {
         self.lastLoopIndex = -1
         self.phase = .countIn
         self.loopIndex = 0
+        self.noteProgress = 0
+        self.currentTimeMs = 0
         recomputeTiming()
     }
     
@@ -152,16 +204,19 @@ final class PlayEngine {
     }
     
     func setTempoScale(_ scale: Double) {
-        guard mode != .play else { return }
+        guard role == .demo || mode != .play else { return }
         tempoScale = max(0.25, scale)
         recomputeTiming()
     }
-    
+
     private func recomputeTiming() {
         let beatMs = 60000.0 / Double(song.bpm) / tempoScale
         introMs = Double(introBeats) * beatMs
+        //R The loop has to be the figure's MUSICAL length (whole gong cycles),
+        //R not the end of its last note — the last slots of a kotekan are often
+        //R rests, and cutting them made every repeat land early and rush.
         let lastEnd = notes.map { Double($0.timeMs + $0.durationMs) }.max() ?? 0
-        patternMs = lastEnd / tempoScale + Double(loopGapBeats) * beatMs
+        patternMs = max(Double(song.durationMs), lastEnd) / tempoScale + Double(loopGapBeats) * beatMs
         if patternMs <= 0 { patternMs = beatMs * 4 }
     }
     
@@ -187,11 +242,16 @@ final class PlayEngine {
             let idx = Int((sinceIntro / patternMs).rounded(.down))
             loopIndex = idx
             patternOriginMs = introMs + Double(idx) * patternMs
-            phase = (idx == 0) ? .example : .userTurn
-            
+            //R The demo and the hand-over used to be two loops of one session,
+            //R which meant sitting through the whole figure before playing a
+            //R note. They are separate screens now, so the role decides.
+            phase = (role == .demo) ? .example : .userTurn
+
             if idx != lastLoopIndex {
                 lastLoopIndex = idx
                 judged = Array(repeating: false, count: notes.count)
+                outcomes = Array(repeating: nil, count: notes.count)
+                partnerFired = Array(repeating: false, count: partnerNotes.count)
                 flashes = [:]
                 if mode == .practice { practiceIndex = 0 }
             }
@@ -235,6 +295,11 @@ final class PlayEngine {
         
         let patternTime = currentTimeMs - patternOriginMs
         
+        //R Your partner sounds under both phases: in the demo you hear the two
+        //R halves woven together, and in your turn the other half keeps going
+        //R around you, which is the whole point of kotekan.
+        if phase != .countIn { tickPartner(patternTime: patternTime) }
+
         switch phase {
         case .countIn:
             break
@@ -255,8 +320,34 @@ final class PlayEngine {
         }
         
         renderStates = states
+        noteProgress = noteProgress(patternTime: patternTime)
         rebuildTrack(beatMs: beatMs)
         checkCompletion(now: now)
+    }
+
+    /// Where the playhead sits in note-index space: `2.5` means halfway between
+    /// the third and fourth note. Interpolating between the real note times is
+    /// what keeps the scrolling row honest on figures whose strokes are unevenly
+    /// spaced (a rest between two notes is twice the gap of two adjacent ones).
+    private func noteProgress(patternTime: Double) -> Double {
+        guard let first = notes.first else { return 0 }
+        guard notes.count > 1 else {
+            return patternTime >= scaledTime(first) ? 0 : -1
+        }
+        let firstGap = scaledTime(notes[1]) - scaledTime(first)
+        if patternTime <= scaledTime(first) {
+            return (patternTime - scaledTime(first)) / max(1, firstGap)
+        }
+        for i in 0..<(notes.count - 1) {
+            let start = scaledTime(notes[i])
+            let end = scaledTime(notes[i + 1])
+            if patternTime < end {
+                return Double(i) + (patternTime - start) / max(1, end - start)
+            }
+        }
+        let last = notes.count - 1
+        let lastGap = scaledTime(notes[last]) - scaledTime(notes[last - 1])
+        return Double(last) + (patternTime - scaledTime(notes[last])) / max(1, lastGap)
     }
     
     //BATAS SUCI
@@ -354,6 +445,19 @@ final class PlayEngine {
         }
     }
 
+    /// The partner's half — sounded, never judged and never cued on the bilah:
+    /// those keys are not yours to strike.
+    private func tickPartner(patternTime: Double) {
+        guard partnerAudible, !partnerNotes.isEmpty else { return }
+        for i in partnerNotes.indices where !partnerFired[i] {
+            let until = scaledTime(partnerNotes[i]) - patternTime
+            if until <= 0, until > -60 {
+                partnerFired[i] = true
+                cue?.playKeySample(index: partnerNotes[i].keyIndex, pan: partnerPan, volume: 0.85)
+            }
+        }
+    }
+
     // The app demonstrates: highlight the bilah AND play its recorded sample.
     private func tickExample(now: Double, patternTime: Double, states: inout [Int: KeyRenderState]) {
         applyTimedCues(patternTime: patternTime, states: &states)   //R
@@ -364,7 +468,7 @@ final class PlayEngine {
             if until <= 0, until > -40 {
                 judged[i] = true
 
-                cue?.playKeySample(index: key)
+                cue?.playKeySample(index: key, pan: yourPan)
 
                 flash(.hit, at: key, now: now)
             }
@@ -376,6 +480,7 @@ final class PlayEngine {
         for i in notes.indices where !judged[i] {
             if patternTime > scaledTime(notes[i]) + missWindowMs {
                 judged[i] = true
+                outcomes[i] = .miss
                 record(.miss, at: notes[i].keyIndex, now: now, playSound: true)
             }
         }
@@ -443,9 +548,11 @@ final class PlayEngine {
         let err = scaledTime(notes[i]) - atMs
         if notes[i].keyIndex == keyIndex {
             let result = JudgementResult.from(timingErrorMs: err)
+            outcomes[i] = result
             record(result, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
         } else {
             // Correct timing, wrong key: amber on struck key, correct stays lit.
+            outcomes[i] = .wrongKey
             record(.wrongKey, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
         }
     }
@@ -465,22 +572,33 @@ final class PlayEngine {
         }
     }
     
-    // MARK: - Bottom track
-    
-    /// Builds one row: colotomic markers (gong/kempur/kemong/beat) and the note
-    /// numbers, both mapped from the same absolute clock so they stay aligned.
+    // MARK: - The river (§13.5)
+
+    /// Builds one frame of the river: the colotomic pulse (gong/kempur/kemong/
+    /// beat) and both halves' notes, all mapped from the same absolute clock so
+    /// the weave stays aligned. Time runs along x, pitch is the key index, and
+    /// the strike line sits at `Theme.strikeLineFraction`.
     private func rebuildTrack(beatMs: Double) {
         let lookahead = Theme.approachLookaheadSeconds
         let strike = Theme.strikeLineFraction
-        
+        let trail = Theme.approachTrailSeconds
+
         func xFor(_ absMs: Double) -> Double? {
             let untilSec = (absMs - currentTimeMs) / 1000
-            guard untilSec <= lookahead, untilSec >= -0.25 else { return nil }
-            return min(1, max(0, strike + (untilSec / lookahead) * (1 - strike)))
+            guard untilSec <= lookahead, untilSec >= -trail else { return nil }
+            //R Not clamped any more: a played stroke has to keep sliding left
+            //R off the edge, otherwise everything piles up on x = 0.
+            return strike + (untilSec / lookahead) * (1 - strike)
         }
-        
+
+        /// A note's own length, in the same units as `xFraction`.
+        func widthFor(_ note: Note) -> Double {
+            let seconds = Double(note.durationMs) / tempoScale / 1000
+            return (seconds / lookahead) * (1 - strike)
+        }
+
         var marks: [TrackMarker] = []
-        let firstBeat = max(0, Int((currentTimeMs - 400) / beatMs))
+        let firstBeat = max(0, Int((currentTimeMs - trail * 1000) / beatMs))
         let lastBeat = Int((currentTimeMs + lookahead * 1000) / beatMs) + 1
         if lastBeat >= firstBeat {
             for b in firstBeat...lastBeat {
@@ -496,18 +614,36 @@ final class PlayEngine {
             }
         }
         trackMarkers = marks
-        
-        // Notes are only cued once the example starts.
+
+        // Notes are only shown once the count-in is over.
         guard phase != .countIn else { approachNotes = []; return }
         var out: [ApproachNote] = []
-        for i in notes.indices where !judged[i] {
-            guard let x = xFor(patternOriginMs + scaledTime(notes[i])) else { continue }
-            out.append(ApproachNote(id: notes[i].id, keyIndex: notes[i].keyIndex, xFraction: x))
-        }
-        // Next loop's notes, so the row never looks empty near the boundary.
-        for i in notes.indices {
-            guard let x = xFor(patternOriginMs + patternMs + scaledTime(notes[i])) else { continue }
-            out.append(ApproachNote(id: notes[i].id + "+1", keyIndex: notes[i].keyIndex, xFraction: x))
+
+        //R Three loops' worth of origins: the one just gone (its last strokes are
+        //R still sliding away to the left), the current one, and the next (so the
+        //R river never runs dry at the turn of the cycle).
+        for loop in -1...1 {
+            let origin = patternOriginMs + Double(loop) * patternMs
+            let suffix = loop == 0 ? "" : "\(loop)"
+
+            for i in notes.indices {
+                guard let x = xFor(origin + scaledTime(notes[i])) else { continue }
+                out.append(ApproachNote(id: "y\(suffix)-\(notes[i].id)",
+                                        keyIndex: notes[i].keyIndex,
+                                        voice: .yours,
+                                        xFraction: x,
+                                        widthFraction: widthFor(notes[i]),
+                                        outcome: loop == 0 ? outcomes[i] : nil))
+            }
+
+            for i in partnerNotes.indices {
+                guard let x = xFor(origin + scaledTime(partnerNotes[i])) else { continue }
+                out.append(ApproachNote(id: "p\(suffix)-\(partnerNotes[i].id)",
+                                        keyIndex: partnerNotes[i].keyIndex,
+                                        voice: .partner,
+                                        xFraction: x,
+                                        widthFraction: widthFor(partnerNotes[i])))
+            }
         }
         approachNotes = out
     }
@@ -557,13 +693,11 @@ final class PlayEngine {
     //    }
     
     private func checkCompletion(now: Double) {
-        switch mode {
-        case .play:
-            //            let tail = Double(song.durationMs) / tempoScale + 500
-            if loopIndex >= 2 { finish() }
-        case .practice:
-            break
-        }
+        //R The demo loops until the player says they're ready; only the scored
+        //R run ends by itself, and now after ONE pass — the example pass it used
+        //R to sit through lives on its own screen.
+        guard role == .practice, mode == .play else { return }
+        if loopIndex >= 1 { finish() }
     }
     
     private func finish() {

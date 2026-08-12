@@ -106,6 +106,9 @@ struct ResultsView: View {
 
     private var bottomBar: some View {
         HStack(spacing: 16) {
+            PillButton(title: "Watch again", style: .outlined, tint: Theme.charcoal) {
+                app.watchAgain()
+            }
             PillButton(title: "Retry", style: .outlined, tint: Theme.terracotta) {
                 app.retry()
             }

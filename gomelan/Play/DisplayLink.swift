@@ -19,6 +19,10 @@ final class DisplayLink {
         guard link == nil else { return }
         proxy.onFrame = { [weak self] in self?.onFrame?(CACurrentMediaTime()) }
         let link = CADisplayLink(target: proxy, selector: #selector(Proxy.step))
+        //R Cap at 60Hz. On a ProMotion screen this would otherwise tick — and
+        //R redraw the whole guidance layer — 120 times a second, for timing
+        //R windows measured in hundreds of milliseconds.
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
         link.add(to: .main, forMode: .common)
         self.link = link
     }

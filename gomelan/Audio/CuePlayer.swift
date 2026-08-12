@@ -144,9 +144,12 @@ final class CuePlayer {
     
     // MARK: - Recorded-sample cues
 
-    func playKeySample(index: Int) {
+    /// A gangsa key. `pan` places the voice in the stereo field — your own half
+    /// on one side, your partner's on the other, the way two players sit facing
+    /// each other across the pair (§7).
+    func playKeySample(index: Int, pan: Float = 0, volume: Float = 1) {
         guard started, let buf = keyBuffers[index] else { return }
-        fire(buf, as: .key(index), isKeySample: true)   //R
+        fire(buf, as: .key(index), isKeySample: true, pan: pan, volume: volume)   //R
     }
 
     func playGong() {
@@ -179,7 +182,8 @@ final class CuePlayer {
     }                                                                    //R
 
     /// Take the next node from the pool and start `buffer` on it now.
-    private func fire(_ buffer: AVAudioPCMBuffer, as voice: Voice, isKeySample: Bool = false) {  //R
+    private func fire(_ buffer: AVAudioPCMBuffer, as voice: Voice, isKeySample: Bool = false,
+                      pan: Float = 0, volume: Float = 1) {               //R
         guard !voices.isEmpty else { return }                            //R
         let node = voices[nextVoice]                                     //R
         nextVoice = (nextVoice + 1) % voices.count                       //R
@@ -192,6 +196,9 @@ final class CuePlayer {
         }                                                                //R
 
         node.stop()   //R clears whatever this recycled node was still playing
+        //R Nodes are recycled, so placement is set on every fire, never once.
+        node.pan = pan                                                   //R
+        node.volume = volume                                             //R
         node.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)  //R
         node.play()                                                      //R
 

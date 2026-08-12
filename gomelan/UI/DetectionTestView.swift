@@ -55,7 +55,7 @@ struct DetectionTestView: View {
             }
             .ignoresSafeArea()
         }
-        .onChange(of: overlaySize) { _, new in fusion?.viewSize = new }
+        .onChange(of: overlaySize) { _, new in Task { await fusion?.setViewSize(new) } }
         .onAppear {
             camera.start()
             camera.enableContinuousAutoFocus()
@@ -179,7 +179,7 @@ struct DetectionTestView: View {
     private func runDetection() async {
         detector.reset()
         while !Task.isCancelled {
-            if overlaySize.width > 0, let (s, hostTime) = fusion?.latestScores() {
+            if overlaySize.width > 0, let (s, hostTime) = await fusion?.latestScores() {
                 scores = s
                 let fired = detector.process(scores: s)
                 if let key = fired.max(by: { (s[$0] ?? 0) < (s[$1] ?? 0) }) {

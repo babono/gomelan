@@ -55,7 +55,9 @@ struct ChooseCyclesView: View {
                             .padding(.vertical, 6)
                             .background(Theme.terracotta.opacity(0.12), in: Capsule())
 
-                        PillButton(title: "Start practice", style: .filled, tint: Theme.terracotta) {
+                        // The session opens with the demo: hear the figure first,
+                        // then take the mallets.
+                        PillButton(title: "Watch & listen", style: .filled, tint: Theme.terracotta) {
                             app.startSession(cycles: cycles)
                         }
                     }

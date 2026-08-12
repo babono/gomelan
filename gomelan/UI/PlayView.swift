@@ -3,10 +3,15 @@
 //  gomelan
 //
 //  The core loop screen (PRD §4 Flow C). Live camera feed + overlay guidance,
-//  driven by the PlayEngine on a display link. A stroke timeline runs along the
-//  bottom showing the kotekan half's figure and the current strike; the header
-//  tracks the gong cycle. Handles countdown, pause, and the live strike →
-//  judgement wiring from vision (and audio, when a baseline confirms strikes).
+//  driven by the PlayEngine on a display link. The river runs along the bottom
+//  showing both halves against the gong cycle; the header tracks the cycle
+//  count. Handles countdown, pause, and the live strike → judgement wiring from
+//  vision (and audio, when a baseline confirms strikes).
+//
+//  This screen is the player's turn only. Watching and hearing the figure
+//  happens first, on its own screen (WatchView), so after the gong count-in the
+//  instrument is handed straight over — with your partner's half still playing
+//  beside you.
 //
 
 import SwiftUI
@@ -41,11 +46,23 @@ struct PlayView: View {
                 .ignoresSafeArea()
 
             // 2. Key rect guidance overlay edge-to-edge (matching AligningView geometry)
-            OverlayView(keys: app.profile.keys,
-                        states: engine.renderStates,
-                        approachNotes: engine.approachNotes,
-                        trackMarkers: engine.trackMarkers)
+            OverlayView(keys: app.profile.keys, engine: engine)
                 .ignoresSafeArea()
+
+            // 3. Floating chrome (top bar + scrolling stroke row). This sits in
+            // front of the camera — as a `.background` it was drawn behind the
+            // opaque preview layer and never showed up at all.
+            VStack(spacing: 0) {
+                topBar
+                    .background(Theme.ink.opacity(0.75))
+
+                Spacer()
+
+                NotesRiver(engine: engine,
+                           keyRange: keyRange,
+                           keyCount: app.profile.keys.count,
+                           yourHalf: app.chosenHalf)
+            }
 
             if countdown == nil, !paused {
                 phaseBanner
@@ -68,22 +85,11 @@ struct PlayView: View {
                     .onChange(of: proxy.size) { _, new in overlaySize = new }
             }
             .ignoresSafeArea()
-
-            // 3. Floating Chrome (TopBar + Marquee Note Train Track)
-            VStack(spacing: 0) {
-                topBar
-                    .background(Theme.ink.opacity(0.75))
-
-                Spacer()
-
-                strokeTimeline
-            }
-
-            if let countdown { CountdownOverlay(value: countdown) }
-            if paused { pauseOverlay }
         }
         .background(Theme.ink)
-        .onChange(of: overlaySize) { _, new in fusion?.viewSize = new }
+        .onChange(of: overlaySize) { _, new in
+            Task { await fusion?.setViewSize(new) }
+        }
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
         .task { await runVisionDetection() }
@@ -106,9 +112,11 @@ struct PlayView: View {
 
             Spacer()
 
-            Text("Cycle \(currentCycle) / \(app.chosenCycles)")
-                .font(.sans(14))
-                .foregroundStyle(Theme.inkStone)
+            // Its own view so the clock ticking doesn't re-evaluate the whole
+            // screen sixty times a second just to move a counter.
+            CycleCounter(engine: engine,
+                         strokesPerCycle: max(1, app.selectedKotekan?.strokeCount(app.chosenHalf) ?? 1),
+                         totalCycles: app.chosenCycles)
 
             Spacer()
 
@@ -143,6 +151,10 @@ struct PlayView: View {
                 Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
                     PillButton(title: "Resume", style: .filled) { resume() }
+                    PillButton(title: "Watch again", style: .outlined, tint: Theme.copper) {
+                        teardown()
+                        app.watchAgain()
+                    }
                     PillButton(title: "Quit", style: .outlined, tint: Theme.copper) {
                         teardown()
                         app.backToKotekan()
@@ -152,137 +164,17 @@ struct PlayView: View {
         }
     }
 
-    // MARK: - Stroke timeline (§13.5)
+    // MARK: - The river (§13.5)
 
-    /// Milliseconds elapsed clamped so the timeline behaves before the start.
-    private var elapsedMs: Double { max(0, engine.currentTimeMs) }
-
-    private var currentCycle: Int {
-        guard let k = app.selectedKotekan, k.cycleMs > 0 else { return 1 }
-        return min(app.chosenCycles, Int(elapsedMs / Double(k.cycleMs)) + 1)
+    /// The lanes the river draws — both halves of the figure.
+    private var keyRange: ClosedRange<Int> {
+        app.selectedKotekan?.voicedKeyRange ?? 0...max(0, app.profile.keys.count - 1)
     }
 
-    /// (slot, keyIndex) for every stroke the chosen half plays in a cycle.
-    private var cycleStrokes: [(slot: Int, key: Int)] {
+    /// The bilah YOUR half strikes — the only ones vision needs to classify.
+    private var playedKeys: Set<Int> {
         guard let k = app.selectedKotekan else { return [] }
-        return k.pattern(app.chosenHalf).enumerated().compactMap { slot, v in
-            v.map { (slot, $0) }
-        }
-    }
-
-    private var activeSlotInCycle: Int {
-        guard let k = app.selectedKotekan, k.strokeMs > 0 else { return 0 }
-        return Int(elapsedMs / Double(k.strokeMs)) % Kotekan.strokesPerCycle
-    }
-
-    /// Index into `cycleStrokes` of the stroke nearest the playhead.
-    private var activeStrokeIndex: Int? {
-        let strokes = cycleStrokes
-        guard !strokes.isEmpty else { return nil }
-        return strokes.indices.min {
-            abs(strokes[$0].slot - activeSlotInCycle) < abs(strokes[$1].slot - activeSlotInCycle)
-        }
-    }
-
-    /// All notes in the current song session.
-    private var allSessionNotes: [Note] {
-        app.selectedSong?.notes ?? []
-    }
-
-    /// Current note index progress along the marquee train.
-    private var currentProgress: Double {
-        if app.playMode == .practice {
-            return Double(engine.practiceIndex)
-        } else {
-            guard let song = app.selectedSong, !song.notes.isEmpty else { return 0 }
-            let strokeMs = Double(app.selectedKotekan?.strokeMs ?? 300) / app.tempoScale
-            return max(0, engine.currentTimeMs / max(1, strokeMs))
-        }
-    }
-
-    private var strokeTimeline: some View {
-        HStack(spacing: 16) {
-            // Current strike, big.
-            VStack(alignment: .leading, spacing: 2) {
-                Text("STRIKE")
-                    .font(.sans(10, weight: .semibold))
-                    .tracking(2)
-                    .foregroundStyle(Theme.inkStone)
-                Text(activeStrokeLabel)
-                    .font(.serif(36, weight: .bold))
-                    .foregroundStyle(Theme.cream)
-                    .contentTransition(.numericText())
-            }
-            .frame(width: 64, alignment: .leading)
-
-            // Vertical copper strike indicator line on the left
-            Rectangle()
-                .fill(Theme.copper)
-                .frame(width: 2, height: 40)
-
-            // Marquee Train: Notes flow continuously from RIGHT to LEFT towards the strike line
-            GeometryReader { geo in
-                let notes = allSessionNotes
-                let noteSpacing: CGFloat = 56
-                let strikeX: CGFloat = 22
-                let progress = currentProgress
-                let viewportWidth = geo.size.width
-
-                ZStack(alignment: .leading) {
-                    ForEach(Array(notes.enumerated()), id: \.element.id) { i, note in
-                        let delta = Double(i) - progress
-                        let xPos = strikeX + delta * noteSpacing
-
-                        if xPos >= -50 && xPos <= viewportWidth + 50 {
-                            let isFirst = abs(delta) < 0.5
-
-                            HStack(spacing: 0) {
-                                strokeCircle(isFirst: isFirst, key: note.keyIndex)
-
-                                if i < notes.count - 1 {
-                                    Text("·")
-                                        .font(.sans(18, weight: .bold))
-                                        .foregroundStyle(Theme.copper.opacity(0.5))
-                                        .frame(width: noteSpacing - (isFirst ? 42 : 36))
-                                }
-                            }
-                            .position(x: xPos + (isFirst ? 21 : 18), y: geo.size.height / 2)
-                        }
-                    }
-                }
-            }
-            .frame(height: 48)
-            .clipped()
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.inkRaised.opacity(0.6))
-        .overlay(alignment: .top) { Rectangle().fill(Theme.copper.opacity(0.2)).frame(height: 1) }
-        .animation(.snappy(duration: 0.25), value: engine.practiceIndex)
-    }
-
-    private var activeStrokeLabel: String {
-        guard let i = activeStrokeIndex else { return "–" }
-        return bilahLabel(cycleStrokes[i].key, count: app.profile.keys.count)
-    }
-
-    private func strokeCircle(isFirst: Bool, key: Int) -> some View {
-        let label = bilahLabel(key, count: app.profile.keys.count)
-        return Text(label)
-            .font(.serif(isFirst ? 18 : 15, weight: .bold))
-            .foregroundStyle(isFirst ? Theme.cream : Theme.copper)
-            .frame(width: isFirst ? 42 : 36, height: isFirst ? 42 : 36)
-            .background {
-                if isFirst {
-                    Circle()
-                        .fill(Theme.terracotta)
-                        .shadow(color: Theme.terracotta.opacity(0.6), radius: 6)
-                } else {
-                    Circle()
-                        .strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5)
-                }
-            }
+        return Set(k.pattern(app.chosenHalf).compactMap { $0 })
     }
 
     // MARK: - Lifecycle
@@ -304,13 +196,22 @@ struct PlayView: View {
             }
         }
 
+        // Your partner keeps playing the other half beside you (§7), unless it
+        // has been turned off in settings.
+        engine.partnerAudible = app.partnerAudible
         if let song = app.selectedSong {
-            engine.configure(song: song, mode: app.playMode, profile: app.profile, tempoScale: app.tempoScale)
+            engine.configure(song: song, partner: app.partnerSong, mode: app.playMode,
+                             profile: app.profile, tempoScale: app.tempoScale, role: .practice)
         }
 
-        fusion = StrikeFusion(frames: camera.frameBuffer,
-                              keys: app.profile.keys,
-                              viewSize: overlaySize)
+        let fusion = StrikeFusion(frames: camera.frameBuffer,
+                                  keys: app.profile.keys,
+                                  viewSize: overlaySize)
+        self.fusion = fusion
+        // Only the bilah this figure uses are worth classifying — three or four
+        // instead of ten, which is most of the vision cost gone.
+        let active = playedKeys
+        Task { await fusion.setActiveKeys(active) }
 
         visionDetector.reset()
         try? audio.start(profile: app.profile)
@@ -322,7 +223,7 @@ struct PlayView: View {
         audio.onStrikeDetected = { hostTime in
             Task { @MainActor in
                 guard countdown == nil, !paused, !engine.isFinished else { return }
-                if let decision = await fusion?.resolveVisionFirst(hostTime: hostTime) {
+                if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                     applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                 }
             }
@@ -333,7 +234,7 @@ struct PlayView: View {
             audio.onConfirmedStrike = { hostTime in
                 Task { @MainActor in
                     guard countdown == nil, !paused, !engine.isFinished else { return }
-                    if let decision = await fusion?.resolveVisionFirst(hostTime: hostTime) {
+                    if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                         applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                     }
                 }
@@ -357,17 +258,20 @@ struct PlayView: View {
         }
     }
 
+    /// The self-triggering vision loop. `latestScores` now suspends onto the
+    /// fusion actor, so the inference happens off the main thread and the poll
+    /// returns nil immediately when the camera has not delivered a new frame.
     private func runVisionDetection() async {
         while !Task.isCancelled {
             if countdown == nil, !paused, !engine.isFinished,
-               let (scores, hostTime) = fusion?.latestScores() {
+               let (scores, hostTime) = await fusion?.latestScores() {
                 let fired = visionDetector.process(scores: scores)
                 if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
                     let strikeTime = audio.nearestOnset(to: hostTime, within: 0.12) ?? hostTime
                     applyStrike(key: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
                 }
             }
-            try? await Task.sleep(for: .milliseconds(30))
+            try? await Task.sleep(for: .milliseconds(25))
         }
     }
 
@@ -400,6 +304,23 @@ struct PlayView: View {
         audio.onConfirmedStrike = nil
         audio.stop()
         cue.stop()
+    }
+}
+
+/// "Cycle 3 / 8" — which time round the gong cycle the player is on, counted in
+/// strokes of the chosen half rather than wall-clock time, so the count-in
+/// doesn't bleed into it. Reads the engine itself to keep the per-frame
+/// invalidation off the rest of the screen.
+private struct CycleCounter: View {
+    let engine: PlayEngine
+    let strokesPerCycle: Int
+    let totalCycles: Int
+
+    var body: some View {
+        let cycle = min(totalCycles, Int(max(0, engine.noteProgress)) / strokesPerCycle + 1)
+        Text("Cycle \(cycle) / \(totalCycles)")
+            .font(.sans(14))
+            .foregroundStyle(Theme.inkStone)
     }
 }
 

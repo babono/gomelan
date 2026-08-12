@@ -2,89 +2,102 @@
 //  OverlayView.swift
 //  gomelan
 //
-//  The guidance layer drawn over the live camera feed (PRD §5.2, §13.5).
-//  Peripheral legibility is the constraint: large shapes, high contrast, no text
-//  during play. Idle bilah read as faint copper outlines; the key to strike
-//  glows terracotta. The stroke timeline lives in PlayView, below this.
+//  The guidance layer drawn over the live camera feed (PRD §5.2, §13.5). This is
+//  the PRIMARY cue: you are looking at the instrument, not at a score, so the
+//  bilah itself has to say when to strike. Peripheral legibility is the
+//  constraint — large shapes, high contrast, no text during play. The scrolling
+//  score is a separate, secondary layer — see NotesRiver.
+//
+//  Drawn in a single Canvas. It used to be a ZStack of five shapes per key, each
+//  with its own shadow, rebuilt sixty times a second: SwiftUI had to diff ~50
+//  views a frame and the GPU an offscreen pass per shadow. One canvas is one
+//  draw pass, and the bilah numbers arrive as pre-rendered symbols so no text is
+//  resolved per frame.
+//
+//  It reads `engine.renderStates` itself rather than taking them as a parameter,
+//  so per-frame invalidation stops here instead of re-evaluating the whole play
+//  screen — top bar, buttons and all — on every tick.
 //
 
 import SwiftUI
 
 struct OverlayView: View {
     let keys: [InstrumentKey]
-    let states: [Int: KeyRenderState]
-    let approachNotes: [ApproachNote]
-    /// Colotomic markers (gong/kempur/kemong/beat) travelling along the track,
-    /// so the pulse structure reads on the same row as the note numbers.
-    var trackMarkers: [TrackMarker] = []
+    let engine: PlayEngine
 
     var body: some View {
-        GeometryReader { geo in
-            let size = geo.size
+        //R Read in the body, NOT inside the draw closure: Observation registers
+        //R the dependency while the body runs, so a read that only happens at
+        //R draw time would never invalidate the view and the cue would freeze.
+        let states = engine.renderStates
+
+        return Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
+            for key in keys {
+                draw(key, state: states[key.index] ?? KeyRenderState(), in: &ctx, size: size)
+            }
+        } symbols: {
             ForEach(keys) { key in
-                keyShape(key, in: size)
+                Text(bilahLabel(key.index, count: keys.count))
+                    .font(.serif(15, weight: .bold))
+                    .foregroundStyle(Theme.copper.opacity(0.85))
+                    .tag(key.index)
             }
         }
         .allowsHitTesting(false)
     }
 
-    @ViewBuilder
-    private func keyShape(_ key: InstrumentKey, in size: CGSize) -> some View {
+    private func draw(_ key: InstrumentKey, state: KeyRenderState,
+                      in ctx: inout GraphicsContext, size: CGSize) {
         let rect = key.rect.rect(in: size)
-        let state = states[key.index] ?? KeyRenderState()
-        let shape = RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
+        let radius = Theme.keyCornerRadius
+        let shape = Path(roundedRect: rect, cornerRadius: radius)
 
-        ZStack {
-            // 1. Static base key rect — ALWAYS present as a guide.
-            ZStack(alignment: .bottom) {
-                shape
-                    .fill(Color.black.opacity(0.18))
-                    .overlay(shape.strokeBorder(Theme.copper.opacity(0.4), lineWidth: 1.5))
+        // 1. The bilah always reads as a target, struck or not.
+        ctx.fill(shape, with: .color(.black.opacity(0.18)))
+        ctx.stroke(shape, with: .color(Theme.copper.opacity(0.4)), lineWidth: 1.5)
 
-                // Bilah label near the bottom of the base rect.
-                Text(bilahLabel(key.index, count: keys.count))
-                    .font(.serif(max(10, min(rect.width * 0.35, 18)), weight: .bold))
-                    .foregroundStyle(Theme.copper.opacity(0.85))
-                    .padding(.bottom, 8)
-            }
-            .frame(width: rect.width, height: rect.height)
-
-            // 2. Approaching cue — SEPARATE outer outline contracting symmetrically from all 4 sides.
-            if state.fill > 0 && !state.strikeNow {
-                let fill = max(0, min(1, state.fill))
-                let maxPadding: CGFloat = 16
-                let currentPadding = (1.0 - fill) * maxPadding
-                let outerShape = RoundedRectangle(cornerRadius: Theme.keyCornerRadius + currentPadding * 0.5)
-
-                outerShape
-                    .strokeBorder(Theme.copper.opacity(0.9), lineWidth: 1.2)
-                    .frame(width: rect.width + currentPadding * 2, height: rect.height + currentPadding * 2)
-            }
-
-            // 3. Strike now cue — GLOWING OUTLINE ONLY (NO SOLID RECT FILL)
-            if state.strikeNow {
-                shape
-                    .strokeBorder(Theme.cream, lineWidth: 2.5)
-                    .shadow(color: Theme.copper.opacity(0.9), radius: 8)
-                    .frame(width: rect.width, height: rect.height)
-            }
-
-            // 4. Transient user strike flash — SOLID FILLS ONLY ON USER STRIKE!
-            if let flash = state.flash {
-                shape
-                    .fill(flashColor(flash))
-                    .shadow(color: flashColor(flash), radius: 10)
-                    .frame(width: rect.width, height: rect.height)
-            }
-
-            // 5. Damp hint (dashed outline on the previous key).
-            if state.damp {
-                shape
-                    .strokeBorder(Theme.copper, style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
-                    .frame(width: rect.width, height: rect.height)
-            }
+        if let symbol = ctx.resolveSymbol(id: key.index) {
+            ctx.draw(symbol, at: CGPoint(x: rect.midX, y: rect.maxY - 12))
         }
-        .position(x: rect.midX, y: rect.midY)
+
+        // 2. The countdown to this stroke, filling from the bottom (§13.5). The
+        //    key is the guidance now, so the approach has to be readable on the
+        //    bilah alone, without looking down at the river.
+        if state.fill > 0, !state.strikeNow {
+            let fill = min(1, max(0, state.fill))
+            var layer = ctx
+            layer.clip(to: shape)
+            let filled = CGRect(x: rect.minX,
+                                y: rect.maxY - rect.height * fill,
+                                width: rect.width,
+                                height: rect.height * fill)
+            layer.fill(Path(filled), with: .color(Theme.copper.opacity(0.22 + 0.18 * fill)))
+
+            // A ring closing in from all four sides, so the approach also reads
+            // in the corner of the eye, where a fill level does not.
+            let pad = (1 - fill) * 16
+            let ring = Path(roundedRect: rect.insetBy(dx: -pad, dy: -pad),
+                            cornerRadius: radius + pad * 0.5)
+            ctx.stroke(ring, with: .color(Theme.copper.opacity(0.9)), lineWidth: 1.2)
+        }
+
+        // 3. NOW. A cream border plus a wash inside it — bright enough to catch
+        //    peripherally, and cheaper than a shadow.
+        if state.strikeNow {
+            ctx.fill(shape, with: .color(Theme.cream.opacity(0.16)))
+            ctx.stroke(shape, with: .color(Theme.cream), lineWidth: 3)
+        }
+
+        // 4. Your strike landing: the only solid fill on the instrument.
+        if let flash = state.flash {
+            ctx.fill(shape, with: .color(flashColor(flash).opacity(0.85)))
+        }
+
+        // 5. Damp hint on the key you should be silencing (§5.5).
+        if state.damp {
+            ctx.stroke(shape, with: .color(Theme.copper),
+                       style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
+        }
     }
 
     private func flashColor(_ kind: FlashKind) -> Color {
@@ -96,62 +109,5 @@ struct OverlayView: View {
         case .wrongOrOffBeat:
             return Color(hex: 0xE2E8F0) // Pale White
         }
-    }
-
-    /// Colotomic markers read by size + weight rather than text, so they stay
-    /// legible in the periphery: the gong is the largest, the beat a faint tick.
-    @ViewBuilder
-    private func markerShape(_ marker: TrackMarker) -> some View {
-        switch marker.kind {
-        case .gong:
-            Circle().stroke(Theme.gong, lineWidth: 3).frame(width: 30, height: 30)
-        case .kempur:
-            Circle().stroke(Theme.kempur, lineWidth: 3).frame(width: 22, height: 22)
-        case .kemong:
-            Circle().stroke(Theme.kemong, lineWidth: 2).frame(width: 16, height: 16)
-        case .beat:
-            Circle().fill(.white.opacity(0.3)).frame(width: 5, height: 5)
-        }
-    }
-
-    // MARK: - Approach track (§13.5)
-
-    @ViewBuilder
-    private func approachTrack(in size: CGSize) -> some View {
-        let trackHeight = Theme.approachTrackHeight
-        let y = size.height - trackHeight / 2
-        let strikeX = size.width * Theme.strikeLineFraction
-
-        ZStack(alignment: .leading) {
-            Rectangle()
-                .fill(Color.black.opacity(0.35))
-                .frame(height: trackHeight)
-
-            // Fixed strike line.
-            Rectangle()
-                .fill(Color.white.opacity(0.8))
-                .frame(width: 3, height: trackHeight)
-                .position(x: strikeX, y: trackHeight / 2)
-
-            // Colotomic pulse markers, drawn under the note numbers.
-            ForEach(trackMarkers) { marker in
-                markerShape(marker)
-                    .position(x: size.width * marker.xFraction, y: trackHeight / 2)
-            }
-
-            // Notes travelling right → left toward the strike line.
-            ForEach(approachNotes) { note in
-                ZStack {
-                    Circle().fill(Theme.upcoming)
-                    Text("\(note.keyIndex)")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(.black.opacity(0.75))
-                }
-                .frame(width: 22, height: 22)
-                .position(x: size.width * note.xFraction, y: trackHeight / 2)
-            }
-        }
-        .frame(width: size.width, height: trackHeight)
-        .position(x: size.width / 2, y: y)
     }
 }

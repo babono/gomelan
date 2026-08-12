@@ -27,6 +27,7 @@ final class AppState {
         case chooseKotekan
         case chooseHalf
         case chooseCycles       // Dedicated repetition/cycles screen
+        case watching           // demo · the app plays it, you watch and listen
         case countdown
         case playing
         case results
@@ -48,11 +49,20 @@ final class AppState {
 
     /// The rendered note sequence the PlayEngine runs, built from the session.
     var selectedSong: Song?
+    /// The other half of the kotekan — what a partner would be playing beside
+    /// you. The app plays it so the interlock is there even when you practise
+    /// alone (§7); the gong layer is always underneath both.
+    var partnerSong: Song?
+    /// Whether the app plays your partner's half during your turn.
+    var partnerAudible: Bool = true
     var playMode: PlayMode = .play
     var lastResult: SongResult?
 
     // Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
+    /// Speed the demo screen plays the figure back at — the run itself is
+    /// always at tempo, so slowing the demo down is free.
+    var demoTempoScale: Double = 1.0
     // Audio cue toggles (§5.4)
     var metronomeEnabled: Bool = true
     var referenceToneEnabled: Bool = true
@@ -229,14 +239,38 @@ final class AppState {
         screen = .chooseCycles
     }
 
-    /// Step 3: Picked cycles; render session and start countdown.
+    /// Step 3: Picked cycles; render the session and go and watch it first.
+    ///
+    /// The demo and the run are two screens now (§4 Flow C): you watch and hear
+    /// the figure for as long as you like, then take the instrument yourself.
     func startSession(cycles: Int) {
         guard let k = selectedKotekan else { return }
         chosenCycles = cycles
         selectedSong = k.makeSong(half: chosenHalf, cycles: cycles)
+        partnerSong = k.makeSong(half: chosenHalf.other, cycles: cycles)
         playMode = .play
-        screen = .countdown
+        demoTempoScale = 1.0
+        screen = .watching
     }
+
+    /// One cycle of the chosen figure — what the demo screen loops.
+    var demoSong: Song? {
+        selectedKotekan?.makeSong(half: chosenHalf, cycles: 1)
+    }
+
+    /// The same cycle for the other half, so the demo can sound the whole weave.
+    var demoPartnerSong: Song? {
+        selectedKotekan?.makeSong(half: chosenHalf.other, cycles: 1)
+    }
+
+    /// Watched enough — hand the instrument over.
+    func beginPractice() { screen = .countdown }
+
+    /// Back from the demo to the cycle picker.
+    func backToCycles() { screen = .chooseCycles }
+
+    /// Watch the figure again (from the demo screen or the results screen).
+    func watchAgain() { screen = .watching }
 
     func countdownFinished() { screen = .playing }
 

@@ -56,6 +56,13 @@ enum Theme {
     static let kempur = Color(hex: 0xFF7043)     // orange
     static let kemong = Color(hex: 0xAB47BC)     // purple
 
+    // MARK: - The two interlocking halves (§7)
+
+    /// Polos and sangsih keep their own colour wherever they appear, so the
+    /// weave reads at a glance: your half is drawn solid, your partner's ghosted.
+    static let polosVoice = Color(hex: 0x4FB3A5)   // teal
+    static let sangsihVoice = Color(hex: 0x7E8FE0) // indigo
+
     static let keyOutlineWidth: CGFloat = 3
     static let keyCornerRadius: CGFloat = 6
     static let approachTrackHeight: CGFloat = 96
@@ -63,6 +70,9 @@ enum Theme {
     static let strikeLineFraction: CGFloat = 0.15
     /// Seconds of lookahead shown on the approach track.
     static let approachLookaheadSeconds: Double = 3
+    /// Seconds of already-played music kept on screen to the left of the strike
+    /// line, so a stroke slides away instead of vanishing at the moment it lands.
+    static let approachTrailSeconds: Double = 0.8
 }
 
 // MARK: - Typography

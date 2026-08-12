@@ -16,7 +16,10 @@ import Vision
 import CoreML
 import CoreGraphics
 
-final class MalletHitClassifier {
+/// Nonisolated so StrikeFusion can run inference off the main actor — this
+/// target defaults to MainActor isolation, which would otherwise put every
+/// CoreML call on the same thread as the display link.
+nonisolated final class MalletHitClassifier {
 
     private let model: VNCoreMLModel
 

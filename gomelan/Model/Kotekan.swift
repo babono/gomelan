@@ -22,6 +22,8 @@ enum KotekanHalf: String, Equatable, Identifiable {
 
     var id: String { rawValue }
     var title: String { self == .polos ? "Polos" : "Sangsih" }
+    /// The half your partner plays — the one the app takes over when you play alone.
+    var other: KotekanHalf { self == .polos ? .sangsih : .polos }
     var eyebrow: String { self == .polos ? "On the beat" : "Off the beat" }
     var blurb: String {
         self == .polos
@@ -54,6 +56,15 @@ struct Kotekan: Identifiable, Equatable {
 
     func pattern(_ half: KotekanHalf) -> [Int?] {
         half == .polos ? polos : sangsih
+    }
+
+    /// The bilah this figure touches across BOTH halves — the lanes the river
+    /// draws. Taken from the figure rather than from what is on screen, so the
+    /// lanes stay put as the notes go by.
+    var voicedKeyRange: ClosedRange<Int> {
+        let used = (polos + sangsih).compactMap { $0 }
+        guard let low = used.min(), let high = used.max() else { return 0...0 }
+        return low...high
     }
 
     /// How many actual strokes a half plays in one cycle (rests excluded).
