@@ -12,8 +12,6 @@ import SwiftUI
 struct ChooseHalfView: View {
     @Environment(AppState.self) private var app
 
-    @State private var half: KotekanHalf = .polos
-
     var body: some View {
         if let k = app.selectedKotekan {
             VStack(spacing: 0) {
@@ -23,31 +21,20 @@ struct ChooseHalfView: View {
                        trailingText: k.name)
 
                 HStack(spacing: 16) {
-                    HalfCard(half: .polos, kotekan: k, selected: half == .polos)
+                    HalfCard(half: .polos, kotekan: k)
                         .onTapGesture {
-                            half = .polos
                             app.chooseHalf(.polos)
                         }
-                    HalfCard(half: .sangsih, kotekan: k, selected: half == .sangsih)
+                    HalfCard(half: .sangsih, kotekan: k)
                         .onTapGesture {
-                            half = .sangsih
                             app.chooseHalf(.sangsih)
                         }
                 }
                 .padding(.horizontal, 24)
-                .padding(.vertical, 12)
+                .padding(.vertical, 16)
                 .frame(maxHeight: .infinity)
-
-                HStack {
-                    Spacer()
-                    PillButton(title: "Next", style: .outlined) {
-                        app.chooseHalf(half)
-                    }
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 14)
             }
-            .onAppear { half = app.chosenHalf }
+            .background(Theme.cream)
         } else {
             Color.clear.onAppear { app.backToKotekan() }
         }
@@ -57,11 +44,10 @@ struct ChooseHalfView: View {
 private struct HalfCard: View {
     let half: KotekanHalf
     let kotekan: Kotekan
-    let selected: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionLabel(half.eyebrow, color: selected ? Theme.terracotta : Theme.stone)
+            SectionLabel(half.eyebrow, color: Theme.terracotta)
 
             Text(half.title)
                 .font(.serif(42))
@@ -77,15 +63,14 @@ private struct HalfCard: View {
 
             Text("plays \(kotekan.strokeCount(half)) of \(Kotekan.strokesPerCycle) strokes")
                 .font(.sans(14, weight: .medium))
-                .foregroundStyle(selected ? Theme.terracotta : Theme.stone)
+                .foregroundStyle(Theme.terracotta)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 10).fill(selected ? Theme.creamSunken : .clear))
+        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.creamSunken))
         .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(selected ? Theme.terracotta : Theme.charcoal.opacity(0.2),
-                              lineWidth: selected ? 1.5 : 1)
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Theme.charcoal.opacity(0.15), lineWidth: 1)
         )
     }
 }
