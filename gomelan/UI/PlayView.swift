@@ -47,10 +47,15 @@ struct PlayView: View {
 
             OverlayView(keys: app.profile.keys,
                         states: engine.renderStates,
-                        approachNotes: engine.approachNotes)
+                        approachNotes: engine.approachNotes,
+                        trackMarkers: engine.trackMarkers)
                 .ignoresSafeArea()
 
             topBar
+
+            if countdown == nil, !paused {
+                phaseBanner
+            }
 
             if let countdown {
                 CountdownOverlay(value: countdown)
@@ -117,6 +122,17 @@ struct PlayView: View {
         .padding(.vertical, 6)
         .padding(.horizontal, 12)
         .background(.black.opacity(0.4), in: Capsule())
+    }
+
+    /// Names the current session phase so the demo → hand-over reads clearly.
+    /// Uses the shared `PhaseBanner` chrome component.
+    private var phaseBanner: some View {
+        VStack {
+            Spacer().frame(height: 70)
+            PhaseBanner(phase: engine.phase)
+                .animation(.easeInOut(duration: 0.25), value: engine.phase)
+            Spacer()
+        }
     }
 
     private var pauseOverlay: some View {

@@ -15,6 +15,12 @@ enum Theme {
     static let miss = Color(hex: 0xFF3B30)       // red
     static let wrong = Color(hex: 0xFFB300)      // amber
 
+    // Colotomic layer (gong / kempur / kemong), used on the notation row and
+    // the phase banner so the pulse structure has a consistent colour language.
+    static let gong = Color(hex: 0xFFCA28)       // gold
+    static let kempur = Color(hex: 0xFF7043)     // orange
+    static let kemong = Color(hex: 0xAB47BC)     // purple
+
     // App chrome
     static let background = Color.black
     static let accent = Color(hex: 0x00D4FF)

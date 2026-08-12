@@ -86,33 +86,73 @@ private extension ResourceLoader {
         """
     }
 
-    /// The placeholder song from §13.6 — a plain ascending/descending run,
-    /// deliberately not a real composition. Replace with a real first exercise
-    /// confirmed with Mekar Bhuana.
+    /// "Pattern 1 · 1 2" — the first real exercise, transcribed from the
+    /// reference video. A steady 4→5 ostinato at 64 BPM over the colotomic
+    /// cycle; this is the standard pattern the play session demonstrates and
+    /// then hands over for "Your turn".
     static var embeddedSongJSON: String {
         """
         {
-          "id": "placeholder-run",
-          "title": "First Run",
+          "id": "video-pattern-1-2",
+          "title": "Pattern 1 · 1 2",
           "difficulty": "beginner",
-          "bpm": 60,
-          "required_keys": 5,
-          "duration_ms": 20000,
+          "bpm": 64,
+          "required_keys": 6,
+          "duration_ms": 16875,
           "notes": [
-            { "key_index": 0, "time_ms": 0,     "duration_ms": 900 },
-            { "key_index": 1, "time_ms": 1000,  "duration_ms": 900 },
-            { "key_index": 2, "time_ms": 2000,  "duration_ms": 900 },
-            { "key_index": 3, "time_ms": 3000,  "duration_ms": 900 },
-            { "key_index": 4, "time_ms": 4000,  "duration_ms": 900 },
-            { "key_index": 3, "time_ms": 5000,  "duration_ms": 900 },
-            { "key_index": 2, "time_ms": 6000,  "duration_ms": 900 },
-            { "key_index": 1, "time_ms": 7000,  "duration_ms": 900 },
-            { "key_index": 0, "time_ms": 8000,  "duration_ms": 1800 },
-            { "key_index": 0, "time_ms": 10000, "duration_ms": 900 },
-            { "key_index": 2, "time_ms": 11000, "duration_ms": 900 },
-            { "key_index": 4, "time_ms": 12000, "duration_ms": 900 },
-            { "key_index": 2, "time_ms": 13000, "duration_ms": 900 },
-            { "key_index": 0, "time_ms": 14000, "duration_ms": 1800 }
+            { "key_index": 4, "time_ms": 0, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 469, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 703, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 1172, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 1641, "duration_ms": 180 },
+
+            { "key_index": 4, "time_ms": 1875, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 2344, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 2578, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 3047, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 3516, "duration_ms": 180 },
+
+            { "key_index": 4, "time_ms": 3750, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 4219, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 4453, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 4922, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 5391, "duration_ms": 180 },
+
+            { "key_index": 4, "time_ms": 5625, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 6094, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 6328, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 6797, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 7266, "duration_ms": 180 },
+
+            { "key_index": 4, "time_ms": 7500, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 7969, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 8203, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 8672, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 9141, "duration_ms": 180 },
+
+            { "key_index": 4, "time_ms": 9375, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 9844, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 10078, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 10547, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 11016, "duration_ms": 180 },
+
+            { "key_index": 4, "time_ms": 11250, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 11719, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 11953, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 12422, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 12891, "duration_ms": 180 },
+
+            { "key_index": 4, "time_ms": 13125, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 13594, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 13828, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 14297, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 14766, "duration_ms": 180 },
+
+            { "key_index": 4, "time_ms": 15000, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 15469, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 15703, "duration_ms": 180 },
+            { "key_index": 4, "time_ms": 16172, "duration_ms": 180 },
+            { "key_index": 5, "time_ms": 16641, "duration_ms": 180 }
           ]
         }
         """

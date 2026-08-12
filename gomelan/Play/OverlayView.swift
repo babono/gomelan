@@ -13,6 +13,9 @@ struct OverlayView: View {
     let keys: [InstrumentKey]
     let states: [Int: KeyRenderState]
     let approachNotes: [ApproachNote]
+    /// Colotomic markers (gong/kempur/kemong/beat) travelling along the track,
+    /// so the pulse structure reads on the same row as the note numbers.
+    var trackMarkers: [TrackMarker] = []
 
     var body: some View {
         GeometryReader { geo in
@@ -105,6 +108,22 @@ struct OverlayView: View {
         }
     }
 
+    /// Colotomic markers read by size + weight rather than text, so they stay
+    /// legible in the periphery: the gong is the largest, the beat a faint tick.
+    @ViewBuilder
+    private func markerShape(_ marker: TrackMarker) -> some View {
+        switch marker.kind {
+        case .gong:
+            Circle().stroke(Theme.gong, lineWidth: 3).frame(width: 30, height: 30)
+        case .kempur:
+            Circle().stroke(Theme.kempur, lineWidth: 3).frame(width: 22, height: 22)
+        case .kemong:
+            Circle().stroke(Theme.kemong, lineWidth: 2).frame(width: 16, height: 16)
+        case .beat:
+            Circle().fill(.white.opacity(0.3)).frame(width: 5, height: 5)
+        }
+    }
+
     // MARK: - Approach track (§13.5)
 
     @ViewBuilder
@@ -124,12 +143,22 @@ struct OverlayView: View {
                 .frame(width: 3, height: trackHeight)
                 .position(x: strikeX, y: trackHeight / 2)
 
+            // Colotomic pulse markers, drawn under the note numbers.
+            ForEach(trackMarkers) { marker in
+                markerShape(marker)
+                    .position(x: size.width * marker.xFraction, y: trackHeight / 2)
+            }
+
             // Notes travelling right → left toward the strike line.
             ForEach(approachNotes) { note in
-                Circle()
-                    .fill(Theme.upcoming)
-                    .frame(width: 22, height: 22)
-                    .position(x: size.width * note.xFraction, y: trackHeight / 2)
+                ZStack {
+                    Circle().fill(Theme.upcoming)
+                    Text("\(note.keyIndex)")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(.black.opacity(0.75))
+                }
+                .frame(width: 22, height: 22)
+                .position(x: size.width * note.xFraction, y: trackHeight / 2)
             }
         }
         .frame(width: size.width, height: trackHeight)
