@@ -172,7 +172,7 @@ struct AudioTestView: View {
                     systemImage: capturingBaseline ? "checkmark" : "waveform.badge.plus"
                 ) {
                     if capturingBaseline {
-                        audio.finishBaselineCapture { count in
+                        audio.finishBaselineCapture { count, _ in
                             baselineCount = count
                             capturingBaseline = false
                         }

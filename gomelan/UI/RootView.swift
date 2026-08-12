@@ -3,7 +3,9 @@
 //  gomelan
 //
 //  Hosts the app state machine (PRD §13.4) and owns the shared capture/audio
-//  services so they persist across screen transitions.
+//  services so they persist across screen transitions. Screens live on one of
+//  two surfaces — warm "paper" (cream, light) or warm "stage" (ink, dark, behind
+//  the camera) — and the background + colour scheme follow the current screen.
 //
 
 import SwiftUI
@@ -16,12 +18,25 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            (isPaper ? Theme.cream : Theme.ink).ignoresSafeArea()
             content
         }
         .environment(app)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(isPaper ? .light : .dark)
         .statusBarHidden(true)
+        .animation(.easeInOut(duration: 0.25), value: isPaper)
+    }
+
+    /// Cream, light screens vs. ink, dark camera/stage screens.
+    private var isPaper: Bool {
+        switch app.screen {
+        case .welcome, .permissionsBlocked, .choosingKeyCount,
+             .chooseInstrument, .chooseKotekan, .chooseHalf, .results, .settings:
+            return true
+        case .checkingPermissions, .framing, .aligning, .calibrating,
+             .countdown, .playing, .malletTest, .detectionTest, .audioTest:
+            return false
+        }
     }
 
     @ViewBuilder
@@ -33,24 +48,26 @@ struct RootView: View {
             PermissionsView(camera: camera)
         case .permissionsBlocked:
             PermissionsBlockedView()
+        case .chooseInstrument:
+            ChooseInstrumentView()
+        case .choosingKeyCount:
+            KeyCountView()
         case .framing:
             FramingView(camera: camera)
-        case .choosingKeyCount:
-            KeyCountView(camera: camera)
         case .aligning:
             AligningView(camera: camera)
-        case .songList:
-            SongListView()
-        case .songDetail:
-            SongDetailView()
+        case .calibrating:
+            CalibrationView(camera: camera, audio: audio)
+        case .chooseKotekan:
+            ChooseKotekanView()
+        case .chooseHalf:
+            ChooseHalfView()
         case .countdown, .playing:
             PlayView(camera: camera, audio: audio, cue: cue)
         case .results:
             ResultsView()
         case .settings:
             SettingsView()
-        case .calibrating:
-            CalibrationView(camera: camera, audio: audio)
         case .malletTest:
             MalletTestView(camera: camera)
         case .detectionTest:

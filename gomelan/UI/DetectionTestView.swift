@@ -63,6 +63,9 @@ struct DetectionTestView: View {
                                   keys: app.profile.keys,
                                   viewSize: overlaySize)
             try? audio.start(profile: app.profile)
+            if let baseline = app.profile.strikeBaseline {
+                audio.setBaselineTemplate(baseline)
+            }
         }
         .onDisappear { audio.stop() }
         .task { await runDetection() }

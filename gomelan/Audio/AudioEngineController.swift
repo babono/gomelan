@@ -57,6 +57,18 @@ final class AudioEngineController {
     /// calibration flow should store, plus a display-only pitch estimate.
     var onCalibrationStrike: ((_ fingerprint: [Float], _ fundamentalHz: Double, _ hostTime: Double) -> Void)?
 
+    /// Progress while learning the strike-sound baseline. `accepted` is how many
+    /// consistent strikes are in the template so far; `wasAccepted` says whether
+    /// the strike that just triggered this was folded in or rejected as an
+    /// outlier (e.g. a scream); `similarity` is that strike's cosine to the
+    /// running average (nil while still seeding).
+    struct BaselineProgress {
+        let accepted: Int
+        let wasAccepted: Bool
+        let similarity: Double?
+    }
+    var onBaselineProgress: ((BaselineProgress) -> Void)?
+
     /// One captured strike, with the loudness used to pick between candidates.
     struct CapturedStrike {
         let fingerprint: [Float]
@@ -98,6 +110,14 @@ final class AudioEngineController {
     /// Similarity a strike must reach to be confirmed gangsa. Tuned in the audio
     /// test screen. Accessed on the DSP queue.
     private var baselineThreshold: Float = 0.5
+    /// While LEARNING the baseline: how many strikes to take on trust to seed the
+    /// template, and how similar a later strike must be to the running average to
+    /// be folded in rather than rejected as an outlier (a scream, a clap). This
+    /// is what stops non-gangsa sounds from raising the confidence.
+    private let baselineSeedCount = 2
+    private let baselineLearnConsistency: Float = 0.55
+    /// Collapse the several onsets one physical strike can produce.
+    private var lastBaselineOnsetTime: Double = 0
 
     /// Live gate overrides from the audio test screen. Kept separate from `config`
     /// so they survive `start()` reconfiguring, which replaces `config` wholesale.
@@ -399,9 +419,30 @@ final class AudioEngineController {
             return
         }
 
-        // Score against the gangsa-strike baseline (if learned) and collect samples
-        // while learning it.
-        if baselineAccumulator != nil { baselineAccumulator?.append(vector) }
+        // While LEARNING the baseline, fold in strikes that resemble the ones
+        // already collected and reject outliers, so a scream can't build (or
+        // poison) the template. The first `baselineSeedCount` are taken on trust
+        // to seed it — strike the gangsa, not yourself, at the start.
+        if var acc = baselineAccumulator {
+            // Collapse the multiple onsets one strike can fire.
+            if hostTime - lastBaselineOnsetTime >= 0.2 {
+                lastBaselineOnsetTime = hostTime
+                var wasAccepted = true
+                var sim: Double?
+                if acc.count >= baselineSeedCount, let avg = KeyClassifier.averageFingerprints(acc) {
+                    let s = dot(avg, vector)
+                    sim = Double(s)
+                    wasAccepted = s >= baselineLearnConsistency
+                }
+                if wasAccepted { acc.append(vector); baselineAccumulator = acc }
+                let acceptedCount = acc.count
+                DispatchQueue.main.async { [weak self] in
+                    self?.onBaselineProgress?(BaselineProgress(accepted: acceptedCount,
+                                                               wasAccepted: wasAccepted,
+                                                               similarity: sim))
+                }
+            }
+        }
         let similarity = strikeBaseline.map { Double(dot($0, vector)) }
         reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: true, baselineSimilarity: similarity)
 
@@ -478,20 +519,36 @@ final class AudioEngineController {
 
     /// Begin averaging the next strikes into a generic gangsa-strike template.
     func startBaselineCapture() {
-        queue.async { [weak self] in self?.baselineAccumulator = [] }
+        queue.async { [weak self] in
+            self?.baselineAccumulator = []
+            self?.lastBaselineOnsetTime = 0
+        }
+    }
+
+    /// Get the current generic gangsa-strike spectral baseline template.
+    func getBaselineTemplate() -> [Float]? {
+        queue.sync { strikeBaseline }
+    }
+
+    /// Load a persisted generic gangsa-strike spectral baseline template.
+    func setBaselineTemplate(_ template: [Float]?) {
+        queue.async { [weak self] in
+            self?.strikeBaseline = template
+        }
     }
 
     /// Finish learning; averages the collected fingerprints into the baseline.
     /// Returns the number of strikes that went into it (0 = nothing captured).
-    func finishBaselineCapture(completion: @escaping (Int) -> Void) {
+    func finishBaselineCapture(completion: @escaping (Int, [Float]?) -> Void) {
         queue.async { [weak self] in
             guard let self else { return }
             let collected = self.baselineAccumulator ?? []
             self.baselineAccumulator = nil
-            if let template = KeyClassifier.averageFingerprints(collected) {
+            let template = KeyClassifier.averageFingerprints(collected)
+            if let template {
                 self.strikeBaseline = template
             }
-            DispatchQueue.main.async { completion(collected.count) }
+            DispatchQueue.main.async { completion(collected.count, template) }
         }
     }
 

@@ -2,9 +2,10 @@
 //  OverlayView.swift
 //  gomelan
 //
-//  The 2D guidance layer drawn over the live camera feed (PRD §5.2, §13.5).
+//  The guidance layer drawn over the live camera feed (PRD §5.2, §13.5).
 //  Peripheral legibility is the constraint: large shapes, high contrast, no text
-//  during play. Includes the bottom approach track.
+//  during play. Idle bilah read as faint copper outlines; the key to strike
+//  glows terracotta. The stroke timeline lives in PlayView, below this.
 //
 
 import SwiftUI
@@ -12,22 +13,16 @@ import SwiftUI
 struct OverlayView: View {
     let keys: [InstrumentKey]
     let states: [Int: KeyRenderState]
-    let approachNotes: [ApproachNote]
 
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
-            ZStack {
-                ForEach(keys) { key in
-                    keyShape(key, in: size)
-                }
-                approachTrack(in: size)
+            ForEach(keys) { key in
+                keyShape(key, in: size)
             }
         }
         .allowsHitTesting(false)
     }
-
-    // MARK: - Keys
 
     @ViewBuilder
     private func keyShape(_ key: InstrumentKey, in size: CGSize) -> some View {
@@ -35,104 +30,67 @@ struct OverlayView: View {
         let state = states[key.index] ?? KeyRenderState()
         let shape = RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
 
-        ZStack(alignment: .bottom) {
-            // Base Key Target Box (Idle state matching exact key outline)
-            shape
-                .stroke(Color.white.opacity(0.35), lineWidth: Theme.keyOutlineWidth)
-                .background(
-                    shape.fill(Color.black.opacity(0.2))
-                )
-
-            // Key index number badge in center
-            Text("\(key.index)")
-                .font(.system(size: min(rect.width, rect.height) * 0.35, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.85))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-
-            // -------------------------------------------------------------
-            // KEY-FITTED APPROACH FILL (Smooth Bottom-to-Top Fill)
-            // Fills inside the exact key bar as the note approaches hit time.
-            // -------------------------------------------------------------
-            if state.fill > 0 && !state.strikeNow {
-                let fill = max(0, min(1.0, state.fill))
+        ZStack {
+            // 1. Static base key rect — ALWAYS present as a guide.
+            ZStack(alignment: .bottom) {
                 shape
-                    .fill(
-                        LinearGradient(
-                            colors: [Theme.upcoming.opacity(0.85), Theme.upcoming.opacity(0.4)],
-                            startPoint: .bottom,
-                            endPoint: .top
-                        )
-                    )
-                    .frame(height: rect.height * fill)
-                    .clipShape(shape)
+                    .fill(Color.black.opacity(0.18))
+                    .overlay(shape.strokeBorder(Theme.copper.opacity(0.4), lineWidth: 1.5))
+
+                // Bilah label near the bottom of the base rect.
+                Text(bilahLabel(key.index, count: keys.count))
+                    .font(.serif(max(10, min(rect.width * 0.35, 18)), weight: .bold))
+                    .foregroundStyle(Theme.copper.opacity(0.85))
+                    .padding(.bottom, 8)
+            }
+            .frame(width: rect.width, height: rect.height)
+
+            // 2. Approaching cue — SEPARATE outer outline contracting symmetrically from all 4 sides.
+            if state.fill > 0 && !state.strikeNow {
+                let fill = max(0, min(1, state.fill))
+                let maxPadding: CGFloat = 16
+                let currentPadding = (1.0 - fill) * maxPadding
+                let outerShape = RoundedRectangle(cornerRadius: Theme.keyCornerRadius + currentPadding * 0.5)
+
+                outerShape
+                    .strokeBorder(Theme.copper.opacity(0.9), lineWidth: 1.2)
+                    .frame(width: rect.width + currentPadding * 2, height: rect.height + currentPadding * 2)
             }
 
-            // -------------------------------------------------------------
-            // STRIKE NOW / HIT FLASH (Solid Key Fill & Outer Flash)
-            // -------------------------------------------------------------
+            // 3. Strike now cue — GLOWING OUTLINE ONLY (NO SOLID RECT FILL)
             if state.strikeNow {
                 shape
-                    .fill(Theme.upcoming)
-                    .shadow(color: Theme.upcoming, radius: 8)
-
-                shape
-                    .stroke(Color.white, lineWidth: Theme.keyOutlineWidth + 2)
+                    .strokeBorder(Theme.cream, lineWidth: 2.5)
+                    .shadow(color: Theme.copper.opacity(0.9), radius: 8)
+                    .frame(width: rect.width, height: rect.height)
             }
 
-            // Transient hit/miss flashes
+            // 4. Transient user strike flash — SOLID FILLS ONLY ON USER STRIKE!
             if let flash = state.flash {
                 shape
                     .fill(flashColor(flash))
                     .shadow(color: flashColor(flash), radius: 10)
+                    .frame(width: rect.width, height: rect.height)
             }
 
-            // Damp hint (dashed outline)
+            // 5. Damp hint (dashed outline on the previous key).
             if state.damp {
                 shape
-                    .stroke(style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
-                    .foregroundColor(.white)
+                    .strokeBorder(Theme.copper, style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
+                    .frame(width: rect.width, height: rect.height)
             }
         }
-        .frame(width: rect.width, height: rect.height)
         .position(x: rect.midX, y: rect.midY)
     }
 
     private func flashColor(_ kind: FlashKind) -> Color {
         switch kind {
-        case .hit: return Theme.hit
-        case .miss: return Theme.miss
-        case .wrong: return Theme.wrong
+        case .hitPerfect:
+            return Theme.hit // Vibrant Emerald Green (#4CAF50)
+        case .hitGood:
+            return Theme.terracotta // Terracotta / Warm Amber (#B35433)
+        case .wrongOrOffBeat:
+            return Color(hex: 0xE2E8F0) // Pale White
         }
-    }
-
-    // MARK: - Approach track (§13.5)
-
-    @ViewBuilder
-    private func approachTrack(in size: CGSize) -> some View {
-        let trackHeight = Theme.approachTrackHeight
-        let y = size.height - trackHeight / 2
-        let strikeX = size.width * Theme.strikeLineFraction
-
-        ZStack(alignment: .leading) {
-            Rectangle()
-                .fill(Color.black.opacity(0.35))
-                .frame(height: trackHeight)
-
-            // Fixed strike line.
-            Rectangle()
-                .fill(Color.white.opacity(0.8))
-                .frame(width: 3, height: trackHeight)
-                .position(x: strikeX, y: trackHeight / 2)
-
-            // Notes travelling right → left toward the strike line.
-            ForEach(approachNotes) { note in
-                Circle()
-                    .fill(Theme.upcoming)
-                    .frame(width: 22, height: 22)
-                    .position(x: size.width * note.xFraction, y: trackHeight / 2)
-            }
-        }
-        .frame(width: size.width, height: trackHeight)
-        .position(x: size.width / 2, y: y)
     }
 }

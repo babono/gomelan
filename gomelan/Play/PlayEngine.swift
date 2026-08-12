@@ -14,7 +14,15 @@
 import SwiftUI
 import QuartzCore
 
-enum FlashKind: Equatable { case hit, miss, wrong }
+enum FlashKind: Equatable {
+    case hitPerfect      // Green (exact right moment)
+    case hitGood         // Orange / Terracotta (buffer okay)
+    case wrongOrOffBeat  // Pale white (wrong key or off-beat)
+
+    static var hit: FlashKind { .hitPerfect }
+    static var miss: FlashKind { .wrongOrOffBeat }
+    static var wrong: FlashKind { .wrongOrOffBeat }
+}
 
 /// What the overlay should draw for a single key this frame.
 struct KeyRenderState: Equatable {
@@ -48,6 +56,8 @@ final class PlayEngine {
     var metronomeEnabled = true
     var referenceToneEnabled = true
     var onComplete: ((SongResult?) -> Void)?
+    /// "Kotekan Telu · Polos · 8×" — shown on the results screen.
+    var sessionSubtitle = ""
 
     // Config
     private var song: Song = ResourceLoader.bundledSongs().first ?? Song(id: "", title: "", difficulty: .beginner, bpm: 60, requiredKeys: 0, durationMs: 0, notes: [])
@@ -58,12 +68,12 @@ final class PlayEngine {
     // Play-mode state
     private var notes: [Note] = []
     private var judged: [Bool] = []
-    private var results: [JudgementResult] = []
+    private var results: [NoteJudgement] = []
     private var referencedNotes: Set<String> = []
     private var lastBeatIndex = -1
 
     // Practice-mode state
-    private var practiceIndex = 0
+    private(set) var practiceIndex = 0
 
     // Transient flash bookkeeping: keyIndex -> (kind, expiry host time)
     private var flashes: [Int: (FlashKind, Double)] = [:]
@@ -220,41 +230,53 @@ final class PlayEngine {
         guard let i = target else { return } // stray strike, ignore
 
         judged[i] = true
+        let err = scaledTime(notes[i]) - atMs
         if notes[i].keyIndex == keyIndex {
-            let result = JudgementResult.from(timingErrorMs: scaledTime(notes[i]) - atMs)
-            record(result, at: keyIndex, now: hostTime, playSound: true)
+            let result = JudgementResult.from(timingErrorMs: err)
+            record(result, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
         } else {
             // Correct timing, wrong key: amber on struck key, correct stays lit.
-            record(.wrongKey, at: keyIndex, now: hostTime, playSound: true, storeResult: true)
+            record(.wrongKey, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
         }
     }
 
     private func registerPracticeStrike(keyIndex: Int, hostTime: Double) {
         guard practiceIndex < notes.count else { return }
         let expected = notes[practiceIndex].keyIndex
+
         if keyIndex == expected {
-            flash(.hit, at: keyIndex, now: hostTime)
+            // Self-paced practice: hitting expected key is always a green hit!
+            flash(.hitPerfect, at: keyIndex, now: hostTime)
             cue?.playHit()
             practiceIndex += 1
         } else {
-            flash(.wrong, at: keyIndex, now: hostTime)
+            // Wrong key struck -> Pale White
+            flash(.wrongOrOffBeat, at: keyIndex, now: hostTime)
         }
     }
 
     // MARK: - Helpers
 
-    private func record(_ result: JudgementResult, at key: Int, now: Double, playSound: Bool, storeResult: Bool = true) {
-        if storeResult { results.append(result) }
-        lastJudgement = NoteJudgement(noteIndex: key, result: result, timingErrorMs: 0)
+    private func record(_ result: JudgementResult, at key: Int, now: Double, playSound: Bool, timingErrorMs: Double = 0, storeResult: Bool = true) {
+        let judgement = NoteJudgement(keyIndex: key, result: result, timingErrorMs: timingErrorMs)
+        if storeResult { results.append(judgement) }
+        lastJudgement = judgement
         switch result {
-        case .perfect, .good, .lateEarly:
-            flash(.hit, at: key, now: now)
+        case .perfect:
+            flash(.hitPerfect, at: key, now: now)
             if playSound { cue?.playHit() }
-        case .miss:
-            flash(.miss, at: key, now: now)
-            if playSound { cue?.playMiss() }
+        case .good:
+            flash(.hitGood, at: key, now: now)
+            if playSound { cue?.playHit() }
+        case .lateEarly:
+            flash(.wrongOrOffBeat, at: key, now: now)
+            if playSound { cue?.playHit() }
         case .wrongKey:
-            flash(.wrong, at: key, now: now)
+            flash(.wrongOrOffBeat, at: key, now: now)
+            if playSound { cue?.playMiss() }
+        case .miss:
+            // Auto-miss on timeout: DO NOT flash fill on key rect!
+            // Fills ONLY happen when the user physically strikes a key!
             if playSound { cue?.playMiss() }
         }
     }
@@ -296,7 +318,7 @@ final class PlayEngine {
         isFinished = true
         cue?.stop()
         if mode == .play {
-            onComplete?(SongResult(songTitle: song.title, judgements: results))
+            onComplete?(SongResult(songTitle: song.title, subtitle: sessionSubtitle, judgements: results))
         } else {
             onComplete?(nil) // practice: no score
         }

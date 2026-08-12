@@ -2,8 +2,10 @@
 //  AppState.swift
 //  gomelan
 //
-//  The app-level state machine (PRD §13.4). Any state can return to .aligning
-//  via a persistent "keys misaligned?" affordance — used often at the exhibition.
+//  The app-level state machine (PRD §13.4). Setup runs in three numbered steps —
+//  count the keys, frame the instrument, fit the mask — then learns the
+//  instrument's voice (baseline), and lands on the kotekan picker. Any state can
+//  return to .aligning via the persistent "realign" affordance.
 //
 
 import SwiftUI
@@ -16,16 +18,17 @@ final class AppState {
         case welcome
         case checkingPermissions
         case permissionsBlocked
-        case framing
-        case choosingKeyCount
-        case aligning
-        case songList
-        case songDetail
+        case chooseInstrument    // Multi-instrument selection
+        case choosingKeyCount   // setup 1/3
+        case framing            // setup 2/3
+        case aligning           // setup 3/3
+        case calibrating        // baseline · learn the voice
+        case chooseKotekan
+        case chooseHalf
         case countdown
         case playing
         case results
         case settings
-        case calibrating
         case malletTest
         case detectionTest
         case audioTest
@@ -33,11 +36,17 @@ final class AppState {
 
     var screen: Screen = .welcome
     var profile: InstrumentProfile
-    var songs: [Song]
+    var savedProfiles: [InstrumentProfile] = []
 
-    // Selection carried through the play flow.
+    // The kotekan session carried through selection → play.
+    let kotekans: [Kotekan] = Kotekan.bundled
+    var selectedKotekan: Kotekan?
+    var chosenHalf: KotekanHalf = .polos
+    var chosenCycles: Int = 8
+
+    /// The rendered note sequence the PlayEngine runs, built from the session.
     var selectedSong: Song?
-    var playMode: PlayMode = .practice
+    var playMode: PlayMode = .play
     var lastResult: SongResult?
 
     // Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
@@ -47,67 +56,147 @@ final class AppState {
     var referenceToneEnabled: Bool = true
 
     /// Require a real gangsa strike sound (spectral baseline) to register a hit.
-    /// On = blocks hovering/screams but needs a learned baseline; off = vision
-    /// alone counts the hit (more lenient, no sound needed).
     var requireStrikeSound: Bool = false
 
+    /// Whether the gangsa's strike-sound baseline has been learned this session.
+    var baselineLearned: Bool = false
+
     init() {
-        // A profile calibrated on the real instrument takes precedence over the
-        // bundled placeholder.
-        self.profile = ProfileStore.load() ?? ResourceLoader.defaultProfile()
-        self.songs = ResourceLoader.bundledSongs()
+        let all = ProfileStore.loadAll()
+        self.savedProfiles = all
+        if let current = ProfileStore.loadSelected() {
+            self.profile = current
+            self.baselineLearned = current.hasLearnedBaseline
+            self.requireStrikeSound = current.hasLearnedBaseline
+        } else {
+            self.profile = ResourceLoader.defaultProfile()
+        }
+        self.screen = .welcome
     }
 
     func saveProfile() {
         ProfileStore.save(profile)
+        savedProfiles = ProfileStore.loadAll()
     }
 
-    /// Songs the calibrated instrument can actually play (§4 Flow B).
-    var availableSongs: [Song] {
-        songs.filter { $0.requiredKeys <= profile.keyCount }
+    /// Kotekan this instrument has enough keys for.
+    func kotekan(_ k: Kotekan, playableOn profile: InstrumentProfile) -> Bool {
+        k.requiredKeys <= profile.keyCount
     }
 
-    func song(_ song: Song, canPlayOn profile: InstrumentProfile) -> Bool {
-        song.requiredKeys <= profile.keyCount
+    // MARK: - Instrument Selection & Management
+
+    func selectInstrument(_ p: InstrumentProfile) {
+        profile = p
+        ProfileStore.setSelectedID(p.id)
+        baselineLearned = p.hasLearnedBaseline
+        requireStrikeSound = p.hasLearnedBaseline
+        screen = .chooseKotekan
     }
 
-    // MARK: - Transitions
+    func addNewInstrument() {
+        let count = savedProfiles.count + 1
+        let newID = UUID().uuidString
+        let name = "Gangsa #\(count)"
+        let dateStr = ISO8601DateFormatter().string(from: Date())
+        let newProfile = InstrumentProfile(id: newID, name: name, keyCount: 10, createdAt: dateStr, keys: InstrumentProfile.layout(count: 10))
+        profile = newProfile
+        saveProfile()
+        screen = .choosingKeyCount
+    }
+
+    func realignInstrument(_ p: InstrumentProfile) {
+        profile = p
+        ProfileStore.setSelectedID(p.id)
+        screen = .aligning
+    }
+
+    func deleteInstrument(_ profileID: String) {
+        ProfileStore.delete(profileID)
+        savedProfiles = ProfileStore.loadAll()
+        if profile.id == profileID {
+            if let next = savedProfiles.first {
+                profile = next
+                ProfileStore.setSelectedID(next.id)
+            }
+        }
+    }
+
+    func openChooseInstrument() {
+        savedProfiles = ProfileStore.loadAll()
+        screen = .chooseInstrument
+    }
+
+    // MARK: - Onboarding
 
     func begin() {
-        screen = .checkingPermissions
+        savedProfiles = ProfileStore.loadAll()
+        screen = .chooseInstrument
     }
 
     func permissionsResolved(granted: Bool) {
-        screen = granted ? .framing : .permissionsBlocked
+        if granted {
+            if !savedProfiles.isEmpty {
+                screen = .chooseInstrument
+            } else {
+                screen = .choosingKeyCount
+            }
+        } else {
+            screen = .permissionsBlocked
+        }
     }
 
-    func framingConfirmed() { screen = .choosingKeyCount }
-
-    /// Set how many keys this instrument has, then go and position them.
-    /// Gangsa are commonly 10, but a smaller set is normal for practice and for
-    /// testing, so the count is the user's to choose rather than a constant.
+    /// Step 1/3: how many keys does this instrument have? Chosen before framing
+    /// so the framing and mask steps know how many bilah to draw.
     func keyCountChosen(_ count: Int) {
         var updated = profile
         updated.resize(to: count)
         profile = updated
         saveProfile()
-        screen = .aligning
+        screen = .framing
     }
 
-    /// Alignment leads into calibration: the app cannot recognise a single key
-    /// until it has heard it on THIS instrument. Every gamelan is tuned
-    /// differently, so there is no useful default to fall back on.
+    /// Step 2/3 → 3/3.
+    func framingConfirmed() { screen = .aligning }
+
+    /// Step 3/3 leads into the baseline: the app learns what a real gangsa strike
+    /// sounds like on THIS instrument before it can tell strikes from noise. Once
+    /// learned this session, re-aligning skips straight back to the picker.
     func alignmentConfirmed() {
-        screen = profile.isFullyCalibrated ? .songList : .calibrating
+        saveProfile()
+        screen = baselineLearned ? .chooseKotekan : .calibrating
     }
 
-    func select(_ song: Song) {
-        selectedSong = song
-        screen = .songDetail
+    /// Baseline captured: strikes will now be confirmed by sound, and the picker
+    /// is next.
+    func baselineFinished() {
+        baselineLearned = true
+        requireStrikeSound = true
+        saveProfile()
+        screen = .chooseKotekan
     }
 
-    func start(mode: PlayMode) {
-        playMode = mode
+    /// Left the baseline step without capturing — go on anyway (vision alone).
+    func skipCalibration() {
+        saveProfile()
+        screen = .chooseKotekan
+    }
+
+    // MARK: - Session selection
+
+    /// Picked a kotekan and how many times around; go choose which half to play.
+    func chooseKotekan(_ k: Kotekan, cycles: Int) {
+        selectedKotekan = k
+        chosenCycles = cycles
+        screen = .chooseHalf
+    }
+
+    /// Picked a half; render the session and start the countdown.
+    func startSession(half: KotekanHalf) {
+        guard let k = selectedKotekan else { return }
+        chosenHalf = half
+        selectedSong = k.makeSong(half: half, cycles: chosenCycles)
+        playMode = .play
         screen = .countdown
     }
 
@@ -118,12 +207,14 @@ final class AppState {
         screen = .results
     }
 
+    // MARK: - Navigation
+
     func retry() { screen = .countdown }
-    func backToSongs() { screen = .songList }
+    func backToKotekan() { screen = .chooseKotekan }
+    func backToHalf() { screen = .chooseHalf }
     func openSettings() { screen = .settings }
-    func closeSettings() { screen = .songList }
+    func closeSettings() { screen = .chooseKotekan }
     func openCalibration() { screen = .calibrating }
-    func calibrationFinished() { screen = .songList }
     func openMalletTest() { screen = .malletTest }
     func closeMalletTest() { screen = .settings }
     func openDetectionTest() { screen = .detectionTest }

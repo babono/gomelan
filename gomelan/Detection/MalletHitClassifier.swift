@@ -116,4 +116,32 @@ enum CropMapper {
                       width: bottomRight.x - topLeft.x,
                       height: bottomRight.y - topLeft.y)
     }
+
+    /// The inverse of `bufferRect`: takes a rect normalised to the camera buffer
+    /// (Vision's output, 0–1 of the image, top-left origin) and returns it in the
+    /// overlay's view-normalised space, undoing the same aspect-fill crop. Used to
+    /// place auto-detected bilah onto the draggable overlay.
+    static func overlayRect(bufferNormalized r: NormalizedRect,
+                            bufferSize: CGSize,
+                            viewSize: CGSize) -> NormalizedRect {
+        guard bufferSize.width > 0, bufferSize.height > 0,
+              viewSize.width > 0, viewSize.height > 0 else { return r }
+
+        let scale = max(viewSize.width / bufferSize.width,
+                        viewSize.height / bufferSize.height)
+        let offsetX = (bufferSize.width * scale - viewSize.width) / 2
+        let offsetY = (bufferSize.height * scale - viewSize.height) / 2
+
+        func toOverlay(_ bnx: Double, _ bny: Double) -> CGPoint {
+            let bufX = bnx * bufferSize.width
+            let bufY = bny * bufferSize.height
+            return CGPoint(x: (bufX * scale - offsetX) / viewSize.width,
+                           y: (bufY * scale - offsetY) / viewSize.height)
+        }
+
+        let tl = toOverlay(r.x, r.y)
+        let br = toOverlay(r.x + r.w, r.y + r.h)
+        return NormalizedRect(x: Double(tl.x), y: Double(tl.y),
+                              w: Double(br.x - tl.x), h: Double(br.y - tl.y))
+    }
 }

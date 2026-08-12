@@ -2,35 +2,84 @@
 //  Components.swift
 //  gomelan
 //
-//  Small shared UI pieces. Large, high-contrast, minimal — consistent with the
-//  peripheral-legibility constraint (PRD §3.3).
+//  Shared UI pieces for the redesign. Two surfaces — warm "paper" (cream) and
+//  warm "stage" (ink) — share these components; colours are passed in so a piece
+//  reads correctly on either.
 //
 
 import SwiftUI
 
-struct PrimaryButton: View {
+// MARK: - Buttons
+
+enum PillStyle { case filled, outlined, secondary }
+
+/// The canonical pill button (GO, NEXT, CALIBRATE, START PRACTICE, RETRY …).
+/// Labels are tracked and uppercased by default to match the spec.
+struct PillButton: View {
     let title: String
     var systemImage: String? = nil
-    var tint: Color = Theme.accent
+    var style: PillStyle = .outlined
+    var tint: Color = Theme.terracotta
+    var uppercase: Bool = true
+    var fullWidth: Bool = false
+    var compact: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: compact ? 8 : 10) {
                 if let systemImage { Image(systemName: systemImage) }
-                Text(title).fontWeight(.semibold)
+                Text(title)
+                    .textCase(uppercase ? .uppercase : nil)
+                    .tracking(uppercase ? (compact ? 1.5 : 2) : 0)
             }
-            .font(.title3)
-            .foregroundStyle(.black)
-            .padding(.vertical, 16)
-            .padding(.horizontal, 28)
-            .frame(maxWidth: .infinity)
-            .background(tint, in: RoundedRectangle(cornerRadius: 14))
+            .font(.sans(compact ? 13 : 15, weight: .semibold))
+            .foregroundStyle(foreground)
+            .padding(.vertical, compact ? 9 : 15)
+            .padding(.horizontal, compact ? 18 : 30)
+            .frame(maxWidth: fullWidth ? .infinity : nil)
+            .background(background)
+            .overlay(
+                Capsule().strokeBorder(tint, lineWidth: style == .outlined ? 1.5 : 0)
+            )
+            .clipShape(Capsule())
         }
         .buttonStyle(.plain)
     }
+
+    private var foreground: Color {
+        switch style {
+        case .filled: return Theme.cream
+        case .outlined: return tint
+        case .secondary: return Theme.charcoal
+        }
+    }
+
+    @ViewBuilder private var background: some View {
+        switch style {
+        case .filled: Capsule().fill(tint)
+        case .outlined: Capsule().fill(.clear)
+        case .secondary: Capsule().fill(Theme.creamSunken)
+        }
+    }
 }
 
+/// Filled terracotta call-to-action. Kept as a distinct name because many call
+/// sites use it; it is just a non-uppercased filled `PillButton` with an icon.
+struct PrimaryButton: View {
+    let title: String
+    var systemImage: String? = nil
+    var tint: Color = Theme.terracotta
+    let action: () -> Void
+
+    var body: some View {
+        PillButton(title: title, systemImage: systemImage, style: .filled,
+                   tint: tint, uppercase: false, fullWidth: true, action: action)
+    }
+}
+
+/// Outlined utility button. Adapts to the surface via the ambient colour scheme,
+/// so it reads on both paper (light) and stage (dark) screens.
 struct SecondaryButton: View {
     let title: String
     var systemImage: String? = nil
@@ -42,27 +91,175 @@ struct SecondaryButton: View {
                 if let systemImage { Image(systemName: systemImage) }
                 Text(title)
             }
-            .font(.body.weight(.medium))
-            .foregroundStyle(.white)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 20)
-            .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+            .font(.sans(14, weight: .medium))
+            .foregroundStyle(.primary)
+            .padding(.vertical, 11)
+            .padding(.horizontal, 18)
+            .overlay(Capsule().strokeBorder(.primary.opacity(0.4), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
 }
+
+// MARK: - Top bar
+
+/// The consistent screen header: optional back affordance, centred tracked
+/// title, optional trailing status text. `tint` is the strong text colour for
+/// the surface; supporting text is derived from it.
+struct TopBar: View {
+    var title: String
+    var backTitle: String? = nil
+    var onBack: (() -> Void)? = nil
+    var trailingText: String? = nil
+    /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
+    var settingsAction: (() -> Void)? = nil
+    var tint: Color = Theme.charcoal
+    var accent: Color = Theme.terracotta
+    /// Slimmer header with no divider — used over full-bleed camera screens.
+    var compact: Bool = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Text(title)
+                    .font(.sans(12, weight: .semibold))
+                    .textCase(.uppercase)
+                    .tracking(2.5)
+                    .foregroundStyle(tint.opacity(0.65))
+
+                HStack(spacing: 14) {
+                    if let onBack {
+                        Button(action: onBack) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "chevron.left").font(.sans(14, weight: .medium))
+                                Text(backTitle ?? "Back").font(.sans(16))
+                            }
+                            .foregroundStyle(tint)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer()
+                    if let trailingText {
+                        Text(trailingText)
+                            .font(.sans(13, weight: .medium))
+                            .foregroundStyle(accent)
+                    }
+                    if let settingsAction {
+                        Button(action: settingsAction) {
+                            Image(systemName: "gearshape")
+                                .font(.sans(18, weight: .medium))
+                                .foregroundStyle(tint)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, compact ? 8 : 16)
+
+            if !compact {
+                Rectangle()
+                    .fill(tint.opacity(0.12))
+                    .frame(height: 1)
+            }
+        }
+    }
+}
+
+// MARK: - Labels
+
+/// Uppercase tracked eyebrow/section label.
+struct SectionLabel: View {
+    let text: String
+    var color: Color = Theme.terracotta
+    init(_ text: String, color: Color = Theme.terracotta) {
+        self.text = text
+        self.color = color
+    }
+    var body: some View {
+        Text(text)
+            .font(.sans(12, weight: .semibold))
+            .textCase(.uppercase)
+            .tracking(2.5)
+            .foregroundStyle(color)
+    }
+}
+
+// MARK: - Stepper
+
+/// A −/number/+ stepper. Big serif number, circular buttons — the shared control
+/// for key count and cycle count.
+struct CountStepper: View {
+    @Binding var value: Int
+    var range: ClosedRange<Int>
+    var numberSize: CGFloat = 64
+    var tint: Color = Theme.terracotta
+    var numberColor: Color = Theme.charcoal
+    var lineColor: Color = Theme.charcoal
+
+    var body: some View {
+        HStack(spacing: 22) {
+            circle(system: "minus", enabled: value > range.lowerBound) {
+                value = max(range.lowerBound, value - 1)
+            }
+            Text("\(value)")
+                .font(.serif(numberSize, weight: .regular))
+                .foregroundStyle(numberColor)
+                .frame(minWidth: numberSize * 1.1)
+                .contentTransition(.numericText())
+            circle(system: "plus", enabled: value < range.upperBound) {
+                value = min(range.upperBound, value + 1)
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: value)
+    }
+
+    private func circle(system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: system)
+                .font(.sans(18, weight: .medium))
+                .foregroundStyle(enabled ? tint : lineColor.opacity(0.3))
+                .frame(width: 52, height: 52)
+                .overlay(Circle().strokeBorder(enabled ? tint.opacity(0.6) : lineColor.opacity(0.2), lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+}
+
+// MARK: - Stat bar
+
+/// Horizontal progress bar used on the results screen ("where it slipped").
+struct StatBar: View {
+    var fraction: Double
+    var color: Color
+    var track: Color = Theme.creamSunken
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(track)
+                Capsule().fill(color)
+                    .frame(width: max(6, geo.size.width * min(1, max(0, fraction))))
+            }
+        }
+        .frame(height: 7)
+    }
+}
+
+// MARK: - Realign affordance
 
 /// A persistent "keys misaligned?" affordance (PRD §13.4).
 struct RealignButton: View {
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            Label("Keys misaligned?", systemImage: "viewfinder")
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(.white.opacity(0.8))
+            Label("Realign", systemImage: "viewfinder")
+                .font(.sans(13, weight: .medium))
+                .foregroundStyle(Theme.terracotta)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
-                .background(.black.opacity(0.4), in: Capsule())
+                .overlay(Capsule().strokeBorder(Theme.terracotta.opacity(0.5), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
