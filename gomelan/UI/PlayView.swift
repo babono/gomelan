@@ -290,6 +290,16 @@ struct PlayView: View {
             audio.setBaselineTemplate(baseline)
         }
 
+        // Wire audio onset detection to immediately resolve key via vision:
+        audio.onStrikeDetected = { hostTime in
+            Task { @MainActor in
+                guard countdown == nil, !paused, !engine.isFinished else { return }
+                if let decision = await fusion?.resolveVisionFirst(hostTime: hostTime) {
+                    applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
+                }
+            }
+        }
+
         useAudioConfirmation = app.requireStrikeSound && (audio.hasStrikeBaseline || app.profile.hasLearnedBaseline)
         if useAudioConfirmation {
             audio.onConfirmedStrike = { hostTime in
@@ -329,7 +339,7 @@ struct PlayView: View {
                     applyStrike(key: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
                 }
             }
-            try? await Task.sleep(for: .milliseconds(60))
+            try? await Task.sleep(for: .milliseconds(30))
         }
     }
 

@@ -34,7 +34,7 @@ final class StrikeFusion {
     var viewSize: CGSize
 
     /// A crop must score at least this to count as a strike. Tune on device.
-    var minHitProbability = 0.5
+    var minHitProbability = 0.45
 
     init(frames: FrameBuffer, keys: [InstrumentKey], viewSize: CGSize) {
         self.frames = frames
