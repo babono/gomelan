@@ -12,9 +12,8 @@ import SwiftUI
 struct ChooseInstrumentView: View {
     @Environment(AppState.self) private var app
 
-    @State private var profileToRename: InstrumentProfile?
-    @State private var newNameText: String = ""
-    @State private var showRenameAlert = false
+    @State private var editingProfileId: String? = nil
+    @State private var editingNameText: String = ""
 
     @State private var profileToDelete: InstrumentProfile?
     @State private var showDeleteConfirm = false
@@ -45,22 +44,6 @@ struct ChooseInstrumentView: View {
             footer
         }
         .background(Theme.cream)
-        .alert("Rename Instrument", isPresented: $showRenameAlert, presenting: profileToRename) { profile in
-            TextField("Instrument Name", text: $newNameText)
-            Button("Save") {
-                let trimmed = newNameText.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !trimmed.isEmpty else { return }
-                var updated = profile
-                updated.name = trimmed
-                if app.profile.id == updated.id {
-                    app.profile = updated
-                }
-                app.saveProfile()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { profile in
-            Text("Enter a new name for '\(profile.name)'.")
-        }
         .confirmationDialog("Delete Instrument?",
                             isPresented: $showDeleteConfirm,
                             titleVisibility: .visible,
@@ -102,28 +85,60 @@ struct ChooseInstrumentView: View {
 
     private func instrumentCard(_ profile: InstrumentProfile) -> some View {
         let isSelected = app.profile.id == profile.id
+        let isEditing = editingProfileId == profile.id
 
         return VStack(alignment: .leading, spacing: 14) {
-            // Card Header: Name + Rename Button
+            // Card Header: Name (or Inline Textfield) + Actions
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text(profile.name)
-                            .font(.serif(22, weight: .bold))
-                            .foregroundStyle(Theme.charcoal)
-                            .lineLimit(1)
+                    if isEditing {
+                        HStack(spacing: 6) {
+                            TextField("Instrument Name", text: $editingNameText)
+                                .font(.serif(16, weight: .bold))
+                                .foregroundStyle(Theme.charcoal)
+                                .textFieldStyle(.plain)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.terracotta, lineWidth: 1.5))
+                                .onSubmit { saveInlineRename(profile) }
 
-                        Button {
-                            profileToRename = profile
-                            newNameText = profile.name
-                            showRenameAlert = true
-                        } label: {
-                            Image(systemName: "pencil")
-                                .font(.sans(12, weight: .semibold))
-                                .foregroundStyle(Theme.terracotta)
-                                .padding(4)
+                            Button {
+                                saveInlineRename(profile)
+                            } label: {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.sans(20))
+                                    .foregroundStyle(Theme.terracotta)
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                editingProfileId = nil
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.sans(18))
+                                    .foregroundStyle(Theme.stone.opacity(0.8))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                    } else {
+                        HStack(spacing: 6) {
+                            Text(profile.name)
+                                .font(.serif(22, weight: .bold))
+                                .foregroundStyle(Theme.charcoal)
+                                .lineLimit(1)
+
+                            Button {
+                                editingProfileId = profile.id
+                                editingNameText = profile.name
+                            } label: {
+                                Image(systemName: "pencil")
+                                    .font(.sans(12, weight: .semibold))
+                                    .foregroundStyle(Theme.terracotta)
+                                    .padding(4)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
 
                     Text("\(profile.keyCount) bilah keys")
@@ -131,18 +146,20 @@ struct ChooseInstrumentView: View {
                         .foregroundStyle(Theme.stone)
                 }
 
-                Spacer()
+                if !isEditing {
+                    Spacer()
 
-                Button {
-                    profileToDelete = profile
-                    showDeleteConfirm = true
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.sans(13))
-                        .foregroundStyle(Theme.stone.opacity(0.7))
-                        .padding(4)
+                    Button {
+                        profileToDelete = profile
+                        showDeleteConfirm = true
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.sans(13))
+                            .foregroundStyle(Theme.stone.opacity(0.7))
+                            .padding(4)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             // Badges
@@ -213,5 +230,20 @@ struct ChooseInstrumentView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.charcoal.opacity(0.1)).frame(height: 1)
         }
+    }
+
+    private func saveInlineRename(_ profile: InstrumentProfile) {
+        let trimmed = editingNameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            editingProfileId = nil
+            return
+        }
+        var updated = profile
+        updated.name = trimmed
+        if app.profile.id == updated.id {
+            app.profile = updated
+        }
+        app.saveProfile()
+        editingProfileId = nil
     }
 }

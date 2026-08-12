@@ -155,7 +155,8 @@ struct TopBar: View {
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.vertical, compact ? 8 : 16)
+            .padding(.top, compact ? 6 : 14)
+            .padding(.bottom, compact ? 8 : 16)
 
             if !compact {
                 Rectangle()
