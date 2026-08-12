@@ -23,6 +23,7 @@ struct AudioTestView: View {
         let gate: Float
         let passedGate: Bool
         let fingerprinted: Bool
+        let baselineSimilarity: Double?
     }
 
     @State private var history: [OnsetEvent] = []
@@ -34,23 +35,34 @@ struct AudioTestView: View {
     @State private var gateFloor: Float = 0.04
     @State private var gateRelative: Float = 0.12
 
+    // Gangsa-strike spectral baseline.
+    @State private var capturingBaseline = false
+    @State private var baselineCount: Int?          // strikes learned, nil = none yet
+    @State private var simThreshold: Float = 0.5    // accept as gangsa above this
+
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
-            VStack(spacing: 24) {
+            VStack(spacing: 0) {
                 header
-                statusPanel
-                historyStrip
-                gateControls
-                Text("Tap the gangsa. Green = accepted strike · Yellow = passed gate but no fingerprint · Grey = below gate (too quiet / noise floor).")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                Spacer()
+                    .padding(.top, 24)
+                ScrollView {
+                    VStack(spacing: 24) {
+                        statusPanel
+                        historyStrip
+                        baselineControls
+                        gateControls
+                        Text("Tap the gangsa. Green = accepted strike · Yellow = passed gate but no fingerprint · Grey = below gate (too quiet / noise floor).")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.5))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .padding(.top, 24)
+                    .padding(.bottom, 40)
+                }
             }
-            .padding(.top, 24)
         }
         .onAppear {
             try? audio.start(profile: app.profile)
@@ -94,6 +106,10 @@ struct AudioTestView: View {
             if let e = lastEvent {
                 meter(label: "strike", value: e.amplitude, color: .blue)
                 meter(label: "gate", value: e.gate, color: Theme.miss)
+                if let sim = e.baselineSimilarity {
+                    // Cosine similarity is 0…1 already, so meter against 1.0.
+                    meter(label: "gangsa", value: Float(sim), color: Theme.hit, fullScale: 1)
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -102,8 +118,9 @@ struct AudioTestView: View {
         .padding(.horizontal, 24)
     }
 
-    private func meter(label: String, value: Float, color: Color) -> some View {
-        HStack(spacing: 12) {
+    private func meter(label: String, value: Float, color: Color, fullScale: Float? = nil) -> some View {
+        let denom = fullScale ?? scale
+        return HStack(spacing: 12) {
             Text(label)
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.6))
@@ -112,7 +129,7 @@ struct AudioTestView: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(.white.opacity(0.1))
                     Capsule().fill(color)
-                        .frame(width: geo.size.width * CGFloat(min(1, value / scale)))
+                        .frame(width: geo.size.width * CGFloat(min(1, value / denom)))
                 }
             }
             .frame(height: 14)
@@ -145,6 +162,40 @@ struct AudioTestView: View {
                     .padding(.horizontal, 24)
             }
         }
+    }
+
+    private var baselineControls: some View {
+        VStack(spacing: 10) {
+            HStack(spacing: 12) {
+                SecondaryButton(
+                    title: capturingBaseline ? "Done" : (baselineCount == nil ? "Learn strike baseline" : "Re-learn baseline"),
+                    systemImage: capturingBaseline ? "checkmark" : "waveform.badge.plus"
+                ) {
+                    if capturingBaseline {
+                        audio.finishBaselineCapture { count in
+                            baselineCount = count
+                            capturingBaseline = false
+                        }
+                    } else {
+                        audio.startBaselineCapture()
+                        capturingBaseline = true
+                    }
+                }
+                if capturingBaseline {
+                    Text("hit any keys a few times…")
+                        .font(.caption).foregroundStyle(Theme.accent)
+                } else if let n = baselineCount {
+                    Text("baseline from \(n) strikes")
+                        .font(.caption).foregroundStyle(.white.opacity(0.6))
+                }
+                Spacer()
+            }
+            if baselineCount != nil {
+                slider(label: "gangsa≥", value: $simThreshold, range: 0...1)
+            }
+        }
+        .padding(.horizontal, 24)
+        .onChange(of: simThreshold) { _, new in audio.setBaselineThreshold(new) }
     }
 
     private var gateControls: some View {
@@ -184,23 +235,33 @@ struct AudioTestView: View {
     private var statusText: String {
         guard let e = lastEvent else { return "LISTENING" }
         if !e.passedGate { return "TOO QUIET" }
+        if let sim = e.baselineSimilarity {
+            return sim >= Double(simThreshold) ? "GANGSA" : "NOISE"
+        }
         return e.fingerprinted ? "STRIKE" : "STRIKE?"
     }
 
     private var statusColor: Color {
         guard let e = lastEvent else { return .white.opacity(0.5) }
         if !e.passedGate { return .white.opacity(0.4) }
+        if let sim = e.baselineSimilarity {
+            return sim >= Double(simThreshold) ? Theme.hit : Theme.miss
+        }
         return e.fingerprinted ? Theme.hit : Theme.accent
     }
 
     private func color(for e: OnsetEvent) -> Color {
         if !e.passedGate { return .white.opacity(0.25) }
+        if let sim = e.baselineSimilarity {
+            return sim >= Double(simThreshold) ? Theme.hit : Theme.miss
+        }
         return e.fingerprinted ? Theme.hit : Theme.accent
     }
 
     private func ingest(_ d: AudioEngineController.OnsetDebug) {
         let e = OnsetEvent(amplitude: d.amplitude, gate: d.gate,
-                           passedGate: d.passedGate, fingerprinted: d.fingerprinted)
+                           passedGate: d.passedGate, fingerprinted: d.fingerprinted,
+                           baselineSimilarity: d.baselineSimilarity)
         history.append(e)
         if history.count > 60 { history.removeFirst(history.count - 60) }
         lastEvent = e

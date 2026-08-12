@@ -40,8 +40,18 @@ final class AudioEngineController {
         let gate: Float
         let passedGate: Bool
         let fingerprinted: Bool
+        /// Cosine similarity to the generic gangsa-strike baseline, if one is set.
+        /// High for a real strike, low for a scream/clap — nil when no baseline.
+        let baselineSimilarity: Double?
     }
     var onOnsetDebug: ((OnsetDebug) -> Void)?
+
+    /// Called on the main queue when a strike is confirmed as a real gangsa hit:
+    /// it passed the amplitude gate AND its spectrum matched the learned baseline
+    /// above `baselineThreshold`. This is the play trigger when a baseline exists —
+    /// vision then decides which key at `hostTime`. Blocks hovers (no sound) and
+    /// screams (wrong spectrum). Never fires when no baseline is set.
+    var onConfirmedStrike: ((_ hostTime: Double) -> Void)?
 
     /// Called on the main queue for every onset, with the fingerprint that the
     /// calibration flow should store, plus a display-only pitch estimate.
@@ -79,6 +89,20 @@ final class AudioEngineController {
     private var detector: OnsetDetector?
     private var fingerprinter: Fingerprinter?
     private var classifier: KeyClassifier?
+
+    /// Generic "this is a gangsa strike" spectral template (L2-normalised), used
+    /// to tell a real strike from a scream/clap. `baselineAccumulator` collects
+    /// fingerprints while learning it. Both live on the DSP queue.
+    private var strikeBaseline: [Float]?
+    private var baselineAccumulator: [[Float]]?
+    /// Similarity a strike must reach to be confirmed gangsa. Tuned in the audio
+    /// test screen. Accessed on the DSP queue.
+    private var baselineThreshold: Float = 0.5
+
+    /// Live gate overrides from the audio test screen. Kept separate from `config`
+    /// so they survive `start()` reconfiguring, which replaces `config` wholesale.
+    private var gateFloorOverride: Float?
+    private var gateRelativeOverride: Float?
 
     /// Absolute index of the next STFT window's first sample.
     private var nextWindowStart = 0
@@ -210,6 +234,9 @@ final class AudioEngineController {
 
     private func configure(with newConfig: DSPConfig, keys: [InstrumentKey]) {
         config = newConfig
+        // Re-apply any live gate tuning the audio test screen set this session.
+        if let f = gateFloorOverride { config.minStrikeAmplitude = f }
+        if let r = gateRelativeOverride { config.minAmplitudeRelative = r }
 
         let onsetFFT = FFTProcessor(size: config.onsetWindow)
         let fingerprintFFT = FFTProcessor(size: config.fpWindow)
@@ -348,7 +375,7 @@ final class AudioEngineController {
         let gate = max(config.minStrikeAmplitude,
                        config.minAmplitudeRelative * strikeAmplitudePeak)
         guard peak >= gate else {
-            reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: false, fingerprinted: false)
+            reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: false, fingerprinted: false, baselineSimilarity: nil)
             return
         }
         strikeAmplitudePeak = max(strikeAmplitudePeak * amplitudePeakDecay, peak)
@@ -361,16 +388,27 @@ final class AudioEngineController {
         // this is all a normal strike needs — no per-key audio classification.
         DispatchQueue.main.async { [weak self] in self?.onStrikeDetected?(hostTime) }
 
-        // The fingerprint is only needed for calibration (capture / live feed) and
-        // the audio test's quality readout. Skip the 4096-pt FFT entirely in normal
-        // play — nothing consumes it there anymore.
-        guard capture != nil || onCalibrationStrike != nil || onOnsetDebug != nil else { return }
+        // The fingerprint is needed for calibration, the audio test's readout, and
+        // the gangsa-strike baseline (learning it or scoring against it). Skip the
+        // 4096-pt FFT entirely in normal play when none of those are active.
+        guard capture != nil || onCalibrationStrike != nil || onOnsetDebug != nil
+                || baselineAccumulator != nil || strikeBaseline != nil else { return }
 
         guard let vector = fingerprinter.fingerprint(onsetSample: onset.sampleIndex, ring: ring) else {
-            reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: false)
+            reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: false, baselineSimilarity: nil)
             return
         }
-        reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: true)
+
+        // Score against the gangsa-strike baseline (if learned) and collect samples
+        // while learning it.
+        if baselineAccumulator != nil { baselineAccumulator?.append(vector) }
+        let similarity = strikeBaseline.map { Double(dot($0, vector)) }
+        reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: true, baselineSimilarity: similarity)
+
+        // Confirmed gangsa strike → the play trigger.
+        if let similarity, similarity >= Double(baselineThreshold) {
+            DispatchQueue.main.async { [weak self] in self?.onConfirmedStrike?(hostTime) }
+        }
 
         // A capture window collects candidates rather than reporting the first.
         if capture != nil {
@@ -416,17 +454,65 @@ final class AudioEngineController {
     /// effect on the next onset without a restart.
     func setGate(floor: Float, relative: Float) {
         queue.async { [weak self] in
+            self?.gateFloorOverride = floor
+            self?.gateRelativeOverride = relative
             self?.config.minStrikeAmplitude = floor
             self?.config.minAmplitudeRelative = relative
         }
     }
 
     private func reportOnsetDebug(hostTime: Double, amplitude: Float, gate: Float,
-                                  passedGate: Bool, fingerprinted: Bool) {
+                                  passedGate: Bool, fingerprinted: Bool,
+                                  baselineSimilarity: Double?) {
         guard onOnsetDebug != nil else { return }
         let debug = OnsetDebug(hostTime: hostTime, amplitude: amplitude, gate: gate,
-                               passedGate: passedGate, fingerprinted: fingerprinted)
+                               passedGate: passedGate, fingerprinted: fingerprinted,
+                               baselineSimilarity: baselineSimilarity)
         DispatchQueue.main.async { [weak self] in self?.onOnsetDebug?(debug) }
+    }
+
+    // MARK: - Gangsa-strike baseline
+
+    /// Whether a generic strike baseline has been learned this session.
+    var hasStrikeBaseline: Bool { queue.sync { strikeBaseline != nil } }
+
+    /// Begin averaging the next strikes into a generic gangsa-strike template.
+    func startBaselineCapture() {
+        queue.async { [weak self] in self?.baselineAccumulator = [] }
+    }
+
+    /// Finish learning; averages the collected fingerprints into the baseline.
+    /// Returns the number of strikes that went into it (0 = nothing captured).
+    func finishBaselineCapture(completion: @escaping (Int) -> Void) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            let collected = self.baselineAccumulator ?? []
+            self.baselineAccumulator = nil
+            if let template = KeyClassifier.averageFingerprints(collected) {
+                self.strikeBaseline = template
+            }
+            DispatchQueue.main.async { completion(collected.count) }
+        }
+    }
+
+    func clearBaseline() {
+        queue.async { [weak self] in
+            self?.strikeBaseline = nil
+            self?.baselineAccumulator = nil
+        }
+    }
+
+    /// The similarity threshold a strike must clear to be confirmed gangsa.
+    func setBaselineThreshold(_ value: Float) {
+        queue.async { [weak self] in self?.baselineThreshold = value }
+    }
+
+    /// Cosine similarity of two L2-normalised fingerprints.
+    private func dot(_ a: [Float], _ b: [Float]) -> Float {
+        guard a.count == b.count else { return 0 }
+        var sum: Float = 0
+        for i in 0..<a.count { sum += a[i] * b[i] }
+        return sum
     }
 
     private func recordOnset(_ hostTime: Double) {

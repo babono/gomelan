@@ -46,6 +46,11 @@ final class AppState {
     var metronomeEnabled: Bool = true
     var referenceToneEnabled: Bool = true
 
+    /// Require a real gangsa strike sound (spectral baseline) to register a hit.
+    /// On = blocks hovering/screams but needs a learned baseline; off = vision
+    /// alone counts the hit (more lenient, no sound needed).
+    var requireStrikeSound: Bool = false
+
     init() {
         // A profile calibrated on the real instrument takes precedence over the
         // bundled placeholder.

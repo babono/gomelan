@@ -20,6 +20,9 @@ struct PlayView: View {
     @State private var displayLink = DisplayLink()
     @State private var fusion: StrikeFusion?
     @State private var visionDetector = VisionStrikeDetector()
+    /// When a gangsa-strike baseline is learned, audio confirms strikes (blocks
+    /// hovers/screams) and drives the trigger; otherwise vision self-triggers.
+    @State private var useAudioConfirmation = false
     /// Full-bleed size of the overlay/preview, for the vision crop mapping.
     @State private var overlaySize: CGSize = .zero
 
@@ -137,6 +140,9 @@ struct PlayView: View {
 
     private func setup() {
         camera.start()
+        // The aligning flow locks focus on the shared device; hand it back so the
+        // vision classifier (and the learner) see a sharp image during play.
+        camera.enableContinuousAutoFocus()
 
         engine.cue = cue
         engine.metronomeEnabled = app.metronomeEnabled
@@ -162,11 +168,23 @@ struct PlayView: View {
                               keys: app.profile.keys,
                               viewSize: overlaySize)
 
-        // Detection is vision self-triggering now (see runVisionDetection); the
-        // audio engine is left running only for the calibrated-mic HUD/cues, not
-        // as the strike trigger — that's what broke in a noisy room.
         visionDetector.reset()
         try? audio.start(profile: app.profile)
+
+        // Require an audio-confirmed strike only when the user asked for it AND a
+        // baseline exists to check against. Then audio drives the trigger (blocks
+        // hovering/screams) and vision picks the key. Otherwise vision alone.
+        useAudioConfirmation = app.requireStrikeSound && audio.hasStrikeBaseline
+        if useAudioConfirmation {
+            audio.onConfirmedStrike = { hostTime in
+                Task { @MainActor in
+                    guard countdown == nil, !paused, !engine.isFinished else { return }
+                    if let decision = await fusion?.resolveVisionFirst(hostTime: hostTime) {
+                        applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
+                    }
+                }
+            }
+        }
 
         runCountdown()
     }
@@ -191,7 +209,9 @@ struct PlayView: View {
     /// test screen; the model is small enough not to stall the overlay.
     private func runVisionDetection() async {
         while !Task.isCancelled {
-            if countdown == nil, !paused, !engine.isFinished,
+            // When audio confirmation is on, strikes come from onConfirmedStrike
+            // instead — don't also self-trigger here (would double-register).
+            if !useAudioConfirmation, countdown == nil, !paused, !engine.isFinished,
                let (scores, hostTime) = fusion?.latestScores() {
                 let fired = visionDetector.process(scores: scores)
                 // If several keys cross at once, take the most confident.
@@ -200,14 +220,19 @@ struct PlayView: View {
                     // onset sits within 80ms, snap to its precise time; otherwise
                     // keep the frame time. Audio only sharpens, never blocks.
                     let strikeTime = audio.nearestOnset(to: hostTime, within: 0.08) ?? hostTime
-                    lastKey = key
-                    lastConfidence = scores[key] ?? 0
-                    unclearAt = nil
-                    engine.registerStrike(keyIndex: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
+                    applyStrike(key: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
                 }
             }
             try? await Task.sleep(for: .milliseconds(60))
         }
+    }
+
+    /// Feed a detected strike to the engine and the debug HUD.
+    private func applyStrike(key: Int, hostTime: Double, confidence: Double) {
+        lastKey = key
+        lastConfidence = confidence
+        unclearAt = nil
+        engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
     }
 
     private func pause() {
@@ -229,6 +254,7 @@ struct PlayView: View {
     private func teardown() {
         displayLink.stop()
         audio.onStrikeDetected = nil
+        audio.onConfirmedStrike = nil
         audio.stop()
         cue.stop()
     }
