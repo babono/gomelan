@@ -25,6 +25,7 @@ final class AppState {
         case calibrating        // baseline · learn the voice
         case chooseKotekan
         case chooseHalf
+        case chooseCycles       // Dedicated repetition/cycles screen
         case countdown
         case playing
         case results
@@ -216,18 +217,23 @@ final class AppState {
 
     // MARK: - Session selection
 
-    /// Picked a kotekan and how many times around; go choose which half to play.
-    func chooseKotekan(_ k: Kotekan, cycles: Int) {
+    /// Step 1: Picked a kotekan figure; advance to choose half.
+    func chooseKotekan(_ k: Kotekan) {
         selectedKotekan = k
-        chosenCycles = cycles
         screen = .chooseHalf
     }
 
-    /// Picked a half; render the session and start the countdown.
-    func startSession(half: KotekanHalf) {
-        guard let k = selectedKotekan else { return }
+    /// Step 2: Picked a half (Polos/Sangsih); advance to choose cycles.
+    func chooseHalf(_ half: KotekanHalf) {
         chosenHalf = half
-        selectedSong = k.makeSong(half: half, cycles: chosenCycles)
+        screen = .chooseCycles
+    }
+
+    /// Step 3: Picked cycles; render session and start countdown.
+    func startSession(cycles: Int) {
+        guard let k = selectedKotekan else { return }
+        chosenCycles = cycles
+        selectedSong = k.makeSong(half: chosenHalf, cycles: cycles)
         playMode = .play
         screen = .countdown
     }

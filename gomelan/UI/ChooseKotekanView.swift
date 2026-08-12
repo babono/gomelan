@@ -13,7 +13,6 @@ struct ChooseKotekanView: View {
     @Environment(AppState.self) private var app
 
     @State private var selectedID: String?
-    @State private var cycles: Int = 8
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +28,10 @@ struct ChooseKotekanView: View {
                                 selected: selectedID == k.id,
                                 playable: app.kotekan(k, playableOn: app.profile))
                         .onTapGesture {
-                            if app.kotekan(k, playableOn: app.profile) { selectedID = k.id }
+                            if app.kotekan(k, playableOn: app.profile) {
+                                selectedID = k.id
+                                app.chooseKotekan(k)
+                            }
                         }
                 }
             }
@@ -43,22 +45,25 @@ struct ChooseKotekanView: View {
             if selectedID == nil {
                 selectedID = app.kotekans.first(where: { app.kotekan($0, playableOn: app.profile) })?.id
             }
-            cycles = app.chosenCycles
         }
     }
 
     private var footer: some View {
         HStack(spacing: 16) {
-            Text("How many times around?")
-                .font(.sans(15))
-                .foregroundStyle(Theme.stone)
-            CountStepper(value: $cycles, range: 1...16, numberSize: 30)
+            if let selected = app.kotekans.first(where: { $0.id == selectedID }) {
+                Text(selected.name)
+                    .font(.serif(18, weight: .bold))
+                    .foregroundStyle(Theme.charcoal)
+                Text("· Level \(selected.level) (\(selected.toneLabel))")
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.stone)
+            }
 
             Spacer()
 
             PillButton(title: "Next", style: .outlined) {
                 if let k = app.kotekans.first(where: { $0.id == selectedID }) {
-                    app.chooseKotekan(k, cycles: cycles)
+                    app.chooseKotekan(k)
                 }
             }
         }

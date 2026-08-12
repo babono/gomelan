@@ -24,9 +24,15 @@ struct ChooseHalfView: View {
 
                 HStack(spacing: 16) {
                     HalfCard(half: .polos, kotekan: k, selected: half == .polos)
-                        .onTapGesture { half = .polos }
+                        .onTapGesture {
+                            half = .polos
+                            app.chooseHalf(.polos)
+                        }
                     HalfCard(half: .sangsih, kotekan: k, selected: half == .sangsih)
-                        .onTapGesture { half = .sangsih }
+                        .onTapGesture {
+                            half = .sangsih
+                            app.chooseHalf(.sangsih)
+                        }
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
@@ -34,8 +40,8 @@ struct ChooseHalfView: View {
 
                 HStack {
                     Spacer()
-                    PillButton(title: "Start practice", style: .outlined) {
-                        app.startSession(half: half)
+                    PillButton(title: "Next", style: .outlined) {
+                        app.chooseHalf(half)
                     }
                 }
                 .padding(.horizontal, 24)

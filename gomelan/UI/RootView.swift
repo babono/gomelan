@@ -31,7 +31,7 @@ struct RootView: View {
     private var isPaper: Bool {
         switch app.screen {
         case .welcome, .permissionsBlocked, .choosingKeyCount,
-             .chooseInstrument, .chooseKotekan, .chooseHalf, .results, .settings:
+             .chooseInstrument, .chooseKotekan, .chooseHalf, .chooseCycles, .results, .settings:
             return true
         case .checkingPermissions, .framing, .aligning, .calibrating,
              .countdown, .playing, .malletTest, .detectionTest, .audioTest:
@@ -62,6 +62,8 @@ struct RootView: View {
             ChooseKotekanView()
         case .chooseHalf:
             ChooseHalfView()
+        case .chooseCycles:
+            ChooseCyclesView()
         case .countdown, .playing:
             PlayView(camera: camera, audio: audio, cue: cue)
         case .results:
