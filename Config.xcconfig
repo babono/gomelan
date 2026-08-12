@@ -1,5 +1,0 @@
-// Local, per-developer settings — do NOT commit this file.
-// Copy from Config.xcconfig.template and fill in your own values.
-
-DEVELOPMENT_TEAM = U96VKD93X4
-PRODUCT_BUNDLE_IDENTIFIER = me.babono.gomelan
