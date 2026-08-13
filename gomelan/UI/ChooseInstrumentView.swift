@@ -24,10 +24,13 @@ struct ChooseInstrumentView: View {
                    backTitle: "Home",
                    onBack: { app.screen = .welcome })
 
+            //R The empty message is plain centred text, not a card: a card here
+            //R read as an instrument you could not use. Both states keep the same
+            //R frame — top bar, one flexible middle, footer — so only the middle
+            //R changes, and the footer cannot be pushed off the bottom.
             if app.savedProfiles.isEmpty {
-                emptyStateCard
-                    .padding(32)
-                    .frame(maxHeight: .infinity)
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 18) {
@@ -60,30 +63,31 @@ struct ChooseInstrumentView: View {
         }
     }
 
-    private var emptyStateCard: some View {
-        VStack(spacing: 16) {
+    /// Centred on the empty rail. Deliberately short: this sits in the same
+    /// space a row of cards occupies, which on a landscape phone is not tall.
+    private var emptyState: some View {
+        VStack(spacing: 12) {
             Image(systemName: "tuningfork")
-                .font(.sans(44))
+                .font(.sans(32))
                 .foregroundStyle(Theme.terracotta)
 
-            Text("No Instruments Setup Yet")
-                .font(.serif(22, weight: .semibold))
+            Text("No instruments yet")
+                .font(.serif(26, weight: .bold))
                 .foregroundStyle(Theme.charcoal)
 
-            Text("Calibrate your gamelan key alignments and strike voice to start practicing.")
+            Text("Every gamelan is tuned differently, so gomelan learns yours — where the bilah are and how they sound.")
                 .font(.sans(14))
                 .foregroundStyle(Theme.stone)
                 .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .frame(maxWidth: 440)
 
-            PillButton(title: "Setup New Instrument", style: .filled, tint: Theme.terracotta) {
+            PillButton(title: "Set up · 4 steps", style: .filled, tint: Theme.terracotta) {
                 app.addNewInstrument()
             }
-            .padding(.top, 8)
+            .padding(.top, 4)
         }
-        .padding(36)
-        .frame(maxWidth: 420)
-        .background(Theme.creamSunken, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Theme.charcoal.opacity(0.12), lineWidth: 1))
+        .padding(24)
     }
 
     private func instrumentCard(_ profile: InstrumentProfile) -> some View {
@@ -223,7 +227,9 @@ struct ChooseInstrumentView: View {
 
             Spacer()
 
-            Text("\(app.savedProfiles.count) saved instrument(s)")
+            Text(app.savedProfiles.isEmpty
+                 ? "No instruments saved"
+                 : "\(app.savedProfiles.count) saved instrument\(app.savedProfiles.count == 1 ? "" : "s")")
                 .font(.sans(13))
                 .foregroundStyle(Theme.stone)
         }
@@ -246,7 +252,10 @@ struct ChooseInstrumentView: View {
         if app.profile.id == updated.id {
             app.profile = updated
         }
-        app.saveProfile()
+        //R Save the instrument that was RENAMED. `saveProfile()` writes
+        //R `app.profile`, so renaming any instrument other than the active one
+        //R was silently discarded — and worse, re-wrote the active one.
+        app.saveInstrument(updated)
         editingProfileId = nil
     }
 }

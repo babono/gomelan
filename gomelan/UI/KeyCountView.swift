@@ -2,7 +2,7 @@
 //  KeyCountView.swift
 //  gomelan
 //
-//  Setup step 1/3. How many keys does this instrument have? Asked before framing
+//  Setup step 1/4. How many keys does this instrument have? Asked before framing
 //  because the answer decides how many bilah the later steps draw.
 //
 //  A pemade or kantilan usually carries ten, but practice sets and partial
@@ -23,7 +23,7 @@ struct KeyCountView: View {
             TopBar(title: "Set up your gamelan",
                    backTitle: "Back",
                    onBack: { app.cancelInstrumentSetup() },
-                   trailingText: "1 / 3")
+                   trailingText: "1 / 4")
 
             HStack(alignment: .center, spacing: 0) {
                 // Question + explanation

@@ -2,7 +2,7 @@
 //  AligningView.swift
 //  gomelan
 //
-//  Setup step 3/3 (PRD §13.4 .aligning). The bundled bilah masks are overlaid
+//  Setup step 3/4 (PRD §13.4 .aligning). The bundled bilah masks are overlaid
 //  and draggable — the carved, gilded frame is visually busy, so manual
 //  drag-adjust is not optional polish (§3.2). Confirming locks focus/exposure
 //  (§6.2) and leads into the baseline.
@@ -78,7 +78,7 @@ struct AligningView: View {
                 TopBar(title: "Fit the mask to your bilah",
                        backTitle: "Rescan",
                        onBack: { app.screen = .framing },
-                       trailingText: "3 / 3",
+                       trailingText: "3 / 4",
                        tint: Theme.cream, accent: Theme.copper,
                        compact: true)
                     .background(
@@ -102,14 +102,34 @@ struct AligningView: View {
                     : app.profile.keys
                 app.seedMasksFromFraming = false
             }
-            //R Let the session deliver a frame, then TRY to snap the masks onto
-            //R the bars. Only a complete snap is applied: a partial one used to
-            //R fling the first few masks onto whatever the detector found and
-            //R leave the rest behind, which read as "the keys jumped into the
-            //R corner" right after you had carefully framed the instrument.
+            //R Predict where the bars are as soon as a frame arrives. Only a
+            //R complete snap is applied: a partial one used to fling the first
+            //R few masks onto whatever the detector found and leave the rest
+            //R behind, which read as "the keys jumped into the corner" right
+            //R after you had carefully framed the instrument.
+            //R
+            //R This used to sleep a flat 700ms first and say nothing while it
+            //R did, which is the pause you feel arriving from framing. It waits
+            //R for an actual frame now — the session is already running, so that
+            //R is usually immediate — and shows what it is doing.
             Task {
-                try? await Task.sleep(for: .milliseconds(700))
+                busyMessage = "Finding your bilah…"
+                let started = CACurrentMediaTime()
                 await autoDetect(requireAll: true)
+
+                //R The prediction is the FAST part — the frames are already
+                //R flowing when we arrive, so it finishes in about a tenth of a
+                //R second. What actually keeps the screen dark is this view's
+                //R brand-new preview layer warming up, which takes a second or
+                //R two and reports nothing when it is done. So the spinner is
+                //R held for a beat rather than blinking out over a black screen.
+                //R The real fix is one shared preview across the camera screens
+                //R instead of a fresh one each time; this covers it until then.
+                let minimumVisible = 1.4 - (CACurrentMediaTime() - started)
+                if minimumVisible > 0 {
+                    try? await Task.sleep(for: .seconds(minimumVisible))
+                }
+                busyMessage = nil
             }
         }
     }
@@ -173,8 +193,7 @@ struct AligningView: View {
     /// framed alone unless every bilah can be placed. Tapping Auto-detect is an
     /// explicit ask, so a partial snap is welcome there.
     private func autoDetect(requireAll: Bool = false) async {
-        guard overlaySize.width > 0,
-              let frame = camera.frameBuffer.nearest(to: CACurrentMediaTime()) else {
+        guard let frame = await waitForFrame() else {
             if !requireAll { status = "No camera frame yet — try Auto-detect again" }
             return
         }
@@ -217,6 +236,23 @@ struct AligningView: View {
         status = n == keys.count
             ? "Snapped all \(keys.count) bilah — nudge any that are off"
             : "Snapped \(n) of \(keys.count) — fit the rest with the controls"
+    }
+
+    /// The newest camera frame, waiting for one if the session has only just
+    /// been handed over — and for the overlay to have a size, since every rect
+    /// is mapped through it. Polls rather than sleeping a fixed guess: arriving
+    /// from framing the camera is already running, so this usually returns on
+    /// the first try.
+    private func waitForFrame(timeout: Double = 2) async -> FrameBuffer.Frame? {
+        let deadline = CACurrentMediaTime() + timeout
+        while CACurrentMediaTime() < deadline {
+            if overlaySize.width > 0,
+               let frame = camera.frameBuffer.nearest(to: CACurrentMediaTime()) {
+                return frame
+            }
+            try? await Task.sleep(for: .milliseconds(40))
+        }
+        return nil
     }
 
     /// Crop the frame to the area the player framed the instrument into, fit the
@@ -293,7 +329,9 @@ struct AligningView: View {
         Task {
             await app.saveProfileAsync()
             await camera.lockFocusAndExposureAsync()
-            busyMessage = nil
+            //R Deliberately NOT cleared before navigating: the baseline screen
+            //R has its own warm-up, and dropping the scrim here would show this
+            //R screen bare for a frame before it goes.
             app.alignmentConfirmed()
         }
     }

@@ -8,8 +8,8 @@
 //  object detector throws away, and which together make the answer almost
 //  overdetermined:
 //
-//   1. WE KNOW THE COUNT. The player told us in step 1/3.
-//   2. WE KNOW THE REGION. They framed it in step 2/3, so the table, the floor
+//   1. WE KNOW THE COUNT. The player told us in step 1/4.
+//   2. WE KNOW THE REGION. They framed it in step 2/4, so the table, the floor
 //      and the wooden frame ends are largely excluded.
 //   3. WE KNOW THE ROW IS PERIODIC. Bilah are hung at an even pitch. So rather
 //      than finding N bars independently and hoping, we fit ONE comb of N teeth

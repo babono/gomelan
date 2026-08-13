@@ -2,9 +2,9 @@
 //  AppState.swift
 //  gomelan
 //
-//  The app-level state machine (PRD §13.4). Setup runs in three numbered steps —
-//  count the keys, frame the instrument, fit the mask — then learns the
-//  instrument's voice (baseline), and lands on the kotekan picker. Any state can
+//  The app-level state machine (PRD §13.4). Setup runs in four numbered steps —
+//  count the keys, frame the instrument, fit the mask, learn the instrument's
+//  voice (baseline) — and lands on the kotekan picker. Any state can
 //  return to .aligning via the persistent "realign" affordance.
 //
 
@@ -19,9 +19,9 @@ final class AppState {
         case checkingPermissions
         case permissionsBlocked
         case chooseInstrument    // Multi-instrument selection
-        case choosingKeyCount   // setup 1/3
-        case framing            // setup 2/3
-        case aligning           // setup 3/3
+        case choosingKeyCount   // setup 1/4
+        case framing            // setup 2/4
+        case aligning           // setup 3/4
         case calibrating        // baseline · learn the voice
         case baseline
         case chooseKotekan
@@ -91,6 +91,16 @@ final class AppState {
         savedProfiles = ProfileStore.loadAll()
     }
 
+    /// Save a specific instrument, which may not be the active one — renaming a
+    /// card in the list, for instance.
+    func saveInstrument(_ p: InstrumentProfile) {
+        ProfileStore.save(p)
+        //R `ProfileStore.save` also marks what it saved as selected, which is
+        //R right when it IS the active instrument and wrong otherwise.
+        ProfileStore.setSelectedID(profile.id)
+        savedProfiles = ProfileStore.loadAll()
+    }
+
     /// The same save, off the main actor. Used by the steps that show a "saving"
     /// state: it keeps the spinner honest — it is up while real work happens,
     /// rather than for one frame around a synchronous write — and keeps the disk
@@ -135,20 +145,19 @@ final class AppState {
     }
 
     func cancelInstrumentSetup() {
+        savedProfiles = ProfileStore.loadAll()
         if isAddingNewInstrument {
-            if let prev = previousProfile {
+            //R Only restore an instrument that still exists: it can have been
+            //R deleted from the list before setup was cancelled.
+            if let prev = previousProfile, savedProfiles.contains(where: { $0.id == prev.id }) {
                 profile = prev
                 ProfileStore.setSelectedID(prev.id)
             }
             isAddingNewInstrument = false
             previousProfile = nil
         }
-        savedProfiles = ProfileStore.loadAll()
-        if savedProfiles.isEmpty {
-            screen = .welcome
-        } else {
-            screen = .chooseInstrument
-        }
+        // Back to the list either way — it handles being empty now.
+        screen = .chooseInstrument
     }
 
     func realignInstrument(_ p: InstrumentProfile) {
@@ -157,14 +166,33 @@ final class AppState {
         screen = .aligning
     }
 
+    /// Delete an instrument, including the last one — an instrument you can't
+    /// get rid of is a bug, not a safeguard.
+    ///
+    /// The delicate part is forgetting it EVERYWHERE. `profile` is what the next
+    /// `saveProfile()` writes, and `ProfileStore.save` re-inserts anything it
+    /// doesn't already find — so leaving the deleted instrument sitting in
+    /// `profile` (or parked in `previousProfile` by an in-progress setup) means
+    /// it quietly comes back the next time anything is saved.
     func deleteInstrument(_ profileID: String) {
         ProfileStore.delete(profileID)
         savedProfiles = ProfileStore.loadAll()
-        if profile.id == profileID {
-            if let next = savedProfiles.first {
-                profile = next
-                ProfileStore.setSelectedID(next.id)
-            }
+
+        if previousProfile?.id == profileID { previousProfile = nil }
+        guard profile.id == profileID else { return }
+
+        if let next = savedProfiles.first {
+            profile = next
+            ProfileStore.setSelectedID(next.id)
+            baselineLearned = next.hasLearnedBaseline
+            requireStrikeSound = next.hasLearnedBaseline
+        } else {
+            // Nothing left: back to the same state as a fresh install, so the
+            // empty list offers setup rather than pointing at a ghost.
+            profile = ResourceLoader.defaultProfile()
+            ProfileStore.setSelectedID("")
+            baselineLearned = false
+            requireStrikeSound = false
         }
     }
 
@@ -175,28 +203,19 @@ final class AppState {
 
     // MARK: - Onboarding
 
+    /// Always the instrument list, even when it is empty — it is the home for
+    /// instruments, and dropping a first-time player straight into a three-step
+    /// setup gives them no idea where they are or how to get back out.
     func begin() {
         savedProfiles = ProfileStore.loadAll()
-        if savedProfiles.isEmpty {
-            addNewInstrument()
-        } else {
-            screen = .chooseInstrument
-        }
+        screen = .chooseInstrument
     }
 
     func permissionsResolved(granted: Bool) {
-        if granted {
-            if !savedProfiles.isEmpty {
-                screen = .chooseInstrument
-            } else {
-                addNewInstrument()
-            }
-        } else {
-            screen = .permissionsBlocked
-        }
+        screen = granted ? .chooseInstrument : .permissionsBlocked
     }
 
-    /// Step 1/3: how many keys does this instrument have? Chosen before framing
+    /// Step 1/4: how many keys does this instrument have? Chosen before framing
     /// so the framing and mask steps know how many bilah to draw.
     func keyCountChosen(_ count: Int) {
         var updated = profile
@@ -208,7 +227,7 @@ final class AppState {
         screen = .framing
     }
 
-    /// The area the player framed the instrument into (step 2/3), normalised to
+    /// The area the player framed the instrument into (step 2/4), normalised to
     /// the full-bleed camera space. It is the search region for key prediction
     /// and the fallback layout's bounds — everything outside it is table, floor
     /// and the wooden frame ends.
@@ -216,22 +235,25 @@ final class AppState {
     /// the only space this has to leave is the strip the caption sits in. The
     /// bigger it is, the more of the frame the instrument can fill, and the more
     /// pixels per bilah the prediction and the strike classifier both get.
-    var framedRegion = NormalizedRect(x: 0.03, y: 0.09, w: 0.94, h: 0.775)
+    /// The bottom stops short of the caption strip by design — the dashed edge
+    /// and the Continue button sharing a line read as a collision.
+    var framedRegion = NormalizedRect(x: 0.03, y: 0.09, w: 0.94, h: 0.745)
 
-    /// Set when arriving at 3/3 from framing (rather than a later re-align), so
+    /// Set when arriving at 3/4 from framing (rather than a later re-align), so
     /// the masks start from the area just framed instead of a saved fit.
     var seedMasksFromFraming = false
 
-    /// Step 2/3 → 3/3.
+    /// Step 2/4 → 3/4.
     func framingConfirmed() {
         seedMasksFromFraming = true
         screen = .aligning
     }
 
-    /// Step 3/3 leads into the baseline: the app learns what a real gangsa strike
+    /// Step 3/4 leads into the baseline (4/4): the app learns what a real gangsa strike
     /// sounds like on THIS instrument before it can tell strikes from noise.
+    /// The caller has already written the profile (it holds a "saving" state
+    /// over the write and the lens lock), so this only advances.
     func alignmentConfirmed() {
-        saveProfile()
         if isAddingNewInstrument {
             isAddingNewInstrument = false
             previousProfile = nil

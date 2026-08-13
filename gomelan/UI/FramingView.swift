@@ -2,9 +2,9 @@
 //  FramingView.swift
 //  gomelan
 //
-//  Setup step 2/3 (PRD §3.2, §8). Mount the phone above the gangsa and settle
+//  Setup step 2/4 (PRD §3.2, §8). Mount the phone above the gangsa and settle
 //  the stand until the bilah sit roughly under the guide. Rough is the point:
-//  step 3/3 is where the masks are fitted exactly.
+//  step 3/4 is where the masks are fitted exactly.
 //
 //  Two things this screen must get right, and used to get wrong:
 //
@@ -18,15 +18,30 @@
 //   2. ONE AREA, not ten boxes. A row of individual key outlines is impossible
 //      to line a real instrument up against — and pointless, since the next step
 //      exists to place them. All this step has to establish is "every bilah is
-//      inside here", which is also what makes the prediction on 3/3 tractable:
+//      inside here", which is also what makes the prediction on 3/4 tractable:
 //      it turns the search region from the whole room into the instrument.
 //
 
 import SwiftUI
+import QuartzCore
 
 struct FramingView: View {
     @Environment(AppState.self) private var app
     let camera: CameraController
+
+    /// Whether the camera is actually delivering pictures yet. Starting a
+    /// capture session takes a moment, and until it does this screen is a black
+    /// rectangle with a dashed box on it — which looks like something is broken
+    /// rather than like something is loading.
+    @State private var cameraReady = false
+    /// Set the instant Continue is tapped, so the tap has a visible effect while
+    /// the next screen brings its own preview up.
+    @State private var handingOver = false
+
+    private var busyMessage: String? {
+        if handingOver { return "Finding your bilah…" }
+        return cameraReady ? nil : "Starting the camera…"
+    }
 
     var body: some View {
         ZStack {
@@ -40,7 +55,7 @@ struct FramingView: View {
                 TopBar(title: "Frame the instrument",
                        backTitle: "Back",
                        onBack: { app.screen = .choosingKeyCount },
-                       trailingText: "2 / 3",
+                       trailingText: "2 / 4",
                        tint: Theme.cream, accent: Theme.copper,
                        compact: true)
                     .background(
@@ -55,7 +70,25 @@ struct FramingView: View {
             }
         }
         .background(Theme.ink)
+        .busy(busyMessage)
         .onAppear { camera.start() }
+        .task {
+            // Wait for a real frame rather than for `status == .running`: the
+            // session reports running before the first picture comes out.
+            let deadline = CACurrentMediaTime() + 6
+            while !cameraReady, !Task.isCancelled {
+                if camera.frameBuffer.nearest(to: CACurrentMediaTime()) != nil
+                    || CACurrentMediaTime() > deadline {
+                    //R Give up after a while and let the screen through. A
+                    //R camera that never delivers — no permission, no hardware —
+                    //R must not leave the player stuck behind a scrim with the
+                    //R Back button underneath it.
+                    cameraReady = true
+                    break
+                }
+                try? await Task.sleep(for: .milliseconds(60))
+            }
+        }
     }
 
     /// One line, tight: every point this strip gives back is a point the framing
@@ -70,8 +103,22 @@ struct FramingView: View {
             Spacer(minLength: 12)
 
             PillButton(title: "Continue", style: .filled, tint: Theme.copper, compact: true) {
-                app.framingConfirmed()
+                //R Cover the gap the tap opens: the next screen builds a fresh
+                //R preview layer, which is black until it gets its first frame.
+                //R The spinner starts here and the aligning screen picks it up
+                //R with the same wording, so it reads as one wait, not two.
+                //R
+                //R The navigation is deferred by a frame ON PURPOSE. Changing
+                //R screen in the same turn tears this view down before SwiftUI
+                //R ever draws the overlay, which is why the tap looked like it
+                //R did nothing at all.
+                handingOver = true
+                Task {
+                    try? await Task.sleep(for: .milliseconds(50))
+                    app.framingConfirmed()
+                }
             }
+            .disabled(!cameraReady)
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)

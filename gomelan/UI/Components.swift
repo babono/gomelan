@@ -270,33 +270,43 @@ struct BusyOverlay: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.6).ignoresSafeArea()
+            Color.black.opacity(0.65).ignoresSafeArea()
+            //R A dark card on a dark camera feed disappeared into it — three
+            //R shades of near-black stacked on each other. Solid cream, so it
+            //R reads as a lit panel over the stage whatever is behind it,
+            //R including an unlit room.
             VStack(spacing: 16) {
                 ProgressView()
                     .controlSize(.large)
-                    .tint(Theme.copper)
+                    .tint(Theme.terracotta)
+                    .scaleEffect(1.3)
                 Text(message)
-                    .font(.sans(15))
-                    .foregroundStyle(Theme.cream)
+                    .font(.sans(16, weight: .semibold))
+                    .foregroundStyle(Theme.charcoal)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.horizontal, 32)
-            .padding(.vertical, 26)
-            .background(Theme.inkRaised.opacity(0.95), in: RoundedRectangle(cornerRadius: 16))
-            .overlay(RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Theme.copper.opacity(0.35), lineWidth: 1))
+            .padding(.horizontal, 40)
+            .padding(.vertical, 30)
+            .frame(minWidth: 260)
+            .background(Theme.cream, in: RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20)
+                .strokeBorder(Theme.terracotta.opacity(0.5), lineWidth: 1.5))
+            .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
         }
-        .transition(.opacity)
     }
 }
 
 extension View {
     /// Covers this view with `BusyOverlay` while `message` is non-nil.
+    ///
+    /// No cross-fade: these waits are often under a second, and a fade meant the
+    /// scrim spent a good part of its life half-transparent — which is exactly
+    /// when it looks like a faint smudge rather than a loading state.
     func busy(_ message: String?) -> some View {
         overlay {
             if let message { BusyOverlay(message: message) }
         }
-        .animation(.easeInOut(duration: 0.15), value: message)
     }
 }
 

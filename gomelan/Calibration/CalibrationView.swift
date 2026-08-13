@@ -32,9 +32,20 @@ struct CalibrationView: View {
     @State private var micLevel: Float = 0
     @State private var micLevelTime: Double = 0
     @State private var committing = false
+    /// Up from the moment this screen appears until it is actually listening.
+    /// Starting the audio engine is not instant, and this screen builds its own
+    /// camera preview, which is black until it warms up.
+    @State private var preparing = true
 
     private var confidence: Double { min(1, Double(strikeCount) / Double(strikesNeeded)) }
     private var learned: Bool { strikeCount >= strikesNeeded }
+
+    private var busyMessage: String? {
+        if preparing { return "Getting ready to listen…" }
+        // Folding the accepted strikes into one template, then writing the
+        // profile — short, but it ends in a screen change, so it is shown.
+        return committing ? "Learning the strike…" : nil
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,10 +64,20 @@ struct CalibrationView: View {
             .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .background(Theme.ink)
-        // Folding the accepted strikes into one template, then writing the
-        // profile — short, but it ends in a screen change, so it is shown.
-        .busy(committing ? "Learning the strike…" : nil)
-        .onAppear(perform: setup)
+        .busy(busyMessage)
+        .onAppear {
+            //R Paint the scrim BEFORE setup runs: starting the audio engine
+            //R blocks for a moment, and a spinner that only appears afterwards
+            //R has missed the wait it was there for.
+            Task {
+                try? await Task.sleep(for: .milliseconds(50))
+                setup()
+                //R Hold while this screen's own camera preview warms up — it
+                //R reports nothing when it is ready. See AligningView.
+                try? await Task.sleep(for: .milliseconds(900))
+                preparing = false
+            }
+        }
         .onDisappear(perform: teardown)
     }
 
@@ -73,10 +94,15 @@ struct CalibrationView: View {
                     .foregroundStyle(.white.opacity(0.7))
             }
             Spacer()
-            Text("\(min(strikeCount, strikesNeeded)) / \(strikesNeeded)")
-                .font(.sans(14, weight: .medium))
-                .foregroundStyle(Theme.copper)
-                .frame(width: 90, alignment: .trailing)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("4 / 4")
+                    .font(.sans(13, weight: .medium))
+                    .foregroundStyle(Theme.copper)
+                Text("\(min(strikeCount, strikesNeeded)) / \(strikesNeeded) strikes")
+                    .font(.sans(13))
+                    .foregroundStyle(Theme.inkStone)
+            }
+            .frame(width: 100, alignment: .trailing)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)

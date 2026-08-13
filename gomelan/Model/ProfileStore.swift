@@ -32,18 +32,23 @@ nonisolated enum ProfileStore {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
-        // Try reading multi-profile store
+        //R An EMPTY store is an answer, not a miss. This used to fall through to
+        //R the legacy branch whenever the list came back empty, so deleting your
+        //R last instrument re-migrated the old single-profile file and the
+        //R deleted instrument reappeared out of nowhere.
         if let data = try? Data(contentsOf: listUrl),
-           let profiles = try? decoder.decode([InstrumentProfile].self, from: data),
-           !profiles.isEmpty {
+           let profiles = try? decoder.decode([InstrumentProfile].self, from: data) {
             return profiles
         }
 
-        // Migrate legacy single-profile file if present
+        // Migrate a legacy single-profile file, once.
         if let legacyData = try? Data(contentsOf: legacyUrl),
            let single = try? decoder.decode(InstrumentProfile.self, from: legacyData) {
             let migrated = [single]
             saveAll(migrated)
+            //R Migration is one-way. Leaving the old file behind is what let it
+            //R come back a second time.
+            try? FileManager.default.removeItem(at: legacyUrl)
             return migrated
         }
 
