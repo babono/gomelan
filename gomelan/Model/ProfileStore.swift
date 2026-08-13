@@ -10,7 +10,11 @@
 
 import Foundation
 
-enum ProfileStore {
+/// Nonisolated so a save can be pushed off the main actor — with a strike
+/// baseline in it a profile is no longer a trivial file, and this target
+/// defaults to MainActor, which would otherwise put every write on the same
+/// thread as the UI.
+nonisolated enum ProfileStore {
     private static var listUrl: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("instruments_store.json")

@@ -3,8 +3,23 @@
 //  gomelan
 //
 //  Setup step 2/3 (PRD §3.2, §8). Mount the phone above the gangsa and settle
-//  the stand until every bilah sits inside the frame. First-run setup is meant
-//  to take ~15 seconds (§2).
+//  the stand until the bilah sit roughly under the guide. Rough is the point:
+//  step 3/3 is where the masks are fitted exactly.
+//
+//  Two things this screen must get right, and used to get wrong:
+//
+//   1. FULL-BLEED CAMERA. The preview used to sit in a VStack under the top bar,
+//      inset, clipped and dimmed 35% — you could not really see the instrument
+//      you were being asked to aim at. Worse, aspect-fill in a letterboxed view
+//      crops the scene DIFFERENTLY from the full-bleed aligning screen, so what
+//      you lined up here shifted the moment you continued. Both screens are now
+//      the same full-bleed space, so the framing carries over exactly.
+//
+//   2. ONE AREA, not ten boxes. A row of individual key outlines is impossible
+//      to line a real instrument up against — and pointless, since the next step
+//      exists to place them. All this step has to establish is "every bilah is
+//      inside here", which is also what makes the prediction on 3/3 tractable:
+//      it turns the search region from the whole room into the instrument.
 //
 
 import SwiftUI
@@ -14,79 +29,101 @@ struct FramingView: View {
     let camera: CameraController
 
     var body: some View {
-        VStack(spacing: 0) {
-            TopBar(title: "Frame the instrument",
-                   backTitle: "Back",
-                   onBack: { app.screen = .choosingKeyCount },
-                   trailingText: "2 / 3",
-                   tint: Theme.cream, accent: Theme.copper)
+        ZStack {
+            CameraPreview(session: camera.session)
+                .ignoresSafeArea()
 
-            ZStack {
-                CameraPreview(session: camera.session)
-                    .overlay(Color.black.opacity(0.35))
+            FramingRegion(region: app.framedRegion)
+                .ignoresSafeArea()
 
-                // Framing guide: a soft-cornered dashed window, ~10% margin (§3.2).
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(Theme.copper.opacity(0.55),
-                                  style: StrokeStyle(lineWidth: 1.5, dash: [9, 7]))
-                    .padding(20)
-
-                // Bilah preview: a graduated row that always fits the guide, kept
-                // clear of the bottom caption.
-                VStack(spacing: 0) {
-                    BilahPreview(count: max(app.profile.keyCount, 1))
-                        .padding(.horizontal, 48)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    Color.clear.frame(height: 72)   // reserve the caption strip
-                }
-                .padding(20)
-
-                // Bottom caption + advance, on a scrim so they read over the feed.
-                VStack {
-                    Spacer()
-                    HStack {
-                        SectionLabel("Scanning · hold steady", color: Theme.inkStone)
-                        Spacer()
-                        PillButton(title: "Continue", style: .outlined, tint: Theme.copper) {
-                            app.framingConfirmed()
-                        }
-                    }
-                    .padding(.horizontal, 28)
-                    .padding(.vertical, 18)
+            VStack(spacing: 0) {
+                TopBar(title: "Frame the instrument",
+                       backTitle: "Back",
+                       onBack: { app.screen = .choosingKeyCount },
+                       trailingText: "2 / 3",
+                       tint: Theme.cream, accent: Theme.copper,
+                       compact: true)
                     .background(
-                        LinearGradient(colors: [.clear, .black.opacity(0.6)],
+                        LinearGradient(colors: [.black.opacity(0.55), .clear],
                                        startPoint: .top, endPoint: .bottom)
+                            .ignoresSafeArea(edges: .top)
                     )
-                }
+
+                Spacer()
+
+                bottomBar
             }
-            .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .background(Theme.ink)
         .onAppear { camera.start() }
     }
+
+    /// One line, tight: every point this strip gives back is a point the framing
+    /// window gets.
+    private var bottomBar: some View {
+        HStack(spacing: 16) {
+            SectionLabel("Fit every bilah inside the frame — fill it as much as you can",
+                         color: Theme.copper)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+            Spacer(minLength: 12)
+
+            PillButton(title: "Continue", style: .filled, tint: Theme.copper, compact: true) {
+                app.framingConfirmed()
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        //R Sits low, in the home-indicator strip rather than above it, so the
+        //R caption clears the dashed edge instead of straddling it.
+        .padding(.bottom, 2)
+        .background(
+            LinearGradient(colors: [.clear, .black.opacity(0.65)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .bottom)
+        )
+    }
 }
 
-/// A decorative, self-fitting row of graduated bilah — longest/lowest on the
-/// left — so the count the user chose has a recognisable shape while framing.
-private struct BilahPreview: View {
-    let count: Int
+/// The area every bilah has to sit inside. Everything outside it is dimmed, so
+/// the frame reads as a window rather than as a decoration — and so it is
+/// obvious when a bar is hanging out of it.
+private struct FramingRegion: View {
+    let region: NormalizedRect
 
     var body: some View {
-        GeometryReader { g in
-            let spacing: CGFloat = 12
-            let gaps = CGFloat(max(count - 1, 0)) * spacing
-            let barWidth = min(58, max(8, (g.size.width - gaps) / CGFloat(count)))
-            HStack(alignment: .center, spacing: spacing) {
-                ForEach(0..<count, id: \.self) { i in
-                    let t = count > 1 ? CGFloat(i) / CGFloat(count - 1) : 0
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.10))
-                        .overlay(RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(Theme.copper.opacity(0.5), lineWidth: 1))
-                        .frame(width: barWidth, height: g.size.height * (1 - 0.42 * t))
-                }
+        GeometryReader { geo in
+            let rect = region.rect(in: geo.size)
+            let shape = RoundedRectangle(cornerRadius: 14)
+
+            ZStack {
+                Color.black.opacity(0.42)
+                    .reverseMask {
+                        shape.frame(width: rect.width, height: rect.height)
+                            .position(x: rect.midX, y: rect.midY)
+                    }
+
+                shape
+                    .strokeBorder(Theme.copper.opacity(0.9),
+                                  style: StrokeStyle(lineWidth: 2, dash: [10, 7]))
+                    .frame(width: rect.width, height: rect.height)
+                    .position(x: rect.midX, y: rect.midY)
             }
-            .frame(width: g.size.width, height: g.size.height, alignment: .center)
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+private extension View {
+    /// Punch a hole in this view in the shape of `mask`.
+    func reverseMask<Mask: View>(@ViewBuilder _ mask: () -> Mask) -> some View {
+        self.mask {
+            ZStack {
+                Rectangle()
+                mask().blendMode(.destinationOut)
+            }
+            .compositingGroup()
         }
     }
 }

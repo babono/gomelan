@@ -19,13 +19,15 @@ struct AligningView: View {
     /// back into this view's coordinate space.
     @State private var overlaySize: CGSize = .zero
     @State private var detecting = false
-    @State private var status = "Drag to move · drag an edge handle to adjust size"
+    @State private var status = "Drag a mask to move it · drag an edge handle to resize"
     @State private var selectedIndex: Int?
     /// The corner currently being resized (overlay-normalised), for the magnifier.
     /// Only set while resizing — plain moves don't zoom.
     @State private var dragFocus: CGPoint?
     /// Whether the row-level fit controls are revealed (behind the spanner).
     @State private var showAdjust = false
+    /// Non-nil while the fit is being committed — see `confirmAlignment`.
+    @State private var busyMessage: String?
 
     var body: some View {
         ZStack {
@@ -89,13 +91,25 @@ struct AligningView: View {
                 bottomBar
             }
         }
+        .busy(busyMessage)
         .onAppear {
             camera.start()
-            if keys.isEmpty { keys = app.profile.keys }
-            // Let the session deliver a frame, then seed the masks from the camera.
+            if keys.isEmpty {
+                //R Coming from framing, start inside the area just framed — the
+                //R saved fit belongs to wherever the instrument was last time.
+                keys = app.seedMasksFromFraming
+                    ? InstrumentProfile.layout(count: app.profile.keyCount, in: app.framedRegion)
+                    : app.profile.keys
+                app.seedMasksFromFraming = false
+            }
+            //R Let the session deliver a frame, then TRY to snap the masks onto
+            //R the bars. Only a complete snap is applied: a partial one used to
+            //R fling the first few masks onto whatever the detector found and
+            //R leave the rest behind, which read as "the keys jumped into the
+            //R corner" right after you had carefully framed the instrument.
             Task {
                 try? await Task.sleep(for: .milliseconds(700))
-                await autoDetect()
+                await autoDetect(requireAll: true)
             }
         }
     }
@@ -154,10 +168,14 @@ struct AligningView: View {
 
     /// Detect bilah edges in the current frame and snap the masks onto them. The
     /// user can still drag/resize afterwards; "Reset fit" restores an even row.
-    private func autoDetect() async {
+    ///
+    /// `requireAll` is for the automatic pass on arrival: leave the row you
+    /// framed alone unless every bilah can be placed. Tapping Auto-detect is an
+    /// explicit ask, so a partial snap is welcome there.
+    private func autoDetect(requireAll: Bool = false) async {
         guard overlaySize.width > 0,
               let frame = camera.frameBuffer.nearest(to: CACurrentMediaTime()) else {
-            status = "No camera frame yet — try Auto-detect again"
+            if !requireAll { status = "No camera frame yet — try Auto-detect again" }
             return
         }
         detecting = true
@@ -165,14 +183,21 @@ struct AligningView: View {
 
         let need = max(3, keys.count / 2)
 
-        // 1) The trained detector (or the generic rectangle fallback).
-        let raw = await KeyDetector.detectKeys(in: frame.image,
-                                               minimumAspectRatio: 0.3,
-                                               minimumSize: 0.03)
-        var placed = barCandidates(from: raw, bufferSize: frame.size)
+        // 1) The comb fit inside the framed region: it knows the count, the
+        //    region and that the row is periodic, so it is the one worth trying
+        //    first. See BilahFinder.
+        var placed = findInFramedRegion(frame: frame)
 
-        // 2) If that found too few, try the model-free column-profile aligner,
-        //    which is tuned to this instrument's bright-bar / dark-gap structure.
+        // 2) Otherwise the trained detector (or the generic rectangle fallback),
+        //    searching the whole frame.
+        if placed.count < need {
+            let raw = await KeyDetector.detectKeys(in: frame.image,
+                                                   minimumAspectRatio: 0.3,
+                                                   minimumSize: 0.03)
+            placed = barCandidates(from: raw, bufferSize: frame.size)
+        }
+
+        // 3) Failing that, the luminance column profile over the whole frame.
         if placed.count < need {
             let proj = ProjectionAligner.detect(in: frame.image, count: keys.count)
                 .map { CropMapper.overlayRect(bufferNormalized: $0, bufferSize: frame.size, viewSize: overlaySize) }
@@ -180,16 +205,38 @@ struct AligningView: View {
             if proj.count >= need { placed = proj }
         }
 
-        guard placed.count >= need else {
-            status = "Use the controls below to fit your \(keys.count) bilah"
+        let n = min(keys.count, placed.count)
+        guard placed.count >= need, !requireAll || n == keys.count else {
+            if !requireAll {
+                status = "Use the controls below to fit your \(keys.count) bilah"
+            }
             return
         }
 
-        let n = min(keys.count, placed.count)
         for i in 0..<n { keys[i].rect = placed[i]; keys[i].corners = nil }
         status = n == keys.count
             ? "Snapped all \(keys.count) bilah — nudge any that are off"
             : "Snapped \(n) of \(keys.count) — fit the rest with the controls"
+    }
+
+    /// Crop the frame to the area the player framed the instrument into, fit the
+    /// comb there, and map the result back into overlay space.
+    ///
+    /// The crop IS the region, so the mapping back is a plain scale-and-offset —
+    /// no aspect-fill maths, and no chance of the two disagreeing.
+    private func findInFramedRegion(frame: FrameBuffer.Frame) -> [NormalizedRect] {
+        let region = app.framedRegion
+        let bufferRect = CropMapper.bufferRect(overlay: region,
+                                               bufferSize: frame.size,
+                                               viewSize: overlaySize)
+        guard let crop = MalletHitClassifier.crop(frame.image, to: bufferRect) else { return [] }
+
+        return BilahFinder.find(in: crop, count: keys.count).map { r in
+            NormalizedRect(x: region.x + r.x * region.w,
+                           y: region.y + r.y * region.h,
+                           w: r.w * region.w,
+                           h: r.h * region.h)
+        }
     }
 
     /// Map detector rects into overlay space, keep the vertical bar-like ones
@@ -231,13 +278,24 @@ struct AligningView: View {
         return r.w < 0.3 && r.h > 0.08 && r.h < 0.95
     }
 
+    /// Committing the fit is not instant: the profile is written to disk and the
+    /// lens is locked to focus and exposure, and the lock in particular takes the
+    /// hardware a moment. It used to fire and forget, so the next screen appeared
+    /// while the camera was still settling. Now the wait is shown and awaited.
     private func confirmAlignment() {
+        guard busyMessage == nil else { return }
+        busyMessage = "Saving the fit…"
+
         var profile = app.profile
         profile.keys = keys
         app.profile = profile
-        app.saveProfile()
-        camera.lockFocusAndExposure()
-        app.alignmentConfirmed()
+
+        Task {
+            await app.saveProfileAsync()
+            await camera.lockFocusAndExposureAsync()
+            busyMessage = nil
+            app.alignmentConfirmed()
+        }
     }
 
     /// Binding to directly access and mutate a key's axis-aligned rect while clearing free corners.

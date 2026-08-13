@@ -82,15 +82,30 @@ final class CameraController: NSObject {
     /// don't shift between frames.
     func lockFocusAndExposure() {
         sessionQueue.async { [weak self] in
-            guard let device = self?.device else { return }
-            do {
-                try device.lockForConfiguration()
-                if device.isFocusModeSupported(.locked) { device.focusMode = .locked }
-                if device.isExposureModeSupported(.locked) { device.exposureMode = .locked }
-                device.unlockForConfiguration()
-            } catch {
-                // Non-fatal: some devices won't allow locking; overlay still works.
+            self?.applyLock()
+        }
+    }
+
+    /// Awaitable form, for callers that want to hold a "saving…" state until the
+    /// lens has actually settled rather than change screen out from under it.
+    func lockFocusAndExposureAsync() async {
+        await withCheckedContinuation { continuation in
+            sessionQueue.async { [weak self] in
+                self?.applyLock()
+                continuation.resume()
             }
+        }
+    }
+
+    private func applyLock() {
+        guard let device else { return }
+        do {
+            try device.lockForConfiguration()
+            if device.isFocusModeSupported(.locked) { device.focusMode = .locked }
+            if device.isExposureModeSupported(.locked) { device.exposureMode = .locked }
+            device.unlockForConfiguration()
+        } catch {
+            // Non-fatal: some devices won't allow locking; overlay still works.
         }
     }
 

@@ -53,6 +53,9 @@ struct CalibrationView: View {
             .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .background(Theme.ink)
+        // Folding the accepted strikes into one template, then writing the
+        // profile — short, but it ends in a screen change, so it is shown.
+        .busy(committing ? "Learning the strike…" : nil)
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
     }
@@ -257,6 +260,7 @@ struct StrikeBaselineView: View {
     @State private var capturing = false
     /// nil until a capture has completed; then the number of strikes learned.
     @State private var strikeCount: Int?
+    @State private var busyMessage: String?
 
     var body: some View {
         ZStack {
@@ -272,6 +276,7 @@ struct StrikeBaselineView: View {
             }
             .padding(24)
         }
+        .busy(busyMessage)
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
     }
@@ -363,9 +368,11 @@ struct StrikeBaselineView: View {
 
     private func toggleCapture() {
         if capturing {
+            busyMessage = "Learning the strike…"
             audio.finishBaselineCapture { count, _ in
                 strikeCount = count
                 capturing = false
+                busyMessage = nil
             }
         } else {
             audio.startBaselineCapture()
@@ -387,10 +394,17 @@ struct StrikeBaselineView: View {
     /// strike-sound gate on so it is used in play; skipping leaves vision-only
     /// (the more lenient default).
     private func finish(enableGate: Bool) {
+        guard busyMessage == nil else { return }
         if enableGate, audio.hasStrikeBaseline {
             app.requireStrikeSound = true
         }
-        app.baselineFinished()
+        // The profile written here carries the baseline template, so it is no
+        // longer a trivial file.
+        busyMessage = "Saving the instrument…"
+        Task {
+            await app.baselineFinishedAsync()
+            busyMessage = nil
+        }
     }
 }
 

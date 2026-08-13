@@ -127,25 +127,31 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
         keyCount = count
     }
 
-    /// Evenly spaced key outlines across the middle of the frame. Gangsa keys run
-    /// left to right from longest/lowest to shortest/highest, so the outlines are
-    /// graduated in height to match — it makes the overlay easier to line up.
+    /// Evenly spaced key outlines across the middle of the frame.
     static func layout(count: Int) -> [InstrumentKey] {
+        layout(count: count, in: NormalizedRect(x: 0.05, y: 0.28, w: 0.90, h: 0.46))
+    }
+
+    /// Evenly spaced key outlines filling `region` — the area the player framed
+    /// the instrument into, so the starting row is already about right.
+    ///
+    /// Gangsa bilah run left to right from lowest to highest. Seen from above
+    /// they stay much the same length and mostly get NARROWER, so the row tapers
+    /// in width and holds its height: a graduated-height row read as a staircase
+    /// against the real instrument.
+    static func layout(count: Int, in region: NormalizedRect) -> [InstrumentKey] {
         guard count > 0 else { return [] }
-        let margin = 0.05
-        let usable = 1.0 - margin * 2
-        let pitch = usable / Double(count)
-        let width = pitch * 0.8
+        let pitch = region.w / Double(count)
 
         return (0..<count).map { i in
-            // Single key sits mid-range rather than at the "tallest" extreme.
             let t = count > 1 ? Double(i) / Double(count - 1) : 0.5
+            let width = pitch * (0.82 - 0.16 * t)
             return InstrumentKey(
                 index: i,
-                rect: NormalizedRect(x: margin + Double(i) * pitch + (pitch - width) / 2,
-                                     y: 0.33 + 0.09 * t,
+                rect: NormalizedRect(x: region.x + Double(i) * pitch + (pitch - width) / 2,
+                                     y: region.y + region.h * 0.16,
                                      w: width,
-                                     h: 0.44 - 0.18 * t),
+                                     h: region.h * 0.68),
                 fundamentalHz: 0,
                 harmonics: [],
                 decayMs: 1500,

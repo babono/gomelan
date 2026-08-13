@@ -256,6 +256,50 @@ struct StatBar: View {
     }
 }
 
+// MARK: - Busy
+
+/// The scrim shown while something is genuinely being done — a profile written,
+/// the lens settling on a lock, a baseline being folded into a template. Blocks
+/// interaction, because every one of these steps ends in a screen change and a
+/// second tap during the wait lands somewhere the player didn't aim.
+///
+/// Only ever shown around real work. A spinner that appears and vanishes in the
+/// same frame reads as a glitch, not as progress.
+struct BusyOverlay: View {
+    let message: String
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.6).ignoresSafeArea()
+            VStack(spacing: 16) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(Theme.copper)
+                Text(message)
+                    .font(.sans(15))
+                    .foregroundStyle(Theme.cream)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 32)
+            .padding(.vertical, 26)
+            .background(Theme.inkRaised.opacity(0.95), in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Theme.copper.opacity(0.35), lineWidth: 1))
+        }
+        .transition(.opacity)
+    }
+}
+
+extension View {
+    /// Covers this view with `BusyOverlay` while `message` is non-nil.
+    func busy(_ message: String?) -> some View {
+        overlay {
+            if let message { BusyOverlay(message: message) }
+        }
+        .animation(.easeInOut(duration: 0.15), value: message)
+    }
+}
+
 // MARK: - Realign affordance
 
 /// A persistent "keys misaligned?" affordance (PRD §13.4).

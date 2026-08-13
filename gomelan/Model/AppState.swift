@@ -91,6 +91,18 @@ final class AppState {
         savedProfiles = ProfileStore.loadAll()
     }
 
+    /// The same save, off the main actor. Used by the steps that show a "saving"
+    /// state: it keeps the spinner honest — it is up while real work happens,
+    /// rather than for one frame around a synchronous write — and keeps the disk
+    /// off the thread drawing it.
+    func saveProfileAsync() async {
+        let snapshot = profile
+        savedProfiles = await Task.detached {
+            ProfileStore.save(snapshot)
+            return ProfileStore.loadAll()
+        }.value
+    }
+
     /// Kotekan this instrument has enough keys for.
     func kotekan(_ k: Kotekan, playableOn profile: InstrumentProfile) -> Bool {
         k.requiredKeys <= profile.keyCount
@@ -196,8 +208,25 @@ final class AppState {
         screen = .framing
     }
 
+    /// The area the player framed the instrument into (step 2/3), normalised to
+    /// the full-bleed camera space. It is the search region for key prediction
+    /// and the fallback layout's bounds — everything outside it is table, floor
+    /// and the wooden frame ends.
+    /// Pushed out to the corners on purpose: the chrome floats over the feed, so
+    /// the only space this has to leave is the strip the caption sits in. The
+    /// bigger it is, the more of the frame the instrument can fill, and the more
+    /// pixels per bilah the prediction and the strike classifier both get.
+    var framedRegion = NormalizedRect(x: 0.03, y: 0.09, w: 0.94, h: 0.775)
+
+    /// Set when arriving at 3/3 from framing (rather than a later re-align), so
+    /// the masks start from the area just framed instead of a saved fit.
+    var seedMasksFromFraming = false
+
     /// Step 2/3 → 3/3.
-    func framingConfirmed() { screen = .aligning }
+    func framingConfirmed() {
+        seedMasksFromFraming = true
+        screen = .aligning
+    }
 
     /// Step 3/3 leads into the baseline: the app learns what a real gangsa strike
     /// sounds like on THIS instrument before it can tell strikes from noise.
@@ -216,6 +245,15 @@ final class AppState {
         baselineLearned = true
         requireStrikeSound = true
         saveProfile()
+        screen = .chooseKotekan
+    }
+
+    /// As above, but awaits the write so the caller can hold a "saving" state
+    /// over it instead of flashing one.
+    func baselineFinishedAsync() async {
+        baselineLearned = true
+        requireStrikeSound = true
+        await saveProfileAsync()
         screen = .chooseKotekan
     }
 
