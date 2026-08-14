@@ -181,6 +181,20 @@ final class CuePlayer {
         }                                                                //R
     }                                                                    //R
 
+    /// Silence the colotomic layer without touching the gangsa. A gong rings for
+    /// eight seconds, so muting it mid-stroke has to cut the one already sounding
+    /// or the switch appears not to work.
+    func stopColotomic() {                                               //R
+        guard started else { return }                                    //R
+        for (voice, node) in activeVoice {                               //R
+            if case .key = voice { continue }                            //R
+            node.stop()                                                  //R
+        }                                                                //R
+        activeVoice = activeVoice.filter {                               //R
+            if case .key = $0.key { return true } else { return false }  //R
+        }                                                                //R
+    }                                                                    //R
+
     /// Take the next node from the pool and start `buffer` on it now.
     private func fire(_ buffer: AVAudioPCMBuffer, as voice: Voice, isKeySample: Bool = false,
                       pan: Float = 0, volume: Float = 1) {               //R

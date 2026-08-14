@@ -178,33 +178,66 @@ struct NotesRiver: View {
     }
 }
 
-// MARK: - Legend
+// MARK: - Voice mixer
 
-/// Which colour is which half. Static, so it lives outside the river's canvas —
-/// worth the room on the demo screen, not during the run.
-struct VoiceLegend: View {
+/// The legend IS the mixer. Each colour names a voice on the river, and tapping
+/// it silences that voice — so learning a half can start with everything else
+/// muted and add the others back once the figure is in the hands, which is how
+/// kotekan is taught anyway.
+///
+/// Muting never hides anything: a silenced voice still draws on the river and
+/// still lights the bilah, so you can watch a part you have chosen not to hear.
+struct VoiceMixer: View {
     let yourHalf: KotekanHalf
+    @Binding var yourVoiceAudible: Bool
+    @Binding var partnerAudible: Bool
+    @Binding var colotomicAudible: Bool
+    /// Your own half is only sounded by the app during the demo. In the run you
+    /// are the one playing it, so there is nothing to mute.
+    var showsYourVoice = true
 
     var body: some View {
-        HStack(spacing: 12) {
-            chip(yourHalf, label: "\(yourHalf.title) · you", solid: true)
-            chip(yourHalf.other, label: yourHalf.other.title, solid: false)
-            HStack(spacing: 5) {
-                Circle().fill(Theme.gong).frame(width: 7, height: 7)
-                Text("Gong").font(.sans(11)).foregroundStyle(Theme.inkStone)
+        HStack(spacing: 8) {
+            if showsYourVoice {
+                chip(color: colour(for: yourHalf),
+                     label: "\(yourHalf.title) · you",
+                     isOn: $yourVoiceAudible)
             }
+            chip(color: colour(for: yourHalf.other),
+                 label: yourHalf.other.title,
+                 isOn: $partnerAudible)
+            chip(color: Theme.gong, label: "Gong", isOn: $colotomicAudible)
         }
     }
 
-    private func chip(_ half: KotekanHalf, label: String, solid: Bool) -> some View {
-        let color = half == .polos ? Theme.polosVoice : Theme.sangsihVoice
-        return HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(color.opacity(solid ? 0.95 : 0.28))
-                .overlay(RoundedRectangle(cornerRadius: 2)
-                    .strokeBorder(color.opacity(solid ? 0 : 0.7), lineWidth: 1))
-                .frame(width: 12, height: 7)
-            Text(label).font(.sans(11)).foregroundStyle(Theme.inkStone)
+    private func colour(for half: KotekanHalf) -> Color {
+        half == .polos ? Theme.polosVoice : Theme.sangsihVoice
+    }
+
+    private func chip(color: Color, label: String, isOn: Binding<Bool>) -> some View {
+        Button {
+            isOn.wrappedValue.toggle()
+        } label: {
+            HStack(spacing: 5) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(color.opacity(isOn.wrappedValue ? 0.95 : 0.15))
+                    .overlay(RoundedRectangle(cornerRadius: 2)
+                        .strokeBorder(color.opacity(isOn.wrappedValue ? 0 : 0.6), lineWidth: 1))
+                    .frame(width: 12, height: 8)
+
+                Text(label)
+                    .font(.sans(11, weight: .medium))
+                    .foregroundStyle(isOn.wrappedValue ? Theme.cream : Theme.inkStone.opacity(0.7))
+
+                Image(systemName: isOn.wrappedValue ? "speaker.wave.1.fill" : "speaker.slash.fill")
+                    .font(.sans(9))
+                    .foregroundStyle(isOn.wrappedValue ? color : Theme.inkStone.opacity(0.7))
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 6)
+            .background(isOn.wrappedValue ? Theme.ink.opacity(0.55) : .clear, in: Capsule())
+            .overlay(Capsule().strokeBorder(Theme.inkStone.opacity(0.35), lineWidth: 1))
         }
+        .buttonStyle(.plain)
     }
 }

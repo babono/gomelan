@@ -58,10 +58,12 @@ struct PlayView: View {
 
                 Spacer()
 
-                NotesRiver(engine: engine,
-                           keyRange: keyRange,
-                           keyCount: app.profile.keys.count,
-                           yourHalf: app.chosenHalf)
+                if app.riverVisible {
+                    NotesRiver(engine: engine,
+                               keyRange: keyRange,
+                               keyCount: app.profile.keys.count,
+                               yourHalf: app.chosenHalf)
+                }
             }
 
             if countdown == nil, !paused {
@@ -119,6 +121,18 @@ struct PlayView: View {
                          totalCycles: app.chosenCycles)
 
             Spacer()
+
+            // Hide the score to give the instrument the whole screen.
+            Button { app.riverVisible.toggle() } label: {
+                Image(systemName: app.riverVisible ? "rectangle.bottomthird.inset.filled" : "rectangle")
+                    .font(.sans(15, weight: .medium))
+                    .foregroundStyle(app.riverVisible ? Theme.ink : Theme.copper)
+                    .frame(width: 40, height: 34)
+                    .background(app.riverVisible ? Theme.copper : .clear, in: Capsule())
+                    .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5))
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 10)
 
             Button { pause() } label: {
                 Image(systemName: "xmark")
@@ -196,9 +210,10 @@ struct PlayView: View {
             }
         }
 
-        // Your partner keeps playing the other half beside you (§7), unless it
-        // has been turned off in settings.
+        // Your partner keeps playing the other half beside you (§7) unless it is
+        // muted — the mixer on the watch screen carries its choices in here.
         engine.partnerAudible = app.partnerAudible
+        engine.colotomicAudible = app.colotomicAudible
         if let song = app.selectedSong {
             engine.configure(song: song, partner: app.partnerSong, mode: app.playMode,
                              profile: app.profile, tempoScale: app.tempoScale, role: .practice)

@@ -96,15 +96,21 @@ struct WatchView: View {
     }
 
     private var bottomPanel: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 16) {
-                PhaseBanner(phase: engine.phase)
-                    .animation(.easeInOut(duration: 0.25), value: engine.phase)
+        @Bindable var app = app
 
-                VoiceLegend(yourHalf: app.chosenHalf)
+        //R The "Watch and listen" banner said what the screen title already
+        //R says. The room it was taking is the mixer's now.
+        return VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 14) {
+                VoiceMixer(yourHalf: app.chosenHalf,
+                           yourVoiceAudible: $app.yourVoiceAudible,
+                           partnerAudible: $app.partnerAudible,
+                           colotomicAudible: $app.colotomicAudible)
                     .layoutPriority(-1)
 
-                Spacer(minLength: 12)
+                Spacer(minLength: 8)
+
+                riverToggle
 
                 SpeedPicker(scale: $speed)
 
@@ -113,19 +119,42 @@ struct WatchView: View {
                     handOver()
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 20)
             .padding(.vertical, 12)
             .background(Theme.ink.opacity(0.8))
 
-            NotesRiver(engine: engine,
-                       keyRange: keyRange,
-                       keyCount: app.profile.keys.count,
-                       yourHalf: app.chosenHalf)
+            if app.riverVisible {
+                NotesRiver(engine: engine,
+                           keyRange: keyRange,
+                           keyCount: app.profile.keys.count,
+                           yourHalf: app.chosenHalf)
+            }
         }
         .onChange(of: speed) { _, new in
             app.demoTempoScale = new
             restart()
         }
+        .onChange(of: app.yourVoiceAudible) { _, new in engine.yourVoiceAudible = new }
+        .onChange(of: app.partnerAudible) { _, new in engine.partnerAudible = new }
+        .onChange(of: app.colotomicAudible) { _, new in
+            engine.colotomicAudible = new
+            if !new { cue.stopColotomic() }
+        }
+    }
+
+    /// Hide the score to give the instrument the whole screen.
+    private var riverToggle: some View {
+        Button {
+            app.riverVisible.toggle()
+        } label: {
+            Image(systemName: app.riverVisible ? "rectangle.bottomthird.inset.filled" : "rectangle")
+                .font(.sans(15, weight: .medium))
+                .foregroundStyle(app.riverVisible ? Theme.ink : Theme.copper)
+                .frame(width: 38, height: 34)
+                .background(app.riverVisible ? Theme.copper : .clear, in: Capsule())
+                .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5))
+        }
+        .buttonStyle(.plain)
     }
 
     /// The lanes the river draws — both halves of the figure.
@@ -145,8 +174,9 @@ struct WatchView: View {
         engine.cue = cue
         engine.metronomeEnabled = app.metronomeEnabled
         engine.referenceToneEnabled = app.referenceToneEnabled
-        // The demo always sounds the whole weave — that is what it is for.
-        engine.partnerAudible = true
+        engine.partnerAudible = app.partnerAudible
+        engine.yourVoiceAudible = app.yourVoiceAudible
+        engine.colotomicAudible = app.colotomicAudible
 
         start()
     }

@@ -53,8 +53,15 @@ final class AppState {
     /// you. The app plays it so the interlock is there even when you practise
     /// alone (§7); the gong layer is always underneath both.
     var partnerSong: Song?
-    /// Whether the app plays your partner's half during your turn.
+    /// The three voices, mutable independently and shared between the demo and
+    /// the run, so a choice made while listening carries into playing.
     var partnerAudible: Bool = true
+    var yourVoiceAudible: Bool = true
+    var colotomicAudible: Bool = true
+
+    /// Whether the scrolling score is shown. Off gives the bilah the whole
+    /// screen, which is where the guidance you play from actually is.
+    var riverVisible: Bool = true
     var playMode: PlayMode = .play
     var lastResult: SongResult?
 

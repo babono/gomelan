@@ -128,9 +128,12 @@ final class PlayEngine {
     // The partner's half: sounded by the app, never judged (§7).
     private var partnerNotes: [Note] = []
     private var partnerFired: [Bool] = []
-    /// Whether the app sounds the partner's half. Always on for the demo — the
-    /// point of the demo is hearing the whole weave.
+    /// The three voices, independently mutable. Learning a half often means
+    /// silencing everything else first and putting it back once the figure is in
+    /// the hands — so each is a switch, not a fixed arrangement.
     var partnerAudible = true
+    var yourVoiceAudible = true
+    var colotomicAudible = true
     /// Stereo placement of the two halves, so they read as two players.
     private let yourPan: Float = -0.32
     private let partnerPan: Float = 0.32
@@ -277,18 +280,20 @@ final class PlayEngine {
         currentBeatIndex = max(0, beatIndex)
         if beatIndex != lastBeatIndex, currentTimeMs >= 0 {
             lastBeatIndex = beatIndex
-            switch beatIndex % 8 {
-            case 0:
-                cue?.playGong()
+            if colotomicAudible {
+                switch beatIndex % 8 {
+                case 0:
+                    cue?.playGong()
 
-            case 2, 6:
-                cue?.playKemong()
+                case 2, 6:
+                    cue?.playKemong()
 
-            case 4:
-                cue?.playKempur()
+                case 4:
+                    cue?.playKempur()
 
-            default:
-                break   //R off-beats got a click here AND from the metronome below
+                default:
+                    break   //R off-beats got a click here AND from the metronome below
+                }
             }
             if metronomeEnabled { cue?.playClick() }
         }
@@ -468,7 +473,9 @@ final class PlayEngine {
             if until <= 0, until > -40 {
                 judged[i] = true
 
-                cue?.playKeySample(index: key, pan: yourPan)
+                // Muting your own half still SHOWS it on the bilah — you can
+                // watch the figure without hearing it played for you.
+                if yourVoiceAudible { cue?.playKeySample(index: key, pan: yourPan) }
 
                 flash(.hit, at: key, now: now)
             }
