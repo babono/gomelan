@@ -3,8 +3,15 @@
 //  gomelan
 //
 //  The core loop screen (PRD §4 Flow C). Live camera feed + overlay guidance,
-//  driven by the PlayEngine on a display link. Handles countdown, pause, and the
-//  live strike → judgement wiring from the audio engine.
+//  driven by the PlayEngine on a display link. The river runs along the bottom
+//  showing both halves against the gong cycle; the header tracks the cycle
+//  count. Handles countdown, pause, and the live strike → judgement wiring from
+//  vision (and audio, when a baseline confirms strikes).
+//
+//  This screen is the player's turn only. Watching and hearing the figure
+//  happens first, on its own screen (WatchView), so after the gong count-in the
+//  instrument is handed straight over — with your partner's half still playing
+//  beside you.
 //
 
 import SwiftUI
@@ -20,37 +27,48 @@ struct PlayView: View {
     @State private var displayLink = DisplayLink()
     @State private var fusion: StrikeFusion?
     @State private var visionDetector = VisionStrikeDetector()
-    /// When a gangsa-strike baseline is learned, audio confirms strikes (blocks
-    /// hovers/screams) and drives the trigger; otherwise vision self-triggers.
     @State private var useAudioConfirmation = false
-    /// Full-bleed size of the overlay/preview, for the vision crop mapping.
     @State private var overlaySize: CGSize = .zero
 
     @State private var countdown: Int? = 3
     @State private var paused = false
     @State private var pauseStartedAt: Double = 0
 
-    // Debug HUD (Phase 3, §9): last detected key + confidence.
+    // Kept for the strike wiring; not surfaced during play (clean overlay).
     @State private var lastKey: Int?
     @State private var lastConfidence: Double = 0
-    /// A strike was heard but no template won by enough margin. Distinct from
-    /// hearing nothing at all — the two have completely different fixes (an
-    /// unclear strike means the calibration cannot separate those keys; silence
-    /// means the mic is too far away or the gate is too high), and treating both
-    /// as "nothing happened" makes them impossible to tell apart on the day.
     @State private var unclearAt: Double?
 
     var body: some View {
         ZStack {
+            // 1. Camera preview edge-to-edge
             CameraPreview(session: camera.session, controller: camera)
                 .ignoresSafeArea()
 
-            OverlayView(keys: app.profile.keys,
-                        states: engine.renderStates,
-                        approachNotes: engine.approachNotes)
+            // 2. Key rect guidance overlay edge-to-edge (matching AligningView geometry)
+            OverlayView(keys: app.profile.keys, engine: engine)
                 .ignoresSafeArea()
 
-            topBar
+            // 3. Floating chrome (top bar + scrolling stroke row). This sits in
+            // front of the camera — as a `.background` it was drawn behind the
+            // opaque preview layer and never showed up at all.
+            VStack(spacing: 0) {
+                topBar
+                    .background(Theme.ink.opacity(0.75))
+
+                Spacer()
+
+                if app.riverVisible {
+                    NotesRiver(engine: engine,
+                               keyRange: keyRange,
+                               keyCount: app.profile.keys.count,
+                               yourHalf: app.chosenHalf)
+                }
+            }
+
+            if countdown == nil, !paused {
+                phaseBanner
+            }
 
             if let countdown {
                 CountdownOverlay(value: countdown)
@@ -70,7 +88,10 @@ struct PlayView: View {
             }
             .ignoresSafeArea()
         }
-        .onChange(of: overlaySize) { _, new in fusion?.viewSize = new }
+        .background(Theme.ink)
+        .onChange(of: overlaySize) { _, new in
+            Task { await fusion?.setViewSize(new) }
+        }
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
         .task { await runVisionDetection() }
@@ -78,108 +99,157 @@ struct PlayView: View {
 
     // MARK: - Chrome
 
+    private var sessionTitle: String {
+        guard let k = app.selectedKotekan else { return "" }
+        return "\(k.name) · \(app.chosenHalf.title)"
+    }
+
     private var topBar: some View {
-        VStack {
-            HStack(alignment: .top) {
-                Button {
-                    pause()
-                } label: {
-                    Image(systemName: "pause.circle.fill")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
-                .buttonStyle(.plain)
+        HStack {
+            Text(sessionTitle)
+                .font(.sans(13, weight: .semibold))
+                .textCase(.uppercase)
+                .tracking(2)
+                .foregroundStyle(Theme.copper)
 
-                Spacer()
+            Spacer()
 
-                debugHUD
+            // Its own view so the clock ticking doesn't re-evaluate the whole
+            // screen sixty times a second just to move a counter.
+            CycleCounter(engine: engine,
+                         strokesPerCycle: max(1, app.selectedKotekan?.strokeCount(app.chosenHalf) ?? 1),
+                         totalCycles: app.chosenCycles)
+
+            Spacer()
+
+            // Hide the score to give the instrument the whole screen.
+            Button { app.riverVisible.toggle() } label: {
+                Image(systemName: app.riverVisible ? "rectangle.bottomthird.inset.filled" : "rectangle")
+                    .font(.sans(15, weight: .medium))
+                    .foregroundStyle(app.riverVisible ? Theme.ink : Theme.copper)
+                    .frame(width: 40, height: 34)
+                    .background(app.riverVisible ? Theme.copper : .clear, in: Capsule())
+                    .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5))
             }
-            .padding(20)
+            .buttonStyle(.plain)
+            .padding(.trailing, 10)
+
+            Button { pause() } label: {
+                Image(systemName: "xmark")
+                    .font(.sans(15, weight: .medium))
+                    .foregroundStyle(Theme.cream)
+                    .frame(width: 34, height: 34)
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.cream.opacity(0.3), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+    }
+
+    /// Names the current session phase so the demo → hand-over reads clearly.
+    /// Uses the shared `PhaseBanner` chrome component.
+    private var phaseBanner: some View {
+        VStack {
+            Spacer().frame(height: 70)
+            PhaseBanner(phase: engine.phase)
+                .animation(.easeInOut(duration: 0.25), value: engine.phase)
             Spacer()
         }
     }
 
-    private var debugHUD: some View {
-        HStack(spacing: 8) {
-            Circle()
-                .fill(audio.isRunning ? Theme.hit : Theme.miss)
-                .frame(width: 8, height: 8)
-            if unclearAt != nil {
-                Text("heard a strike — couldn't tell which key")
-            } else if let lastKey {
-                Text("key \(lastKey) · \(Int(lastConfidence * 100))%")
-            } else {
-                Text("listening…")
-            }
-        }
-        .font(.caption.monospaced())
-        .foregroundStyle(unclearAt != nil ? Theme.accent : .white.opacity(0.7))
-        .padding(.vertical, 6)
-        .padding(.horizontal, 12)
-        .background(.black.opacity(0.4), in: Capsule())
-    }
-
     private var pauseOverlay: some View {
         ZStack {
-            Color.black.opacity(0.6).ignoresSafeArea()
-            VStack(spacing: 20) {
-                Text("Paused").font(.largeTitle.weight(.bold)).foregroundStyle(.white)
+            Color.black.opacity(0.65).ignoresSafeArea()
+            VStack(spacing: 24) {
+                Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
-                    PrimaryButton(title: "Resume", systemImage: "play.fill") { resume() }
-                        .frame(width: 220)
-                    SecondaryButton(title: "Quit to songs", systemImage: "xmark") {
+                    PillButton(title: "Resume", style: .filled) { resume() }
+                    PillButton(title: "Watch again", style: .outlined, tint: Theme.copper) {
                         teardown()
-                        app.backToSongs()
+                        app.watchAgain()
+                    }
+                    PillButton(title: "Quit", style: .outlined, tint: Theme.copper) {
+                        teardown()
+                        app.backToKotekan()
                     }
                 }
             }
         }
     }
 
+    // MARK: - The river (§13.5)
+
+    /// The lanes the river draws — both halves of the figure.
+    private var keyRange: ClosedRange<Int> {
+        app.selectedKotekan?.voicedKeyRange ?? 0...max(0, app.profile.keys.count - 1)
+    }
+
+    /// The bilah YOUR half strikes — the only ones vision needs to classify.
+    private var playedKeys: Set<Int> {
+        guard let k = app.selectedKotekan else { return [] }
+        return Set(k.pattern(app.chosenHalf).compactMap { $0 })
+    }
+
     // MARK: - Lifecycle
 
     private func setup() {
         camera.start()
-        // The aligning flow locks focus on the shared device; hand it back so the
-        // vision classifier (and the learner) see a sharp image during play.
         camera.enableContinuousAutoFocus()
 
         engine.cue = cue
         engine.metronomeEnabled = app.metronomeEnabled
         engine.referenceToneEnabled = app.referenceToneEnabled
+        if let k = app.selectedKotekan {
+            engine.sessionSubtitle = "\(k.name) · \(app.chosenHalf.title) · \(app.chosenCycles)×"
+        }
         engine.onComplete = { result in
             Task { @MainActor in
                 teardown()
-                if let result {
-                    app.finish(result: result)
-                } else {
-                    app.backToSongs()
+                if let result { app.finish(result: result) } else { app.backToKotekan() }
+            }
+        }
+
+        // Your partner keeps playing the other half beside you (§7) unless it is
+        // muted — the mixer on the watch screen carries its choices in here.
+        engine.partnerAudible = app.partnerAudible
+        engine.colotomicAudible = app.colotomicAudible
+        if let song = app.selectedSong {
+            engine.configure(song: song, partner: app.partnerSong, mode: app.playMode,
+                             profile: app.profile, tempoScale: app.tempoScale, role: .practice)
+        }
+
+        let fusion = StrikeFusion(frames: camera.frameBuffer,
+                                  keys: app.profile.keys,
+                                  viewSize: overlaySize)
+        self.fusion = fusion
+        // Only the bilah this figure uses are worth classifying — three or four
+        // instead of ten, which is most of the vision cost gone.
+        let active = playedKeys
+        Task { await fusion.setActiveKeys(active) }
+
+        visionDetector.reset()
+        try? audio.start(profile: app.profile)
+        if let baseline = app.profile.strikeBaseline {
+            audio.setBaselineTemplate(baseline)
+        }
+
+        // Wire audio onset detection to immediately resolve key via vision:
+        audio.onStrikeDetected = { hostTime in
+            Task { @MainActor in
+                guard countdown == nil, !paused, !engine.isFinished else { return }
+                if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
+                    applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                 }
             }
         }
 
-        if let song = app.selectedSong {
-            engine.configure(song: song, mode: app.playMode, profile: app.profile, tempoScale: app.tempoScale)
-        }
-
-        // Vision fusion. viewSize is filled in by the GeometryReader measurement
-        // (onChange keeps it current); until then resolve() no-ops safely.
-        fusion = StrikeFusion(frames: camera.frameBuffer,
-                              keys: app.profile.keys,
-                              viewSize: overlaySize)
-
-        visionDetector.reset()
-        try? audio.start(profile: app.profile)
-
-        // Require an audio-confirmed strike only when the user asked for it AND a
-        // baseline exists to check against. Then audio drives the trigger (blocks
-        // hovering/screams) and vision picks the key. Otherwise vision alone.
-        useAudioConfirmation = app.requireStrikeSound && audio.hasStrikeBaseline
+        useAudioConfirmation = app.requireStrikeSound && (audio.hasStrikeBaseline || app.profile.hasLearnedBaseline)
         if useAudioConfirmation {
             audio.onConfirmedStrike = { hostTime in
                 Task { @MainActor in
                     guard countdown == nil, !paused, !engine.isFinished else { return }
-                    if let decision = await fusion?.resolveVisionFirst(hostTime: hostTime) {
+                    if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                         applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                     }
                 }
@@ -203,31 +273,23 @@ struct PlayView: View {
         }
     }
 
-    /// Vision self-triggering loop. Polls the latest frame, classifies every key,
-    /// and turns rising edges into strikes — no audio onset, so background noise
-    /// can't gate it out. Runs on the main actor between sleeps, like the mallet
-    /// test screen; the model is small enough not to stall the overlay.
+    /// The self-triggering vision loop. `latestScores` now suspends onto the
+    /// fusion actor, so the inference happens off the main thread and the poll
+    /// returns nil immediately when the camera has not delivered a new frame.
     private func runVisionDetection() async {
         while !Task.isCancelled {
-            // When audio confirmation is on, strikes come from onConfirmedStrike
-            // instead — don't also self-trigger here (would double-register).
-            if !useAudioConfirmation, countdown == nil, !paused, !engine.isFinished,
-               let (scores, hostTime) = fusion?.latestScores() {
+            if countdown == nil, !paused, !engine.isFinished,
+               let (scores, hostTime) = await fusion?.latestScores() {
                 let fired = visionDetector.process(scores: scores)
-                // If several keys cross at once, take the most confident.
                 if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
-                    // Vision decides which key + that it happened. If a clean audio
-                    // onset sits within 80ms, snap to its precise time; otherwise
-                    // keep the frame time. Audio only sharpens, never blocks.
-                    let strikeTime = audio.nearestOnset(to: hostTime, within: 0.08) ?? hostTime
+                    let strikeTime = audio.nearestOnset(to: hostTime, within: 0.12) ?? hostTime
                     applyStrike(key: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
                 }
             }
-            try? await Task.sleep(for: .milliseconds(60))
+            try? await Task.sleep(for: .milliseconds(25))
         }
     }
 
-    /// Feed a detected strike to the engine and the debug HUD.
     private func applyStrike(key: Int, hostTime: Double, confidence: Double) {
         lastKey = key
         lastConfidence = confidence
@@ -246,7 +308,7 @@ struct PlayView: View {
     private func resume() {
         engine.adjustStart(by: CACurrentMediaTime() - pauseStartedAt)
         try? audio.start(profile: app.profile)
-        visionDetector.reset() // don't fire on a mallet left resting during pause
+        visionDetector.reset()
         displayLink.start()
         paused = false
     }
@@ -260,15 +322,32 @@ struct PlayView: View {
     }
 }
 
+/// "Cycle 3 / 8" — which time round the gong cycle the player is on, counted in
+/// strokes of the chosen half rather than wall-clock time, so the count-in
+/// doesn't bleed into it. Reads the engine itself to keep the per-frame
+/// invalidation off the rest of the screen.
+private struct CycleCounter: View {
+    let engine: PlayEngine
+    let strokesPerCycle: Int
+    let totalCycles: Int
+
+    var body: some View {
+        let cycle = min(totalCycles, Int(max(0, engine.noteProgress)) / strokesPerCycle + 1)
+        Text("Cycle \(cycle) / \(totalCycles)")
+            .font(.sans(14))
+            .foregroundStyle(Theme.inkStone)
+    }
+}
+
 /// The 3-2-1 countdown over the live feed (§4 Flow C).
 private struct CountdownOverlay: View {
     let value: Int
     var body: some View {
         ZStack {
-            Color.black.opacity(0.35).ignoresSafeArea()
+            Color.black.opacity(0.4).ignoresSafeArea()
             Text("\(value)")
-                .font(.system(size: 160, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
+                .font(.serif(160, weight: .regular))
+                .foregroundStyle(Theme.cream)
                 .transition(.scale.combined(with: .opacity))
                 .id(value)
         }

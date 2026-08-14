@@ -27,12 +27,45 @@ struct NormalizedRect: Codable, Equatable {
                width: w * size.width,
                height: h * size.height)
     }
+
+    /// The rect's four corners, ordered top-left, top-right, bottom-right,
+    /// bottom-left — the seed quad when a key has no free-corner shape yet.
+    var corners: [NormalizedPoint] {
+        [NormalizedPoint(x: x, y: y),
+         NormalizedPoint(x: x + w, y: y),
+         NormalizedPoint(x: x + w, y: y + h),
+         NormalizedPoint(x: x, y: y + h)]
+    }
+
+    /// The axis-aligned bounding box of a quad — what downstream (overlay, crop)
+    /// consumes, so the rest of the app stays rect-based.
+    static func boundingBox(of pts: [NormalizedPoint]) -> NormalizedRect {
+        guard let first = pts.first else { return NormalizedRect(x: 0, y: 0, w: 0, h: 0) }
+        var minX = first.x, maxX = first.x, minY = first.y, maxY = first.y
+        for p in pts {
+            minX = min(minX, p.x); maxX = max(maxX, p.x)
+            minY = min(minY, p.y); maxY = max(maxY, p.y)
+        }
+        return NormalizedRect(x: minX, y: minY, w: maxX - minX, h: maxY - minY)
+    }
+}
+
+/// A point normalised 0–1 against the video frame. Four of these make the
+/// free-corner quad the aligning step edits (CamScanner-style).
+struct NormalizedPoint: Codable, Equatable {
+    var x: Double
+    var y: Double
 }
 
 /// One calibrated key: where it is in frame, and how it sounds.
 struct InstrumentKey: Codable, Identifiable, Equatable {
     var index: Int
     var rect: NormalizedRect
+    /// Optional free-corner quad set during aligning (top-left, top-right,
+    /// bottom-right, bottom-left). When present it's the editable shape; `rect`
+    /// is kept as its bounding box so overlay/detection stay rect-based. nil ⇒
+    /// the key is a plain axis-aligned rect.
+    var corners: [NormalizedPoint]? = nil
     var fundamentalHz: Double
     var harmonics: [Double]
     var decayMs: Int
@@ -61,6 +94,13 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
     var keyCount: Int
     var createdAt: String
     var keys: [InstrumentKey]
+    /// Generic gangsa-strike baseline template (L2-normalised float vector).
+    var strikeBaseline: [Float]? = nil
+    /// Timestamp when this profile was last used.
+    var lastUsedAt: String? = nil
+
+    /// Whether this instrument has a learned strike-sound baseline.
+    var hasLearnedBaseline: Bool { !(strikeBaseline?.isEmpty ?? true) }
 
     /// How many of the keys have a usable template.
     var calibratedKeyCount: Int { keys.filter(\.isCalibrated).count }
@@ -87,25 +127,31 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
         keyCount = count
     }
 
-    /// Evenly spaced key outlines across the middle of the frame. Gangsa keys run
-    /// left to right from longest/lowest to shortest/highest, so the outlines are
-    /// graduated in height to match — it makes the overlay easier to line up.
+    /// Evenly spaced key outlines across the middle of the frame.
     static func layout(count: Int) -> [InstrumentKey] {
+        layout(count: count, in: NormalizedRect(x: 0.05, y: 0.28, w: 0.90, h: 0.46))
+    }
+
+    /// Evenly spaced key outlines filling `region` — the area the player framed
+    /// the instrument into, so the starting row is already about right.
+    ///
+    /// Gangsa bilah run left to right from lowest to highest. Seen from above
+    /// they stay much the same length and mostly get NARROWER, so the row tapers
+    /// in width and holds its height: a graduated-height row read as a staircase
+    /// against the real instrument.
+    static func layout(count: Int, in region: NormalizedRect) -> [InstrumentKey] {
         guard count > 0 else { return [] }
-        let margin = 0.05
-        let usable = 1.0 - margin * 2
-        let pitch = usable / Double(count)
-        let width = pitch * 0.8
+        let pitch = region.w / Double(count)
 
         return (0..<count).map { i in
-            // Single key sits mid-range rather than at the "tallest" extreme.
             let t = count > 1 ? Double(i) / Double(count - 1) : 0.5
+            let width = pitch * (0.82 - 0.16 * t)
             return InstrumentKey(
                 index: i,
-                rect: NormalizedRect(x: margin + Double(i) * pitch + (pitch - width) / 2,
-                                     y: 0.33 + 0.09 * t,
+                rect: NormalizedRect(x: region.x + Double(i) * pitch + (pitch - width) / 2,
+                                     y: region.y + region.h * 0.16,
                                      w: width,
-                                     h: 0.44 - 0.18 * t),
+                                     h: region.h * 0.68),
                 fundamentalHz: 0,
                 harmonics: [],
                 decayMs: 1500,

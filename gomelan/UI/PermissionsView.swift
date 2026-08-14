@@ -14,10 +14,8 @@ struct PermissionsView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            ProgressView()
-                .tint(Theme.accent)
-            Text("Requesting camera and microphone access…")
-                .foregroundStyle(.white.opacity(0.8))
+            ProgressView().tint(Theme.copper)
+            SectionLabel("Requesting camera and microphone", color: Theme.inkStone)
         }
         .task {
             let cameraOK = await camera.requestAccess()
@@ -29,23 +27,26 @@ struct PermissionsView: View {
 
 struct PermissionsBlockedView: View {
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 18) {
             Image(systemName: "camera.metering.none")
-                .font(.system(size: 60))
-                .foregroundStyle(Theme.miss)
+                .font(.system(size: 54))
+                .foregroundStyle(Theme.terracotta)
             Text("Camera and microphone access are required")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.white)
+                .font(.serif(30))
+                .foregroundStyle(Theme.charcoal)
+                .multilineTextAlignment(.center)
             Text("Gomelan needs to see your gangsa and hear which key you play. Enable both in Settings to continue.")
-                .font(.body)
-                .foregroundStyle(.white.opacity(0.7))
+                .font(.sans(15))
+                .foregroundStyle(Theme.stone)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 480)
-            SecondaryButton(title: "Open Settings", systemImage: "gear") {
+                .lineSpacing(4)
+            PillButton(title: "Open Settings", systemImage: "gear", style: .outlined, uppercase: false) {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
             }
+            .padding(.top, 8)
         }
         .padding(40)
     }

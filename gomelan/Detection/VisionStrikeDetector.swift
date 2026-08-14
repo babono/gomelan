@@ -18,9 +18,9 @@ import Foundation
 final class VisionStrikeDetector {
 
     /// Rising-edge threshold: probability must exceed this to count as a strike.
-    var enter = 0.7
+    var enter = 0.50
     /// Re-arm threshold: must drop below this before the same key can fire again.
-    var exit = 0.4
+    var exit = 0.30
 
     /// Per key: is it armed (ready to fire)? Absent == armed.
     private var armed: [Int: Bool] = [:]

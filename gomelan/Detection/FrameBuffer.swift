@@ -19,7 +19,9 @@ import CoreImage
 import CoreVideo
 import CoreGraphics
 
-final class FrameBuffer {
+/// Written on the capture queue, read from the fusion actor — the NSLock is the
+/// synchronisation, hence the unchecked conformance.
+nonisolated final class FrameBuffer: @unchecked Sendable {
 
     struct Frame {
         let image: CGImage
@@ -34,9 +36,9 @@ final class FrameBuffer {
     private let lock = NSLock()
     private let ciContext = CIContext(options: [.cacheIntermediates: false])
 
-    /// ~12 frames ≈ 400ms at 30fps — comfortably covers the audio's ~105ms delay
-    /// plus jitter, without holding much memory.
-    init(capacity: Int = 12) {
+    /// ~8 frames ≈ 270ms at 30fps — covers the audio's ~105ms delay plus jitter.
+    /// Each frame is a rendered image, so the count is also a memory budget.
+    init(capacity: Int = 8) {
         self.capacity = capacity
     }
 

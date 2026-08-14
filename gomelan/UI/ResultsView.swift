@@ -2,8 +2,8 @@
 //  ResultsView.swift
 //  gomelan
 //
-//  Post-song score and retry (PRD §4 Flow C, §8). Only shown after a scored
-//  Play run; Practice ends without a score by design (§5.3).
+//  Post-session score (PRD §4 Flow C, §8). The tone stays encouraging — accuracy
+//  up top, then where it slipped, framed as observations rather than failures.
 //
 
 import SwiftUI
@@ -13,58 +13,110 @@ struct ResultsView: View {
 
     var body: some View {
         if let result = app.lastResult {
-            HStack(spacing: 48) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(result.songTitle)
-                        .font(.title.weight(.bold))
-                        .foregroundStyle(.white.opacity(0.8))
-                    Text("\(Int(result.accuracy * 100))%")
-                        .font(.system(size: 96, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Theme.accent)
-                    Text("\(result.totalScore) / \(result.maxScore) points")
-                        .font(.title3)
-                        .foregroundStyle(.white.opacity(0.6))
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 0) {
+                header(result)
 
-                VStack(spacing: 16) {
-                    HStack(spacing: 12) {
-                        StatPill(label: "Perfect", value: result.perfectCount, color: Theme.hit)
-                        StatPill(label: "Good", value: result.goodCount, color: Theme.hit.opacity(0.7))
-                        StatPill(label: "Missed", value: result.missCount, color: Theme.miss)
+                ScrollView(.vertical, showsIndicators: true) {
+                    VStack(spacing: 24) {
+                        HStack(alignment: .top, spacing: 0) {
+                            accuracyColumn(result)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Rectangle()
+                                .fill(Theme.charcoal.opacity(0.15))
+                                .frame(width: 1)
+
+                            slippedColumn(result)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+
+                        bottomBar
                     }
-
-                    PrimaryButton(title: "Retry", systemImage: "arrow.clockwise") { app.retry() }
-                    SecondaryButton(title: "Back to songs", systemImage: "list.bullet") { app.backToSongs() }
-
-                    // An honest ending: point toward real teaching (§11 Q4).
-                    Text("Enjoyed this? Find a teacher or a local sekaa — Gomelan is a first step, not a replacement.")
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.5))
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 8)
+                    .padding(.horizontal, 40)
+                    .padding(.vertical, 20)
                 }
-                .frame(maxWidth: .infinity)
             }
-            .padding(48)
+            .background(Theme.cream)
         } else {
-            Color.clear.onAppear { app.backToSongs() }
+            Color.clear.onAppear { app.backToKotekan() }
         }
     }
-}
 
-private struct StatPill: View {
-    let label: String
-    let value: Int
-    let color: Color
-
-    var body: some View {
-        VStack(spacing: 4) {
-            Text("\(value)").font(.title2.weight(.bold)).foregroundStyle(color)
-            Text(label).font(.caption).foregroundStyle(.white.opacity(0.6))
+    private func header(_ result: SongResult) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                SectionLabel("Result", color: Theme.stone)
+                Spacer()
+                Text(result.subtitle)
+                    .font(.sans(14, weight: .medium))
+                    .foregroundStyle(Theme.terracotta)
+            }
+            .padding(.horizontal, 40)
+            .padding(.vertical, 16)
+            Rectangle().fill(Theme.charcoal.opacity(0.12)).frame(height: 1)
         }
-        .frame(width: 90)
-        .padding(.vertical, 14)
-        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func accuracyColumn(_ result: SongResult) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            SectionLabel("Accuracy")
+            Text("\(Int((result.accuracy * 100).rounded()))%")
+                .font(.serif(68))
+                .foregroundStyle(Theme.charcoal)
+
+            Rectangle().fill(Theme.charcoal.opacity(0.15))
+                .frame(width: 200, height: 1)
+                .padding(.vertical, 14)
+
+            HStack(spacing: 36) {
+                stat("On the beat", "\(Int((result.onBeatFraction * 100).rounded()))%")
+                stat("Drift", String(format: "%+.0f ms", result.driftMs))
+            }
+        }
+        .padding(.trailing, 28)
+    }
+
+    private func stat(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            SectionLabel(label, color: Theme.stone)
+            Text(value).font(.serif(28)).foregroundStyle(Theme.charcoal)
+        }
+    }
+
+    private func slippedColumn(_ result: SongResult) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionLabel("Where it slipped", color: Theme.stone)
+            ForEach(result.breakdown) { row in
+                HStack(spacing: 12) {
+                    Text(bilahLabel(row.keyIndex, count: app.profile.keys.count))
+                        .font(.serif(18, weight: .semibold))
+                        .foregroundStyle(Theme.charcoal)
+                        .frame(width: 26, alignment: .leading)
+                    StatBar(fraction: row.accuracy,
+                            color: row.accuracy >= 0.7 ? Theme.terracotta : Theme.charcoal.opacity(0.6))
+                    Text(row.note)
+                        .font(.sans(13))
+                        .foregroundStyle(Theme.stone)
+                        .frame(width: 140, alignment: .trailing)
+                }
+            }
+        }
+        .padding(.leading, 28)
+    }
+
+    private var bottomBar: some View {
+        HStack(spacing: 16) {
+            PillButton(title: "Watch again", style: .outlined, tint: Theme.charcoal) {
+                app.watchAgain()
+            }
+            PillButton(title: "Retry", style: .outlined, tint: Theme.terracotta) {
+                app.retry()
+            }
+            PillButton(title: "Choose Kotekan", style: .filled, tint: Theme.terracotta) {
+                app.backToKotekan()
+            }
+        }
+        .padding(.top, 12)
+        .padding(.bottom, 16)
     }
 }

@@ -36,6 +36,7 @@ final class CameraController: NSObject {
     @ObservationIgnored private var device: AVCaptureDevice?
     @ObservationIgnored private var videoOutput: AVCaptureVideoDataOutput?
     @ObservationIgnored private var isConfigured = false
+    @ObservationIgnored private var lastRotationAngle: CGFloat = -1
 
     // MARK: - Permissions
 
@@ -81,15 +82,30 @@ final class CameraController: NSObject {
     /// don't shift between frames.
     func lockFocusAndExposure() {
         sessionQueue.async { [weak self] in
-            guard let device = self?.device else { return }
-            do {
-                try device.lockForConfiguration()
-                if device.isFocusModeSupported(.locked) { device.focusMode = .locked }
-                if device.isExposureModeSupported(.locked) { device.exposureMode = .locked }
-                device.unlockForConfiguration()
-            } catch {
-                // Non-fatal: some devices won't allow locking; overlay still works.
+            self?.applyLock()
+        }
+    }
+
+    /// Awaitable form, for callers that want to hold a "saving…" state until the
+    /// lens has actually settled rather than change screen out from under it.
+    func lockFocusAndExposureAsync() async {
+        await withCheckedContinuation { continuation in
+            sessionQueue.async { [weak self] in
+                self?.applyLock()
+                continuation.resume()
             }
+        }
+    }
+
+    private func applyLock() {
+        guard let device else { return }
+        do {
+            try device.lockForConfiguration()
+            if device.isFocusModeSupported(.locked) { device.focusMode = .locked }
+            if device.isExposureModeSupported(.locked) { device.exposureMode = .locked }
+            device.unlockForConfiguration()
+        } catch {
+            // Non-fatal: some devices won't allow locking; overlay still works.
         }
     }
 
@@ -121,6 +137,11 @@ final class CameraController: NSObject {
     /// live in. Driven by CameraPreview, which is the single source of truth for
     /// orientation — a fixed angle here breaks the moment the device rotates.
     func setVideoRotationAngle(_ angle: CGFloat) {
+        //R Called from the preview's updateUIView, which SwiftUI can run very
+        //R often. Reconfiguring the connection hops onto the same queue that
+        //R delivers frames, so an unchanged angle must cost nothing.
+        guard angle != lastRotationAngle else { return }
+        lastRotationAngle = angle
         sessionQueue.async { [weak self] in
             guard let connection = self?.videoOutput?.connection(with: .video),
                   connection.isVideoRotationAngleSupported(angle) else { return }
@@ -161,6 +182,16 @@ final class CameraController: NSObject {
 
         let videoOutput = AVCaptureVideoDataOutput()
         videoOutput.alwaysDiscardsLateVideoFrames = true
+        //R The preview stays on the high preset, but the frames we CLASSIFY do
+        //R not need to be 1920×1080: every one of them was being rendered to a
+        //R full-size CGImage (8MB) thirty times a second, and a dozen of those
+        //R sat in the ring buffer. The classifier squashes its crop to 360×360
+        //R anyway, so ask AVFoundation for a smaller buffer instead.
+        videoOutput.videoSettings = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: 960,
+            kCVPixelBufferHeightKey as String: 540,
+        ]
         videoOutput.setSampleBufferDelegate(self, queue: sessionQueue)
         if session.canAddOutput(videoOutput) {
             session.addOutput(videoOutput)
