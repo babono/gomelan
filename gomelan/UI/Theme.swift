@@ -2,16 +2,28 @@
 //  Theme.swift
 //  gomelan
 //
-//  The visual design system (see design spec). Two worlds share one palette:
-//   - "Paper" screens (welcome, setup, selection, results) sit on warm cream.
-//   - "Stage" screens (framing, aligning, baseline, play) sit on warm ink so the
-//     live camera and the guidance glow read clearly.
+//  The Sangsih design system.
 //
-//  Colours: Primary terracotta #B35433, Secondary charcoal #4A443F,
-//  Neutral cream #F2E8DF. Headlines are a Caslon-like serif (system New York);
-//  body and labels are a Work-Sans-like sans (system default). A font helper
-//  falls back to the system faces, so bundling the exact .ttf files later is a
-//  drop-in with no code change.
+//  One surface, not two. The app used to run a "paper" world (cream, light) for
+//  selection screens and a "stage" world (ink, dark) behind the camera, and each
+//  component had to read on both. The design collapses that: everything sits on
+//  the same warm brown ground with the pattern behind it, and the camera screens
+//  are simply the ones where the ground happens to be a live image. Fewer
+//  decisions, and the app stops flashing between light and dark mid-flow.
+//
+//  Palette (from the design spec):
+//    #3D322C ground · #2A211C deep · #F0DDA8 cream
+//    #C9A063 gold   · #8B5A32 wood · #C9A876 bronze
+//
+//  Type: Dream Orphans for headings, Futura for everything else. Both are
+//  bundled — see UIAppFonts in Info.plist — and both fall back to the nearest
+//  system face if a build ever ships without them.
+//
+//  Geometry: radius 14, primary buttons 56pt tall.
+//
+//  The old token NAMES are kept (`ink`, `cream`, `copper`, `terracotta` …)
+//  because ~250 call sites use them and renaming would be a mechanical change
+//  with no design value. What changed is what they point at.
 //
 
 import SwiftUI
@@ -19,49 +31,78 @@ import SwiftUI
 enum Theme {
     // MARK: - Palette
 
-    /// Warm cream — the "paper" background (Neutral #F2E8DF).
-    static let cream = Color(hex: 0xF2E8DF)
-    /// Slightly deeper cream for cards/fills on paper.
-    static let creamSunken = Color(hex: 0xEADFD2)
-    /// Terracotta — the primary accent (Primary #B35433).
-    static let terracotta = Color(hex: 0xB35433)
-    /// Warm charcoal — secondary / strong text on paper (#4A443F).
-    static let charcoal = Color(hex: 0x2A2420)
-    /// Muted warm grey for supporting body text on paper.
-    static let stone = Color(hex: 0x8A8078)
+    /// The ground. Every screen sits on this.
+    static let ground = Color(hex: 0x3D322C)
+    /// A step darker — card fills, wells, anything recessed into the ground.
+    static let deep = Color(hex: 0x2A211C)
+    /// Warm cream. Primary text, and the fill of the primary button.
+    static let cream = Color(hex: 0xF0DDA8)
+    /// Gold. Outlines, eyebrows, accents, the tracked uppercase labels.
+    static let gold = Color(hex: 0xC9A063)
+    /// Carved teak, for the pelawah and anything standing in for wood.
+    static let wood = Color(hex: 0x8B5A32)
+    /// Struck bronze — the bilah themselves.
+    static let bronze = Color(hex: 0xC9A876)
 
-    /// Warm near-black — the "stage" background behind the camera.
-    static let ink = Color(hex: 0x1C1815)
-    /// A touch lighter than ink, for stage panels and dividers.
-    static let inkRaised = Color(hex: 0x2A2420)
-    /// Rose-gold / copper — the accent used on stage (outlines, rings, numbers).
-    static let copper = Color(hex: 0xC79A78)
-    /// Muted cream for supporting text on stage.
-    static let inkStone = Color(hex: 0x9A8E82)
+    // MARK: - Legacy names, repointed
+    //
+    // `charcoal` and `stone` used to be dark-on-light text. Since every surface
+    // is now dark, they resolve to the light end instead: the same call sites
+    // still mean "strong body text" and "supporting text", which is the part
+    // worth preserving.
 
-    // MARK: - App chrome (kept for callers that still reference these names)
+    static let ink = ground
+    static let inkRaised = Color(hex: 0x342A22)
+    static let background = ground
+    static let creamSunken = Color(hex: 0x342A22)
+    static let terracotta = gold
+    static let accent = gold
+    static let copper = gold
+    /// Strong body text.
+    static let charcoal = cream
+    /// Supporting text — cream held back rather than a separate grey, so the
+    /// page stays in one family.
+    static let stone = Color(hex: 0xF0DDA8).opacity(0.62)
+    static let inkStone = Color(hex: 0xC9A063).opacity(0.78)
 
-    static let background = ink
-    static let accent = terracotta
+    /// Dark text for use ON a cream fill — the primary button's label, and
+    /// anything else sitting on `cream`. The one place a dark ink is still
+    /// correct, which is why it is named for the job rather than the colour.
+    static let onCream = Color(hex: 0x3D322C)
 
-    // MARK: - Overlay play colours (§13.5), retuned to the palette
+    // MARK: - Geometry
 
-    static let upcoming = copper          // approaching / fill
-    static let hit = Color(hex: 0x4CAF50) // vibrant green for correct hit
-    static let miss = Color(hex: 0x9E4B3A)// muted red-brown, still warm
-    static let wrong = Color(hex: 0xC9A227)// amber, wrong key
+    /// Corner radius for buttons, cards and wells.
+    static let radius: CGFloat = 14
+    /// Height of a primary button.
+    static let buttonHeight: CGFloat = 56
+    /// Opacity the background pattern is laid in at.
+    static let patternOpacity: Double = 0.13
+
+    // MARK: - Overlay play colours (§13.5)
+
+    static let upcoming = gold
+    /// Correct hit. Warmed towards the palette rather than a stock green, but
+    /// kept clearly green — it has to read as right/wrong at a glance while
+    /// someone is playing.
+    static let hit = Color(hex: 0x7FB069)
+    static let miss = Color(hex: 0xA85A44)
+    static let wrong = Color(hex: 0xD9A441)
 
     // MARK: - Colotomic layer (gong / kempur / kemong)
-    static let gong = Color(hex: 0xFFCA28)       // gold
-    static let kempur = Color(hex: 0xFF7043)     // orange
-    static let kemong = Color(hex: 0xAB47BC)     // purple
+
+    static let gong = Color(hex: 0xF0DDA8)
+    static let kempur = Color(hex: 0xD9A441)
+    static let kemong = Color(hex: 0xB98BC9)
 
     // MARK: - The two interlocking halves (§7)
 
     /// Polos and sangsih keep their own colour wherever they appear, so the
-    /// weave reads at a glance: your half is drawn solid, your partner's ghosted.
-    static let polosVoice = Color(hex: 0x4FB3A5)   // teal
-    static let sangsihVoice = Color(hex: 0x7E8FE0) // indigo
+    /// weave reads at a glance. Chosen to sit clearly apart from the gold/cream
+    /// of the chrome — these carry meaning, so they are allowed to leave the
+    /// warm family.
+    static let polosVoice = Color(hex: 0x5FBFB0)
+    static let sangsihVoice = Color(hex: 0x8E9BE8)
 
     static let keyOutlineWidth: CGFloat = 3
     static let keyCornerRadius: CGFloat = 6
@@ -78,23 +119,32 @@ enum Theme {
 // MARK: - Typography
 
 extension Font {
-    /// Caslon-like serif headline. Uses a bundled Libre Caslon Text face if
-    /// present, else the system serif (New York) — visually very close.
+    /// Dream Orphans — the display serif, for headings and numerals.
+    ///
+    /// The family ships Regular/Bold/Italic/BoldItalic only, so anything
+    /// semibold or above maps to Bold and everything else to Regular. Falls back
+    /// to the system serif when the bundle has no such face.
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        if UIFont.fontNames(forFamilyName: "Libre Caslon Text").isEmpty {
+        guard !UIFont.fontNames(forFamilyName: "Dream Orphans").isEmpty else {
             return .system(size: size, weight: weight, design: .serif)
         }
-        let bold: Set<Font.Weight> = [.semibold, .bold, .heavy, .black]
-        let name = bold.contains(weight) ? "LibreCaslonText-Bold" : "LibreCaslonText-Regular"
-        return .custom(name, size: size)
+        let heavy: Set<Font.Weight> = [.semibold, .bold, .heavy, .black]
+        return .custom(heavy.contains(weight) ? "DreamOrphans-Bold" : "DreamOrphans-Regular",
+                       size: size)
     }
 
-    /// Work-Sans-like sans for body and labels. Falls back to the system sans.
+    /// Futura — body, labels, buttons, everything that is not a heading.
+    ///
+    /// The bundled cut is Medium Condensed, a single weight, so `weight` cannot
+    /// be honoured by swapping faces. It is ignored rather than faked: synthetic
+    /// bolding a condensed face muddies it at the small tracked sizes this is
+    /// mostly used at. Where emphasis is needed, the design uses tracking and
+    /// colour instead.
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        if UIFont.fontNames(forFamilyName: "Work Sans").isEmpty {
+        guard !UIFont.fontNames(forFamilyName: "Futura Medium Condensed").isEmpty else {
             return .system(size: size, weight: weight, design: .default)
         }
-        return .custom("WorkSans-Regular", size: size).weight(weight)
+        return .custom("Futura-MediumCondensed", size: size)
     }
 }
 
@@ -104,7 +154,7 @@ extension View {
     /// The uppercase, letter-spaced label used for section headers and eyebrows.
     func eyebrow(_ color: Color) -> some View {
         self
-            .font(.sans(12, weight: .semibold))
+            .font(.sans(12))
             .textCase(.uppercase)
             .tracking(2.5)
             .foregroundStyle(color)
