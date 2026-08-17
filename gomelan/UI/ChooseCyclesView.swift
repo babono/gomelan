@@ -67,7 +67,6 @@ struct ChooseCyclesView: View {
                 .padding(.horizontal, 40)
                 .frame(maxHeight: .infinity)
             }
-            .background(Theme.cream)
             .onAppear { cycles = app.chosenCycles }
         } else {
             Color.clear.onAppear { app.backToKotekan() }
