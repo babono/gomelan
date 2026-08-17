@@ -30,6 +30,12 @@ struct PlayView: View {
     @State private var useAudioConfirmation = false
     @State private var overlaySize: CGSize = .zero
 
+    /// How sure vision must be before its answer is used as a training label for
+    /// the audio dictionary. Well above `StrikeFusion.minHitProbability`, which
+    /// is the bar for ACTING on a sighting — teaching from a marginal crop would
+    /// bake a mistake into a template that then goes on to make more of them.
+    private let visionTeachingConfidence: Double = 0.75
+
     @State private var countdown: Int? = 3
     @State private var paused = false
     @State private var pauseStartedAt: Double = 0
@@ -195,7 +201,7 @@ struct PlayView: View {
 
     private func setup() {
         camera.start()
-        camera.enableContinuousAutoFocus()
+        if app.fixedMount { camera.lockFocusAndExposure() } else { camera.enableContinuousAutoFocus() }
 
         engine.cue = cue
         engine.metronomeEnabled = app.metronomeEnabled
@@ -226,10 +232,18 @@ struct PlayView: View {
         // Only the bilah this figure uses are worth classifying — three or four
         // instead of ten, which is most of the vision cost gone.
         let active = playedKeys
-        Task { await fusion.setActiveKeys(active) }
+        Task {
+            await fusion.setActiveKeys(active)
+            // Whatever was tuned in the detection screen governs play too —
+            // otherwise that screen measures a detector nobody practises with.
+            await fusion.setMinHitProbability(app.visionThreshold)
+        }
 
         visionDetector.reset()
         try? audio.start(profile: app.profile)
+        // Let the ear form a second opinion, on the same bilah the eye is watching.
+        audio.setKeyOpinionsEnabled(true)
+        audio.setDecompositionKeys(active)
         if let baseline = app.profile.strikeBaseline {
             audio.setBaselineTemplate(baseline)
         }
@@ -240,6 +254,27 @@ struct PlayView: View {
                 guard countdown == nil, !paused, !engine.isFinished else { return }
                 if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                     applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
+                    // Tally what the ear would have said, whether or not it is
+                    // allowed a vote. Audio disagreeing with a confident sighting
+                    // is the most informative event in the whole pipeline, and
+                    // without this it happens silently and is lost.
+                    audio.noteVisionDecision(decision.keyIndex,
+                                             confidence: decision.hitProbability,
+                                             at: hostTime)
+                    // The eye labels the ear's training data. Only clear sightings
+                    // teach — a marginal crop would poison the atom it feeds.
+                    if decision.hitProbability >= visionTeachingConfidence {
+                        audio.learnKey(decision.keyIndex, at: hostTime)
+                    }
+                } else if app.audioTriggersStrikes, let heard = audio.keyOpinion(at: hostTime) {
+                    audio.noteRecovery()
+                    // Vision saw a strike happen but could not say where: the
+                    // mallet was occluded, or a hand covered the bar at impact.
+                    // Without this the hit is simply dropped and scored as a miss.
+                    // Confidence is reported as the ear's share, so the overlay
+                    // shows it for what it is — a recovered strike, not a sighting.
+                    applyStrike(key: heard.keyIndex, hostTime: hostTime,
+                                confidence: Double(heard.share))
                 }
             }
         }
@@ -278,7 +313,11 @@ struct PlayView: View {
     /// returns nil immediately when the camera has not delivered a new frame.
     private func runVisionDetection() async {
         while !Task.isCancelled {
-            if countdown == nil, !paused, !engine.isFinished,
+            // Silent when the ear owns the trigger. A presence model's score
+            // stays high while the mallet lingers, so a rising-edge detector
+            // fires once, latches, and then only ever adds phantoms.
+            if !app.audioTriggersStrikes,
+               countdown == nil, !paused, !engine.isFinished,
                let (scores, hostTime) = await fusion?.latestScores() {
                 let fired = visionDetector.process(scores: scores)
                 if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
@@ -317,6 +356,15 @@ struct PlayView: View {
         displayLink.stop()
         audio.onStrikeDetected = nil
         audio.onConfirmedStrike = nil
+
+        // Keep what the session taught. Without this the dictionary starts empty
+        // every time and never gets past its first four strikes per key, which
+        // is the whole reason it can improve at all.
+        audio.learnedTemplates { templates in
+            guard !templates.isEmpty else { return }
+            app.storeLinearTemplates(templates)
+        }
+        audio.setKeyOpinionsEnabled(false)
         audio.stop()
         cue.stop()
     }
