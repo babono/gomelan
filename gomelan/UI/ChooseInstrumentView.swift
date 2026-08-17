@@ -3,8 +3,13 @@
 //  gomelan
 //
 //  Choose or manage saved gamelan instrument profiles. Persists key alignments
-//  and strike baselines across app launches and builds. Styled consistently with
-//  ChooseKotekanView on warm cream paper.
+//  and strike baselines across app launches and builds.
+//
+//  Built to the Sangsih design: a rail of tall cards over the drifting pattern,
+//  the selected one outlined in cream and the rest in held-back gold, with the
+//  add affordance as a narrow card at the end of the row rather than a button
+//  somewhere else — so "which instrument" and "another instrument" are the same
+//  gesture in the same place.
 //
 
 import SwiftUI
@@ -49,7 +54,6 @@ struct ChooseInstrumentView: View {
             }
         }
         .animation(.spring(duration: 0.25), value: editingProfileId)
-        .background(Theme.cream)
         .confirmationDialog("Delete Instrument?",
                             isPresented: $showDeleteConfirm,
                             titleVisibility: .visible,
@@ -69,10 +73,10 @@ struct ChooseInstrumentView: View {
         VStack(spacing: 12) {
             Image(systemName: "tuningfork")
                 .font(.sans(32))
-                .foregroundStyle(Theme.terracotta)
+                .foregroundStyle(Theme.gold)
 
             Text("No instruments yet")
-                .font(.serif(26, weight: .bold))
+                .font(.serif(30))
                 .foregroundStyle(Theme.charcoal)
 
             Text("Every gamelan is tuned differently, so gomelan learns yours — where the bilah are and how they sound.")
@@ -82,7 +86,7 @@ struct ChooseInstrumentView: View {
                 .lineSpacing(3)
                 .frame(maxWidth: 440)
 
-            PillButton(title: "Set up · 4 steps", style: .filled, tint: Theme.terracotta) {
+            PillButton(title: "Set up · 4 steps", style: .filled) {
                 app.addNewInstrument()
             }
             .padding(.top, 4)
@@ -101,13 +105,13 @@ struct ChooseInstrumentView: View {
                     if isEditing {
                         HStack(spacing: 6) {
                             TextField("Instrument Name", text: $editingNameText)
-                                .font(.serif(16, weight: .bold))
-                                .foregroundStyle(Theme.charcoal)
+                                .font(.serif(18))
+                                .foregroundStyle(Theme.cream)
                                 .textFieldStyle(.plain)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
-                                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.terracotta, lineWidth: 1.5))
+                                .background(Theme.ground, in: RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.gold, lineWidth: 1.5))
                                 .onSubmit { saveInlineRename(profile) }
 
                             Button {
@@ -131,8 +135,8 @@ struct ChooseInstrumentView: View {
                     } else {
                         HStack(spacing: 6) {
                             Text(profile.name)
-                                .font(.serif(22, weight: .bold))
-                                .foregroundStyle(Theme.charcoal)
+                                .font(.serif(27))
+                                .foregroundStyle(isSelected ? Theme.cream : Theme.cream.opacity(0.74))
                                 .lineLimit(1)
 
                             Button {
@@ -148,9 +152,10 @@ struct ChooseInstrumentView: View {
                         }
                     }
 
-                    Text("\(profile.keyCount) bilah keys")
-                        .font(.sans(13))
-                        .foregroundStyle(Theme.stone)
+                    Text("\(profile.keyCount) BILAH")
+                        .font(.sans(12))
+                        .tracking(1.9)
+                        .foregroundStyle(Theme.gold)
                 }
 
                 if !isEditing {
@@ -169,75 +174,71 @@ struct ChooseInstrumentView: View {
                 }
             }
 
-            // Badges
-            VStack(alignment: .leading, spacing: 6) {
-                badge(title: "Aligned", systemImage: "rectangle.and.arrow.up.right.and.arrow.down.left", active: true)
-                badge(title: profile.hasLearnedBaseline ? "Voice Learned" : "No Voice Baseline",
-                      systemImage: profile.hasLearnedBaseline ? "checkmark.seal.fill" : "waveform.slash",
-                      active: profile.hasLearnedBaseline)
-            }
+            Spacer(minLength: 8)
 
-            Spacer(minLength: 12)
-
-            Divider().background(Theme.charcoal.opacity(0.12))
+            // A filled dot for a learned voice, a hollow one for not — the
+            // design's own vocabulary, and readable without colour vision.
+            statusDot(title: profile.hasLearnedBaseline ? "VOICE LEARNED" : "NO VOICE YET",
+                      filled: profile.hasLearnedBaseline)
 
             // Action Buttons
             HStack(spacing: 10) {
                 PillButton(title: isSelected ? "Active" : "Select & Play",
                            style: isSelected ? .filled : .outlined,
-                           tint: Theme.terracotta,
                            compact: true) {
                     app.selectInstrument(profile)
                 }
 
-                PillButton(title: "Re-align", style: .outlined, tint: Theme.stone, compact: true) {
+                PillButton(title: "Re-align", style: .outlined, compact: true) {
                     app.realignInstrument(profile)
                 }
             }
         }
-        .padding(18)
-        .frame(width: isEditing ? 310 : 260, height: isEditing ? 220 : 250)
-        .background(isSelected ? Theme.creamSunken : Color.white.opacity(0.7),
-                    in: RoundedRectangle(cornerRadius: 16))
+        .padding(20)
+        .frame(width: isEditing ? 310 : 250, height: isEditing ? 220 : 236)
+        // Selected reads by BORDER, not fill: a filled card competes with the
+        // pattern behind it, and on a rail the eye finds an outline faster.
+        .background(Theme.deep.opacity(isSelected ? 0.82 : 0.78),
+                    in: RoundedRectangle(cornerRadius: Theme.radius))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(isSelected ? Theme.terracotta : Theme.charcoal.opacity(0.15),
+            RoundedRectangle(cornerRadius: Theme.radius)
+                .strokeBorder(isSelected ? Theme.cream : Theme.gold.opacity(0.38),
                               lineWidth: isSelected ? 2 : 1)
         )
     }
 
-    private func badge(title: String, systemImage: String, active: Bool) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: systemImage)
-                .font(.sans(10, weight: .semibold))
+    private func statusDot(title: String, filled: Bool) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .strokeBorder(filled ? Color.clear : Theme.cream, lineWidth: 2)
+                .background(Circle().fill(filled ? Theme.bronze : Color.clear))
+                .frame(width: 8, height: 8)
             Text(title)
-                .font(.sans(11, weight: .medium))
+                .font(.sans(12))
+                .tracking(1.7)
+                .foregroundStyle(filled ? Theme.bronze : Theme.cream)
         }
-        .foregroundStyle(active ? Theme.terracotta : Theme.stone)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(active ? Theme.terracotta.opacity(0.12) : Theme.charcoal.opacity(0.05), in: Capsule())
     }
 
     private var footer: some View {
         HStack(spacing: 16) {
-            PillButton(title: "+ Add Instrument", style: .filled, tint: Theme.terracotta, compact: true) {
+            PillButton(title: "+ Add Instrument", style: .filled, compact: true) {
                 app.addNewInstrument()
             }
 
             Spacer()
 
             Text(app.savedProfiles.isEmpty
-                 ? "No instruments saved"
-                 : "\(app.savedProfiles.count) saved instrument\(app.savedProfiles.count == 1 ? "" : "s")")
+                 ? "NONE SAVED"
+                 : "\(app.savedProfiles.count) SAVED")
                 .font(.sans(13))
-                .foregroundStyle(Theme.stone)
+                .tracking(1.8)
+                .foregroundStyle(Theme.gold.opacity(0.75))
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 16)
-        .background(Theme.creamSunken.opacity(0.6))
         .overlay(alignment: .top) {
-            Rectangle().fill(Theme.charcoal.opacity(0.1)).frame(height: 1)
+            Rectangle().fill(Theme.gold.opacity(0.2)).frame(height: 1)
         }
     }
 

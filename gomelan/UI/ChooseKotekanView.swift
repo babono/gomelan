@@ -35,7 +35,6 @@ struct ChooseKotekanView: View {
             .padding(.vertical, 16)
             .frame(maxHeight: .infinity)
         }
-        .background(Theme.cream)
     }
 }
 
@@ -67,7 +66,7 @@ private struct KotekanCard: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(18)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Theme.creamSunken))
+        .background(RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.deep.opacity(0.78)))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(Theme.charcoal.opacity(0.15), lineWidth: 1)

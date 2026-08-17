@@ -36,7 +36,6 @@ struct ResultsView: View {
                     .padding(.vertical, 20)
                 }
             }
-            .background(Theme.cream)
         } else {
             Color.clear.onAppear { app.backToKotekan() }
         }
