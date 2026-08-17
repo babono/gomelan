@@ -2,9 +2,13 @@
 //  Components.swift
 //  gomelan
 //
-//  Shared UI pieces for the redesign. Two surfaces — warm "paper" (cream) and
-//  warm "stage" (ink) — share these components; colours are passed in so a piece
-//  reads correctly on either.
+//  Shared UI pieces, in the Sangsih design language: one warm brown ground,
+//  cream type, gold outlines, radius 14 throughout.
+//
+//  Buttons are rounded rectangles rather than capsules. That is the design's
+//  call and it matters more than it sounds — a capsule reads as a chip, a 14pt
+//  rectangle at 56pt tall reads as a key on an instrument, which is what these
+//  screens are about.
 //
 
 import SwiftUI
@@ -19,7 +23,7 @@ struct PillButton: View {
     let title: String
     var systemImage: String? = nil
     var style: PillStyle = .outlined
-    var tint: Color = Theme.terracotta
+    var tint: Color = Theme.gold
     var uppercase: Bool = true
     var fullWidth: Bool = false
     var compact: Bool = false
@@ -33,43 +37,53 @@ struct PillButton: View {
                     .textCase(uppercase ? .uppercase : nil)
                     .tracking(uppercase ? (compact ? 1.5 : 2) : 0)
             }
-            .font(.sans(compact ? 13 : 15, weight: .semibold))
+            .font(.sans(compact ? 14 : 19))
             .foregroundStyle(foreground)
-            .padding(.vertical, compact ? 9 : 15)
             .padding(.horizontal, compact ? 18 : 30)
             .frame(maxWidth: fullWidth ? .infinity : nil)
+            .frame(height: compact ? 38 : Theme.buttonHeight)
             .background(background)
             .overlay(
-                Capsule().strokeBorder(tint, lineWidth: style == .outlined ? 1.5 : 0)
+                RoundedRectangle(cornerRadius: Theme.radius)
+                    .strokeBorder(tint, lineWidth: style == .outlined ? 1 : 0)
             )
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
         .buttonStyle(.plain)
     }
 
     private var foreground: Color {
         switch style {
-        case .filled: return Theme.cream
-        case .outlined: return tint
-        case .secondary: return Theme.charcoal
+        // The primary button is a cream slab with dark type on it — the one
+        // place in the app where ink-on-light is correct.
+        case .filled: return Theme.onCream
+        case .outlined: return Theme.cream
+        case .secondary: return Theme.cream
         }
     }
 
     @ViewBuilder private var background: some View {
         switch style {
-        case .filled: Capsule().fill(tint)
-        case .outlined: Capsule().fill(.clear)
-        case .secondary: Capsule().fill(Theme.creamSunken)
+        case .filled:
+            RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.cream)
+        case .outlined:
+            // Glass rather than a hole: a cream wash at 8% over whatever is
+            // behind, which on the camera screens is the instrument itself.
+            RoundedRectangle(cornerRadius: Theme.radius)
+                .fill(Theme.cream.opacity(0.08))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.radius))
+        case .secondary:
+            RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.inkRaised)
         }
     }
 }
 
-/// Filled terracotta call-to-action. Kept as a distinct name because many call
-/// sites use it; it is just a non-uppercased filled `PillButton` with an icon.
+/// The cream call-to-action. Kept as a distinct name because many call sites
+/// use it; it is just a non-uppercased filled `PillButton` with an icon.
 struct PrimaryButton: View {
     let title: String
     var systemImage: String? = nil
-    var tint: Color = Theme.terracotta
+    var tint: Color = Theme.cream
     let action: () -> Void
 
     var body: some View {
@@ -91,11 +105,14 @@ struct SecondaryButton: View {
                 if let systemImage { Image(systemName: systemImage) }
                 Text(title)
             }
-            .font(.sans(14, weight: .medium))
-            .foregroundStyle(.primary)
+            .font(.sans(15))
+            .foregroundStyle(Theme.cream)
             .padding(.vertical, 11)
             .padding(.horizontal, 18)
-            .overlay(Capsule().strokeBorder(.primary.opacity(0.4), lineWidth: 1))
+            .background(Theme.cream.opacity(0.08),
+                        in: RoundedRectangle(cornerRadius: Theme.radius))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radius)
+                .strokeBorder(Theme.gold.opacity(0.45), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -113,8 +130,8 @@ struct TopBar: View {
     var trailingText: String? = nil
     /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
     var settingsAction: (() -> Void)? = nil
-    var tint: Color = Theme.charcoal
-    var accent: Color = Theme.terracotta
+    var tint: Color = Theme.cream
+    var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
     var compact: Bool = false
 
@@ -172,8 +189,8 @@ struct TopBar: View {
 /// Uppercase tracked eyebrow/section label.
 struct SectionLabel: View {
     let text: String
-    var color: Color = Theme.terracotta
-    init(_ text: String, color: Color = Theme.terracotta) {
+    var color: Color = Theme.gold
+    init(_ text: String, color: Color = Theme.gold) {
         self.text = text
         self.color = color
     }
@@ -194,9 +211,9 @@ struct CountStepper: View {
     @Binding var value: Int
     var range: ClosedRange<Int>
     var numberSize: CGFloat = 64
-    var tint: Color = Theme.terracotta
-    var numberColor: Color = Theme.charcoal
-    var lineColor: Color = Theme.charcoal
+    var tint: Color = Theme.gold
+    var numberColor: Color = Theme.cream
+    var lineColor: Color = Theme.cream
 
     var body: some View {
         HStack(spacing: 22) {
