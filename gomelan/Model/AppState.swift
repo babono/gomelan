@@ -35,6 +35,7 @@ final class AppState {
         case malletTest
         case detectionTest
         case audioTest
+        case captureTraining
     }
 
     var screen: Screen = .welcome
@@ -77,11 +78,60 @@ final class AppState {
     /// Require a real gangsa strike sound (spectral baseline) to register a hit.
     var requireStrikeSound: Bool = false
 
+    // MARK: - Detection tuning
+    //
+    // Owned here rather than by the test screen, because they ARE the detector's
+    // behaviour, not a debug view's local state. Tuning them somewhere the
+    // numbers are visible and then playing with different values would make the
+    // test screen actively misleading.
+    //
+    // Persisted, unlike the practice settings above: these are calibrated once
+    // against a particular model and instrument, and losing them on relaunch —
+    // the morning of an exhibition, say — would be silent and expensive.
+
+    /// Confidence vision must reach to name a bar. See DetectionTestView.
+    var visionThreshold: Double = Defaults.double("visionThreshold", 0.5) {
+        didSet { Defaults.set("visionThreshold", visionThreshold) }
+    }
+
+    /// Whether an audio onset must corroborate a sighting before it counts.
+    /// Silence vetoes vision: a gangsa strike is the loudest thing in the room.
+    var requireOnsetCorroboration: Bool = Defaults.bool("requireOnset", true) {
+        didSet { Defaults.set("requireOnset", requireOnsetCorroboration) }
+    }
+
+    /// Whether the ear fires the trigger and vision only says WHICH bar.
+    ///
+    /// Correct for a presence model, which reports that the mallet is over a bar
+    /// and stays true while it lingers — so a rising edge in the vision score
+    /// fires once and then latches, losing every repeated note. An onset is
+    /// impulsive and has no such problem.
+    var audioTriggersStrikes: Bool = Defaults.bool("audioTriggers", true) {
+        didSet { Defaults.set("audioTriggers", audioTriggersStrikes) }
+    }
+
+    /// Index into the fill/centre/fit options. Must match how the current model
+    /// was trained — see MalletHitClassifier.cropAndScale.
+    var cropScaleMode: Int = Defaults.int("cropScaleMode", 1) {
+        didSet { Defaults.set("cropScaleMode", cropScaleMode) }
+    }
+
+    /// The phone is on a stand or arm rather than in someone's hand.
+    ///
+    /// Continuous autofocus is right for a handheld phone and actively harmful
+    /// on a fixed rig: hands passing over the bilah make it hunt, and every
+    /// refocus shifts sharpness and framing slightly — variation the strike
+    /// classifier reads as signal, on top of a scene that is otherwise perfectly
+    /// still. Locking both focus and exposure is what turns a mount into a
+    /// genuinely constant image.
+    var fixedMount: Bool = false
+
     /// Whether the gangsa's strike-sound baseline has been learned this session.
     var baselineLearned: Bool = false
 
     init() {
         let all = ProfileStore.loadAll()
+        MalletHitClassifier.applyCropScale(mode: Defaults.int("cropScaleMode", 1))
         self.savedProfiles = all
         if let current = ProfileStore.loadSelected() {
             self.profile = current
@@ -106,6 +156,25 @@ final class AppState {
         //R right when it IS the active instrument and wrong otherwise.
         ProfileStore.setSelectedID(profile.id)
         savedProfiles = ProfileStore.loadAll()
+    }
+
+    /// Fold the audio dictionary a session learned back into the instrument.
+    ///
+    /// Written straight to disk without touching `screen` or anything else the
+    /// UI observes — this lands as the results screen is appearing, and a
+    /// session's worth of listening is not worth a redraw.
+    func storeLinearTemplates(_ templates: [Int: [Float]]) {
+        guard !templates.isEmpty else { return }
+        var changed = false
+        for (index, vector) in templates {
+            guard let position = profile.keys.firstIndex(where: { $0.index == index }) else { continue }
+            if profile.keys[position].linearTemplate != vector {
+                profile.keys[position].linearTemplate = vector
+                changed = true
+            }
+        }
+        guard changed else { return }
+        saveProfile()
     }
 
     /// The same save, off the main actor. Used by the steps that show a "saving"
@@ -359,6 +428,8 @@ final class AppState {
     func openMalletTest() { screen = .malletTest }
     func closeMalletTest() { screen = .settings }
     func openDetectionTest() { screen = .detectionTest }
+    func openCaptureTraining() { screen = .captureTraining }
+    func closeCaptureTraining() { screen = .settings }
     func closeDetectionTest() { screen = .settings }
     func openAudioTest() { screen = .audioTest }
     func closeAudioTest() { screen = .settings }

@@ -23,23 +23,63 @@ nonisolated final class MalletHitClassifier {
 
     private let model: VNCoreMLModel
 
-    /// How Vision fits the (non-square) key crop into the model's 360×360 input.
+    /// How Vision fits the (non-square) key crop into the model's square input.
     ///
-    /// `.scaleFill` (squash) matches how Create ML trained this model: it's built
-    /// on Vision's FeaturePrint.Scene extractor, whose crop-and-scale default is
-    /// scaleFill, so the tall-thin bar crops in the dataset were squashed to the
-    /// square input. We squash the same way here so train/inference agree. Flip to
-    /// `.centerCrop` only if we later confirm the dataset was prepared differently.
-    private let cropAndScale: VNImageCropAndScaleOption = .scaleFill
+    /// MEASURED, not assumed. This was `.scaleFill` on the strength of a comment
+    /// claiming it matched Create ML, which nobody had verified — and it was
+    /// wrong. After retraining, every key scored 0.00 on every frame while
+    /// Create ML reported 92%: the model was being shown a different picture at
+    /// inference than it learned from, and silently returning nothing. Switching
+    /// to `.centerCrop` on device fixed it immediately.
+    ///
+    /// The two are not close on these crops. Key 0 is 58x294 — a 1:5 sliver.
+    /// `.scaleFill` stretches the whole bar into the square; `.centerCrop` scales
+    /// the short side to fit and keeps a square from the middle, so the model
+    /// sees roughly the central fifth of the bar at full width. That happens to
+    /// be where a mallet lands, which is presumably why it works well.
+    ///
+    /// The consequence worth remembering: THE MODEL NEVER SEES THE ENDS OF A BAR.
+    /// If strikes near a bar's extremities ever go undetected, this is why.
+    ///
+    /// Whenever the model is retrained, verify this again with the fill/centre/fit
+    /// switcher in the detection test screen. A mismatch here does not error —
+    /// it just returns zero forever.
+    nonisolated(unsafe) static var cropAndScale: VNImageCropAndScaleOption = .centerCrop
+
+    /// Why vision is returning nothing, when it is.
+    ///
+    /// Every failure path here used to `return 0`, which is also a perfectly
+    /// valid answer meaning "no mallet". A model that fails to load, a Vision
+    /// request that throws, and a bare bilah were therefore indistinguishable —
+    /// and after a model swap that ambiguity cost real debugging time. These are
+    /// written once and read by the test screen.
+    nonisolated(unsafe) static var lastFailure: String?
+    nonisolated(unsafe) static var loaded = false
 
     /// Fails to initialise if the model can't be loaded — the caller then falls
     /// back to audio-only, so vision simply adds nothing rather than crashing.
     init?() {
-        guard let core = try? MalletDetector(configuration: MLModelConfiguration()),
-              let vn = try? VNCoreMLModel(for: core.model) else {
+        do {
+            let core = try MalletDetector(configuration: MLModelConfiguration())
+            self.model = try VNCoreMLModel(for: core.model)
+            Self.loaded = true
+            Self.lastFailure = nil
+        } catch {
+            Self.loaded = false
+            Self.lastFailure = "load: \(error.localizedDescription)"
+            print("[MalletHitClassifier] load failed: \(error)")
             return nil
         }
-        self.model = vn
+    }
+
+    /// The fill/centre/fit options, in the order the tuning screen shows them.
+    static let cropScaleOptions: [(name: String, option: VNImageCropAndScaleOption)] = [
+        ("fill", .scaleFill), ("centre", .centerCrop), ("fit", .scaleFit)
+    ]
+
+    static func applyCropScale(mode: Int) {
+        guard cropScaleOptions.indices.contains(mode) else { return }
+        cropAndScale = cropScaleOptions[mode].option
     }
 
     /// P(the crop shows a strike), 0…1. `cropRect` is in `image` pixel space.
@@ -55,19 +95,29 @@ nonisolated final class MalletHitClassifier {
     /// screen) can display the exact crop being scored alongside its result.
     func hitProbability(crop cropped: CGImage) -> Double {
         let request = VNCoreMLRequest(model: model)
-        request.imageCropAndScaleOption = cropAndScale
+        request.imageCropAndScaleOption = Self.cropAndScale
 
         let handler = VNImageRequestHandler(cgImage: cropped, options: [:])
         do {
             try handler.perform([request])
         } catch {
+            Self.lastFailure = "perform: \(error.localizedDescription)"
+            print("[MalletHitClassifier] perform failed: \(error)")
             return 0
         }
 
-        guard let results = request.results as? [VNClassificationObservation] else { return 0 }
+        guard let results = request.results as? [VNClassificationObservation] else {
+            Self.lastFailure = "results were not classifications"
+            return 0
+        }
         if let notHit = results.first(where: { $0.identifier == "not-hit" }) {
+            Self.lastFailure = nil
             return 1 - Double(notHit.confidence)
         }
+        // No `not-hit` label at all: the retrained model's classes are named
+        // something else, so the invert above never applies. Report the labels
+        // rather than silently falling through to a meaningless best-of.
+        Self.lastFailure = "labels: " + results.map(\.identifier).joined(separator: ",")
         // No "not-hit" class present: take the best non-not-hit label directly.
         return Double(results.max(by: { $0.confidence < $1.confidence })?.confidence ?? 0)
     }
@@ -90,9 +140,20 @@ nonisolated final class MalletHitClassifier {
 /// mapped back through that same crop to land on the right pixels.
 enum CropMapper {
     /// Maps the user's dragged key rect straight into frame pixels — the crop
-    /// keeps the aspect ratio the user set during aligning. The model's 360×360
-    /// square input is reconciled at the resize step (`.centerCrop`), not by
-    /// reshaping the crop here.
+    /// keeps the aspect ratio the user set during aligning. Reshaping to the
+    /// model's square input happens later, in `MalletHitClassifier` via
+    /// `.scaleFill`, which SQUASHES the rect rather than cropping it.
+    ///
+    /// (This comment previously said `.centerCrop`. It never matched the code,
+    /// and the difference is not cosmetic: on a tall-thin bilah crop `.centerCrop`
+    /// would take a square from the middle and discard most of the bar.)
+    ///
+    /// One consequence worth knowing when preparing training data: because the
+    /// user chooses each rect's aspect ratio during aligning, the AMOUNT of
+    /// squash varies per key and per calibration. The same physical strike looks
+    /// different to the model depending on how the rect was drawn, so a training
+    /// set gathered at one aspect ratio only calibrates the model for that one.
+    /// Collect through this path, at the aspect ratios users actually produce.
     static func bufferRect(overlay: NormalizedRect,
                            bufferSize: CGSize,
                            viewSize: CGSize) -> CGRect {

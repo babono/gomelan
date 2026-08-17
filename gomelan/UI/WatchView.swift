@@ -166,7 +166,7 @@ struct WatchView: View {
 
     private func setup() {
         camera.start()
-        camera.enableContinuousAutoFocus()
+        if app.fixedMount { camera.lockFocusAndExposure() } else { camera.enableContinuousAutoFocus() }
 
         song = app.demoSong
         partnerSong = app.demoPartnerSong

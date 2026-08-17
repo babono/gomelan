@@ -102,6 +102,24 @@ final class AudioEngineController {
     private var fingerprinter: Fingerprinter?
     private var classifier: KeyClassifier?
 
+    /// The polyphonic second opinion. Lives on the DSP queue; every strike is
+    /// decomposed there and the result cached by host time, so the play loop's
+    /// lookups never run NNLS on the main actor.
+    private var decomposer: KeyDecomposer?
+    /// One decomposed strike, kept long enough for the play loop to ask about it.
+    struct StrikeOpinion {
+        let hostTime: Double
+        /// nil until the dictionary has enough learned keys to be usable.
+        let decomposition: Decomposition?
+        /// The linear band vector, so a key the CAMERA identifies can be folded
+        /// into the dictionary after the fact.
+        let bands: [Float]
+    }
+    private var recentOpinions: [StrikeOpinion] = []
+    private let opinionsLock = NSLock()
+    /// DSP-queue only — see `setKeyOpinionsEnabled`.
+    private var keyOpinionsEnabled = false
+
     /// Generic "this is a gangsa strike" spectral template (L2-normalised), used
     /// to tell a real strike from a scream/clap. `baselineAccumulator` collects
     /// fingerprints while learning it. Both live on the DSP queue.
@@ -272,6 +290,17 @@ final class AudioEngineController {
         fingerprinter = Fingerprinter(config: config, fft: fingerprintFFT)
         classifier = KeyClassifier(config: config, keys: keys)
 
+        let decomposer = KeyDecomposer(bandCount: config.fpBands)
+        var templates: [Int: [Float]] = [:]
+        for key in keys {
+            if let template = key.linearTemplate, template.count == config.fpBands {
+                templates[key.index] = template
+            }
+        }
+        decomposer.load(templates: templates)
+        self.decomposer = decomposer
+        setOpinions([])
+
         let detector = OnsetDetector(config: config)
         detector.sampleProvider = { [weak self] from, count, out in
             self?.ring.read(from: from, count: count, into: &out) ?? false
@@ -408,6 +437,19 @@ final class AudioEngineController {
         // this is all a normal strike needs — no per-key audio classification.
         DispatchQueue.main.async { [weak self] in self?.onStrikeDetected?(hostTime) }
 
+        // The second opinion. Costs one extra 4096-point FFT per strike — tens
+        // of microseconds, at most twenty strikes a second — plus an NNLS solve
+        // that is 12x12 once the Gram matrix is built. Deliberately done here on
+        // the DSP queue rather than lazily on lookup, both to keep the work off
+        // the main actor and because `previous` only means anything if strikes
+        // are decomposed in the order they were played.
+        if keyOpinionsEnabled, let bands = fingerprinter.linearBands(onsetSample: onset.sampleIndex, ring: ring) {
+            let decomposition = decomposer?.decompose(linearBands: bands)
+            recordOpinion(StrikeOpinion(hostTime: hostTime,
+                                        decomposition: decomposition,
+                                        bands: bands))
+        }
+
         // The fingerprint is needed for calibration, the audio test's readout, and
         // the gangsa-strike baseline (learning it or scoring against it). Skip the
         // 4096-pt FFT entirely in normal play when none of those are active.
@@ -510,6 +552,149 @@ final class AudioEngineController {
                                passedGate: passedGate, fingerprinted: fingerprinted,
                                baselineSimilarity: baselineSimilarity)
         DispatchQueue.main.async { [weak self] in self?.onOnsetDebug?(debug) }
+    }
+
+    // MARK: - Polyphonic key opinion
+
+    /// Whether to decompose each strike. Off by default so nothing outside the
+    /// play loop pays for it. Applied on the DSP queue, which is the only place
+    /// it is read.
+    func setKeyOpinionsEnabled(_ enabled: Bool) {
+        queue.async { [weak self] in
+            self?.keyOpinionsEnabled = enabled
+        }
+    }
+
+    /// Restrict the dictionary to the bilah this figure uses, mirroring what
+    /// `StrikeFusion.setActiveKeys` does for vision.
+    ///
+    /// A kotekan touches three or four keys. Leaving the other six in the
+    /// dictionary gives the fit six extra ways to explain a spectrum it should
+    /// be attributing to one of the four — and unlike vision, where an unused
+    /// key simply is not looked at, an unused ATOM actively competes.
+    func setDecompositionKeys(_ indices: Set<Int>) {
+        queue.async { [weak self] in self?.decomposer?.restrict(to: indices) }
+    }
+
+    /// The audio opinion for the strike nearest `hostTime`, if one was recorded
+    /// within `tolerance`. Returns nil when the dictionary is not yet usable, the
+    /// residual was too high to trust, or no key cleared the share floor.
+    ///
+    /// This is a RECOVERY path, called only when vision declined to name a key.
+    /// It is never consulted to second-guess a confident visual decision.
+    func keyOpinion(at hostTime: Double, within tolerance: Double = 0.12) -> KeyActivation? {
+        opinionsLock.lock()
+        let match = recentOpinions
+            .filter { abs($0.hostTime - hostTime) <= tolerance }
+            .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
+        opinionsLock.unlock()
+
+        // `isTrusted` was decided on the DSP queue when the strike was decomposed,
+        // so nothing owned by that queue is read from here.
+        guard let decomposition = match?.decomposition,
+              decomposition.isTrusted,
+              let best = decomposition.best else { return nil }
+        return best
+    }
+
+    /// The full decomposition nearest `hostTime`, trusted or not.
+    ///
+    /// `keyOpinion` deliberately withholds anything the residual bar has not
+    /// cleared, which is right for play and useless for debugging — the whole
+    /// point of the test screen is to watch the ear while it is still learning.
+    func debugOpinion(at hostTime: Double, within tolerance: Double = 0.12) -> Decomposition? {
+        opinionsLock.lock()
+        defer { opinionsLock.unlock() }
+        return recentOpinions
+            .filter { abs($0.hostTime - hostTime) <= tolerance }
+            .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }?
+            .decomposition
+    }
+
+    /// Teach the dictionary: the camera identified `keyIndex` at `hostTime`.
+    ///
+    /// This is the whole calibration story. There is no strike-each-key-in-turn
+    /// step; the eye labels the training data for the ear, every session, on the
+    /// instrument actually in front of the player.
+    func learnKey(_ keyIndex: Int, at hostTime: Double, within tolerance: Double = 0.12) {
+        opinionsLock.lock()
+        let match = recentOpinions
+            .filter { abs($0.hostTime - hostTime) <= tolerance }
+            .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
+        opinionsLock.unlock()
+
+        guard let opinion = match else { return }
+        let residual = opinion.decomposition?.residual
+        queue.async { [weak self] in
+            self?.decomposer?.learn(keyIndex: keyIndex, linearBands: opinion.bands)
+            // This strike is known-real and known-correct, so its residual is a
+            // sample of what "normal" looks like on this instrument in this room.
+            if let residual { self?.decomposer?.noteConfirmedResidual(residual) }
+        }
+    }
+
+    /// Record what the camera decided, so the eye/ear agreement rate accumulates
+    /// even while audio has no vote. Cheap, and the only thing that could ever
+    /// justify giving it one.
+    func noteVisionDecision(_ keyIndex: Int, confidence: Double, at hostTime: Double,
+                            within tolerance: Double = 0.12) {
+        opinionsLock.lock()
+        let match = recentOpinions
+            .filter { abs($0.hostTime - hostTime) <= tolerance }
+            .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
+        opinionsLock.unlock()
+
+        let decomposition = match?.decomposition
+        queue.async { [weak self] in
+            self?.decomposer?.noteVisionDecision(keyIndex: keyIndex,
+                                                 confidence: confidence,
+                                                 against: decomposition)
+        }
+    }
+
+    /// Note that audio supplied a key vision could not.
+    func noteRecovery() {
+        queue.async { [weak self] in self?.decomposer?.noteRecovery() }
+    }
+
+    /// Eye/ear agreement so far this session, for the diagnostics screen.
+    func agreementStats(completion: @escaping (KeyDecomposer.Agreement) -> Void) {
+        queue.async { [weak self] in
+            let stats = self?.decomposer?.agreement ?? KeyDecomposer.Agreement()
+            DispatchQueue.main.async { completion(stats) }
+        }
+    }
+
+    /// Learned atoms, to fold back into the profile at the end of a session.
+    func learnedTemplates(completion: @escaping ([Int: [Float]]) -> Void) {
+        queue.async { [weak self] in
+            let templates = self?.decomposer?.templates() ?? [:]
+            DispatchQueue.main.async { completion(templates) }
+        }
+    }
+
+    /// How many examples each key has collected, for the diagnostics screen.
+    func decompositionProgress(completion: @escaping ([Int: Int]) -> Void) {
+        queue.async { [weak self] in
+            let progress = self?.decomposer?.progress() ?? [:]
+            DispatchQueue.main.async { completion(progress) }
+        }
+    }
+
+    private func recordOpinion(_ opinion: StrikeOpinion) {
+        opinionsLock.lock()
+        defer { opinionsLock.unlock() }
+        recentOpinions.append(opinion)
+        let cutoff = opinion.hostTime - 2.0
+        if recentOpinions.first.map({ $0.hostTime < cutoff }) == true {
+            recentOpinions.removeAll { $0.hostTime < cutoff }
+        }
+    }
+
+    private func setOpinions(_ opinions: [StrikeOpinion]) {
+        opinionsLock.lock()
+        recentOpinions = opinions
+        opinionsLock.unlock()
     }
 
     // MARK: - Gangsa-strike baseline

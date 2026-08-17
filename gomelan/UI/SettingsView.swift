@@ -42,6 +42,7 @@ struct SettingsView: View {
                             SecondaryButton(title: "Test Mallet", systemImage: "scope") { app.openMalletTest() }
                             SecondaryButton(title: "Test Detection", systemImage: "dot.radiowaves.left.and.right") { app.openDetectionTest() }
                             SecondaryButton(title: "Test Audio", systemImage: "waveform.circle") { app.openAudioTest() }
+                            SecondaryButton(title: "Capture Training Data", systemImage: "camera.viewfinder") { app.openCaptureTraining() }
                         }
                     }
 
@@ -65,6 +66,15 @@ struct SettingsView: View {
                         Text(app.partnerAudible
                              ? "The app plays the half you're not playing, so the kotekan interlocks even when you practise alone. The gong layer is always there."
                              : "You play against the gong alone.")
+                            .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
+                    }
+
+                    section("Camera") {
+                        Toggle("Fixed mount (stand or arm)", isOn: $app.fixedMount)
+                            .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
+                        Text(app.fixedMount
+                             ? "Focus and exposure lock once the scene is set. Steadier image, and the keys stay where you aligned them — the right choice on a stand."
+                             : "Focus and exposure follow the scene, for a handheld phone. On a stand this hunts every time a hand crosses the bilah.")
                             .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
                     }
 
