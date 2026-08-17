@@ -1,5 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict/>
+<dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Dream Orphans.otf</string>
+		<string>Dream Orphans Bd.otf</string>
+		<string>Dream Orphans It.otf</string>
+		<string>Dream Orphans Bd It.otf</string>
+		<string>Futura-MediumCondensed.ttf</string>
+	</array>
+</dict>
 </plist>
