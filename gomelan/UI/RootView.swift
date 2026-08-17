@@ -34,7 +34,8 @@ struct RootView: View {
              .chooseInstrument, .chooseKotekan, .chooseHalf, .chooseCycles, .results, .settings:
             return true
         case .checkingPermissions, .framing, .aligning, .calibrating, .baseline,
-             .watching, .countdown, .playing, .malletTest, .detectionTest, .audioTest:
+             .watching, .countdown, .playing, .malletTest, .detectionTest, .audioTest,
+             .captureTraining:
             return false
         }
     }
@@ -80,6 +81,8 @@ struct RootView: View {
             DetectionTestView(camera: camera, audio: audio)
         case .audioTest:
             AudioTestView(audio: audio)
+        case .captureTraining:
+            CaptureTrainingView(camera: camera, audio: audio)
         }
     }
 }
