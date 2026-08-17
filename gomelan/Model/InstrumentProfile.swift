@@ -81,6 +81,15 @@ struct InstrumentKey: Codable, Identifiable, Equatable {
     /// without one simply cannot be matched until it is recalibrated.
     var fingerprint: [Float]?
 
+    /// LINEAR band template, `fpBands` long — the NNLS dictionary atom for this
+    /// key. Separate from `fingerprint` because that one is compressed (^0.7)
+    /// and NNLS needs a vector that adds: see `Fingerprinter.linearBands`.
+    ///
+    /// Nobody strikes each key to produce this. It accumulates during play from
+    /// strikes the camera identified confidently, so it appears on its own after
+    /// a few passes and gets better every session — see `KeyDecomposer`.
+    var linearTemplate: [Float]?
+
     var id: Int { index }
 
     var isCalibrated: Bool { !(fingerprint?.isEmpty ?? true) }

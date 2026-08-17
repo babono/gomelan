@@ -130,6 +130,37 @@ final class Fingerprinter {
         return vector
     }
 
+    /// The same bands as `fingerprint`, but LINEAR: no compression, no noise
+    /// subtraction, no L2 normalisation.
+    ///
+    /// Every one of those three steps is deliberate in `fingerprint` and wrong
+    /// here, because this vector feeds NNLS and NNLS assumes the observation is
+    /// a SUM. Two keys sounding together add their energies; they do not add
+    /// their 0.7 powers, so `(a+b)^0.7 != a^0.7 + b^0.7` and a compressed vector
+    /// cannot be decomposed. Normalisation would throw away the loudness the
+    /// activations are measured in, and pre-onset subtraction would remove the
+    /// ringing that NNLS exists to attribute rather than discard.
+    ///
+    /// Room noise is handled instead by a broadband atom in the dictionary —
+    /// see `KeyDecomposer`. Letting the fit decide how much noise there is beats
+    /// subtracting a fixed guess and clipping whatever goes negative.
+    func linearBands(onsetSample: Int, ring: SampleRing) -> [Float]? {
+        let start = onsetSample + config.fpDelaySamples
+        guard ring.read(from: start, count: config.fpWindow, into: &segment) else { return nil }
+        fft.magnitudeSpectrum(segment, into: &magnitude)
+
+        var vector = [Float](repeating: 0, count: config.fpBands)
+        var total: Float = 0
+        for (b, bins) in bands.enumerated() {
+            var sum: Float = 0
+            for bin in bins { sum += magnitude[bin] }
+            vector[b] = sum
+            total += sum
+        }
+        guard total > 1e-9 else { return nil }
+        return vector
+    }
+
     /// A partial's strength must clear this fraction of the strongest partial to
     /// be considered the fundamental. Keeps the estimate off low-frequency noise
     /// wiggles while still preferring a genuine low partial over a louder high one.
