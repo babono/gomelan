@@ -100,6 +100,18 @@ actor StrikeFusion {
         return scores
     }
 
+    /// Raw per-key scores at `hostTime`, with no threshold applied.
+    ///
+    /// Diagnostic only. `resolveVisionFirst` answers "which key, if any", which
+    /// collapses two very different failures into one nil: vision saw nothing,
+    /// versus vision saw something and it fell just under the bar. Telling those
+    /// apart is the whole job when detection stops working.
+    func scoresAt(hostTime: Double) -> (scores: [Int: Double], frameAge: Double)? {
+        guard viewSize.width > 0, viewSize.height > 0,
+              let frame = frames.nearest(to: hostTime) else { return nil }
+        return (scores(in: frame), hostTime - frame.hostTime)
+    }
+
     /// Try to resolve an unclear audio strike using vision. Returns nil when
     /// vision is unavailable, no frame is buffered, the view isn't laid out yet,
     /// or no crop clears the threshold. Runs inline: it only fires on the rare

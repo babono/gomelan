@@ -126,7 +126,7 @@ struct MalletTestView: View {
         .onAppear {
             camera.start()
             // Hand focus back: the aligning flow may have left it locked/blurry.
-            camera.enableContinuousAutoFocus()
+            if app.fixedMount { camera.lockFocusAndExposure() } else { camera.enableContinuousAutoFocus() }
         }
         .task { await runClassificationLoop() }
     }
