@@ -327,3 +327,25 @@ struct RealignButton: View {
         .buttonStyle(.plain)
     }
 }
+
+// MARK: - Share sheet
+
+/// UIActivityViewController for SwiftUI — AirDrop, Files, Mail.
+///
+/// Used to get captured training data off the device without making the user
+/// hunt through the Files app.
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+/// So a URL can drive `.sheet(item:)` directly. The path is already unique,
+/// which is exactly what identity means here.
+extension URL: @retroactive Identifiable {
+    public var id: String { absoluteString }
+}
