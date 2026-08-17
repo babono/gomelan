@@ -3,9 +3,18 @@
 //  gomelan
 //
 //  Hosts the app state machine (PRD §13.4) and owns the shared capture/audio
-//  services so they persist across screen transitions. Screens live on one of
-//  two surfaces — warm "paper" (cream, light) or warm "stage" (ink, dark, behind
-//  the camera) — and the background + colour scheme follow the current screen.
+//  services so they persist across screen transitions.
+//
+//  One ground for the whole app. There used to be two surfaces — cream "paper"
+//  for selection, ink "stage" behind the camera — with the background and colour
+//  scheme flipping between them. The Sangsih design collapses that: every screen
+//  sits on the same warm brown with the pattern drifting behind it, and the
+//  camera screens are simply the ones where a live image covers it. The app no
+//  longer flashes between light and dark partway through a flow.
+//
+//  The pattern lives HERE, once, rather than in each screen. It is a single
+//  Canvas that persists across navigation, so the drift is continuous through a
+//  transition instead of restarting — and screens cannot forget to include it.
 //
 
 import SwiftUI
@@ -18,24 +27,29 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            (isPaper ? Theme.cream : Theme.ink).ignoresSafeArea()
+            // Skipped where a camera preview fills the screen anyway — painting
+            // a pattern that is about to be completely covered is wasted work on
+            // exactly the screens with the least headroom to spare.
+            if !isCameraScreen {
+                PatternBackground()
+            } else {
+                Theme.ground.ignoresSafeArea()
+            }
             content
         }
         .environment(app)
-        .preferredColorScheme(isPaper ? .light : .dark)
+        .preferredColorScheme(.dark)
         .statusBarHidden(true)
-        .animation(.easeInOut(duration: 0.25), value: isPaper)
     }
 
-    /// Cream, light screens vs. ink, dark camera/stage screens.
-    private var isPaper: Bool {
+    /// Screens whose ground is the live camera feed rather than the pattern.
+    private var isCameraScreen: Bool {
         switch app.screen {
-        case .welcome, .permissionsBlocked, .choosingKeyCount,
-             .chooseInstrument, .chooseKotekan, .chooseHalf, .chooseCycles, .results, .settings:
-            return true
-        case .checkingPermissions, .framing, .aligning, .calibrating, .baseline,
-             .watching, .countdown, .playing, .malletTest, .detectionTest, .audioTest,
+        case .framing, .aligning, .calibrating, .baseline, .watching,
+             .countdown, .playing, .malletTest, .detectionTest, .audioTest,
              .captureTraining:
+            return true
+        default:
             return false
         }
     }
