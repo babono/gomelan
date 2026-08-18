@@ -58,40 +58,61 @@ struct WelcomeView: View {
 
 // MARK: - Ornaments
 
-/// The spoked gold rosettes scattered behind the title.
+/// The spoked gold rosettes, drifting and breathing behind the title.
 ///
 /// Positions are fractions of the screen rather than the design's fixed pixels,
-/// so the arrangement survives a different aspect ratio instead of clustering
-/// in one corner. Drawn in a single Canvas — they are decoration, and a dozen
-/// view identities for decoration is a dozen too many.
+/// so the arrangement survives a different aspect ratio instead of collecting in
+/// one corner.
+///
+/// Motion is derived from the clock, not stored: every rosette's drift, scale
+/// and rotation is a function of `t` and its own index, so there is no state to
+/// update, nothing to keep in sync, and the whole field is one Canvas draw. The
+/// periods are deliberately incommensurate — 0.11, 0.083, 0.23 — so the six
+/// never fall into step with each other, which is what makes it read as drifting
+/// rather than pulsing.
 private struct Ornaments: View {
-    /// x, y (fractions) and diameter in points.
+    /// x, y (fractions of the frame) and diameter in points.
     private let marks: [(x: Double, y: Double, d: Double)] = [
         (0.07, 0.10, 68), (0.86, 0.07, 74), (0.19, 0.38, 58),
         (0.76, 0.39, 62), (0.03, 0.72, 64), (0.92, 0.71, 70),
     ]
+    private let spokes = 21
 
     var body: some View {
-        Canvas { context, size in
-            for mark in marks {
-                let d = mark.d
-                let rect = CGRect(x: mark.x * size.width, y: mark.y * size.height,
-                                  width: d, height: d)
-                let centre = CGPoint(x: rect.midX, y: rect.midY)
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
 
-                // Spokes, radiating from a clear hub.
-                for i in 0..<21 {
-                    let angle = Double(i) / 21 * 2 * .pi
+            Canvas { context, size in
+                for (i, mark) in marks.enumerated() {
+                    let phase = Double(i) * 1.7
+                    let drift = CGPoint(x: sin(t * 0.11 + phase) * 14,
+                                        y: cos(t * 0.083 + phase * 1.3) * 10)
+                    let breathe = 1 + 0.09 * sin(t * 0.23 + phase * 0.7)
+                    // Alternating direction so neighbours never turn together.
+                    let spin = t * 0.05 * (i.isMultiple(of: 2) ? 1 : -1) + phase
+
+                    let d = mark.d * breathe
+                    let centre = CGPoint(x: mark.x * size.width + d / 2 + drift.x,
+                                         y: mark.y * size.height + d / 2 + drift.y)
+
+                    // All spokes in ONE path, so each rosette costs a single
+                    // stroke rather than twenty-one.
                     var path = Path()
-                    path.move(to: CGPoint(x: centre.x + cos(angle) * d * 0.16,
-                                          y: centre.y + sin(angle) * d * 0.16))
-                    path.addLine(to: CGPoint(x: centre.x + cos(angle) * d * 0.5,
-                                             y: centre.y + sin(angle) * d * 0.5))
-                    context.stroke(path, with: .color(Theme.gold.opacity(0.5)), lineWidth: 1.2)
+                    for s in 0..<spokes {
+                        let angle = Double(s) / Double(spokes) * 2 * .pi + spin
+                        path.move(to: CGPoint(x: centre.x + cos(angle) * d * 0.16,
+                                              y: centre.y + sin(angle) * d * 0.16))
+                        path.addLine(to: CGPoint(x: centre.x + cos(angle) * d * 0.5,
+                                                 y: centre.y + sin(angle) * d * 0.5))
+                    }
+                    let fade = 0.42 + 0.16 * sin(t * 0.19 + phase)
+                    context.stroke(path, with: .color(Theme.gold.opacity(fade)), lineWidth: 1.2)
+
+                    context.fill(
+                        Path(ellipseIn: CGRect(x: centre.x - 6, y: centre.y - 6,
+                                               width: 12, height: 12)),
+                        with: .color(Theme.gold.opacity(0.85)))
                 }
-                context.fill(
-                    Path(ellipseIn: CGRect(x: centre.x - 6, y: centre.y - 6, width: 12, height: 12)),
-                    with: .color(Theme.gold.opacity(0.85)))
             }
         }
         .allowsHitTesting(false)
@@ -104,8 +125,8 @@ private struct Ornaments: View {
 /// instrument, drawn rather than photographed so it takes the palette.
 struct Pelawah: View {
     var barCount = 10
-    /// Which bar is lit cream instead of bronze, if any.
-    var highlighted: Int? = 3
+    /// Whether the bilah play themselves.
+    var animated = true
 
     var body: some View {
         GeometryReader { proxy in
@@ -133,24 +154,112 @@ struct Pelawah: View {
                         .offset(x: w * x, y: h * 0.4)
                 }
 
-                // Bilah.
-                HStack(spacing: w * 0.015) {
-                    ForEach(0..<barCount, id: \.self) { i in
-                        let lit = i == highlighted
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(lit ? Theme.cream : Theme.bronze)
-                            .overlay(alignment: .bottom) {
-                                Rectangle()
-                                    .fill(lit ? Color(hex: 0xD6BC85) : Color(hex: 0xA98A58))
-                                    .frame(height: h * 0.52 * 0.26)
-                            }
-                            .clipShape(RoundedRectangle(cornerRadius: 5))
-                    }
-                }
-                .frame(width: w * 0.78, height: h * 0.52)
-                .offset(x: w * 0.11)
+                BilahRow(count: barCount, animated: animated)
+                    .frame(width: w * 0.78, height: h * 0.52)
+                    .offset(x: w * 0.11)
             }
         }
+    }
+}
+
+/// The bilah, playing themselves.
+///
+/// Deliberately not random. Random strikes across ten bars look like a fault;
+/// what a gangsa actually does is kotekan — two hands alternating strokes
+/// within a narrow window of adjacent keys, which is the interlock the whole
+/// app is about. So the home screen quietly plays one: even strokes belong to
+/// one voice and odd strokes to the other, both drawn from a four-bar window
+/// that moves every few seconds.
+///
+/// The whole thing is a pure function of the clock. Which bar is struck on
+/// stroke N comes from hashing N, so nothing is stored, nothing drifts out of
+/// sync, and the row can be drawn in one Canvas pass with no per-bar views to
+/// diff. Bronze rings for about a second after it is hit, so the glow decays
+/// rather than switching.
+private struct BilahRow: View {
+    let count: Int
+    let animated: Bool
+
+    /// Seconds per stroke — roughly a brisk kotekan.
+    private let stroke = 0.26
+    /// How long a struck bar takes to fade back to bronze.
+    private let decay = 0.85
+    /// How many strokes back to look for the last time a bar was hit.
+    private let lookback = 5
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
+
+            Canvas { context, size in
+                let gap = size.width * 0.015
+                let barWidth = (size.width - gap * CGFloat(count - 1)) / CGFloat(count)
+
+                for i in 0..<count {
+                    let lit = animated ? glow(bar: i, at: t) : (i == 3 ? 1 : 0)
+                    let rect = CGRect(x: (barWidth + gap) * CGFloat(i), y: 0,
+                                      width: barWidth, height: size.height)
+                    let shape = Path(roundedRect: rect, cornerRadius: 5)
+
+                    // Bronze at rest, cream when struck.
+                    let face = blend(Theme.bronze, Theme.cream, lit)
+                    context.fill(shape, with: .color(face))
+
+                    // The shaded foot of the bar.
+                    let footRect = CGRect(x: rect.minX, y: rect.maxY - rect.height * 0.26,
+                                          width: rect.width, height: rect.height * 0.26)
+                    context.fill(
+                        Path(footRect),
+                        with: .color(blend(Color(hex: 0xA98A58), Color(hex: 0xD6BC85), lit)))
+
+                    // A struck bar lifts very slightly out of the frame.
+                    if lit > 0.01 {
+                        context.stroke(shape,
+                                       with: .color(Theme.cream.opacity(lit * 0.5)),
+                                       lineWidth: 1.5)
+                    }
+                }
+            }
+        }
+    }
+
+    /// 0…1 — how recently this bar was struck.
+    private func glow(bar: Int, at t: Double) -> Double {
+        let currentStroke = Int(floor(t / stroke))
+        for back in 0...lookback {
+            let n = currentStroke - back
+            guard n >= 0, struckBar(stroke: n) == bar else { continue }
+            let age = t - Double(n) * stroke
+            return max(0, 1 - age / decay)      // most recent hit wins
+        }
+        return 0
+    }
+
+    /// Which bar the Nth stroke lands on.
+    private func struckBar(stroke n: Int) -> Int {
+        guard count > 4 else { return n % max(count, 1) }
+        // The window wanders every 16 strokes, so the figure moves up and down
+        // the instrument instead of sitting in one place.
+        let span = count - 3
+        let window = Int(Self.hash(n / 16) % UInt64(span))
+        // Even strokes to one voice, odd to the other — offset so the two
+        // interleave rather than doubling each other.
+        let offsets = n.isMultiple(of: 2) ? [0, 2] : [1, 3]
+        let pick = offsets[Int(Self.hash(n &+ 977) % 2)]
+        return min(count - 1, window + pick)
+    }
+
+    /// splitmix64 — a cheap, well-mixed integer hash. Deterministic, so the
+    /// same stroke always lands on the same bar however often it is redrawn.
+    private static func hash(_ x: Int) -> UInt64 {
+        var h = UInt64(bitPattern: Int64(x)) &+ 0x9E3779B97F4A7C15
+        h = (h ^ (h >> 30)) &* 0xBF58476D1CE4E5B9
+        h = (h ^ (h >> 27)) &* 0x94D049BB133111EB
+        return h ^ (h >> 31)
+    }
+
+    private func blend(_ a: Color, _ b: Color, _ amount: Double) -> Color {
+        amount <= 0 ? a : (amount >= 1 ? b : a.mix(with: b, by: amount))
     }
 }
 
