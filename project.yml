@@ -88,10 +88,13 @@ targets:
       - path: gomelan
         excludes:
           - Info.plist
+          - logo-kotek.icon
+      - path: gomelan/logo-kotek.icon
+        type: file
       - path: documentation
     settings:
       base:
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_APPICON_NAME: logo-kotek
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_ENTITLEMENTS: gomelan/gomelan.entitlements
         CODE_SIGN_STYLE: Automatic
