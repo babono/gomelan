@@ -316,7 +316,7 @@ struct StrikeBaselineView: View {
             }
             Spacer()
             Text("Strike baseline")
-                .font(.headline)
+                .font(.sans(17))
                 .foregroundStyle(.white)
                 .padding(.vertical, 10)
                 .padding(.horizontal, 18)
@@ -329,7 +329,7 @@ struct StrikeBaselineView: View {
     private var panel: some View {
         VStack(spacing: 16) {
             Text(statusText)
-                .font(.subheadline.weight(.medium))
+                .font(.sans(16))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
@@ -338,9 +338,9 @@ struct StrikeBaselineView: View {
                 HStack(spacing: 10) {
                     Image(systemName: capturing ? "checkmark" : "waveform.badge.plus")
                         .font(.title2)
-                    Text(recordTitle).fontWeight(.semibold)
+                    Text(recordTitle)
                 }
-                .font(.headline)
+                .font(.sans(17))
                 .foregroundStyle(capturing ? .white : .black)
                 .padding(.vertical, 14)
                 .padding(.horizontal, 24)

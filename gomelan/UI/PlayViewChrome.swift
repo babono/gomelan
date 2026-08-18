@@ -28,7 +28,8 @@ struct PhaseBanner: View {
 
     private func label(_ text: String, _ color: Color) -> some View {
         Text(text)
-            .font(.system(size: 17, weight: .bold, design: .rounded))
+            .font(.sans(18))
+            .tracking(1.2)
             .foregroundStyle(.white)
             .padding(.horizontal, 18)
             .padding(.vertical, 9)
