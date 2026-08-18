@@ -2,7 +2,7 @@
 //  Components.swift
 //  gomelan
 //
-//  Shared UI pieces, in the Sangsih design language: one warm brown ground,
+//  Shared UI pieces, in the Kotek design language: one warm brown ground,
 //  cream type, gold outlines, radius 14 throughout.
 //
 //  Buttons are rounded rectangles rather than capsules. That is the design's

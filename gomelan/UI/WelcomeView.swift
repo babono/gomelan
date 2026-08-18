@@ -2,7 +2,7 @@
 //  WelcomeView.swift
 //  gomelan
 //
-//  Entry screen (PRD §8), built to the Sangsih design: the name in Dream
+//  Entry screen (PRD §8), built to the Kotek design: the name in Dream
 //  Orphans over the drifting pattern, one cream key to press, and a pelawah
 //  rising from the bottom edge.
 //
@@ -25,7 +25,7 @@ struct WelcomeView: View {
                 VStack(spacing: 0) {
                     Spacer().frame(height: h * 0.08)
 
-                    Text("Sangsih")
+                    Text("Kotek")
                         .font(.serif(min(76, h * 0.19)))
                         .foregroundStyle(Theme.cream)
                         .tracking(-0.5)

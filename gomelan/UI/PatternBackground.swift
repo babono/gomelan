@@ -2,7 +2,7 @@
 //  PatternBackground.swift
 //  gomelan
 //
-//  The ground every screen sits on: warm brown, with the Sangsih pattern tiled
+//  The ground every screen sits on: warm brown, with the Kotek pattern tiled
 //  over it at 13% and drifting diagonally, forever.
 //
 //  Drawn in a single `Canvas` rather than a stack of `Image` views. The pattern
@@ -77,18 +77,18 @@ struct PatternBackground: View {
 // MARK: - Convenience
 
 extension View {
-    /// Put the Sangsih ground behind this view.
+    /// Put the Kotek ground behind this view.
     ///
     /// `ignoresSafeArea` is applied inside the background so the pattern reaches
     /// the edges without the content having to.
-    func sangsihGround() -> some View {
+    func kotekGround() -> some View {
         background(PatternBackground())
     }
 
     /// The pattern alone, for screens whose ground is the camera feed. Laid over
     /// the preview at a lower strength so it reads as a tint rather than
     /// competing with the instrument.
-    func sangsihPatternOverlay(opacity: Double = 0.06) -> some View {
+    func kotekPatternOverlay(opacity: Double = 0.06) -> some View {
         overlay(PatternBackground(opacity: opacity, showsGround: false))
     }
 }

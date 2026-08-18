@@ -2,7 +2,7 @@
 //  Theme.swift
 //  gomelan
 //
-//  The Sangsih design system.
+//  The Kotek design system.
 //
 //  One surface, not two. The app used to run a "paper" world (cream, light) for
 //  selection screens and a "stage" world (ink, dark) behind the camera, and each
@@ -129,7 +129,7 @@ enum Theme {
 ///
 /// The fallback chain matters too: if the bundled cut ever fails to register,
 /// iOS's own condensed Futura is a far better substitute than the system sans.
-enum SangsihFonts {
+enum KotekFonts {
     static let futura: String? = [
         "Futura-MediumCondensed",   // bundled
         "Futura-CondensedMedium",   // iOS built-in, same design
@@ -158,7 +158,7 @@ extension Font {
     /// semibold or above maps to Bold and everything else to Regular.
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         let heavy: Set<Font.Weight> = [.semibold, .bold, .heavy, .black]
-        let name = heavy.contains(weight) ? SangsihFonts.displayBold : SangsihFonts.displayRegular
+        let name = heavy.contains(weight) ? KotekFonts.displayBold : KotekFonts.displayRegular
         guard let name else { return .system(size: size, weight: weight, design: .serif) }
         return .custom(name, size: size)
     }
@@ -171,7 +171,7 @@ extension Font {
     /// this is mostly used at. Where emphasis is needed the design uses
     /// tracking and colour instead.
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        guard let name = SangsihFonts.futura else {
+        guard let name = KotekFonts.futura else {
             return .system(size: size, weight: weight, design: .default)
         }
         return .custom(name, size: size)

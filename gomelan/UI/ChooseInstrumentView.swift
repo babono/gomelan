@@ -5,7 +5,7 @@
 //  Choose or manage saved gamelan instrument profiles. Persists key alignments
 //  and strike baselines across app launches and builds.
 //
-//  Built to the Sangsih design: a rail of tall cards over the drifting pattern,
+//  Built to the Kotek design: a rail of tall cards over the drifting pattern,
 //  the selected one outlined in cream and the rest in held-back gold, with the
 //  add affordance as a narrow card at the end of the row rather than a button
 //  somewhere else — so "which instrument" and "another instrument" are the same
@@ -79,7 +79,7 @@ struct ChooseInstrumentView: View {
                 .font(.serif(30))
                 .foregroundStyle(Theme.charcoal)
 
-            Text("Every gamelan is tuned differently, so gomelan learns yours — where the bilah are and how they sound.")
+            Text("Every gamelan is tuned differently, so Kotek learns yours — where the bilah are and how they sound.")
                 .font(.sans(14))
                 .foregroundStyle(Theme.stone)
                 .multilineTextAlignment(.center)

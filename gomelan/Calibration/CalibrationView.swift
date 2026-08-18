@@ -128,7 +128,7 @@ struct CalibrationView: View {
                 SectionLabel("What the mic hears", color: Theme.inkStone)
                 micVisualization.frame(height: 72)
                 Text(learned
-                     ? "Gomelan now knows this gangsa's strike from a clap or a scream."
+                     ? "Kotek now knows this gangsa's strike from a clap or a scream."
                      : "Strike any key — soft, then hard. The first couple seed its voice; sounds unlike them are ignored.")
                     .font(.sans(13))
                     .foregroundStyle(Theme.inkStone)

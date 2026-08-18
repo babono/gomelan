@@ -7,7 +7,7 @@
 //
 //  One ground for the whole app. There used to be two surfaces — cream "paper"
 //  for selection, ink "stage" behind the camera — with the background and colour
-//  scheme flipping between them. The Sangsih design collapses that: every screen
+//  scheme flipping between them. The Kotek design collapses that: every screen
 //  sits on the same warm brown with the pattern drifting behind it, and the
 //  camera screens are simply the ones where a live image covers it. The app no
 //  longer flashes between light and dark partway through a flow.

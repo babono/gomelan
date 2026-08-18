@@ -212,7 +212,7 @@ nonisolated final class TrainingCapture {
                 // The coordinator's file is only valid inside this block, so it
                 // has to be copied somewhere that outlives it.
                 let destination = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("gomelan-training.zip")
+                    .appendingPathComponent("kotek-training.zip")
                 try? FileManager.default.removeItem(at: destination)
                 do {
                     try FileManager.default.copyItem(at: zipped, to: destination)
