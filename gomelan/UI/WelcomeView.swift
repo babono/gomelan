@@ -186,6 +186,14 @@ private struct BilahRow: View {
     private let decay = 0.85
     /// How many strokes back to look for the last time a bar was hit.
     private let lookback = 5
+    /// How far a struck bar is pushed down, in points.
+    private let maxDip: CGFloat = 2
+    /// How quickly it springs back. Much shorter than `decay` on purpose: a
+    /// mallet deflects the bar for an instant and it recovers, but the tone
+    /// rings on for a second afterwards. Tying the two together would have the
+    /// bar sitting depressed for as long as it glows, which reads as broken
+    /// rather than struck.
+    private let dipDecay = 0.09
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
@@ -196,8 +204,10 @@ private struct BilahRow: View {
                 let barWidth = (size.width - gap * CGFloat(count - 1)) / CGFloat(count)
 
                 for i in 0..<count {
-                    let lit = animated ? glow(bar: i, at: t) : (i == 3 ? 1 : 0)
-                    let rect = CGRect(x: (barWidth + gap) * CGFloat(i), y: 0,
+                    let state = animated ? state(bar: i, at: t)
+                                         : BarState(glow: i == 3 ? 1 : 0, dip: 0)
+                    let lit = state.glow
+                    let rect = CGRect(x: (barWidth + gap) * CGFloat(i), y: state.dip,
                                       width: barWidth, height: size.height)
                     let shape = Path(roundedRect: rect, cornerRadius: 5)
 
@@ -223,16 +233,23 @@ private struct BilahRow: View {
         }
     }
 
-    /// 0…1 — how recently this bar was struck.
-    private func glow(bar: Int, at t: Double) -> Double {
+    /// How lit a bar is, and how far it has been pushed down.
+    private struct BarState {
+        var glow: Double
+        var dip: CGFloat
+    }
+
+    /// Both derived from the age of the most recent strike on this bar.
+    private func state(bar: Int, at t: Double) -> BarState {
         let currentStroke = Int(floor(t / stroke))
         for back in 0...lookback {
             let n = currentStroke - back
             guard n >= 0, struckBar(stroke: n) == bar else { continue }
-            let age = t - Double(n) * stroke
-            return max(0, 1 - age / decay)      // most recent hit wins
+            let age = t - Double(n) * stroke    // most recent hit wins
+            return BarState(glow: max(0, 1 - age / decay),
+                            dip: maxDip * CGFloat(exp(-age / dipDecay)))
         }
-        return 0
+        return BarState(glow: 0, dip: 0)
     }
 
     /// Which bar the Nth stroke lands on.
