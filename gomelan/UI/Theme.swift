@@ -118,33 +118,63 @@ enum Theme {
 
 // MARK: - Typography
 
+/// Resolves the bundled faces ONCE, by PostScript name.
+///
+/// `UIFont.fontNames(forFamilyName:)` was the wrong probe and silently cost us
+/// Futura everywhere. iOS ships its own Futura, and family lookup can come back
+/// empty for a bundled face whose family the system has folded into an existing
+/// one — so the guard failed, every `.sans` call fell through to San Francisco,
+/// and nothing looked broken enough to notice. `UIFont(name:size:)` asks about
+/// the exact face instead, which is the thing we actually depend on.
+///
+/// The fallback chain matters too: if the bundled cut ever fails to register,
+/// iOS's own condensed Futura is a far better substitute than the system sans.
+enum SangsihFonts {
+    static let futura: String? = [
+        "Futura-MediumCondensed",   // bundled
+        "Futura-CondensedMedium",   // iOS built-in, same design
+        "Futura-Medium",
+    ].first { UIFont(name: $0, size: 12) != nil }
+
+    static let displayRegular: String? = [
+        "DreamOrphans-Regular", "DreamOrphans",
+    ].first { UIFont(name: $0, size: 12) != nil }
+
+    static let displayBold: String? = [
+        "DreamOrphans-Bold", "DreamOrphans-Regular",
+    ].first { UIFont(name: $0, size: 12) != nil }
+
+    /// Every face the app actually resolved, for the diagnostics screen — so
+    /// "is the font loaded?" is answerable rather than eyeballed.
+    static var summary: String {
+        "display=\(displayRegular ?? "SYSTEM")  body=\(futura ?? "SYSTEM")"
+    }
+}
+
 extension Font {
     /// Dream Orphans — the display serif, for headings and numerals.
     ///
     /// The family ships Regular/Bold/Italic/BoldItalic only, so anything
-    /// semibold or above maps to Bold and everything else to Regular. Falls back
-    /// to the system serif when the bundle has no such face.
+    /// semibold or above maps to Bold and everything else to Regular.
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        guard !UIFont.fontNames(forFamilyName: "Dream Orphans").isEmpty else {
-            return .system(size: size, weight: weight, design: .serif)
-        }
         let heavy: Set<Font.Weight> = [.semibold, .bold, .heavy, .black]
-        return .custom(heavy.contains(weight) ? "DreamOrphans-Bold" : "DreamOrphans-Regular",
-                       size: size)
+        let name = heavy.contains(weight) ? SangsihFonts.displayBold : SangsihFonts.displayRegular
+        guard let name else { return .system(size: size, weight: weight, design: .serif) }
+        return .custom(name, size: size)
     }
 
     /// Futura — body, labels, buttons, everything that is not a heading.
     ///
     /// The bundled cut is Medium Condensed, a single weight, so `weight` cannot
-    /// be honoured by swapping faces. It is ignored rather than faked: synthetic
-    /// bolding a condensed face muddies it at the small tracked sizes this is
-    /// mostly used at. Where emphasis is needed, the design uses tracking and
-    /// colour instead.
+    /// be honoured by swapping faces. It is ignored rather than faked:
+    /// synthetic bolding muddies a condensed face at the small tracked sizes
+    /// this is mostly used at. Where emphasis is needed the design uses
+    /// tracking and colour instead.
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        guard !UIFont.fontNames(forFamilyName: "Futura Medium Condensed").isEmpty else {
+        guard let name = SangsihFonts.futura else {
             return .system(size: size, weight: weight, design: .default)
         }
-        return .custom("Futura-MediumCondensed", size: size)
+        return .custom(name, size: size)
     }
 }
 

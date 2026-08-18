@@ -38,6 +38,13 @@ struct SettingsView: View {
                     }
 
                     section("Debug") {
+                        // Which faces actually resolved. A missing font does not
+                        // error — it silently substitutes San Francisco, which is
+                        // exactly how Futura went missing everywhere once before.
+                        Text(SangsihFonts.summary)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(SangsihFonts.futura == nil ? Theme.miss : Theme.stone)
+
                         FlowLayout(spacing: 10) {
                             SecondaryButton(title: "Test Mallet", systemImage: "scope") { app.openMalletTest() }
                             SecondaryButton(title: "Test Detection", systemImage: "dot.radiowaves.left.and.right") { app.openDetectionTest() }
