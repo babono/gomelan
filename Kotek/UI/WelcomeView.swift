@@ -51,11 +51,16 @@ struct WelcomeView: View {
 
                     Spacer().frame(height: h * 0.07)
 
-                    PillButton(title: "Enter", style: .filled, uppercase: false) {
+                    PillButton(title: "Get started", style: .filled) {
                         music.stop()
                         app.begin()
                     }
-                    .frame(width: 146)
+                    // No fixed width any more: at Black with 1.5pt tracking,
+                    // "GET STARTED" does not fit the 146pt the one-word label
+                    // used to sit in. The button sizes to its own label and its
+                    // padding, which is what stops the next copy change from
+                    // silently truncating it.
+                    .fixedSize()
 
                     Spacer()
                 }
@@ -110,63 +115,68 @@ struct WelcomeView: View {
 
 // MARK: - Ornaments
 
-/// The carved ornaments drifting behind the title, forever.
+/// The carved ornaments behind the title: three down each side, breathing.
 ///
-/// Two motifs from the design (`ornament-1`, `ornament-2`) rather than a drawn
-/// rosette, each one flying slowly across the screen and wrapping round to come
-/// back on the other side. The wrap is what makes it a loop with no seam: the
-/// travel is taken modulo the screen width plus the ornament's own size, so a
-/// mark leaves one edge completely before it re-enters at the other, and the
-/// arithmetic never grows however long the app is left sitting here.
+/// They hold their side of the screen, as the design shows — the centre stays
+/// clear for the wordmark and the button, which is the whole reason the marks
+/// live in the margins. So there is no crossing and no wrapping: each one drifts
+/// slowly up and down about a fixed home, with a little horizontal sway, and
+/// turns continuously.
 ///
-/// Motion is derived from the clock, not stored: every ornament's position,
-/// bob and rotation is a function of `t` and its own row in the table below.
-/// There is no state to update, nothing to keep in sync, and the whole field is
-/// one `Canvas` draw rather than a dozen views to diff every frame.
+/// Motion is derived from the clock, not stored: every position and angle is a
+/// function of `t` and the mark's own row below. Nothing to update, nothing to
+/// keep in sync, and the whole field is a single `Canvas` draw rather than six
+/// views to diff every frame.
 ///
-/// The periods are deliberately incommensurate — the drift, the bob and the
-/// spin all run at unrelated rates — so the field never falls into step with
-/// itself, which is what makes it read as drifting rather than marching.
+/// The rates are deliberately incommensurate and the seeds are arbitrary, so the
+/// six never fall into step — which is what makes it read as drifting rather
+/// than pulsing. Each rotation period is a whole number of seconds' worth of a
+/// full turn, so a mark always comes back to where it started: the loop is
+/// seamless however long the screen is left up.
 private struct Ornaments: View {
-    /// One flying ornament.
-    ///
-    /// `y` is a fraction of the height so the arrangement survives a different
-    /// aspect ratio; `size` and `speed` are in points, since those should look
-    /// the same on every screen. A negative `speed` flies right-to-left.
+    /// One ornament, at rest on its own side of the screen.
     private struct Mark {
         let art: Int
+        /// Fractions of the frame — so the arrangement survives a different
+        /// aspect ratio instead of collecting in a corner.
+        let x: Double
         let y: Double
+        /// Points, so a mark looks the same size on every screen.
         let size: Double
-        let speed: Double
-        /// Where in its own crossing this mark starts, 0…1, so they do not all
-        /// enter together.
+        /// How far it drifts vertically, in points, and how long a round trip
+        /// takes. Vertical is the dominant motion; `sway` is a fraction of it.
+        let rise: Double
+        let risePeriod: Double
+        let sway: Double
+        /// Seconds for one full turn. Negative turns anticlockwise.
+        let spinPeriod: Double
+        /// Where each cycle starts, so nothing begins together.
         let phase: Double
         let opacity: Double
-        /// Turns per second. Small — these are drifting, not tumbling.
-        let spin: Double
     }
 
+    /// Three a side, mirrored loosely rather than exactly — a perfectly
+    /// symmetric arrangement reads as a border rather than as scattered marks.
     private let marks: [Mark] = [
-        Mark(art: 0, y: 0.10, size: 62, speed:  11, phase: 0.05, opacity: 0.55, spin:  0.010),
-        Mark(art: 1, y: 0.26, size: 44, speed: -8,  phase: 0.62, opacity: 0.42, spin: -0.014),
-        Mark(art: 0, y: 0.44, size: 78, speed:  6,  phase: 0.35, opacity: 0.50, spin:  0.007),
-        Mark(art: 1, y: 0.58, size: 52, speed: -13, phase: 0.88, opacity: 0.38, spin:  0.012),
-        Mark(art: 0, y: 0.72, size: 48, speed:  14, phase: 0.20, opacity: 0.45, spin: -0.009),
-        Mark(art: 1, y: 0.86, size: 66, speed: -9,  phase: 0.50, opacity: 0.40, spin:  0.011),
-        Mark(art: 1, y: 0.18, size: 56, speed:  8,  phase: 0.74, opacity: 0.35, spin: -0.006),
-        Mark(art: 0, y: 0.66, size: 40, speed: -7,  phase: 0.12, opacity: 0.44, spin:  0.015),
+        // Left
+        Mark(art: 0, x: 0.08, y: 0.16, size: 58, rise: 16, risePeriod: 11, sway: 0.35, spinPeriod:  38, phase: 0.00, opacity: 0.50),
+        Mark(art: 1, x: 0.14, y: 0.48, size: 44, rise: 12, risePeriod:  8, sway: 0.30, spinPeriod: -29, phase: 1.90, opacity: 0.38),
+        Mark(art: 0, x: 0.06, y: 0.79, size: 66, rise: 19, risePeriod: 14, sway: 0.25, spinPeriod:  47, phase: 3.40, opacity: 0.45),
+        // Right
+        Mark(art: 1, x: 0.90, y: 0.13, size: 62, rise: 18, risePeriod: 13, sway: 0.28, spinPeriod: -34, phase: 0.90, opacity: 0.46),
+        Mark(art: 0, x: 0.84, y: 0.45, size: 46, rise: 13, risePeriod:  9, sway: 0.32, spinPeriod:  26, phase: 2.60, opacity: 0.36),
+        Mark(art: 1, x: 0.92, y: 0.76, size: 54, rise: 15, risePeriod: 12, sway: 0.27, spinPeriod: -41, phase: 4.20, opacity: 0.44),
     ]
 
     /// The size the artwork is rasterised at. Every mark is drawn at this size
     /// or smaller, so the scale is always downwards — resolving a symbol at its
-    /// natural 64pt and blowing it up to 78 would soften the largest ones.
+    /// natural 64pt and blowing it up would soften the largest ones.
     private static let symbolSize: CGFloat = 96
 
     var body: some View {
-        // 30fps, like the pattern behind it. The fastest mark covers less than
-        // half a point between frames at 120Hz, so the extra ninety redraws a
-        // second would buy nothing visible — and this is ambient decoration that
-        // must never compete with anything else the app is doing.
+        // 30fps, like the pattern behind it. Nothing here moves fast enough for
+        // more to be visible, and this is ambient decoration that must never
+        // compete with anything else the app is doing.
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
 
@@ -174,26 +184,21 @@ private struct Ornaments: View {
                 for mark in marks {
                     guard let symbol = context.resolveSymbol(id: mark.art) else { continue }
 
-                    // The full crossing: off one edge, across, and off the
-                    // other. Taking the travel modulo this is what closes the
-                    // loop seamlessly.
-                    let span = size.width + mark.size
-                    let travel = t * mark.speed + mark.phase * span
-                    var x = travel.truncatingRemainder(dividingBy: span)
-                    // Swift's remainder keeps the sign of the dividend, so a
-                    // right-to-left mark would sit off-screen forever without
-                    // this.
-                    if x < 0 { x += span }
-                    x -= mark.size
+                    let rise = sin(2 * .pi * (t / mark.risePeriod) + mark.phase) * mark.rise
+                    // Sway runs against a different period from the rise, so the
+                    // pair traces a slow wandering figure rather than a straight
+                    // diagonal back and forth.
+                    let sway = cos(2 * .pi * (t / (mark.risePeriod * 1.6)) + mark.phase)
+                        * mark.rise * mark.sway
 
-                    let bob = sin(t * 0.21 + mark.phase * 6.3) * 12
-                    let centre = CGPoint(x: x + mark.size / 2,
-                                         y: mark.y * size.height + bob)
+                    let centre = CGPoint(x: mark.x * size.width + sway,
+                                         y: mark.y * size.height + rise)
+                    let turns = t / mark.spinPeriod + mark.phase
 
                     var layer = context
                     layer.opacity = mark.opacity
                     layer.translateBy(x: centre.x, y: centre.y)
-                    layer.rotate(by: .radians(t * mark.spin * 2 * .pi))
+                    layer.rotate(by: .radians(turns * 2 * .pi))
                     layer.draw(symbol,
                                in: CGRect(x: -mark.size / 2, y: -mark.size / 2,
                                           width: mark.size, height: mark.size))

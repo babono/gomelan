@@ -91,10 +91,13 @@ struct PillButton: View {
                 }
                 Text(title)
                     .textCase(uppercase ? .uppercase : nil)
-                    .tracking(uppercase ? (compact ? 1.5 : 2) : 0)
+                    // One tracking for every button, uppercase or not: the
+                    // labels are short and set heavy, and heavy short words
+                    // need the air whichever case they are in.
+                    .tracking(Theme.buttonTracking)
                     // SF has real weights, unlike the face this used to be, so
                     // a button label can simply BE the weight it wants.
-                    .font(.sans(compact ? 14 : 19, weight: .semibold))
+                    .font(.sans(compact ? 14 : 19, weight: Theme.buttonWeight))
             }
             .foregroundStyle(foreground)
             .padding(.horizontal, compact ? 18 : 30)
@@ -170,7 +173,9 @@ struct SecondaryButton: View {
                 if let systemImage {
                     Image(systemName: systemImage).font(.symbol(15))
                 }
-                Text(title).font(.sans(15, weight: .medium))
+                Text(title)
+                    .font(.sans(15, weight: Theme.buttonWeight))
+                    .tracking(Theme.buttonTracking)
             }
             .foregroundStyle(Theme.cream)
             .padding(.vertical, 11)
@@ -419,7 +424,8 @@ struct RealignButton: View {
     var body: some View {
         Button(action: action) {
             Label("Realign", systemImage: "viewfinder")
-                .font(.sans(13, weight: .medium))
+                .font(.sans(13, weight: Theme.buttonWeight))
+                .tracking(Theme.buttonTracking)
                 .foregroundStyle(Theme.terracotta)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)

@@ -79,6 +79,17 @@ enum Theme {
     static let radius: CGFloat = 14
     /// Height of a primary button.
     static let buttonHeight: CGFloat = 56
+
+    /// Weight and letter-spacing shared by every button label.
+    ///
+    /// Held here rather than at each call site so the buttons cannot drift
+    /// apart — they are the most repeated element in the app and the one place
+    /// an inconsistency is most obvious. Black is the heaviest SF Pro cut, which
+    /// only became available when the body face stopped being a single-weight
+    /// Futura; the tracking is what keeps a short, very heavy, uppercase word
+    /// from setting solid.
+    static let buttonWeight: Font.Weight = .black
+    static let buttonTracking: CGFloat = 1.5
     /// Opacity the background pattern is laid in at.
     static let patternOpacity: Double = 0.08
 
