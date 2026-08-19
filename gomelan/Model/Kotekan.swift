@@ -45,7 +45,8 @@ struct Kotekan: Identifiable, Equatable {
     /// Milliseconds per grid slot — sets the tempo (smaller = faster).
     var strokeMs: Int
 
-    static let strokesPerCycle = 16
+//    static let strokesPerCycle = 16
+    var slotsPerCycle: Int { polos.count }
 
     /// Highest key index touched by either half, so we know the smallest
     /// instrument this figure fits on.
@@ -72,7 +73,7 @@ struct Kotekan: Identifiable, Equatable {
         pattern(half).compactMap { $0 }.count
     }
 
-    var cycleMs: Int { Kotekan.strokesPerCycle * strokeMs }
+    var cycleMs: Int { slotsPerCycle * strokeMs }
 
     /// Render the chosen half, repeated `cycles` times, into engine notes.
     func makeSong(half: KotekanHalf, cycles: Int) -> Song {
@@ -81,7 +82,7 @@ struct Kotekan: Identifiable, Equatable {
         for c in 0..<cycles {
             for (slot, value) in grid.enumerated() {
                 guard let key = value else { continue }
-                let t = (c * Kotekan.strokesPerCycle + slot) * strokeMs
+                let t = (c * slotsPerCycle + slot) * strokeMs
                 notes.append(Note(keyIndex: key, timeMs: t, durationMs: Int(Double(strokeMs) * 0.9)))
             }
         }
@@ -101,49 +102,49 @@ struct Kotekan: Identifiable, Equatable {
 // MARK: - Bundled figures
 
 extension Kotekan {
-    /// The four figures offered in the picker, easiest first. Patterns interlock:
-    /// polos fills the even slots, sangsih answers on the odd ones, so together
-    /// they trace one continuous line.
+    /// The four figures offered in the picker, easiest first.
+    /// Each figure keeps its source pattern exactly as notated in the reference
+    /// videos; Babaru uses a 32-slot cycle while the other figures use 8 or 16.
     static let bundled: [Kotekan] = [
         Kotekan(
-            id: "telu",
-            name: "Kotekan Telu",
+            id: "ubitannyendok",
+            name: "Ubitan Nyendok",
             level: 1,
-            toneLabel: "3 tones",
-            blurb: "The three-note weave every child in the banjar learns first.",
-            polos:   [2, nil, 3, nil, 2, nil, 1, nil, 2, nil, 3, nil, 2, nil, 3, nil],
-            sangsih: [nil, 3, nil, 2, nil, 3, nil, 2, nil, 1, nil, 2, nil, 3, nil, 2],
-            strokeMs: 300
+            toneLabel: "Telu family",
+            blurb: "A short, repeating telu-family motif that introduces the basic interlocking movement.",
+            polos:   [4, nil, 2, 4, nil, 4, 2, nil],
+            sangsih: [nil, 1, 2, nil, 1, nil, 2, 1],
+            strokeMs: 250
         ),
         Kotekan(
-            id: "empat",
-            name: "Kotekan Empat",
+            id: "kabelet",
+            name: "Kabelet",
             level: 2,
-            toneLabel: "4 tones",
-            blurb: "Denser, four tones — the halves cross on every off-beat.",
-            polos:   [1, nil, 2, nil, 3, nil, 4, nil, 3, nil, 2, nil, 1, nil, 2, nil],
-            sangsih: [nil, 2, nil, 3, nil, 4, nil, 3, nil, 4, nil, 3, nil, 2, nil, 3],
-            strokeMs: 260
+            toneLabel: "Telu family",
+            blurb: "A foundational telu-family kotekan built around a shared middle-note anchor.",
+            polos:   [0, nil, 1, 0, nil, 0, 1, nil],
+            sangsih: [4, 2, nil, 4, 2, 4, nil, 2],
+            strokeMs: 250
         ),
         Kotekan(
-            id: "norot",
-            name: "Norot",
-            level: 2,
-            toneLabel: "Neighbour",
-            blurb: "Each tone answered by the key beside it. Steady, hypnotic.",
-            polos:   [3, nil, 3, nil, 3, nil, 3, nil, 2, nil, 2, nil, 4, nil, 4, nil],
-            sangsih: [nil, 4, nil, 4, nil, 4, nil, 4, nil, 3, nil, 3, nil, 3, nil, 3],
-            strokeMs: 300
-        ),
-        Kotekan(
-            id: "nyokcok",
-            name: "Nyok Cok",
+            id: "ngecog",
+            name: "Ngecog",
             level: 3,
-            toneLabel: "Sparse",
-            blurb: "Wide gaps. Your ear has to hold the pulse alone.",
-            polos:   [2, nil, nil, nil, 3, nil, nil, nil, 1, nil, nil, nil, 2, nil, nil, nil],
-            sangsih: [nil, nil, 3, nil, nil, nil, 4, nil, nil, nil, 2, nil, nil, nil, 3, nil],
-            strokeMs: 340
+            toneLabel: "Empat · Leap",
+            blurb: "An empat-family pattern defined by wide leaps between 1, 3, 5, and 6, without a shared anchor.",
+            polos:   [4, nil, 3, 4, nil, 4, 3, nil, 4, nil, 2, nil, 4, nil, 2, nil],
+            sangsih: [nil, 2, 3, nil, 2, nil, 3, 2, nil, 1, nil, 3, nil, 1, nil, 3],
+            strokeMs: 250
+        ),
+        Kotekan(
+            id: "babaru",
+            name: "Babaru",
+            level: 4,
+            toneLabel: "Capstone",
+            blurb: "The capstone figure: a longer phrase with a wider pitch range and greater memory and hand-span demands.",
+            polos:   [6, nil, 7, nil, 6, 7, nil, 6, 7, nil, 8, nil, 7, 8, nil, 7, 8, nil, 7, nil, 8, 7, nil, 8, 7, nil, 6, nil, 7, 6, nil, 7],
+            sangsih: [nil, 6, nil, 5, 6, nil, 5, 6, nil, 7, nil, 6, 7, nil, 6, 7, nil, 8, nil, 9, 8, nil, 9, 8, nil, 7, nil, 8, 7, nil, 8, 7],
+            strokeMs: 250
         ),
     ]
 }

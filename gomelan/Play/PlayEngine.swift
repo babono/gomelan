@@ -72,7 +72,7 @@ struct ApproachNote: Identifiable, Equatable {
 }
 
 struct TrackMarker: Identifiable, Equatable {
-    enum Kind: Equatable { case gong, kempur, kemong, beat }
+    enum Kind: Equatable { case gong, kempur, kajar, beat }
     let id: Int
     let kind: Kind
     let xFraction: Double
@@ -152,11 +152,11 @@ final class PlayEngine {
     private let flashDuration: Double = 0.3
     
     // One full colotomic cycle of gong before anything else happens.
-    private let introBeats = 8
+    private let introBeats = 16
     /// Silent beats between loops so a repeat doesn't feel clipped. The demo
     /// repeats the same figure over and over, so it closes the gap and lets the
     /// gong land exactly on the turn of the cycle.
-    private var loopGapBeats: Int { role == .demo ? 0 : 2 }
+    private var loopGapBeats = 0 /*: Int { role == .demo ? 0 : 2 }*/
     
     private var introMs: Double = 0
     private var patternMs: Double = 0
@@ -281,18 +281,23 @@ final class PlayEngine {
         if beatIndex != lastBeatIndex, currentTimeMs >= 0 {
             lastBeatIndex = beatIndex
             if colotomicAudible {
-                switch beatIndex % 8 {
+                switch beatIndex % 32 {
                 case 0:
                     cue?.playGong()
+                    cue?.playKajar()
 
-                case 2, 6:
-                    cue?.playKemong()
+                case 4, 8, 12:
+                    cue?.playKajar()
 
-                case 4:
+                case 16:
                     cue?.playKempur()
+                    cue?.playKajar()
+
+                case 20, 24, 28:
+                    cue?.playKajar()
 
                 default:
-                    break   //R off-beats got a click here AND from the metronome below
+                    break
                 }
             }
             if metronomeEnabled { cue?.playClick() }
@@ -581,7 +586,7 @@ final class PlayEngine {
     
     // MARK: - The river (§13.5)
 
-    /// Builds one frame of the river: the colotomic pulse (gong/kempur/kemong/
+    /// Builds one frame of the river: the colotomic pulse (gong/kempur/kajar/
     /// beat) and both halves' notes, all mapped from the same absolute clock so
     /// the weave stays aligned. Time runs along x, pitch is the key index, and
     /// the strike line sits at `Theme.strikeLineFraction`.
@@ -610,14 +615,36 @@ final class PlayEngine {
         if lastBeat >= firstBeat {
             for b in firstBeat...lastBeat {
                 guard let x = xFor(Double(b) * beatMs) else { continue }
-                let kind: TrackMarker.Kind
-                switch b % 8 {
-                case 0: kind = .gong
-                case 4: kind = .kempur
-                case 2, 6: kind = .kemong
-                default: kind = .beat
+                marks.append(
+                    TrackMarker(
+                        id: b * 10 + 1,
+                        kind: .kajar,
+                        xFraction: x
+                    )
+                )
+
+                switch b % 32 {
+                case 0:
+                    marks.append(
+                        TrackMarker(
+                            id: b * 10 + 2,
+                            kind: .gong,
+                            xFraction: x
+                        )
+                    )
+
+                case 16:
+                    marks.append(
+                        TrackMarker(
+                            id: b * 10 + 2,
+                            kind: .kempur,
+                            xFraction: x
+                        )
+                    )
+
+                default:
+                    break
                 }
-                marks.append(TrackMarker(id: b, kind: kind, xFraction: x))
             }
         }
         trackMarkers = marks

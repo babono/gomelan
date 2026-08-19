@@ -60,7 +60,7 @@ private struct HalfCard: View {
 
             Spacer(minLength: 8)
 
-            Text("plays \(kotekan.strokeCount(half)) of \(Kotekan.strokesPerCycle) strokes")
+            Text("plays \(kotekan.strokeCount(half)) of \(kotekan.slotsPerCycle) strokes")
                 .font(.sans(14, weight: .medium))
                 .foregroundStyle(Theme.terracotta)
         }

@@ -74,7 +74,7 @@ struct ChooseCyclesView: View {
     }
 
     private func estimatedDuration(_ k: Kotekan, cycles: Int) -> String {
-        let totalSeconds = Int(Double(cycles * 16 * k.strokeMs) / 1000.0)
+        let totalSeconds = Int(Double(cycles * k.slotsPerCycle * k.strokeMs) / 1000.0)
         if totalSeconds < 60 {
             return "\(totalSeconds)s"
         } else {

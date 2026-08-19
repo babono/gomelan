@@ -8,7 +8,7 @@
 //
 //    · POLOS lands on the beat, SANGSIH answers between — two colours on the
 //      same lanes, your half solid, your partner's ghosted.
-//    · The colotomic pulse (gong / kempur / kemong / beat) runs underneath, and
+//    · The colotomic pulse (gong / kempur / kajar / beat) runs underneath, and
 //      gong and kempur strike a faint rule up through the notes, so you can see
 //      the cycle the figure is hung on.
 //    · Everything crosses one strike line: what sits on it is what sounds now.
@@ -101,7 +101,7 @@ struct NotesRiver: View {
             let dot: (CGFloat, Color, Bool) = switch marker.kind {
             case .gong:   (9, Theme.gong, true)
             case .kempur: (8, Theme.kempur, false)
-            case .kemong: (6, Theme.kemong, false)
+            case .kajar: (6, Theme.kajar, false)
             case .beat:   (3, Theme.cream.opacity(0.3), true)
             }
             let circle = Path(ellipseIn: CGRect(x: x - dot.0 / 2, y: pulseY - dot.0 / 2,
@@ -172,7 +172,7 @@ struct NotesRiver: View {
         switch kind {
         case .gong: return Theme.gong.opacity(0.26)
         case .kempur: return Theme.kempur.opacity(0.14)
-        case .kemong: return nil
+        case .kajar: return nil
         case .beat: return nil
         }
     }
