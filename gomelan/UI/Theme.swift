@@ -89,11 +89,11 @@ enum Theme {
     static let miss = Color(hex: 0xA85A44)
     static let wrong = Color(hex: 0xD9A441)
 
-    // MARK: - Colotomic layer (gong / kempur / kemong)
+    // MARK: - Colotomic layer (gong / kempur / kajar)
 
     static let gong = Color(hex: 0xF0DDA8)
     static let kempur = Color(hex: 0xD9A441)
-    static let kemong = Color(hex: 0xB98BC9)
+    static let kajar = Color(hex: 0xB98BC9)
 
     // MARK: - The two interlocking halves (§7)
 
