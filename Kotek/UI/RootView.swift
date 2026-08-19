@@ -58,6 +58,22 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.55), value: preloader.isFinished)
         .task { await preloader.warm(camera: camera) }
+        // Switch the camera off the moment the app leaves the screens that show
+        // one. Nothing ever called `camera.stop()` — the session ran from the
+        // framing step until the app was killed, through the kotekan picker,
+        // the results screen and settings, which is why the phone got hot.
+        //
+        // It belongs HERE rather than in each screen's `onDisappear`, for the
+        // same reason the pattern does: this is the one place that knows what
+        // the app is showing. A per-screen teardown would also have to know it
+        // was NOT handing over to another camera screen, and getting that wrong
+        // in either direction is either a dead preview or a hot phone.
+        //
+        // Camera-to-camera moves (demo → run) do not flip this, so the session
+        // is never stopped and restarted mid-flow.
+        .onChange(of: isCameraScreen) { _, showsCamera in
+            if !showsCamera { camera.stop() }
+        }
         .environment(app)
         .preferredColorScheme(.dark)
         .statusBarHidden(true)
