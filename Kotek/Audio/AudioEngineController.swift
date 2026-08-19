@@ -173,6 +173,14 @@ final class AudioEngineController {
     func start(profile: InstrumentProfile) throws {
         guard !isRunning else { return }
 
+        // The capture configuration, unconditionally, before the input node is
+        // touched. The app now launches on `.playback` so that the splash can
+        // actually be heard, which means `.measurement` is NOT already in force
+        // the way it used to be — and `inputNode` on a playback-only session is
+        // how detection would silently stop working. Idempotent, so paying for
+        // it on every start is cheaper than reasoning about who got here first.
+        AudioSessionManager.configure()
+
         let input = engine.inputNode
         let format = input.inputFormat(forBus: 0)
         let sampleRate = format.sampleRate > 0 ? format.sampleRate : 44100

@@ -19,6 +19,19 @@ import SwiftUI
 struct WelcomeView: View {
     @Environment(AppState.self) private var app
     @State private var music = TitleMusic()
+    /// Lives here rather than with the splash screen it belongs to, because
+    /// this is the one place in launch where starting a sound is known to
+    /// work — the music bed has always been audible from here. See SplashChime.
+    @State private var chime = SplashChime()
+
+    /// Where the gamelan bed sits while the opening kempur is ringing.
+    ///
+    /// Low enough that the gong is unmistakably the thing you hear. A kempur is
+    /// nearly all low frequency, which is the part a phone speaker reproduces
+    /// worst, so it needs more room than the numbers suggest — the bed being
+    /// broadband means it masks the gong far more than an equal level implies.
+    private static let duckedMusicLevel: Float = 0.4
+
     var body: some View {
         GeometryReader { proxy in
             let h = proxy.size.height
@@ -60,7 +73,27 @@ struct WelcomeView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .ignoresSafeArea()
-        .onAppear { music.start() }
+        // Both start here, at launch and underneath the splash. The gong first:
+        // its attack is immediate, while the bed comes up from silence.
+        //
+        // The bed enters DUCKED and swells afterwards, which is the only way to
+        // give the kempur the room it needs. Both are already at full scale —
+        // the gong cannot be turned up, and the sample deliberately is not
+        // renormalised because `CuePlayer` uses it in the colotomic layer during
+        // play, where its level is balanced against a limiter. So the space is
+        // made by lowering everything else instead, the way it would be on a
+        // desk.
+        .onAppear {
+            chime.strike()
+            music.start(volume: Self.duckedMusicLevel)
+        }
+        // The swell, once the gong has fallen. Cancelled automatically if the
+        // player presses Enter first, which is exactly right: the music is on
+        // its way out at that point and must not be pulled back up.
+        .task {
+            try? await Task.sleep(for: .seconds(SplashChime.totalDuration))
+            music.setLevel(1.0, fadeDuration: 1.8)
+        }
         // Also on the way out by any other route — a back navigation, or the
         // app being torn down — so the bed can never outlive the screen.
         //
@@ -68,7 +101,10 @@ struct WelcomeView: View {
         // goes back on. The app launches on `.playback` so the splash can be
         // heard; everything past here leads towards a camera and a microphone,
         // and detection needs `.measurement` in force before it gets there.
-        .onDisappear { music.stop() }
+        .onDisappear {
+            music.stop()
+            AudioSessionManager.configure()
+        }
     }
 }
 

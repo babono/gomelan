@@ -50,6 +50,16 @@ nonisolated final class TitleMusic {
         }
     }
 
+    /// Change the level of a bed that is already playing.
+    ///
+    /// Used to duck under the opening kempur and swell back afterwards. Does
+    /// nothing once a stop is in flight — a swell landing on top of a fade-out
+    /// would pull the music back up as the screen is leaving.
+    func setLevel(_ volume: Float, fadeDuration: TimeInterval = 1.8) {
+        guard let player, !isFading else { return }
+        player.setVolume(volume, fadeDuration: fadeDuration)
+    }
+
     /// Fade out and release. Idempotent.
     func stop(fadeDuration: TimeInterval = 0.6) {
         guard let player, !isFading else { return }
