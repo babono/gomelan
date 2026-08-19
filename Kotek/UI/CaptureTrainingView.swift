@@ -223,11 +223,11 @@ struct CaptureTrainingView: View {
     private var hint: String {
         if intent == .strike {
             return target == nil
-            ? "Tap the bilah you're about to strike"
+            ? "Tap the key you're about to strike"
             : "Strike it — each sound captures automatically"
         }
         if intent == .idle { return "Nothing in shot · tap Capture" }
-        return target == nil ? "Tap the bilah to demonstrate on" : "Hold the pose · tap Capture"
+        return target == nil ? "Tap the key to demonstrate on" : "Hold the pose · tap Capture"
     }
 
     // MARK: - Capture

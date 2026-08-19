@@ -79,7 +79,7 @@ struct ChooseInstrumentView: View {
                 .font(.serif(30))
                 .foregroundStyle(Theme.charcoal)
 
-            Text("Every gamelan is tuned differently, so Kotek learns yours — where the bilah are and how they sound.")
+            Text("Every gamelan is tuned differently, so Kotek learns yours — where the keys are and how they sound.")
                 .font(.sans(14))
                 .foregroundStyle(Theme.stone)
                 .multilineTextAlignment(.center)

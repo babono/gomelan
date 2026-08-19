@@ -39,7 +39,7 @@ struct FramingView: View {
     @State private var handingOver = false
 
     private var busyMessage: String? {
-        if handingOver { return "Finding your bilah…" }
+        if handingOver { return "Finding your keys…" }
         return cameraReady ? nil : "Starting the camera…"
     }
 
@@ -95,7 +95,7 @@ struct FramingView: View {
     /// window gets.
     private var bottomBar: some View {
         HStack(spacing: 16) {
-            SectionLabel("Fit every bilah inside the frame — fill it as much as you can",
+            SectionLabel("Fit every key inside the frame — fill it as much as you can",
                          color: Theme.copper)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

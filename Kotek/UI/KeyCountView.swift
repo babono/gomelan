@@ -33,7 +33,7 @@ struct KeyCountView: View {
                         .foregroundStyle(Theme.charcoal)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    (Text("A pemade or kantilan usually carries ten bilah — two octaves of the five-tone ")
+                    (Text("A pemade or kantilan usually carries ten keys — two octaves of the five-tone ")
                         + Text("pelog selisir").italic()
                         + Text(". Count the bronze keys, not the resonators."))
                         .font(.sans(15))

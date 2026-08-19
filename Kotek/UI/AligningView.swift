@@ -75,7 +75,7 @@ struct AligningView: View {
 
             // Chrome floats on top, inset from the notch, over translucent scrims.
             VStack(spacing: 0) {
-                TopBar(title: "Fit the mask to your bilah",
+                TopBar(title: "Fit the mask to your keys",
                        backTitle: "Rescan",
                        onBack: { app.screen = .framing },
                        trailingText: "3 / 4",
@@ -113,7 +113,7 @@ struct AligningView: View {
             //R for an actual frame now — the session is already running, so that
             //R is usually immediate — and shows what it is doing.
             Task {
-                busyMessage = "Finding your bilah…"
+                busyMessage = "Finding your keys…"
                 let started = CACurrentMediaTime()
                 await autoDetect(requireAll: true)
 
@@ -227,14 +227,14 @@ struct AligningView: View {
         let n = min(keys.count, placed.count)
         guard placed.count >= need, !requireAll || n == keys.count else {
             if !requireAll {
-                status = "Use the controls below to fit your \(keys.count) bilah"
+                status = "Use the controls below to fit your \(keys.count) keys"
             }
             return
         }
 
         for i in 0..<n { keys[i].rect = placed[i]; keys[i].corners = nil }
         status = n == keys.count
-            ? "Snapped all \(keys.count) bilah — nudge any that are off"
+            ? "Snapped all \(keys.count) keys — nudge any that are off"
             : "Snapped \(n) of \(keys.count) — fit the rest with the controls"
     }
 

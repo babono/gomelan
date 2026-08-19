@@ -83,7 +83,7 @@ struct SettingsView: View {
                             .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
                         Text(app.fixedMount
                              ? "Focus and exposure lock once the scene is set. Steadier image, and the keys stay where you aligned them — the right choice on a stand."
-                             : "Focus and exposure follow the scene, for a handheld phone. On a stand this hunts every time a hand crosses the bilah.")
+                             : "Focus and exposure follow the scene, for a handheld phone. On a stand this hunts every time a hand crosses the keys.")
                             .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
                     }
 
