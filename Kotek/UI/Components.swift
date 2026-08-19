@@ -124,7 +124,7 @@ struct PillButton: View {
         switch style {
         // The primary button is a cream slab with dark type on it — the one
         // place in the app where ink-on-light is correct.
-        case .filled: return Theme.onCream
+        case .filled: return Theme.onButtonFill
         case .outlined: return Theme.cream
         case .secondary: return Theme.cream
         }
@@ -133,7 +133,7 @@ struct PillButton: View {
     @ViewBuilder private var background: some View {
         switch style {
         case .filled:
-            RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.cream)
+            RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.buttonFill)
         case .outlined:
             // Glass rather than a hole: a cream wash at 8% over whatever is
             // behind, which on the camera screens is the instrument itself.

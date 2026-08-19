@@ -73,6 +73,18 @@ enum Theme {
     /// correct, which is why it is named for the job rather than the colour.
     static let onCream = Color(hex: 0x3D322C)
 
+    // MARK: - Button colours
+    //
+    // These two come from the asset catalog rather than a hex literal here, so
+    // the designer can change them without a code edit. Named for the JOB, like
+    // `onCream` above: `onButtonFill` is only correct on top of `buttonFill`,
+    // and the pair has to move together or the label stops being legible.
+
+    /// The filled button's slab.
+    static let buttonFill = Color("Tertiary")
+    /// Type sitting on that slab.
+    static let onButtonFill = Color("LaunchBackground")
+
     // MARK: - Geometry
 
     /// Corner radius for buttons, cards and wells.

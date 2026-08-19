@@ -22,16 +22,25 @@
 import SwiftUI
 
 struct PatternBackground: View {
-    /// Tile size in points: half the asset's own dimensions, which is the size
+    /// Tile size in points: half the artwork's own size, which is the density
     /// the motif was drawn to read at.
     ///
-    /// Derived rather than typed in, because it is not free-floating — it has to
-    /// track the artwork. The tile was re-exported from 1448x720 to 2083x1036,
-    /// and a hardcoded 724x360 would have quietly shrunk every motif to 69% of
-    /// its intended size while still looking plausible.
-    static let assetSize = CGSize(width: 2083, height: 1036)
-    var tile = CGSize(width: PatternBackground.assetSize.width / 2,
-                      height: PatternBackground.assetSize.height / 2)
+    /// READ FROM THE ASSET, not typed in. This number has been wrong twice
+    /// already: the tile was re-exported 1448x720 → 2083x1036 → 1448x720, and a
+    /// hardcoded half of the wrong one renders every motif at 69% or 144% of its
+    /// intended size — which looks like a design problem rather than a stale
+    /// constant, since the aspect ratio is unchanged and nothing is distorted.
+    /// Asking the image how big it is cannot go stale.
+    static let tileSize: CGSize = {
+        guard let intrinsic = UIImage(named: "bg-pattern")?.size, intrinsic.width > 0 else {
+            // Only reachable if the asset is missing, in which case there is
+            // nothing to draw and the size does not matter.
+            return CGSize(width: 724, height: 360)
+        }
+        return CGSize(width: intrinsic.width / 2, height: intrinsic.height / 2)
+    }()
+
+    var tile = PatternBackground.tileSize
     /// Points per second, travelling down-right.
     var speed: Double = 9
     var opacity: Double = Theme.patternOpacity
