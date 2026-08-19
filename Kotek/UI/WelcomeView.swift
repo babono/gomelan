@@ -2,9 +2,13 @@
 //  WelcomeView.swift
 //  Kotek
 //
-//  Entry screen (PRD §8), built to the Kotek design: the name in Dream
-//  Orphans over the drifting pattern, one cream key to press, and a pelawah
-//  rising from the bottom edge.
+//  Entry screen (PRD §8), built to the Kotek design: the wordmark over the
+//  drifting pattern, ornaments flying behind it, one cream key to press, and a
+//  pelawah rising from the bottom edge.
+//
+//  The wordmark is drawn at the geometry the splash screen uses, from the same
+//  shared numbers, because this screen is revealed underneath the splash rather
+//  than pushed on after it — see `RootView`.
 //
 //  Framing stays honest: this helps you take a first step, before a teacher —
 //  never instead of one (§1).
@@ -15,7 +19,6 @@ import SwiftUI
 struct WelcomeView: View {
     @Environment(AppState.self) private var app
     @State private var music = TitleMusic()
-
     var body: some View {
         GeometryReader { proxy in
             let h = proxy.size.height
@@ -24,14 +27,16 @@ struct WelcomeView: View {
                 Ornaments()
 
                 VStack(spacing: 0) {
-                    Spacer().frame(height: h * 0.08)
+                    // Geometry shared with the splash screen, not restated —
+                    // the hand-over is a cross-fade around a wordmark that does
+                    // not move, which only holds if both screens draw it from
+                    // the same numbers. See `KotekWordmark`.
+                    Spacer().frame(height: KotekWordmark.topInset(in: h))
 
-                    Text("Kotek")
-                        .font(.serif(min(76, h * 0.19)))
-                        .foregroundStyle(Theme.cream)
-                        .tracking(-0.5)
+                    KotekWordmark()
+                        .frame(width: KotekWordmark.width(in: proxy.size.width))
 
-                    Spacer().frame(height: h * 0.09)
+                    Spacer().frame(height: h * 0.07)
 
                     PillButton(title: "Enter", style: .filled, uppercase: false) {
                         music.stop()
@@ -58,67 +63,116 @@ struct WelcomeView: View {
         .onAppear { music.start() }
         // Also on the way out by any other route — a back navigation, or the
         // app being torn down — so the bed can never outlive the screen.
+        //
+        // Leaving this screen is also where the capture audio configuration
+        // goes back on. The app launches on `.playback` so the splash can be
+        // heard; everything past here leads towards a camera and a microphone,
+        // and detection needs `.measurement` in force before it gets there.
         .onDisappear { music.stop() }
     }
 }
 
 // MARK: - Ornaments
 
-/// The spoked gold rosettes, drifting and breathing behind the title.
+/// The carved ornaments drifting behind the title, forever.
 ///
-/// Positions are fractions of the screen rather than the design's fixed pixels,
-/// so the arrangement survives a different aspect ratio instead of collecting in
-/// one corner.
+/// Two motifs from the design (`ornament-1`, `ornament-2`) rather than a drawn
+/// rosette, each one flying slowly across the screen and wrapping round to come
+/// back on the other side. The wrap is what makes it a loop with no seam: the
+/// travel is taken modulo the screen width plus the ornament's own size, so a
+/// mark leaves one edge completely before it re-enters at the other, and the
+/// arithmetic never grows however long the app is left sitting here.
 ///
-/// Motion is derived from the clock, not stored: every rosette's drift, scale
-/// and rotation is a function of `t` and its own index, so there is no state to
-/// update, nothing to keep in sync, and the whole field is one Canvas draw. The
-/// periods are deliberately incommensurate — 0.11, 0.083, 0.23 — so the six
-/// never fall into step with each other, which is what makes it read as drifting
-/// rather than pulsing.
+/// Motion is derived from the clock, not stored: every ornament's position,
+/// bob and rotation is a function of `t` and its own row in the table below.
+/// There is no state to update, nothing to keep in sync, and the whole field is
+/// one `Canvas` draw rather than a dozen views to diff every frame.
+///
+/// The periods are deliberately incommensurate — the drift, the bob and the
+/// spin all run at unrelated rates — so the field never falls into step with
+/// itself, which is what makes it read as drifting rather than marching.
 private struct Ornaments: View {
-    /// x, y (fractions of the frame) and diameter in points.
-    private let marks: [(x: Double, y: Double, d: Double)] = [
-        (0.07, 0.10, 68), (0.86, 0.07, 74), (0.19, 0.38, 58),
-        (0.76, 0.39, 62), (0.03, 0.72, 64), (0.92, 0.71, 70),
+    /// One flying ornament.
+    ///
+    /// `y` is a fraction of the height so the arrangement survives a different
+    /// aspect ratio; `size` and `speed` are in points, since those should look
+    /// the same on every screen. A negative `speed` flies right-to-left.
+    private struct Mark {
+        let art: Int
+        let y: Double
+        let size: Double
+        let speed: Double
+        /// Where in its own crossing this mark starts, 0…1, so they do not all
+        /// enter together.
+        let phase: Double
+        let opacity: Double
+        /// Turns per second. Small — these are drifting, not tumbling.
+        let spin: Double
+    }
+
+    private let marks: [Mark] = [
+        Mark(art: 0, y: 0.10, size: 62, speed:  11, phase: 0.05, opacity: 0.55, spin:  0.010),
+        Mark(art: 1, y: 0.26, size: 44, speed: -8,  phase: 0.62, opacity: 0.42, spin: -0.014),
+        Mark(art: 0, y: 0.44, size: 78, speed:  6,  phase: 0.35, opacity: 0.50, spin:  0.007),
+        Mark(art: 1, y: 0.58, size: 52, speed: -13, phase: 0.88, opacity: 0.38, spin:  0.012),
+        Mark(art: 0, y: 0.72, size: 48, speed:  14, phase: 0.20, opacity: 0.45, spin: -0.009),
+        Mark(art: 1, y: 0.86, size: 66, speed: -9,  phase: 0.50, opacity: 0.40, spin:  0.011),
+        Mark(art: 1, y: 0.18, size: 56, speed:  8,  phase: 0.74, opacity: 0.35, spin: -0.006),
+        Mark(art: 0, y: 0.66, size: 40, speed: -7,  phase: 0.12, opacity: 0.44, spin:  0.015),
     ]
-    private let spokes = 21
+
+    /// The size the artwork is rasterised at. Every mark is drawn at this size
+    /// or smaller, so the scale is always downwards — resolving a symbol at its
+    /// natural 64pt and blowing it up to 78 would soften the largest ones.
+    private static let symbolSize: CGFloat = 96
 
     var body: some View {
+        // 30fps, like the pattern behind it. The fastest mark covers less than
+        // half a point between frames at 120Hz, so the extra ninety redraws a
+        // second would buy nothing visible — and this is ambient decoration that
+        // must never compete with anything else the app is doing.
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
 
             Canvas { context, size in
-                for (i, mark) in marks.enumerated() {
-                    let phase = Double(i) * 1.7
-                    let drift = CGPoint(x: sin(t * 0.11 + phase) * 14,
-                                        y: cos(t * 0.083 + phase * 1.3) * 10)
-                    let breathe = 1 + 0.09 * sin(t * 0.23 + phase * 0.7)
-                    // Alternating direction so neighbours never turn together.
-                    let spin = t * 0.05 * (i.isMultiple(of: 2) ? 1 : -1) + phase
+                for mark in marks {
+                    guard let symbol = context.resolveSymbol(id: mark.art) else { continue }
 
-                    let d = mark.d * breathe
-                    let centre = CGPoint(x: mark.x * size.width + d / 2 + drift.x,
-                                         y: mark.y * size.height + d / 2 + drift.y)
+                    // The full crossing: off one edge, across, and off the
+                    // other. Taking the travel modulo this is what closes the
+                    // loop seamlessly.
+                    let span = size.width + mark.size
+                    let travel = t * mark.speed + mark.phase * span
+                    var x = travel.truncatingRemainder(dividingBy: span)
+                    // Swift's remainder keeps the sign of the dividend, so a
+                    // right-to-left mark would sit off-screen forever without
+                    // this.
+                    if x < 0 { x += span }
+                    x -= mark.size
 
-                    // All spokes in ONE path, so each rosette costs a single
-                    // stroke rather than twenty-one.
-                    var path = Path()
-                    for s in 0..<spokes {
-                        let angle = Double(s) / Double(spokes) * 2 * .pi + spin
-                        path.move(to: CGPoint(x: centre.x + cos(angle) * d * 0.16,
-                                              y: centre.y + sin(angle) * d * 0.16))
-                        path.addLine(to: CGPoint(x: centre.x + cos(angle) * d * 0.5,
-                                                 y: centre.y + sin(angle) * d * 0.5))
-                    }
-                    let fade = 0.42 + 0.16 * sin(t * 0.19 + phase)
-                    context.stroke(path, with: .color(Theme.gold.opacity(fade)), lineWidth: 1.2)
+                    let bob = sin(t * 0.21 + mark.phase * 6.3) * 12
+                    let centre = CGPoint(x: x + mark.size / 2,
+                                         y: mark.y * size.height + bob)
 
-                    context.fill(
-                        Path(ellipseIn: CGRect(x: centre.x - 6, y: centre.y - 6,
-                                               width: 12, height: 12)),
-                        with: .color(Theme.gold.opacity(0.85)))
+                    var layer = context
+                    layer.opacity = mark.opacity
+                    layer.translateBy(x: centre.x, y: centre.y)
+                    layer.rotate(by: .radians(t * mark.spin * 2 * .pi))
+                    layer.draw(symbol,
+                               in: CGRect(x: -mark.size / 2, y: -mark.size / 2,
+                                          width: mark.size, height: mark.size))
                 }
+            } symbols: {
+                // Framed rather than left at their natural size so the vector
+                // artwork is rasterised big enough for the largest mark above.
+                Image("ornament-1")
+                    .resizable()
+                    .frame(width: Self.symbolSize, height: Self.symbolSize)
+                    .tag(0)
+                Image("ornament-2")
+                    .resizable()
+                    .frame(width: Self.symbolSize, height: Self.symbolSize)
+                    .tag(1)
             }
         }
         .allowsHitTesting(false)
