@@ -86,10 +86,15 @@ final class CuePlayer {
 
         configureAudioSession()
 
-        for i in 0..<10 { keyBuffers[i] = loadBuffer("key\(i)") }
-        gongBuffer = loadBuffer("gong")
-        kempurBuffer = loadBuffer("kempur")
-        kajarBuffer = loadBuffer("kajar")
+        //R Decoding moved to SampleLibrary, which the splash screen warms off
+        //R the main thread. This used to read and scan thirteen WAVs right here,
+        //R on the main actor, the first time a session started — which is what
+        //R the pause before the first sound was.
+        let samples = SampleLibrary.shared
+        for i in 0..<10 { keyBuffers[i] = samples.buffer("key\(i)") }
+        gongBuffer = samples.buffer("gong")
+        kempurBuffer = samples.buffer("kempur")
+        kajarBuffer = samples.buffer("kajar")
 
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
@@ -313,63 +318,5 @@ final class CuePlayer {
             samples[i] = Float(sin(phase) * env) * gain
         }
         return buffer
-    }
-    
-    // MARK: - Sample loading
-
-    private func loadBuffer(_ name: String) -> AVAudioPCMBuffer? {
-        guard let url = Bundle.main.url(forResource: name, withExtension: "wav"),
-              let file = try? AVAudioFile(forReading: url),
-              let buf = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
-                                          frameCapacity: AVAudioFrameCount(file.length))
-        else {
-            print("[CuePlayer] missing sample: \(name).wav — check it's in Resources and the target")
-            return nil
-        }
-        try? file.read(into: buf)
-        return trimLeadingSilence(buf)   //R
-    }
-
-    //R --------------------------------------------------------------------
-    //R Several bundled samples were recorded with the strike well into the file
-    //R — key4 at 247ms, key3 at 620ms, key7 at 870ms, kajar at 23ms. Playing
-    //R them from frame 0 put the audible attack that far behind the visual cue.
-    //R Trim the lead-in at load time so frame 0 of every buffer IS the attack.
-    //R --------------------------------------------------------------------
-    private func trimLeadingSilence(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer {  //R
-        guard let source = buffer.floatChannelData else { return buffer }
-        let channels = Int(buffer.format.channelCount)
-        let frames = Int(buffer.frameLength)
-        guard frames > 0, channels > 0 else { return buffer }
-
-        var peak: Float = 0
-        for c in 0..<channels {
-            for i in 0..<frames { peak = max(peak, abs(source[c][i])) }
-        }
-        guard peak > 0 else { return buffer }
-
-        // 8% of peak clears the room tone ahead of the strike on every sample
-        // while still landing on the leading edge of the transient.
-        let threshold = peak * 0.08
-        var onset = 0
-        search: for i in 0..<frames {
-            for c in 0..<channels where abs(source[c][i]) >= threshold {
-                onset = i
-                break search
-            }
-        }
-        // Keep a couple of ms of pre-roll so the transient isn't clipped flat.
-        onset = max(0, onset - Int(buffer.format.sampleRate * 0.002))
-        guard onset > 0 else { return buffer }
-
-        let length = AVAudioFrameCount(frames - onset)
-        guard let trimmed = AVAudioPCMBuffer(pcmFormat: buffer.format, frameCapacity: length),
-              let destination = trimmed.floatChannelData
-        else { return buffer }
-        trimmed.frameLength = length
-        for c in 0..<channels {
-            destination[c].update(from: source[c] + onset, count: Int(length))
-        }
-        return trimmed
     }
 }

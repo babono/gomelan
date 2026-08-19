@@ -24,6 +24,7 @@ struct RootView: View {
     @State private var camera = CameraController()
     @State private var cue = CuePlayer()
     @State private var audio = AudioEngineController()
+    @State private var preloader = Preloader()
 
     var body: some View {
         ZStack {
@@ -37,6 +38,26 @@ struct RootView: View {
             }
             content
         }
+        // The hand-over from the splash.
+        //
+        // The splash sits OVER the app rather than replacing it, so the landing
+        // screen is already laid out and drawn underneath by the time the splash
+        // starts to go. Both screens put the wordmark in the same place (see
+        // `KotekWordmark`), so what actually crosses over is everything around
+        // it — the pattern, the ornaments, the button — while the wordmark
+        // appears to stay still and simply finish filling.
+        //
+        // Only the splash animates; the landing screen is revealed rather than
+        // moved. Sliding or scaling it would drag the wordmark with it and
+        // break exactly the illusion this is for.
+        .overlay {
+            if !preloader.isFinished {
+                SplashView(progress: preloader.progress)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.55), value: preloader.isFinished)
+        .task { await preloader.warm(camera: camera) }
         .environment(app)
         .preferredColorScheme(.dark)
         .statusBarHidden(true)

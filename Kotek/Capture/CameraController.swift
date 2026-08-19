@@ -33,6 +33,7 @@ final class CameraController: NSObject {
     @ObservationIgnored let frameBuffer = FrameBuffer()
 
     @ObservationIgnored private let sessionQueue = DispatchQueue(label: "me.babono.kotek.camera.session")
+
     @ObservationIgnored private var device: AVCaptureDevice?
     @ObservationIgnored private var videoOutput: AVCaptureVideoDataOutput?
     @ObservationIgnored private var isConfigured = false
@@ -65,6 +66,30 @@ final class CameraController: NSObject {
             self.configureIfNeeded()
             if !self.session.isRunning { self.session.startRunning() }
             self.setStatus(.running)
+        }
+    }
+
+    /// Build the capture graph without switching the camera on.
+    ///
+    /// Called from the splash screen. `configureIfNeeded()` is the slow half of
+    /// opening the camera — finding the device, building the input, negotiating
+    /// the output format, committing the configuration — and it is identical
+    /// every launch, so there is no reason for the framing screen to pay for it
+    /// while the player is looking at a black rectangle. A later `start()` then
+    /// only has `startRunning()` left to do.
+    ///
+    /// Deliberately stops short of `startRunning()`. Running the session lights
+    /// the system recording indicator and keeps the sensor powered, and the
+    /// splash and welcome screens show no preview at all — the app should not
+    /// look like it is watching when there is nothing to watch. Status is left
+    /// alone for the same reason: nothing is running yet, and claiming otherwise
+    /// would make `start()` return early and never actually open the camera.
+    func prepare() async {
+        await withCheckedContinuation { continuation in
+            sessionQueue.async { [weak self] in
+                self?.configureIfNeeded()
+                continuation.resume()
+            }
         }
     }
 

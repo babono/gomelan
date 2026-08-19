@@ -52,7 +52,10 @@ actor StrikeFusion {
 
     init(frames: FrameBuffer, keys: [InstrumentKey], viewSize: CGSize) {
         self.frames = frames
-        self.classifier = MalletHitClassifier()
+        // The warmed model, not a fresh load — see MalletHitClassifier.shared().
+        // This initialiser runs on the way into a play session, which is the
+        // worst possible moment to be compiling a Core ML model.
+        self.classifier = MalletHitClassifier.shared()
         self.keys = keys
         self.viewSize = viewSize
     }

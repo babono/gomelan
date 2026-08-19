@@ -72,6 +72,34 @@ nonisolated final class MalletHitClassifier {
         }
     }
 
+    /// The one loaded model, kept for the life of the process.
+    ///
+    /// Loading it means compiling the Core ML model and building a
+    /// `VNCoreMLModel` around it, which is a few hundred milliseconds — and it
+    /// was happening inside `StrikeFusion.init`, i.e. on the way into a play
+    /// session, every time. The model does not change, so it is loaded once
+    /// (during the splash) and handed out afterwards.
+    ///
+    /// Sharing one `VNCoreMLModel` is only safe because inference is never
+    /// concurrent here: `StrikeFusion` is an actor, `MalletTestView` is on the
+    /// main actor, and the two are different screens that cannot be on-screen
+    /// at once. If a second concurrent consumer is ever added it must get its
+    /// own instance rather than this one.
+    nonisolated(unsafe) private static var cached: MalletHitClassifier?
+    private static let cacheLock = NSLock()
+
+    static func shared() -> MalletHitClassifier? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        if let cached { return cached }
+        // A failed load is deliberately NOT cached: it is nearly always a
+        // transient resource problem, and remembering it would disable vision
+        // for the rest of the launch with no way back.
+        let made = MalletHitClassifier()
+        cached = made
+        return made
+    }
+
     /// The fill/centre/fit options, in the order the tuning screen shows them.
     static let cropScaleOptions: [(name: String, option: VNImageCropAndScaleOption)] = [
         ("fill", .scaleFill), ("centre", .centerCrop), ("fit", .scaleFit)

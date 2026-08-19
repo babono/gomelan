@@ -20,6 +20,18 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 
+	<!-- The launch screen is the FIRST thing shown, before any of our code
+	     runs, and by default it is a plain white page. Against a splash screen
+	     on the warm brown ground that reads as a white flash on every launch,
+	     which is exactly the kind of thing a splash screen is supposed to stop.
+	     Painting it the same brown makes launch → splash one continuous surface
+	     with only the wordmark fading up on top of it. -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
+
 	<key>UIAppFonts</key>
 	<array>
 		<string>Dream Orphans.otf</string>
