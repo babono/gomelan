@@ -112,8 +112,8 @@ extension Kotekan {
             level: 1,
             toneLabel: "Telu family",
             blurb: "A short, repeating telu-family motif that introduces the basic interlocking movement.",
-            polos:   [4, nil, 2, 4, nil, 4, 2, nil],
-            sangsih: [nil, 1, 2, nil, 1, nil, 2, 1],
+            polos:   [7, nil, 6, 7, nil, 7, 6, nil],
+            sangsih: [nil, 5, 6, nil, 5, nil, 6, 5],
             strokeMs: 250
         ),
         Kotekan(
@@ -122,8 +122,8 @@ extension Kotekan {
             level: 2,
             toneLabel: "Telu family",
             blurb: "A foundational telu-family kotekan built around a shared middle-note anchor.",
-            polos:   [0, nil, 1, 0, nil, 0, 1, nil],
-            sangsih: [4, 2, nil, 4, 2, 4, nil, 2],
+            polos:   [4, nil, 5, 4, nil, 4, 5, nil],
+            sangsih: [7, 6, nil, 7, 6, 7, nil, 6],
             strokeMs: 250
         ),
         Kotekan(
