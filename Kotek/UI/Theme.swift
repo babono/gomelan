@@ -15,9 +15,12 @@
 //    #3D322C ground · #2A211C deep · #F0DDA8 cream
 //    #C9A063 gold   · #8B5A32 wood · #C9A876 bronze
 //
-//  Type: Dream Orphans for headings, Futura for everything else. Both are
-//  bundled — see UIAppFonts in Info.plist — and both fall back to the nearest
-//  system face if a build ever ships without them.
+//  Type: Dream Orphans for titles and headings — bundled, see UIAppFonts in
+//  Info.plist, and falling back to the nearest system serif if a build ever
+//  ships without it. Everything else is San Francisco at the system weights,
+//  which is what the Human Interface Guidelines ask for and what every iOS
+//  reader's eye is already calibrated to. Nothing else is bundled: the body
+//  face can no longer go missing.
 //
 //  Geometry: radius 14, primary buttons 56pt tall.
 //
@@ -77,7 +80,7 @@ enum Theme {
     /// Height of a primary button.
     static let buttonHeight: CGFloat = 56
     /// Opacity the background pattern is laid in at.
-    static let patternOpacity: Double = 0.13
+    static let patternOpacity: Double = 0.08
 
     // MARK: - Overlay play colours (§13.5)
 
@@ -118,24 +121,15 @@ enum Theme {
 
 // MARK: - Typography
 
-/// Resolves the bundled faces ONCE, by PostScript name.
+/// Resolves the bundled display face ONCE, by PostScript name.
 ///
-/// `UIFont.fontNames(forFamilyName:)` was the wrong probe and silently cost us
-/// Futura everywhere. iOS ships its own Futura, and family lookup can come back
-/// empty for a bundled face whose family the system has folded into an existing
-/// one — so the guard failed, every `.sans` call fell through to San Francisco,
-/// and nothing looked broken enough to notice. `UIFont(name:size:)` asks about
-/// the exact face instead, which is the thing we actually depend on.
-///
-/// The fallback chain matters too: if the bundled cut ever fails to register,
-/// iOS's own condensed Futura is a far better substitute than the system sans.
+/// `UIFont.fontNames(forFamilyName:)` is the wrong probe here and has cost this
+/// app a typeface before: family lookup can come back empty for a bundled face
+/// whose family the system has folded into an existing one, so the guard fails
+/// and everything silently falls through to the system font without looking
+/// broken enough to notice. `UIFont(name:size:)` asks about the exact face
+/// instead, which is the thing we actually depend on.
 enum KotekFonts {
-    static let futura: String? = [
-        "Futura-MediumCondensed",   // bundled
-        "Futura-CondensedMedium",   // iOS built-in, same design
-        "Futura-Medium",
-    ].first { UIFont(name: $0, size: 12) != nil }
-
     static let displayRegular: String? = [
         "DreamOrphans-Regular", "DreamOrphans",
     ].first { UIFont(name: $0, size: 12) != nil }
@@ -144,15 +138,16 @@ enum KotekFonts {
         "DreamOrphans-Bold", "DreamOrphans-Regular",
     ].first { UIFont(name: $0, size: 12) != nil }
 
-    /// Every face the app actually resolved, for the diagnostics screen — so
-    /// "is the font loaded?" is answerable rather than eyeballed.
+    /// What the app actually resolved, for the diagnostics screen — so "is the
+    /// font loaded?" is answerable rather than eyeballed. Only the display face
+    /// can fail now; the body face is San Francisco, which ships with the OS.
     static var summary: String {
-        "display=\(displayRegular ?? "SYSTEM")  body=\(futura ?? "SYSTEM")"
+        "display=\(displayRegular ?? "SYSTEM")  body=SF Pro"
     }
 }
 
 extension Font {
-    /// Dream Orphans — the display serif, for headings and numerals.
+    /// Dream Orphans — the display face, for titles, headings and big numerals.
     ///
     /// The family ships Regular/Bold/Italic/BoldItalic only, so anything
     /// semibold or above maps to Bold and everything else to Regular.
@@ -163,18 +158,37 @@ extension Font {
         return .custom(name, size: size)
     }
 
-    /// Futura — body, labels, buttons, everything that is not a heading.
+    /// San Francisco — body, labels, buttons, everything that is not a heading.
     ///
-    /// The bundled cut is Medium Condensed, a single weight, so `weight` cannot
-    /// be honoured by swapping faces. It is ignored rather than faked:
-    /// synthetic bolding muddies a condensed face at the small tracked sizes
-    /// this is mostly used at. Where emphasis is needed the design uses
-    /// tracking and colour instead.
+    /// This was a bundled cut of Futura Medium Condensed. Two things came with
+    /// that and are worth stating, because both are now fixed rather than
+    /// worked around:
+    ///
+    ///  - It shipped in ONE weight, so `weight` could not be honoured and was
+    ///    ignored outright; emphasis had to be faked with tracking and colour.
+    ///    SF Pro has the full range, so every existing `weight:` argument in the
+    ///    app starts doing what it always said it did.
+    ///  - It is a geometric face with a small x-height, condensed on top. At the
+    ///    11–14pt this app mostly uses — over a live camera image, read at
+    ///    arm's length by someone holding a mallet — that is the worst possible
+    ///    combination. SF is drawn for exactly this: its Text optical size opens
+    ///    the spacing and thickens the stems below 20pt, and swaps to the
+    ///    tighter Display cut above it, automatically and per size.
+    ///
+    /// The name stays `sans` rather than becoming `sf`: ~250 call sites say
+    /// "the body face", which is still exactly what they mean.
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        guard let name = KotekFonts.futura else {
-            return .system(size: size, weight: weight, design: .default)
-        }
-        return .custom(name, size: size)
+        .system(size: size, weight: weight, design: .default)
+    }
+
+    /// A system font for SF Symbols, so glyphs take the symbol metrics rather
+    /// than inheriting a text size that happens to be nearby.
+    ///
+    /// Symbols in the app used to be given `.font(.sans(...))`. Under Futura
+    /// that meant a symbol scaled to a face with entirely unrelated metrics,
+    /// which is why icons sat slightly high or small next to their labels.
+    static func symbol(_ size: CGFloat, weight: Font.Weight = .medium) -> Font {
+        .system(size: size, weight: weight)
     }
 }
 

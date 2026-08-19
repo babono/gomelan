@@ -13,6 +13,58 @@
 
 import SwiftUI
 
+// MARK: - Wordmark
+
+/// The KOTEK wordmark, at the one size and position the app draws it.
+///
+/// Shared by the splash and the landing screen ON PURPOSE, and this is the
+/// whole reason it is a type rather than two `Image` calls: the two screens
+/// hand over by cross-fading everything AROUND the wordmark while the wordmark
+/// itself stays exactly where it is. That only works if both screens agree on
+/// its geometry to the point, which they cannot do if each computes its own.
+///
+/// Sized from the container rather than fixed, so it holds its proportions on
+/// an iPad and on a small phone in landscape. The cap is what stops it turning
+/// into a banner on a 13" screen.
+///
+/// Drawn plain, at full strength, on every screen that shows it. The splash
+/// used to fill it with cream from the bottom as loading progressed; that made
+/// the wordmark rise into view, which read as an entrance animation rather than
+/// as progress and was the wrong thing for a mark that is supposed to be simply
+/// present. The pill underneath reports progress, and reports it alone.
+struct KotekWordmark: View {
+    /// The artwork's own proportions (230 x 86), so the height follows from the
+    /// width and the two screens cannot drift apart.
+    static let aspectRatio: CGFloat = 230.0 / 86.0
+
+    /// The width the wordmark takes in a container this wide.
+    static func width(in containerWidth: CGFloat) -> CGFloat {
+        min(300, containerWidth * 0.26)
+    }
+
+    /// Where the top of the wordmark sits in a container this tall. Shared for
+    /// the same reason as the width.
+    static func topInset(in containerHeight: CGFloat) -> CGFloat {
+        containerHeight * 0.11
+    }
+
+    var body: some View {
+        artwork
+    }
+
+    /// Named `wordmark-kotek`, NOT `logo-kotek`. The app icon already claims
+    /// `logo-kotek` (see ASSETCATALOG_COMPILER_APPICON_NAME and
+    /// `Kotek/logo-kotek.icon`), and an asset catalog will happily compile two
+    /// unrelated things under one name — the icon stack and this artwork — and
+    /// leave `Image("logo-kotek")` to pick between them. Renaming is the fix;
+    /// do not name anything else `logo-kotek`.
+    private var artwork: some View {
+        Image("wordmark-kotek")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+    }
+}
+
 // MARK: - Buttons
 
 enum PillStyle { case filled, outlined, secondary }
@@ -32,12 +84,18 @@ struct PillButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: compact ? 8 : 10) {
-                if let systemImage { Image(systemName: systemImage) }
+                if let systemImage {
+                    // Symbol metrics, not text metrics — see `Font.symbol`.
+                    Image(systemName: systemImage)
+                        .font(.symbol(compact ? 14 : 18, weight: .semibold))
+                }
                 Text(title)
                     .textCase(uppercase ? .uppercase : nil)
                     .tracking(uppercase ? (compact ? 1.5 : 2) : 0)
+                    // SF has real weights, unlike the face this used to be, so
+                    // a button label can simply BE the weight it wants.
+                    .font(.sans(compact ? 14 : 19, weight: .semibold))
             }
-            .font(.sans(compact ? 14 : 19))
             .foregroundStyle(foreground)
             .padding(.horizontal, compact ? 18 : 30)
             .frame(maxWidth: fullWidth ? .infinity : nil)
@@ -48,6 +106,13 @@ struct PillButton: View {
                     .strokeBorder(tint, lineWidth: style == .outlined ? 1 : 0)
             )
             .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+            // The compact pill is drawn 38pt tall because that is what the
+            // design calls for, but the HIG minimum target is 44 — so the
+            // TARGET is grown to 44 without changing what is drawn. Someone
+            // reaching for this is standing over an instrument holding a
+            // mallet, which is not the moment for a six-point miss.
+            .frame(minHeight: 44)
+            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
         .buttonStyle(.plain)
     }
@@ -102,17 +167,23 @@ struct SecondaryButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                if let systemImage { Image(systemName: systemImage) }
-                Text(title)
+                if let systemImage {
+                    Image(systemName: systemImage).font(.symbol(15))
+                }
+                Text(title).font(.sans(15, weight: .medium))
             }
-            .font(.sans(15))
             .foregroundStyle(Theme.cream)
             .padding(.vertical, 11)
             .padding(.horizontal, 18)
+            // 15pt type plus 11pt either side lands a point or two under the
+            // HIG's 44pt minimum, which is exactly the kind of near-miss that
+            // never gets noticed. Stated explicitly instead.
+            .frame(minHeight: 44)
             .background(Theme.cream.opacity(0.08),
                         in: RoundedRectangle(cornerRadius: Theme.radius))
             .overlay(RoundedRectangle(cornerRadius: Theme.radius)
                 .strokeBorder(Theme.gold.opacity(0.45), lineWidth: 1))
+            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
         .buttonStyle(.plain)
     }
@@ -148,10 +219,16 @@ struct TopBar: View {
                     if let onBack {
                         Button(action: onBack) {
                             HStack(spacing: 4) {
-                                Image(systemName: "chevron.left").font(.sans(14, weight: .medium))
+                                // The system back chevron, at the weight and
+                                // spacing iOS itself uses for one, so it reads
+                                // as Back rather than as an arrow someone drew.
+                                Image(systemName: "chevron.left")
+                                    .font(.symbol(16, weight: .semibold))
                                 Text(backTitle ?? "Back").font(.sans(16))
                             }
                             .foregroundStyle(tint)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -164,10 +241,17 @@ struct TopBar: View {
                     if let settingsAction {
                         Button(action: settingsAction) {
                             Image(systemName: "gearshape")
-                                .font(.sans(18, weight: .medium))
+                                .font(.symbol(19, weight: .medium))
                                 .foregroundStyle(tint)
+                                // A bare 19pt glyph is a ~19pt target. The
+                                // HIG minimum is 44 square, and a gear in a
+                                // corner is the easiest thing in the app to
+                                // miss.
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Settings")
                     }
                 }
             }
@@ -235,7 +319,7 @@ struct CountStepper: View {
     private func circle(system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: system)
-                .font(.sans(24, weight: .semibold))
+                .font(.symbol(24, weight: .semibold))
                 .foregroundStyle(enabled ? tint : lineColor.opacity(0.3))
                 .frame(width: 64, height: 64)
                 .background(
@@ -340,6 +424,10 @@ struct RealignButton: View {
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
                 .overlay(Capsule().strokeBorder(Theme.terracotta.opacity(0.5), lineWidth: 1))
+                // Drawn small on purpose — it is a persistent affordance, not a
+                // call to action — but still tappable to the HIG minimum.
+                .frame(minHeight: 44)
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }

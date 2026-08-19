@@ -3,7 +3,7 @@
 //  Kotek
 //
 //  The ground every screen sits on: warm brown, with the Kotek pattern tiled
-//  over it at 13% and drifting diagonally, forever.
+//  over it at 8% and drifting diagonally, forever.
 //
 //  Drawn in a single `Canvas` rather than a stack of `Image` views. The pattern
 //  is one tile repeated across the whole screen — at 724x360 that is a dozen or

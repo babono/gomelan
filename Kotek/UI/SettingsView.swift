@@ -40,10 +40,12 @@ struct SettingsView: View {
                     section("Debug") {
                         // Which faces actually resolved. A missing font does not
                         // error — it silently substitutes San Francisco, which is
-                        // exactly how Futura went missing everywhere once before.
+                        // exactly how the old body face went missing everywhere
+                        // once before. Only the display face can fail now; the
+                        // body face IS San Francisco.
                         Text(KotekFonts.summary)
                             .font(.system(size: 11, design: .monospaced))
-                            .foregroundStyle(KotekFonts.futura == nil ? Theme.miss : Theme.stone)
+                            .foregroundStyle(KotekFonts.displayRegular == nil ? Theme.miss : Theme.stone)
 
                         FlowLayout(spacing: 10) {
                             SecondaryButton(title: "Test Mallet", systemImage: "scope") { app.openMalletTest() }
