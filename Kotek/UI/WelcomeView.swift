@@ -14,6 +14,7 @@ import SwiftUI
 
 struct WelcomeView: View {
     @Environment(AppState.self) private var app
+    @State private var music = TitleMusic()
 
     var body: some View {
         GeometryReader { proxy in
@@ -33,6 +34,7 @@ struct WelcomeView: View {
                     Spacer().frame(height: h * 0.09)
 
                     PillButton(title: "Enter", style: .filled, uppercase: false) {
+                        music.stop()
                         app.begin()
                     }
                     .frame(width: 146)
@@ -53,6 +55,10 @@ struct WelcomeView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .ignoresSafeArea()
+        .onAppear { music.start() }
+        // Also on the way out by any other route — a back navigation, or the
+        // app being torn down — so the bed can never outlive the screen.
+        .onDisappear { music.stop() }
     }
 }
 
