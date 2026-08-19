@@ -66,32 +66,100 @@ struct SplashView: View {
 
 // MARK: - Progress pill
 
-/// The loading bar from the design: a tan track that a dark fill sweeps across.
+/// The loading bar from the design: a tan track that a dark fill sweeps across,
+/// with the percentage read out in the middle of it.
 ///
 /// The inversion is intentional and worth not "fixing" — the filled part is the
 /// DARK one, so the bar empties of tan rather than filling with it. That is
 /// what the design shows, and it is also the quieter of the two: a bright bar
 /// growing across a dark screen would pull the eye off the wordmark and the
 /// credit, which are the only things on this screen worth looking at.
+///
+/// The number sits still in the centre while the fill passes underneath it, so
+/// no single colour can stay legible: dark type vanishes into the fill, light
+/// type vanishes into the track. It is therefore drawn TWICE — once dark for
+/// the tan track, then again in tan and clipped to the fill — so each digit
+/// inverts exactly as the boundary crosses it, and a digit that is half-crossed
+/// is half of each. One shape definition feeds both the fill and that clip, so
+/// they cannot drift apart.
 private struct ProgressPill: View {
     var progress: Double
 
+    /// The gutter between the fill and the track around it.
+    private let inset: CGFloat = 3
+
     var body: some View {
         GeometryReader { proxy in
+            let size = proxy.size
             let clamped = min(1, max(0, progress))
+            // Never narrower than its own height: below that a capsule collapses
+            // into a lens shape and the bar looks broken at rest rather empty.
+            let fillWidth = max(size.height - inset * 2,
+                                (size.width - inset * 2) * clamped)
+
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.bronze)
-                Capsule()
-                    .fill(Theme.deep)
-                    // Never narrower than its own corner radius: below that a
-                    // capsule collapses into a lens shape and the bar looks
-                    // broken at rest rather than empty.
-                    .frame(width: max(proxy.size.height, proxy.size.width * clamped))
-                    .padding(3)
+
+                fill(width: fillWidth, in: size)
+                    .foregroundStyle(Theme.deep)
+
+                readout
+                    .foregroundStyle(Theme.deep)
+                    .overlay {
+                        readout
+                            .foregroundStyle(Theme.bronze)
+                            .mask(alignment: .leading) {
+                                fill(width: fillWidth, in: size)
+                            }
+                    }
+                    .frame(width: size.width, height: size.height)
             }
         }
         .accessibilityElement()
         .accessibilityLabel("Loading")
         .accessibilityValue(Text(progress, format: .percent.precision(.fractionLength(0))))
+    }
+
+    /// The swept portion — the fill itself, and the clip that inverts the type.
+    private func fill(width: CGFloat, in size: CGSize) -> some View {
+        Capsule()
+            .frame(width: width, height: size.height - inset * 2)
+            .offset(x: inset)
+    }
+
+    private var readout: some View { Readout(value: progress) }
+}
+
+/// The percentage itself, counting rather than jumping.
+///
+/// `Animatable` is the whole point of this being its own type. Progress lands in
+/// three steps as each preload task finishes, and the bar glides between them
+/// because `withAnimation` interpolates its width — but a plain `Text` would
+/// re-render only at the steps, so the number would snap 0, 35, 70, 100 while
+/// the bar slid smoothly underneath it. Two things reporting one value, visibly
+/// disagreeing. Exposing the value as `animatableData` makes SwiftUI re-evaluate
+/// this body at every frame of the same animation, so the digits count up with
+/// the fill they sit on.
+private struct Readout: View, Animatable {
+    var value: Double
+
+    var animatableData: Double {
+        get { value }
+        set { value = newValue }
+    }
+
+    var body: some View {
+        // Monospaced digits so the number does not jitter as it counts: with
+        // proportional figures the text shuffles sideways on nearly every
+        // change, which is very visible on something otherwise this still.
+        // Clamped here rather than by the caller: `animatableData` is fed
+        // interpolated values, and an animation curve that overshoots would
+        // otherwise briefly read 101%.
+        Text(min(1, max(0, value)), format: .percent.precision(.fractionLength(0)))
+            .font(.system(size: 13, weight: .semibold).monospacedDigit())
+            .tracking(0.5)
+            // Decoration over the bar it duplicates; the pill already carries
+            // the accessibility value, and two readings of one number is noise.
+            .accessibilityHidden(true)
     }
 }
