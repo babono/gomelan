@@ -91,7 +91,26 @@ enum Theme {
     static let buttonWeight: Font.Weight = .black
     static let buttonTracking: CGFloat = 1.5
     /// Opacity the background pattern is laid in at.
-    static let patternOpacity: Double = 0.08
+    ///
+    /// The design says 8%, and this is deliberately below it. The pattern tile
+    /// is not a motif on transparency — its first element is a full-bleed
+    /// #FDDC8A fill, with the motif drawn as DARKER shapes on top of that. So
+    /// this one number scales two things at once and cannot separate them:
+    /// the whole ground is tinted towards cream, and the motif is what stays
+    /// behind. At 8% the ground reads #4C4034 rather than #3D322C, which is
+    /// what made the pattern look heavier than the mockup — the field was
+    /// lifting, not just the motif.
+    ///
+    /// Deleting the backing to composite the motif alone was tried and is the
+    /// wrong fix: the motif is darker than the ground it would then sit on, so
+    /// it disappears, and what survives is a scatter of orphaned cream accents.
+    /// The pattern reads as a whole or not at all.
+    ///
+    /// 4% keeps the artwork intact and halves both effects: the ground lifts to
+    /// #453930 instead of #4C4034. A truer fix needs a tile exported with a
+    /// transparent background and a motif LIGHTER than the ground; that is an
+    /// artwork change, not a code one.
+    static let patternOpacity: Double = 0.04
 
     // MARK: - Overlay play colours (§13.5)
 
