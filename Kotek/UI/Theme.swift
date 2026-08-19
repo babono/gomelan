@@ -92,25 +92,18 @@ enum Theme {
     static let buttonTracking: CGFloat = 1.5
     /// Opacity the background pattern is laid in at.
     ///
-    /// The design says 8%, and this is deliberately below it. The pattern tile
-    /// is not a motif on transparency — its first element is a full-bleed
-    /// #FDDC8A fill, with the motif drawn as DARKER shapes on top of that. So
-    /// this one number scales two things at once and cannot separate them:
-    /// the whole ground is tinted towards cream, and the motif is what stays
-    /// behind. At 8% the ground reads #4C4034 rather than #3D322C, which is
-    /// what made the pattern look heavier than the mockup — the field was
-    /// lifting, not just the motif.
+    /// The design's 8%, and it means 8% now. The tile used to be a full-bleed
+    /// #FDDC8A field with the motif cut out of it as DARKER shapes, so this one
+    /// number tinted the whole ground and set the motif contrast at the same
+    /// time and could not separate them — at 8% the ground read #4C4034 rather
+    /// than #3D322C, which is what made the pattern look heavier than the
+    /// mockup. It was dropped to 4% to compensate.
     ///
-    /// Deleting the backing to composite the motif alone was tried and is the
-    /// wrong fix: the motif is darker than the ground it would then sit on, so
-    /// it disappears, and what survives is a scatter of orphaned cream accents.
-    /// The pattern reads as a whole or not at all.
-    ///
-    /// 4% keeps the artwork intact and halves both effects: the ground lifts to
-    /// #453930 instead of #4C4034. A truer fix needs a tile exported with a
-    /// transparent background and a motif LIGHTER than the ground; that is an
-    /// artwork change, not a code one.
-    static let patternOpacity: Double = 0.04
+    /// The artwork is now motif-on-transparency in a cream LIGHTER than the
+    /// ground, so opacity governs the motif alone and the ground stays exactly
+    /// #3D322C. Worth knowing if the tile is ever re-exported: if a backing
+    /// creeps back in, this number stops meaning what it says.
+    static let patternOpacity: Double = 0.08
 
     // MARK: - Overlay play colours (§13.5)
 

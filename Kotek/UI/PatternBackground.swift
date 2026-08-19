@@ -22,9 +22,16 @@
 import SwiftUI
 
 struct PatternBackground: View {
-    /// Tile size in points. The asset is 1448x720; drawn at half that so the
-    /// motif reads at roughly the density the design shows.
-    var tile = CGSize(width: 724, height: 360)
+    /// Tile size in points: half the asset's own dimensions, which is the size
+    /// the motif was drawn to read at.
+    ///
+    /// Derived rather than typed in, because it is not free-floating — it has to
+    /// track the artwork. The tile was re-exported from 1448x720 to 2083x1036,
+    /// and a hardcoded 724x360 would have quietly shrunk every motif to 69% of
+    /// its intended size while still looking plausible.
+    static let assetSize = CGSize(width: 2083, height: 1036)
+    var tile = CGSize(width: PatternBackground.assetSize.width / 2,
+                      height: PatternBackground.assetSize.height / 2)
     /// Points per second, travelling down-right.
     var speed: Double = 9
     var opacity: Double = Theme.patternOpacity
