@@ -4,6 +4,22 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>Kotek</string>
+
+	<!-- Required: the app requests both on first run. Without these iOS
+	     terminates the process at the permission prompt rather than denying
+	     it, and App Store review rejects the build. Worded for the person
+	     being asked, not for us. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Kotek watches your gangsa to see which bilah you strike, so it can show you where you are in the kotekan.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing.</string>
+
+	<!-- Answers the export-compliance question at upload instead of on every
+	     build. True only in the sense that HTTPS is used; no encryption is
+	     implemented here. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
 	<key>UIAppFonts</key>
 	<array>
 		<string>Dream Orphans.otf</string>
