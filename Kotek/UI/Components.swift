@@ -196,9 +196,20 @@ struct SecondaryButton: View {
 
 // MARK: - Top bar
 
-/// The consistent screen header: optional back affordance, centred tracked
+/// The consistent screen header: optional back affordance, centred display
 /// title, optional trailing status text. `tint` is the strong text colour for
 /// the surface; supporting text is derived from it.
+///
+/// The title is set in Dream Orphans — this is the app's voice, and a screen
+/// title is the one piece of chrome big enough to carry it. Everything else in
+/// the bar stays San Francisco, because back affordances and step counters are
+/// interface rather than voice.
+///
+/// There is no rule under the bar. A hairline is how you separate a header from
+/// content that would otherwise run into it; here the content is cards and
+/// generous space on a dark ground, so the line was drawing a boundary the
+/// layout already made — and putting a hard horizontal edge across a screen
+/// whose whole character is soft.
 struct TopBar: View {
     var title: String
     var backTitle: String? = nil
@@ -215,10 +226,14 @@ struct TopBar: View {
         VStack(spacing: 0) {
             ZStack {
                 Text(title)
-                    .font(.sans(12, weight: .semibold))
+                    .font(.serif(compact ? 22 : 30))
                     .textCase(.uppercase)
-                    .tracking(2.5)
-                    .foregroundStyle(tint.opacity(0.65))
+                    .tracking(1.5)
+                    .foregroundStyle(tint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    // Never let the title grow under the controls either side.
+                    .padding(.horizontal, 96)
 
                 HStack(spacing: 14) {
                     if let onBack {
@@ -261,14 +276,8 @@ struct TopBar: View {
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.top, compact ? 10 : 24)
-            .padding(.bottom, compact ? 8 : 16)
-
-            if !compact {
-                Rectangle()
-                    .fill(tint.opacity(0.12))
-                    .frame(height: 1)
-            }
+            .padding(.top, compact ? 10 : 18)
+            .padding(.bottom, compact ? 8 : 12)
         }
     }
 }

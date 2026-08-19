@@ -2,14 +2,26 @@
 //  ChooseInstrumentView.swift
 //  Kotek
 //
-//  Choose or manage saved gamelan instrument profiles. Persists key alignments
-//  and strike baselines across app launches and builds.
+//  Choose which saved gamelan to play. Profiles persist key alignments and
+//  strike baselines across app launches and builds.
 //
-//  Built to the Kotek design: a rail of tall cards over the drifting pattern,
-//  the selected one outlined in cream and the rest in held-back gold, with the
-//  add affordance as a narrow card at the end of the row rather than a button
-//  somewhere else — so "which instrument" and "another instrument" are the same
-//  gesture in the same place.
+//  A rail of cards over the drifting pattern, the selected one outlined, with
+//  the add affordance as a narrow card at the END of the row — so "which
+//  instrument" and "another instrument" are the same gesture in the same place,
+//  and the rail scrolls as one thing.
+//
+//  THE CARD IS THE CONTROL. It used to carry a rename pencil, a delete bin, a
+//  select button and a re-align button — five targets inside one card, on a
+//  screen whose only question is "which one". Managing an instrument is a
+//  different job from picking one, and it now lives in Settings, reached from
+//  the kotekan screen. What is left here is a card you tap and a footer that
+//  confirms, which is the whole decision.
+//
+//  A swipe-to-reveal edit/delete was considered and deliberately not built.
+//  Nothing on screen can advertise it, so the actions become undiscoverable;
+//  it collides with the horizontal scroll this rail already needs; and it would
+//  put destructive actions one careless gesture from a card people tap
+//  constantly. Settings asks for one more tap and is honest about where it is.
 //
 
 import SwiftUI
@@ -17,71 +29,177 @@ import SwiftUI
 struct ChooseInstrumentView: View {
     @Environment(AppState.self) private var app
 
-    @State private var editingProfileId: String? = nil
-    @State private var editingNameText: String = ""
-
-    @State private var profileToDelete: InstrumentProfile?
-    @State private var showDeleteConfirm = false
-
     var body: some View {
         VStack(spacing: 0) {
             TopBar(title: "Choose your instrument",
-                   backTitle: "Home",
                    onBack: { app.screen = .welcome })
 
-            //R The empty message is plain centred text, not a card: a card here
-            //R read as an instrument you could not use. Both states keep the same
-            //R frame — top bar, one flexible middle, footer — so only the middle
-            //R changes, and the footer cannot be pushed off the bottom.
+            // Both states keep the same frame — bar, one flexible middle,
+            // footer — so only the middle changes and the footer cannot be
+            // pushed off the bottom.
             if app.savedProfiles.isEmpty {
                 emptyState
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 18) {
-                        ForEach(app.savedProfiles) { profile in
-                            instrumentCard(profile)
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                }
-                .frame(maxHeight: .infinity)
+                rail
             }
 
-            if editingProfileId == nil {
-                footer
-            }
+            if !app.savedProfiles.isEmpty { footer }
         }
-        .animation(.spring(duration: 0.25), value: editingProfileId)
-        .confirmationDialog("Delete Instrument?",
-                            isPresented: $showDeleteConfirm,
-                            titleVisibility: .visible,
-                            presenting: profileToDelete) { profile in
-            Button("Delete \(profile.name)", role: .destructive) {
-                app.deleteInstrument(profile.id)
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: { profile in
-            Text("Are you sure you want to delete '\(profile.name)'? This cannot be undone.")
+        // The active profile can be one that is not on the rail — a fresh
+        // install starts on the bundled default, and deleting can leave the
+        // selection pointing at nothing. Confirming a card nobody can see is
+        // the one genuinely confusing outcome here, so land on the first.
+        .onAppear {
+            guard let first = app.savedProfiles.first,
+                  !app.savedProfiles.contains(where: { $0.id == app.profile.id })
+            else { return }
+            app.activateInstrument(first)
         }
     }
 
-    /// Centred on the empty rail. Deliberately short: this sits in the same
-    /// space a row of cards occupies, which on a landscape phone is not tall.
+    // MARK: - The rail
+
+    private var rail: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                ForEach(app.savedProfiles) { profile in
+                    instrumentCard(profile)
+                }
+                addCard
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 10)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private func instrumentCard(_ profile: InstrumentProfile) -> some View {
+        let isSelected = app.profile.id == profile.id
+
+        return Button {
+            app.activateInstrument(profile)
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(profile.name)
+                    .font(.serif(30))
+                    .foregroundStyle(Theme.cream)
+                    .lineLimit(1)
+
+                Text("\(profile.keyCount) Keys")
+                    .font(.sans(17, weight: .medium))
+                    .foregroundStyle(Theme.cream.opacity(0.62))
+
+                Spacer(minLength: 12)
+
+                // A filled dot for a learned voice, a hollow one for not — the
+                // design's own vocabulary, and readable without colour vision.
+                // The only status left on the card, because it is the only thing
+                // here that changes what happens when you play.
+                statusDot(profile)
+            }
+            .frame(width: 218, height: 200, alignment: .topLeading)
+            .padding(20)
+            // Selection reads by BORDER, not fill: a filled card competes with
+            // the pattern behind it, and on a rail the eye finds an outline
+            // faster than a shade.
+            .background(Theme.deep.opacity(0.55),
+                        in: RoundedRectangle(cornerRadius: 20))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(isSelected ? Theme.buttonFill : Theme.cream.opacity(0.10),
+                                  lineWidth: isSelected ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityHint("Selects this instrument")
+    }
+
+    /// The add affordance, sized and shaped as a card so the rail reads as one
+    /// row of choices — narrower, because it is an action rather than a thing.
+    private var addCard: some View {
+        Button {
+            app.addNewInstrument()
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: "plus")
+                    .font(.symbol(22, weight: .semibold))
+                Text("Add")
+                    .font(.sans(15, weight: Theme.buttonWeight))
+                    .textCase(.uppercase)
+                    .tracking(Theme.buttonTracking)
+            }
+            .foregroundStyle(Theme.cream.opacity(0.85))
+            .frame(width: 84, height: 240)
+            .background(Theme.deep.opacity(0.35),
+                        in: RoundedRectangle(cornerRadius: 20))
+            .overlay(
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(Theme.cream.opacity(0.18), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Add an instrument")
+    }
+
+    private func statusDot(_ profile: InstrumentProfile) -> some View {
+        let learned = profile.hasLearnedBaseline
+        return HStack(spacing: 8) {
+            Circle()
+                .strokeBorder(learned ? Color.clear : Theme.cream.opacity(0.45), lineWidth: 1.5)
+                .background(Circle().fill(learned ? Theme.buttonFill : Color.clear))
+                .frame(width: 8, height: 8)
+            Text(learned ? "Voice learned" : "No voice yet")
+                .font(.sans(13))
+                .foregroundStyle(learned ? Theme.buttonFill : Theme.cream.opacity(0.45))
+        }
+    }
+
+    // MARK: - Chrome
+
+    /// Confirm and a shortcut, with the saved count as quiet context.
+    ///
+    /// No rule above it. The rail already ends in space, and a hairline across a
+    /// screen this soft draws a boundary the layout has made anyway.
+    private var footer: some View {
+        HStack(spacing: 14) {
+            PillButton(title: "Next", style: .filled, compact: true) {
+                app.selectInstrument(app.profile)
+            }
+
+            PillButton(title: "Recalibrate", style: .outlined, compact: true) {
+                app.realignInstrument(app.profile)
+            }
+
+            Spacer()
+
+            Text("\(app.savedProfiles.count) saved")
+                .font(.sans(14))
+                .textCase(.uppercase)
+                .tracking(1.5)
+                .foregroundStyle(Theme.cream.opacity(0.45))
+        }
+        .padding(.horizontal, 28)
+        .padding(.bottom, 18)
+        .padding(.top, 4)
+    }
+
+    /// Centred on the empty rail. Deliberately short: this sits in the space a
+    /// row of cards occupies, which on a landscape phone is not tall.
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "tuningfork")
-                .font(.sans(32))
-                .foregroundStyle(Theme.gold)
+                .font(.symbol(32))
+                .foregroundStyle(Theme.buttonFill)
 
             Text("No instruments yet")
                 .font(.serif(30))
-                .foregroundStyle(Theme.charcoal)
+                .foregroundStyle(Theme.cream)
 
             Text("Every gamelan is tuned differently, so Kotek learns yours — where the keys are and how they sound.")
-                .font(.sans(14))
-                .foregroundStyle(Theme.stone)
+                .font(.sans(15))
+                .foregroundStyle(Theme.cream.opacity(0.62))
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
                 .frame(maxWidth: 440)
@@ -92,171 +210,5 @@ struct ChooseInstrumentView: View {
             .padding(.top, 4)
         }
         .padding(24)
-    }
-
-    private func instrumentCard(_ profile: InstrumentProfile) -> some View {
-        let isSelected = app.profile.id == profile.id
-        let isEditing = editingProfileId == profile.id
-
-        return VStack(alignment: .leading, spacing: 14) {
-            // Card Header: Name (or Inline Textfield) + Actions
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    if isEditing {
-                        HStack(spacing: 6) {
-                            TextField("Instrument Name", text: $editingNameText)
-                                .font(.serif(18))
-                                .foregroundStyle(Theme.cream)
-                                .textFieldStyle(.plain)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Theme.ground, in: RoundedRectangle(cornerRadius: 8))
-                                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.gold, lineWidth: 1.5))
-                                .onSubmit { saveInlineRename(profile) }
-
-                            Button {
-                                saveInlineRename(profile)
-                            } label: {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.sans(20))
-                                    .foregroundStyle(Theme.terracotta)
-                            }
-                            .buttonStyle(.plain)
-
-                            Button {
-                                editingProfileId = nil
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.sans(18))
-                                    .foregroundStyle(Theme.stone.opacity(0.8))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    } else {
-                        HStack(spacing: 6) {
-                            Text(profile.name)
-                                .font(.serif(27))
-                                .foregroundStyle(isSelected ? Theme.cream : Theme.cream.opacity(0.74))
-                                .lineLimit(1)
-
-                            Button {
-                                editingProfileId = profile.id
-                                editingNameText = profile.name
-                            } label: {
-                                Image(systemName: "pencil")
-                                    .font(.sans(12, weight: .semibold))
-                                    .foregroundStyle(Theme.terracotta)
-                                    .padding(4)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-
-                    Text("\(profile.keyCount) BILAH")
-                        .font(.sans(12))
-                        .tracking(1.9)
-                        .foregroundStyle(Theme.gold)
-                }
-
-                if !isEditing {
-                    Spacer()
-
-                    Button {
-                        profileToDelete = profile
-                        showDeleteConfirm = true
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.sans(13))
-                            .foregroundStyle(Theme.stone.opacity(0.7))
-                            .padding(4)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            Spacer(minLength: 8)
-
-            // A filled dot for a learned voice, a hollow one for not — the
-            // design's own vocabulary, and readable without colour vision.
-            statusDot(title: profile.hasLearnedBaseline ? "VOICE LEARNED" : "NO VOICE YET",
-                      filled: profile.hasLearnedBaseline)
-
-            // Action Buttons
-            HStack(spacing: 10) {
-                PillButton(title: isSelected ? "Active" : "Select & Play",
-                           style: isSelected ? .filled : .outlined,
-                           compact: true) {
-                    app.selectInstrument(profile)
-                }
-
-                PillButton(title: "Re-align", style: .outlined, compact: true) {
-                    app.realignInstrument(profile)
-                }
-            }
-        }
-        .padding(20)
-        .frame(width: isEditing ? 310 : 250, height: isEditing ? 220 : 236)
-        // Selected reads by BORDER, not fill: a filled card competes with the
-        // pattern behind it, and on a rail the eye finds an outline faster.
-        .background(Theme.deep.opacity(isSelected ? 0.82 : 0.78),
-                    in: RoundedRectangle(cornerRadius: Theme.radius))
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.radius)
-                .strokeBorder(isSelected ? Theme.cream : Theme.gold.opacity(0.38),
-                              lineWidth: isSelected ? 2 : 1)
-        )
-    }
-
-    private func statusDot(title: String, filled: Bool) -> some View {
-        HStack(spacing: 8) {
-            Circle()
-                .strokeBorder(filled ? Color.clear : Theme.cream, lineWidth: 2)
-                .background(Circle().fill(filled ? Theme.bronze : Color.clear))
-                .frame(width: 8, height: 8)
-            Text(title)
-                .font(.sans(12))
-                .tracking(1.7)
-                .foregroundStyle(filled ? Theme.bronze : Theme.cream)
-        }
-    }
-
-    private var footer: some View {
-        HStack(spacing: 16) {
-            PillButton(title: "+ Add Instrument", style: .filled, compact: true) {
-                app.addNewInstrument()
-            }
-
-            Spacer()
-
-            Text(app.savedProfiles.isEmpty
-                 ? "NONE SAVED"
-                 : "\(app.savedProfiles.count) SAVED")
-                .font(.sans(13))
-                .tracking(1.8)
-                .foregroundStyle(Theme.gold.opacity(0.75))
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Theme.gold.opacity(0.2)).frame(height: 1)
-        }
-    }
-
-    private func saveInlineRename(_ profile: InstrumentProfile) {
-        let trimmed = editingNameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else {
-            editingProfileId = nil
-            return
-        }
-        var updated = profile
-        updated.name = trimmed
-        if app.profile.id == updated.id {
-            app.profile = updated
-        }
-        //R Save the instrument that was RENAMED. `saveProfile()` writes
-        //R `app.profile`, so renaming any instrument other than the active one
-        //R was silently discarded — and worse, re-wrote the active one.
-        app.saveInstrument(updated)
-        editingProfileId = nil
     }
 }

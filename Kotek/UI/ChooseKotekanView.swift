@@ -15,9 +15,7 @@ struct ChooseKotekanView: View {
     var body: some View {
         VStack(spacing: 0) {
             TopBar(title: "Choose your kotekan",
-                   backTitle: "Instruments",
                    onBack: { app.openChooseInstrument() },
-                   trailingText: app.profile.name,
                    settingsAction: { app.openSettings() })
 
             HStack(alignment: .top, spacing: 16) {

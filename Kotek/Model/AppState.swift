@@ -196,11 +196,21 @@ final class AppState {
 
     // MARK: - Instrument Selection & Management
 
-    func selectInstrument(_ p: InstrumentProfile) {
+    /// Make this the active instrument WITHOUT leaving the picker.
+    ///
+    /// Tapping a card and moving on are two decisions now: the card selects,
+    /// and the footer's confirm advances. That is what lets the whole card be
+    /// the target — a card that navigated on touch could not also be the thing
+    /// you compare against its neighbour before committing.
+    func activateInstrument(_ p: InstrumentProfile) {
         profile = p
         ProfileStore.setSelectedID(p.id)
         baselineLearned = p.hasLearnedBaseline
         requireStrikeSound = p.hasLearnedBaseline
+    }
+
+    func selectInstrument(_ p: InstrumentProfile) {
+        activateInstrument(p)
         screen = .chooseKotekan
     }
 
