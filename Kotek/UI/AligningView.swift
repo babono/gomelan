@@ -32,7 +32,7 @@ struct AligningView: View {
     var body: some View {
         ZStack {
             // Full-bleed camera fills the whole screen.
-            CameraPreview(session: camera.session)
+            CameraPreview(camera: camera)
                 .ignoresSafeArea()
                 .overlay(Color.black.opacity(0.22).ignoresSafeArea())
 

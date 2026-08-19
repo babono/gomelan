@@ -17,6 +17,9 @@ import SwiftUI
 struct WatchView: View {
     @Environment(AppState.self) private var app
     let camera: CameraController
+    /// Taken not because the demo listens — it does not — but so the ear can be
+    /// brought up HERE rather than on the way into the run. See `setup`.
+    let audio: AudioEngineController
     let cue: CuePlayer
 
     @State private var engine = PlayEngine()
@@ -30,7 +33,7 @@ struct WatchView: View {
 
     var body: some View {
         ZStack {
-            CameraPreview(session: camera.session, controller: camera)
+            CameraPreview(camera: camera, forwardsRotation: true)
                 .ignoresSafeArea()
 
             OverlayView(keys: app.profile.keys, engine: engine)
@@ -47,7 +50,15 @@ struct WatchView: View {
         }
         .background(Theme.ink)
         .onAppear(perform: setup)
-        .onDisappear { displayLink.stop() }
+        // Frame rendering is restored on the way out, whichever way that is.
+        // The "off" state must not outlive this screen: `AligningView`, the
+        // framing step and the test screens all read `frameBuffer`, and leaving
+        // it switched off would give them an empty buffer and no clue why.
+        // Turning it off is a local optimisation; leaving it off is a bug.
+        .onDisappear {
+            displayLink.stop()
+            camera.wantsFrames = true
+        }
     }
 
     // MARK: - Chrome
@@ -165,8 +176,35 @@ struct WatchView: View {
     // MARK: - Lifecycle
 
     private func setup() {
+        // Nothing on this screen classifies anything: the bilah light up from
+        // the clock, not from the camera. So the frame renderer stays off, and
+        // the capture queue stays free — which is what keeps the hand-over into
+        // the run instant. It was nine seconds when this screen left a CGImage
+        // being rendered thirty times a second for no reader.
+        camera.wantsFrames = false
         camera.start()
         if app.fixedMount { camera.lockFocusAndExposure() } else { camera.enableContinuousAutoFocus() }
+
+        // Bring the ear up now, while the player is watching the example.
+        //
+        // This is the pause between "start practice" and the count-in. Touching
+        // `engine.inputNode` initialises the audio input hardware and starting
+        // an engine with a live mic tap takes a few hundred milliseconds, and
+        // until now all of it happened inside `PlayView.setup` — i.e. exactly
+        // at the screen change, on the main thread, in the one moment the
+        // player is waiting to begin.
+        //
+        // The splash cannot cover this the way it covers the samples and the
+        // model: at launch there is no microphone permission yet, and taking
+        // the mic behind a splash screen would be wrong even if there were. By
+        // the time anyone reaches this screen permission has been granted and
+        // the camera is already running, so the indicator is up regardless —
+        // and the demo is several seconds of watching, which is exactly the
+        // kind of moment that can absorb it.
+        //
+        // `start` is guarded on `isRunning`, so the call in `PlayView` becomes
+        // a no-op and the run begins immediately.
+        try? audio.start(profile: app.profile)
 
         song = app.demoSong
         partnerSong = app.demoPartnerSong
@@ -212,8 +250,13 @@ struct WatchView: View {
     }
 
     /// Leaving the session altogether — silence everything.
+    ///
+    /// Only the BACK path comes through here. Going forward into the run
+    /// deliberately does not, because the whole point of starting the ear in
+    /// `setup` is that it is still running when `PlayView` arrives.
     private func teardown() {
         displayLink.stop()
         cue.stop()
+        audio.stop()
     }
 }

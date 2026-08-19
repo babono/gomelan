@@ -51,7 +51,7 @@ struct CalibrationView: View {
         VStack(spacing: 0) {
             header
             ZStack {
-                CameraPreview(session: camera.session)
+                CameraPreview(camera: camera)
                     .overlay(Color.black.opacity(0.35))
 
                 faintMasks
@@ -290,7 +290,7 @@ struct StrikeBaselineView: View {
 
     var body: some View {
         ZStack {
-            CameraPreview(session: camera.session)
+            CameraPreview(camera: camera)
                 .ignoresSafeArea()
 
             keyOutlines.ignoresSafeArea()

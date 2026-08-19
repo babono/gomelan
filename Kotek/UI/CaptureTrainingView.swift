@@ -35,7 +35,7 @@ struct CaptureTrainingView: View {
 
     var body: some View {
         ZStack {
-            CameraPreview(session: camera.session, controller: camera)
+            CameraPreview(camera: camera, forwardsRotation: true)
                 .ignoresSafeArea()
 
             keyOverlay

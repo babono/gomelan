@@ -48,7 +48,7 @@ struct PlayView: View {
     var body: some View {
         ZStack {
             // 1. Camera preview edge-to-edge
-            CameraPreview(session: camera.session, controller: camera)
+            CameraPreview(camera: camera, forwardsRotation: true)
                 .ignoresSafeArea()
 
             // 2. Key rect guidance overlay edge-to-edge (matching AligningView geometry)
@@ -200,6 +200,9 @@ struct PlayView: View {
     // MARK: - Lifecycle
 
     private func setup() {
+        // This screen DOES classify crops, so the frames are wanted again —
+        // the demo screen turns them off on the way in.
+        camera.wantsFrames = true
         camera.start()
         if app.fixedMount { camera.lockFocusAndExposure() } else { camera.enableContinuousAutoFocus() }
 
@@ -240,7 +243,16 @@ struct PlayView: View {
         }
 
         visionDetector.reset()
+        // Usually a no-op now: the ear is brought up on the demo screen so this
+        // transition does not have to wait for the audio hardware. Kept for the
+        // paths that arrive here without passing through it.
         try? audio.start(profile: app.profile)
+        // The mic has been live throughout the demo, listening to the app's own
+        // cues coming back off the speaker. None of that is the player, so the
+        // detector starts the run with an empty ring and no pending onsets —
+        // otherwise the example's last strokes could be judged as the first of
+        // the session.
+        audio.resetDetector()
         // Let the ear form a second opinion, on the same bilah the eye is watching.
         audio.setKeyOpinionsEnabled(true)
         audio.setDecompositionKeys(active)

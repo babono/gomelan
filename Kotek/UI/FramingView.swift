@@ -45,7 +45,7 @@ struct FramingView: View {
 
     var body: some View {
         ZStack {
-            CameraPreview(session: camera.session)
+            CameraPreview(camera: camera)
                 .ignoresSafeArea()
 
             FramingRegion(region: app.framedRegion)

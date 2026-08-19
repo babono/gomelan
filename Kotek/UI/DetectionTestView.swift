@@ -104,7 +104,7 @@ struct DetectionTestView: View {
     var body: some View {
         @Bindable var app = app
         return ZStack {
-            CameraPreview(session: camera.session, controller: camera)
+            CameraPreview(camera: camera, forwardsRotation: true)
                 .ignoresSafeArea()
 
             keyOverlay

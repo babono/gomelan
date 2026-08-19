@@ -28,12 +28,58 @@ final class CameraController: NSObject {
     /// Exposed for the preview layer.
     @ObservationIgnored let session = AVCaptureSession()
 
+    /// THE preview layer — one for the whole app, not one per screen.
+    ///
+    /// Every camera screen used to build its own via `layerClass` and assign
+    /// `.session` to it. Assigning a session to a preview layer ADDS A
+    /// CONNECTION, and doing that to an already-running session makes it
+    /// renegotiate: measured at 9007ms on the way from the demo screen into a
+    /// run, on the main thread, which was the entire reported delay.
+    ///
+    /// One layer means that cost is paid once, during preload, while the
+    /// session is still stopped — and a screen change afterwards is a CALayer
+    /// being re-parented, which is free. `addSublayer` detaches it from its
+    /// previous view automatically, so the layer simply follows whichever
+    /// preview is on screen.
+    ///
+    /// Created lazily rather than eagerly: on a first launch, before camera
+    /// permission exists, there is no session worth attaching to yet.
+    @ObservationIgnored lazy var previewLayer: AVCaptureVideoPreviewLayer = {
+        let layer = AVCaptureVideoPreviewLayer()
+        layer.videoGravity = .resizeAspectFill
+        layer.session = session
+        return layer
+    }()
+
     /// Short rolling history of frames, keyed by host time, for vision fusion
     /// (StrikeFusion looks up the frame nearest an audio strike).
     @ObservationIgnored let frameBuffer = FrameBuffer()
 
     @ObservationIgnored private let sessionQueue = DispatchQueue(label: "me.babono.kotek.camera.session")
 
+    /// Frame delivery, on its OWN queue — never `sessionQueue`.
+    ///
+    /// These were the same queue, and that is what made entering a run take
+    /// nine seconds. Every delivered frame is rendered to a CGImage by
+    /// `FrameBuffer.ingest`, which is CoreImage work at 30fps; sharing the
+    /// session's queue meant configuring the session — including attaching a
+    /// new preview layer, which is what a screen change does — had to wait
+    /// behind that. Measured at 9040ms before `PlayView` had even appeared.
+    @ObservationIgnored private let videoQueue = DispatchQueue(label: "me.babono.kotek.camera.video",
+                                                              qos: .userInitiated)
+
+    /// Whether delivered frames are rendered into `frameBuffer`.
+    ///
+    /// Only the screens that actually classify crops need them — play, the
+    /// aligning fit, the mallet/detection tests. The demo screen shows a live
+    /// preview and detects nothing, so rendering a CGImage per frame there is
+    /// pure cost: battery, heat, and a queue busy at exactly the moment the
+    /// player taps through to the run.
+    ///
+    /// Defaults to TRUE so that a screen which forgets to ask still works. It
+    /// is opted OUT of explicitly, which fails safe: the worst case is wasted
+    /// work rather than a detector that silently sees nothing.
+    @ObservationIgnored var wantsFrames = true
     @ObservationIgnored private var device: AVCaptureDevice?
     @ObservationIgnored private var videoOutput: AVCaptureVideoDataOutput?
     @ObservationIgnored private var isConfigured = false
@@ -91,6 +137,12 @@ final class CameraController: NSObject {
                 continuation.resume()
             }
         }
+        // Build and attach the preview layer HERE, while the session is
+        // configured but not yet running. Attaching to a running session is the
+        // expensive case — nine seconds of it — and this is the one moment the
+        // app is guaranteed to have a configured, stopped session and time to
+        // spare. Cheap and pointless-looking; it is neither.
+        _ = previewLayer
     }
 
     func stop() {
@@ -217,7 +269,7 @@ final class CameraController: NSObject {
             kCVPixelBufferWidthKey as String: 960,
             kCVPixelBufferHeightKey as String: 540,
         ]
-        videoOutput.setSampleBufferDelegate(self, queue: sessionQueue)
+        videoOutput.setSampleBufferDelegate(self, queue: videoQueue)
         if session.canAddOutput(videoOutput) {
             session.addOutput(videoOutput)
         }
@@ -236,7 +288,10 @@ final class CameraController: NSObject {
 
 extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        // Cheapest possible bail-out: rendering a frame nobody will read is the
+        // most expensive thing this app does per unit of value.
+        guard wantsFrames,
+              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         // Presentation timestamps ride the same host clock as the audio strike's
         // hostTime, so fusion can align the two without extra bookkeeping.
         let hostTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds

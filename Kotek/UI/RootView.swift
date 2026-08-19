@@ -101,7 +101,7 @@ struct RootView: View {
         case .chooseCycles:
             ChooseCyclesView()
         case .watching:
-            WatchView(camera: camera, cue: cue)
+            WatchView(camera: camera, audio: audio, cue: cue)
         case .countdown, .playing:
             PlayView(camera: camera, audio: audio, cue: cue)
         case .results:
