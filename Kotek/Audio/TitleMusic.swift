@@ -27,7 +27,7 @@ nonisolated final class TitleMusic {
     private var isFading = false
 
     /// Start looping, from the top. Safe to call when already playing.
-    func start(volume: Float = 0.55) {
+    func start(volume: Float = 1.0) {
         guard player == nil else { return }
         guard let url = Bundle.main.url(forResource: "bgm", withExtension: "m4a") else {
             print("[TitleMusic] bgm.m4a missing from the bundle")
