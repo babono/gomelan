@@ -84,7 +84,7 @@ final class CuePlayer {
     func start() {
         guard !started else { return }
 
-        configureAudioSession()
+        //R The audio session is NOT configured here any more. See below.
 
         //R Decoding moved to SampleLibrary, which the splash screen warms off
         //R the main thread. This used to read and scan thirteen WAVs right here,
@@ -135,29 +135,26 @@ final class CuePlayer {
         started = false
     }
     
-    // MARK: - Audio Session
+    //R --------------------------------------------------------------------
+    //R This used to call `setCategory` + `setActive` itself, which made TWO
+    //R owners of one shared audio session — here and AudioSessionManager — with
+    //R slightly different options (.mixWithOthers vs .allowBluetoothA2DP).
+    //R
+    //R That is not merely untidy. Reconfiguring an ACTIVE session pulls the rug
+    //R from under an AVAudioEngine that already has a microphone tap installed:
+    //R the input goes silent while `isRunning` stays true, so nothing errors and
+    //R nothing logs — strike detection simply stops hearing anything.
+    //R
+    //R It only surfaced when the ear started being brought up on the demo screen
+    //R rather than on the way into the run. Before that the cue player happened
+    //R to configure the session FIRST and the tap was installed after it, so the
+    //R order was accidentally correct. Moving one call inverted it, and the
+    //R detection test screen — which never starts a cue player — went on working
+    //R perfectly, which is exactly what made it look like a play-loop problem.
+    //R
+    //R AudioSessionManager owns the session. Nothing else touches it.
+    //R --------------------------------------------------------------------
 
-        private func configureAudioSession() {
-            let session = AVAudioSession.sharedInstance()
-
-            do {
-                try session.setCategory(
-                    .playAndRecord,
-                    mode: .measurement,
-                    options: [
-                        .defaultToSpeaker,
-                        .mixWithOthers
-                    ]
-                )
-
-                try session.setActive(true)
-
-            } catch {
-                print("[CuePlayer] Audio session error: \(error)")
-            }
-        }
-
-    
     // MARK: - Cues
 
     /// A subtle metronome click on the beat.

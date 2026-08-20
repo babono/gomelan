@@ -167,6 +167,8 @@ final class AudioEngineController {
     private let recentOnsetsLock = NSLock()
 
     private(set) var isRunning = false
+    /// Held so the observer is registered once, not once per start.
+    private var configurationObserver: NSObjectProtocol?
 
     // MARK: - Lifecycle
 
@@ -203,6 +205,61 @@ final class AudioEngineController {
         engine.prepare()
         try engine.start()
         isRunning = true
+        observeConfigurationChanges()
+    }
+
+    /// Put the ear back when the audio system moves under it.
+    ///
+    /// AVAudioEngine STOPS when its configuration changes — headphones going in
+    /// or out, a Bluetooth speaker connecting, a route change of any kind. It
+    /// does not restart itself and it does not throw; the tap simply stops
+    /// delivering, and detection goes deaf with nothing in the log to say so.
+    /// In a room where people are plugging things in all day, that matters more
+    /// than it does on a desk.
+    ///
+    /// Only fires when the engine has genuinely stopped while we still believe
+    /// it is running, which is both the real failure and a guard against a
+    /// restart re-triggering the notification that caused it.
+    private func observeConfigurationChanges() {
+        guard configurationObserver == nil else { return }
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: engine,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.recoverFromConfigurationChange() }
+        }
+    }
+
+    private func recoverFromConfigurationChange() {
+        guard isRunning, !engine.isRunning else { return }
+
+        let input = engine.inputNode
+        let format = input.inputFormat(forBus: 0)
+        guard format.sampleRate > 0 else {
+            print("[AudioEngine] configuration changed but no input format; ear is down")
+            return
+        }
+
+        // The tap is re-installed rather than the whole controller restarted:
+        // `start` would rebuild the DSP and throw away the strike baseline, the
+        // key opinions and the dictionary this session has learned. Recovering
+        // audio flow must not cost the tuning that makes detection work.
+        input.removeTap(onBus: 0)
+        input.installTap(onBus: 0,
+                         bufferSize: AVAudioFrameCount(1024),
+                         format: format) { [weak self] buffer, when in
+            self?.queue.async { self?.handle(buffer, when: when) }
+        }
+        engine.prepare()
+        do {
+            try engine.start()
+            // Whatever was mid-flight belongs to the old route.
+            resetDetector()
+            print("[AudioEngine] recovered after a configuration change")
+        } catch {
+            print("[AudioEngine] could not restart after a configuration change: \(error)")
+        }
     }
 
     func stop() {
