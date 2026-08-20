@@ -146,6 +146,34 @@ struct SettingsView: View {
                     }
 
                     section("Detection") {
+                        // THE lever when detection stops working in a room.
+                        //
+                        // With this on, nothing registers until the microphone
+                        // hears an attack — the camera only names the key. The
+                        // onset detector measures a strike against a rolling
+                        // MEDIAN of recent loudness, so anything that raises the
+                        // noise floor raises the bar a strike has to clear: a
+                        // busy room, and the app's own cues coming back off the
+                        // speaker (echo cancellation is off, because it would
+                        // corrupt the very analysis this depends on).
+                        //
+                        // That is why detection can be perfect on the test
+                        // screen, which plays nothing, and hopeless in a session
+                        // that is playing your partner's half, the gong and a
+                        // metronome. Turning this off lets the camera fire
+                        // strikes on its own and ignore the racket entirely.
+                        //
+                        // It is here rather than only in the debug screen
+                        // because it is the first thing to reach for when the
+                        // app cannot hear, and hunting for it under Test
+                        // Detection is not something anyone does mid-exhibition.
+                        Toggle("Sound triggers strikes", isOn: $app.audioTriggersStrikes)
+                            .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
+                        Text(app.audioTriggersStrikes
+                             ? "A strike counts when the mic hears the attack and the camera names the key. Most accurate in a quiet room. In a loud one — or with the partner and metronome playing — the ear's threshold rises and real strikes stop clearing it."
+                             : "The camera fires strikes by itself and the room is ignored. Turn this on for a noisy space. Repeated notes on the same key can be missed, because the mallet lingering over a bar reads as one long strike.")
+                            .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
+
                         Toggle("Require strike sound", isOn: $app.requireStrikeSound)
                             .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
                         Text(app.requireStrikeSound
