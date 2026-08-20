@@ -100,7 +100,9 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "$(DEVELOPMENT_TEAM)"
         PRODUCT_BUNDLE_IDENTIFIER: "$(PRODUCT_BUNDLE_IDENTIFIER)"
-        CURRENT_PROJECT_VERSION: 1
+        # Bump for EVERY upload: App Store Connect rejects a build number it
+        # has already seen for this marketing version, at the end of the upload.
+        CURRENT_PROJECT_VERSION: 2
         ENABLE_PREVIEWS: YES
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Kotek/Info.plist
