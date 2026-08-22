@@ -311,6 +311,19 @@ final class PlayEngine {
 
     private var beatMs: Double { 60000.0 / Double(song.bpm) / tempoScale }
 
+    /// Absorb a pause: shift the clock forward by how long the session was
+    /// stopped, so the music picks up exactly where it left off instead of
+    /// jumping forward to catch up with wall-clock time.
+    ///
+    /// The pass in progress is voided. The clock was frozen, so nothing
+    /// auto-missed while you were away and the pass would otherwise bank as a
+    /// clean one with a silence in the middle of it — which is not what
+    /// happened. Same reasoning as a mid-pass change of half or of speed.
+    func resumeAfterPause(seconds: Double) {
+        startHostTime += seconds
+        cycleVoided = true
+    }
+
     /// Stop the session and hand back what was played.
     ///
     /// Only COMPLETED passes are reported. The one in progress when the player

@@ -59,9 +59,14 @@ final class AppState {
     var partnerAudible: Bool = true
     var yourVoiceAudible: Bool = false
 
-    /// Whether the scrolling score is shown. Off gives the bilah the whole
-    /// screen, which is where the guidance you play from actually is.
-    var riverVisible: Bool = true
+    /// Whether the practice screen's bottom panel — the half switch, the tempo,
+    /// the voice chips and the score — is up.
+    ///
+    /// DOWN by default. The guidance you play from is the bilah lighting up on
+    /// the gangsa in front of you; the score is peripheral context, and the
+    /// panel sits over exactly the part of the frame the instrument is most
+    /// likely to be in. It is one tap away in the top bar for when it is wanted.
+    var bottomBarVisible: Bool = false
     var lastResult: SongResult?
 
     // Practice-mode tempo (§5.3): 0.5, 0.75, 1.0

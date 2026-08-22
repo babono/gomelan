@@ -45,6 +45,8 @@ struct PlayView: View {
     private let visionTeachingConfidence: Double = 0.75
 
     @State private var countdown: Int? = 3
+    @State private var paused = false
+    @State private var pauseStartedAt: Double = 0
 
     // Kept for the strike wiring; not surfaced during play (clean overlay).
     @State private var lastKey: Int?
@@ -72,29 +74,38 @@ struct PlayView: View {
 
                 Spacer()
 
-                VStack(spacing: 10) {
-                    HStack(spacing: 10) {
-                        halfSwitch
-                        tempoPicker
-                        Spacer()
-                        VoiceMixer(yourHalf: app.chosenHalf,
-                                   yourVoiceAudible: $app.yourVoiceAudible,
-                                   partnerAudible: $app.partnerAudible)
-                    }
-                    .padding(.horizontal, 24)
+                // The controls and the score are ONE panel, shown and hidden
+                // together. They used to be separate — the score had a toggle
+                // and the controls were always up — which meant the "give the
+                // instrument the whole screen" button left a row of chrome
+                // behind and did not do what it said.
+                if app.bottomBarVisible {
+                    VStack(spacing: 10) {
+                        HStack(spacing: 10) {
+                            halfSwitch
+                            tempoPicker
+                            Spacer()
+                            VoiceMixer(yourHalf: app.chosenHalf,
+                                       yourVoiceAudible: $app.yourVoiceAudible,
+                                       partnerAudible: $app.partnerAudible)
+                        }
+                        .padding(.horizontal, 24)
 
-                    if app.riverVisible {
                         NotesRiver(engine: engine,
                                    keyRange: keyRange,
                                    keyCount: app.profile.keys.count,
                                    yourHalf: app.chosenHalf)
                     }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            .animation(.easeInOut(duration: 0.22), value: app.bottomBarVisible)
 
             if let countdown {
                 CountdownOverlay(value: countdown)
             }
+
+            if paused { pauseOverlay }
         }
         .background {
             // Measures the full-bleed layout the preview/overlay fill, so the
@@ -178,6 +189,29 @@ struct PlayView: View {
         .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1))
     }
 
+    /// Stopped, but not over. Both ways out are here so the button that got you
+    /// in is not also the only way on — and End practice is repeated rather than
+    /// left in the bar behind the dim, because reaching past an overlay for a
+    /// control it is covering is how you end a session you meant to resume.
+    private var pauseOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.65).ignoresSafeArea()
+            VStack(spacing: 22) {
+                Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
+                HStack(spacing: 16) {
+                    PillButton(title: "Resume", style: .filled) { resume() }
+                    PillButton(title: "End practice", style: .outlined, tint: Theme.copper) {
+                        //R Straight out. Going through `resume()` first would
+                        //R boot the mic and let a beat of music through purely
+                        //R to stop them again a frame later.
+                        paused = false
+                        endPractice()
+                    }
+                }
+            }
+        }
+    }
+
     /// Speed, as a menu rather than a row of five pills.
     ///
     /// Two segmented controls side by side on a camera screen is more chrome
@@ -233,17 +267,34 @@ struct PlayView: View {
 
             Spacer()
 
-            // Hide the score to give the instrument the whole screen.
-            Button { app.riverVisible.toggle() } label: {
-                Image(systemName: app.riverVisible ? "rectangle.bottomthird.inset.filled" : "rectangle")
+            // Bring the score and controls up. Down by default: the guidance
+            // you actually play from is the bilah lighting up on the instrument
+            // in front of you, and the panel covers the part of the frame the
+            // gangsa is most likely to be in.
+            Button { app.bottomBarVisible.toggle() } label: {
+                Image(systemName: app.bottomBarVisible ? "rectangle.bottomthird.inset.filled" : "rectangle")
                     .font(.sans(15, weight: .medium))
-                    .foregroundStyle(app.riverVisible ? Theme.ink : Theme.copper)
+                    .foregroundStyle(app.bottomBarVisible ? Theme.ink : Theme.copper)
                     .frame(width: 40, height: 34)
-                    .background(app.riverVisible ? Theme.copper : .clear, in: Capsule())
+                    .background(app.bottomBarVisible ? Theme.copper : .clear, in: Capsule())
                     .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(app.bottomBarVisible ? "Hide the score" : "Show the score")
             .padding(.trailing, 10)
+
+            Button { pause() } label: {
+                Image(systemName: "pause.fill")
+                    .font(.symbol(14, weight: .semibold))
+                    .foregroundStyle(Theme.cream)
+                    .frame(width: 40, height: 34)
+                    .overlay(RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Theme.cream.opacity(0.45), lineWidth: 1))
+                    .contentShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Pause")
+            .padding(.trailing, 8)
 
             // Spelled out, not an X. This is the only way out of a session
             // that never ends by itself, so it has to be findable — and a bare
@@ -340,7 +391,7 @@ struct PlayView: View {
         // Wire audio onset detection to immediately resolve key via vision:
         audio.onStrikeDetected = { hostTime in
             Task { @MainActor in
-                guard countdown == nil, !engine.isFinished else { return }
+                guard countdown == nil, !paused, !engine.isFinished else { return }
                 if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                     applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                     // Tally what the ear would have said, whether or not it is
@@ -372,7 +423,7 @@ struct PlayView: View {
         if useAudioConfirmation {
             audio.onConfirmedStrike = { hostTime in
                 Task { @MainActor in
-                    guard countdown == nil, !engine.isFinished else { return }
+                    guard countdown == nil, !paused, !engine.isFinished else { return }
                     if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                         applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                     }
@@ -406,7 +457,7 @@ struct PlayView: View {
             // stays high while the mallet lingers, so a rising-edge detector
             // fires once, latches, and then only ever adds phantoms.
             if !app.audioTriggersStrikes,
-               countdown == nil, !engine.isFinished,
+               countdown == nil, !paused, !engine.isFinished,
                let (scores, hostTime) = await fusion?.latestScores() {
                 let fired = visionDetector.process(scores: scores)
                 if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
@@ -425,11 +476,32 @@ struct PlayView: View {
         engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
     }
 
+    private func pause() {
+        guard countdown == nil, !paused, !engine.isFinished else { return }
+        paused = true
+        pauseStartedAt = CACurrentMediaTime()
+        displayLink.stop()
+        //R The ear goes down too. Left running it spends the pause listening to
+        //R the room and to the app's own samples ringing out, and the first
+        //R thing after Resume would be an onset that was never a strike.
+        audio.stop()
+    }
+
+    private func resume() {
+        guard paused else { return }
+        engine.resumeAfterPause(seconds: CACurrentMediaTime() - pauseStartedAt)
+        try? audio.start(profile: app.profile)
+        audio.resetDetector()
+        visionDetector.reset()
+        displayLink.start()
+        paused = false
+    }
+
     /// End the session and go to the score. `engine.end()` calls back through
     /// `onComplete`, which tears down and navigates — so there is one exit path
     /// whether the player pressed the button or something else stopped the run.
     private func endPractice() {
-        guard countdown == nil else { return }
+        guard countdown == nil, !paused else { return }
         displayLink.stop()
         engine.end()
     }
