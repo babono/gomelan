@@ -189,10 +189,13 @@ struct PlayView: View {
         .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1))
     }
 
-    /// Stopped, but not over. Both ways out are here so the button that got you
-    /// in is not also the only way on — and End practice is repeated rather than
-    /// left in the bar behind the dim, because reaching past an overlay for a
-    /// control it is covering is how you end a session you meant to resume.
+    /// Stopped, but not over — and the ONLY way out of a session.
+    ///
+    /// Ending used to be a button of its own in the top bar, one tap from a
+    /// session in progress. Pause is the honest first step: the thing you
+    /// actually want nine times in ten is to stop the noise and think, and
+    /// making that the button means ending is a decision you take with the
+    /// music already off rather than one you can make by mis-tapping.
     private var pauseOverlay: some View {
         ZStack {
             Color.black.opacity(0.65).ignoresSafeArea()
@@ -263,7 +266,7 @@ struct PlayView: View {
 
             // Its own view so the clock ticking doesn't re-evaluate the whole
             // screen sixty times a second just to move a counter.
-            CycleCounter(engine: engine)
+            SessionCounters(engine: engine)
 
             Spacer()
 
@@ -294,25 +297,6 @@ struct PlayView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Pause")
-            .padding(.trailing, 8)
-
-            // Spelled out, not an X. This is the only way out of a session
-            // that never ends by itself, so it has to be findable — and a bare
-            // glyph in a corner is too easy to hit by accident for something
-            // that closes the thing you are in the middle of doing.
-            Button { endPractice() } label: {
-                Text("End practice")
-                    .font(.sans(13, weight: Theme.buttonWeight))
-                    .textCase(.uppercase)
-                    .tracking(Theme.buttonTracking)
-                    .foregroundStyle(Theme.cream)
-                    .padding(.horizontal, 16)
-                    .frame(height: 34)
-                    .overlay(RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Theme.cream.opacity(0.45), lineWidth: 1))
-                    .contentShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 14)
@@ -524,18 +508,38 @@ struct PlayView: View {
     }
 }
 
-/// "Cycle 12" — how many times round the figure has been. No denominator: the
-/// session runs until the player stops it, so there is nothing to be out of.
+/// "Cycle 12 · 148 landed" — how far round, and how much of it counted.
 ///
-/// Reads the engine itself to keep the per-frame invalidation off the rest of
-/// the screen.
-private struct CycleCounter: View {
+/// No denominator on the cycle: the session runs until the player stops it, so
+/// there is nothing to be out of. The second number is notes that LANDED, which
+/// is the one the gangsa's grade is made of — accuracy is a judgement and can
+/// go down, but this only ever goes up, so it is the number that belongs in
+/// front of somebody mid-practice.
+///
+/// One view for both, reading the engine itself, so the whole per-frame
+/// invalidation stays inside this label instead of redrawing the screen around
+/// it sixty times a second.
+private struct SessionCounters: View {
     let engine: PlayEngine
 
     var body: some View {
-        Text(engine.phase == .countIn ? "Count-in" : "Cycle \(engine.loopIndex + 1)")
-            .font(.sans(14))
-            .foregroundStyle(Theme.inkStone)
+        HStack(spacing: 10) {
+            Text(engine.phase == .countIn ? "Count-in" : "Cycle \(engine.loopIndex + 1)")
+                .foregroundStyle(Theme.inkStone)
+
+            if engine.landedNotes > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "checkmark")
+                        .font(.symbol(11, weight: .bold))
+                    Text("\(engine.landedNotes)")
+                }
+                .foregroundStyle(Theme.hit)
+                .accessibilityLabel("\(engine.landedNotes) notes landed")
+            }
+        }
+        .font(.sans(14))
+        .contentTransition(.numericText())
+        .animation(.snappy(duration: 0.2), value: engine.landedNotes)
     }
 }
 

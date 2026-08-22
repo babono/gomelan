@@ -95,6 +95,30 @@ struct InstrumentKey: Codable, Identifiable, Equatable {
     var isCalibrated: Bool { !(fingerprint?.isEmpty ?? true) }
 }
 
+/// The best a figure has ever been played on this gangsa.
+///
+/// One per figure PER HALF PER SPEED, because that is the only comparison that
+/// means anything — polos at half tempo and sangsih at 1.5× are not the same
+/// feat, and a single "best on Ubitan Nyendok" would silently be whichever of
+/// them was easiest.
+///
+/// An array rather than a keyed dictionary on purpose: `ProfileStore` encodes
+/// with `.convertToSnakeCase`, which rewrites DICTIONARY keys as well as
+/// property names, and it would quietly mangle a composite key like
+/// "ubitannyendok-polos@1.0" on the way to disk.
+struct PatternRecord: Codable, Equatable, Identifiable {
+    var kotekanId: String
+    /// `KotekanHalf.rawValue` — stored as a string so the model layer does not
+    /// have to import the figure vocabulary to decode a profile.
+    var half: String
+    var tempo: Double
+    /// Best accuracy over `SongResult.scoringWindow` consecutive cycles, 0…1.
+    var accuracy: Double
+    var setAt: String
+
+    var id: String { "\(kotekanId)·\(half)@\(tempo)" }
+}
+
 /// A calibrated instrument. v1 ships exactly one (our gangsa), but the shape is
 /// per-instrument by design (PRD §2, §7).
 struct InstrumentProfile: Codable, Identifiable, Equatable {
@@ -122,6 +146,10 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
     var sessionCount: Int? = nil
     var accurateNotes: Int? = nil
 
+    /// Personal bests per figure. Optional for the same decoding reason as the
+    /// counters above.
+    var records: [PatternRecord]? = nil
+
     /// Whether this instrument has a learned strike-sound baseline.
     var hasLearnedBaseline: Bool { !(strikeBaseline?.isEmpty ?? true) }
 
@@ -137,6 +165,39 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
     var mastery: Mastery { Mastery(notesLanded: notesLanded) }
 
     var hasBeenPlayed: Bool { lastUsedAt != nil || sessionsPlayed > 0 }
+
+    /// The record for exactly this figure, half and speed.
+    func record(kotekanId: String, half: String, tempo: Double) -> PatternRecord? {
+        records?.first { $0.kotekanId == kotekanId && $0.half == half && $0.tempo == tempo }
+    }
+
+    /// The best this figure has been played at ALL, whichever half and speed it
+    /// was — what the picker card shows. It carries its conditions with it, so
+    /// a 0.75× best is never mistaken for a full-tempo one.
+    func bestRecord(kotekanId: String) -> PatternRecord? {
+        records?.filter { $0.kotekanId == kotekanId }.max { $0.accuracy < $1.accuracy }
+    }
+
+    /// File a result. Returns the record it beat, or nil if it did not beat one
+    /// — which is not the same as there being no record, so callers check
+    /// `record(...)` first if they need to tell a first time from a near miss.
+    @discardableResult
+    mutating func noteRecord(kotekanId: String, half: String, tempo: Double,
+                             accuracy: Double) -> Bool {
+        var all = records ?? []
+        let fresh = PatternRecord(kotekanId: kotekanId, half: half, tempo: tempo,
+                                  accuracy: accuracy, setAt: InstrumentProfile.nowISO())
+        if let idx = all.firstIndex(where: {
+            $0.kotekanId == kotekanId && $0.half == half && $0.tempo == tempo
+        }) {
+            guard accuracy > all[idx].accuracy else { return false }
+            all[idx] = fresh
+        } else {
+            all.append(fresh)
+        }
+        records = all
+        return true
+    }
 
     var lastPlayedDate: Date? { InstrumentProfile.date(from: lastUsedAt) }
 

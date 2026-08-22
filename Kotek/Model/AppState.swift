@@ -68,6 +68,12 @@ final class AppState {
     /// likely to be in. It is one tap away in the top bar for when it is wanted.
     var bottomBarVisible: Bool = false
     var lastResult: SongResult?
+    /// What the figure's record was BEFORE the session that just ended, and
+    /// whether that session beat it. Read by the results screen; set by
+    /// `finish`, which is the only place that can tell, because filing the new
+    /// record destroys the old one.
+    var previousRecord: Double?
+    var lastSetRecord = false
 
     // Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
@@ -430,12 +436,39 @@ final class AppState {
     func countdownFinished() { screen = .playing }
 
     func finish(result: SongResult) {
+        fileRecord(result)
         //R `landedNotes`, not the judgement list: that one is scoped to the half
         //R the session ended on, and time spent on the other side of the kotekan
         //R is just as much time spent on this gangsa.
         recordSession(landed: result.landedNotes)
         lastResult = result
         screen = .results
+    }
+
+    /// File the session's best window as this figure's record, if it is one.
+    ///
+    /// Gated on a FULL window. `SongResult.best` scores a short session over
+    /// whatever it has, which is right for telling you how three cycles went and
+    /// wrong for a record: three good cycles are far easier than eight, and
+    /// without this the leaderboard fills up with two-cycle sessions nobody
+    /// could ever beat.
+    private func fileRecord(_ result: SongResult) {
+        previousRecord = nil
+        lastSetRecord = false
+        guard let k = selectedKotekan,
+              result.cycles.count >= SongResult.scoringWindow,
+              let best = result.best
+        else { return }
+
+        let half = chosenHalf.rawValue
+        previousRecord = profile.record(kotekanId: k.id, half: half, tempo: tempoScale)?.accuracy
+        var updated = profile
+        lastSetRecord = updated.noteRecord(kotekanId: k.id, half: half,
+                                           tempo: tempoScale, accuracy: best.accuracy)
+        guard lastSetRecord else { return }
+        profile = updated
+        //R Written by `recordSession` a moment later, which saves the profile —
+        //R no second trip to disk for the same session.
     }
 
     /// Fold a finished session into the active instrument: when it was played,

@@ -25,7 +25,8 @@ struct ChooseKotekanView: View {
             HStack(alignment: .top, spacing: 16) {
                 ForEach(app.kotekans) { k in
                     let playable = app.kotekan(k, playableOn: app.profile)
-                    KotekanCard(kotekan: k, playable: playable)
+                    KotekanCard(kotekan: k, playable: playable,
+                                record: app.profile.bestRecord(kotekanId: k.id))
                         .onTapGesture {
                             if playable {
                                 app.chooseKotekan(k)
@@ -43,6 +44,10 @@ struct ChooseKotekanView: View {
 private struct KotekanCard: View {
     let kotekan: Kotekan
     let playable: Bool
+    /// Your best on this figure, whichever half and speed it was set at — the
+    /// conditions come with it, so a 0.75× best is never read as a full-tempo
+    /// one. nil until eight consecutive cycles have been played.
+    let record: PatternRecord?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -64,6 +69,17 @@ private struct KotekanCard: View {
                 Label("Needs \(kotekan.requiredKeys) keys", systemImage: "lock")
                     .font(.sans(12, weight: .medium))
                     .foregroundStyle(Theme.miss)
+            } else if let record {
+                HStack(spacing: 6) {
+                    Image(systemName: "trophy")
+                        .font(.symbol(11, weight: .semibold))
+                    Text(String(format: "%.0f%%", record.accuracy * 100))
+                        .font(.sans(13, weight: .semibold))
+                    Text("\(record.half.capitalized) · \(Theme.tempoLabel(record.tempo))")
+                        .font(.sans(12))
+                        .foregroundStyle(Theme.stone)
+                }
+                .foregroundStyle(Theme.terracotta)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

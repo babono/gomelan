@@ -150,8 +150,10 @@ final class PlayEngine {
     private var cyclesByPart: [String: [CycleScore]] = [:]
     private var judgementsByPart: [String: [NoteJudgement]] = [:]
     private var partKey: String { "\(song.id)@\(tempoScale)" }
-    /// Notes that landed anywhere this session, either half. The gangsa's grade.
-    private var landedNotes = 0
+    /// Notes that landed anywhere this session, either half — the one number
+    /// that feeds the gangsa's grade, and the only running total worth putting
+    /// in front of the player mid-session.
+    private(set) var landedNotes = 0
     private var tally = CycleTally()
     /// Set when the half changes mid-pass. The pass is then dropped rather than
     /// banked — see `setHalf`.

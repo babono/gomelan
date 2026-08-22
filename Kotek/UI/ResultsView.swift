@@ -76,6 +76,7 @@ struct ResultsView: View {
                     .foregroundStyle(Theme.charcoal)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
+                recordLine
             }
 
             VStack(alignment: .leading, spacing: 14) {
@@ -84,6 +85,41 @@ struct ResultsView: View {
             }
         }
         .fixedSize(horizontal: true, vertical: false)
+    }
+
+    /// What this session did to the figure's record.
+    ///
+    /// Records need a FULL eight-cycle window, so a short session says so
+    /// rather than silently not counting — "your best three cycles" is a real
+    /// number and a fake record, and a player who stopped early deserves to
+    /// know which one they are looking at.
+    @ViewBuilder
+    private var recordLine: some View {
+        if (app.lastResult?.cycles.count ?? 0) < SongResult.scoringWindow {
+            label("Needs \(SongResult.scoringWindow) cycles to set a record", Theme.stone)
+        } else if app.lastSetRecord, let previous = app.previousRecord {
+            label(String(format: "New record · was %.1f%%", previous * 100), Theme.hit)
+        } else if app.lastSetRecord {
+            label("First record on this gangsa", Theme.hit)
+        } else if let best = currentRecord {
+            label(String(format: "Your best is %.1f%%", best * 100), Theme.stone)
+        }
+    }
+
+    /// The record as it stands NOW — which, if this session beat it, is this
+    /// session's own score. Only read on the path where it did not.
+    private var currentRecord: Double? {
+        guard let k = app.selectedKotekan else { return nil }
+        return app.profile.record(kotekanId: k.id,
+                                  half: app.chosenHalf.rawValue,
+                                  tempo: app.tempoScale)?.accuracy
+    }
+
+    private func label(_ text: String, _ color: Color) -> some View {
+        Text(text)
+            .font(.sans(13, weight: .medium))
+            .foregroundStyle(color)
+            .padding(.top, 6)
     }
 
     private func stat(_ label: String, _ value: String) -> some View {
