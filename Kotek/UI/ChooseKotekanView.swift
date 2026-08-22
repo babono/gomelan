@@ -2,9 +2,13 @@
 //  ChooseKotekanView.swift
 //  Kotek
 //
-//  Pick the interlocking figure to learn, and how many times around the gong
-//  cycle to play it. Figures that need more bilah than the calibrated instrument
-//  has are greyed out and unselectable (§4 Flow B).
+//  Pick the interlocking figure to learn. Tapping a card goes straight to the
+//  count-in — this is the last decision before playing, and the only one left:
+//  which half you take is a toggle on the practice screen, and how many times
+//  around has no answer, because it goes around until you stop it.
+//
+//  Figures that need more bilah than the calibrated gangsa has are greyed out
+//  and unselectable (§4 Flow B).
 //
 
 import SwiftUI

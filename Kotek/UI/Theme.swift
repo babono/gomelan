@@ -144,14 +144,10 @@ enum Theme {
 
     static let keyOutlineWidth: CGFloat = 3
     static let keyCornerRadius: CGFloat = 6
-    static let approachTrackHeight: CGFloat = 96
-    /// Fraction from the left where the strike line sits on the approach track.
-    static let strikeLineFraction: CGFloat = 0.15
-    /// Seconds of lookahead shown on the approach track.
-    static let approachLookaheadSeconds: Double = 3
-    /// Seconds of already-played music kept on screen to the left of the strike
-    /// line, so a stroke slides away instead of vanishing at the moment it lands.
-    static let approachTrailSeconds: Double = 0.8
+    //R The approach-track geometry lived here — strike line at 0.15, three
+    //R seconds of lookahead, 0.8s of trail. All of it belonged to a score that
+    //R scrolled. NotesRiver draws one still cycle now and has no lookahead to
+    //R size: the whole figure is always on screen.
 }
 
 // MARK: - Typography

@@ -10,17 +10,6 @@
 import Foundation
 import SwiftUI
 
-enum PlayMode: String, Equatable, Identifiable {
-    case practice
-    case play
-
-    var id: String { rawValue }
-    var title: String { self == .practice ? "Practice" : "Play" }
-    var subtitle: String {
-        self == .practice ? "No scoring, no fail — waits for you" : "Scored, timed"
-    }
-}
-
 /// Judgement windows from §5.1. Starting values, tune during playtesting.
 enum JudgementResult: String, Equatable {
     case perfect
@@ -87,10 +76,57 @@ struct KeyBreakdown: Identifiable, Equatable {
     var id: Int { keyIndex }
 }
 
+/// One completed pass of the figure, scored on its own.
+///
+/// The unit everything on the results screen is built from. Practice loops
+/// indefinitely now, so "the session" has no length worth averaging over — the
+/// pass does.
+struct CycleScore: Equatable, Identifiable {
+    let index: Int
+    /// When this pass began, measured from the start of the session — the
+    /// results graph's x axis.
+    let startMs: Double
+    /// Strokes your half had this pass. Zero-note passes are possible if the
+    /// player switches sides mid-cycle, and they must not divide.
+    let noteCount: Int
+    let score: Int
+    let onBeat: Int
+    let mistakes: Int
+
+    var accuracy: Double {
+        guard noteCount > 0 else { return 0 }
+        return Double(score) / Double(noteCount * 100)
+    }
+
+    var id: Int { index }
+}
+
+/// The stretch of consecutive passes the headline score is taken from.
+struct ScoringWindow: Equatable {
+    let range: ClosedRange<Int>
+    let accuracy: Double
+    let onBeat: Int
+    let mistakes: Int
+}
+
 struct SongResult: Equatable {
     let songTitle: String
     let subtitle: String
+    /// Every note of the half you FINISHED on. Drives the per-key breakdown,
+    /// which would average a bilah you play well in polos against the same
+    /// bilah in sangsih if it spanned both.
     let judgements: [NoteJudgement]
+    /// Every completed pass of the half you finished on, in order.
+    let cycles: [CycleScore]
+    /// Notes that landed across the WHOLE session, both halves — what the
+    /// gangsa's grade is credited with.
+    ///
+    /// Separate from `judgements` on purpose: accuracy is a claim about how well
+    /// you played one half and has to be scoped to it, but the grade measures
+    /// how much you have played this instrument, and strokes on the other side
+    /// of the kotekan are just as much playing. Switching sides costs you the
+    /// accuracy history for the half you left; it never costs you the notes.
+    let landedNotes: Int
 
     var totalScore: Int { judgements.reduce(0) { $0 + $1.result.score } }
     var maxScore: Int { judgements.count * 100 }
@@ -115,6 +151,46 @@ struct SongResult: Equatable {
         let hits = judgements.filter { $0.result != .miss && $0.result != .wrongKey }
         guard !hits.isEmpty else { return 0 }
         return hits.map(\.timingErrorMs).reduce(0, +) / Double(hits.count)
+    }
+
+    /// How many consecutive passes the headline score is measured over.
+    ///
+    /// There is no authentic number to use here. In performance a kotekan
+    /// repeats until the kendang cues the change — four times in one reading,
+    /// twenty in the next — so any fixed count is a UI decision, not a musical
+    /// one. Eight is long enough that a single lucky pass cannot carry it and
+    /// short enough to reach in a couple of minutes.
+    static let scoringWindow = 8
+
+    /// The BEST run of `scoringWindow` consecutive passes, not the session
+    /// average.
+    ///
+    /// Deliberately a best. Practice loops until you stop it, so a running
+    /// average can only ever fall: every warm-up pass and every stretch where
+    /// you paused to look at your hands drags it down for the rest of the
+    /// session, and a number that gets worse the longer you practise punishes
+    /// exactly the thing this screen exists to encourage. A best answers the
+    /// question people actually ask — how well can I play this — and it can
+    /// still only be beaten by playing well.
+    var best: ScoringWindow? {
+        guard !cycles.isEmpty else { return nil }
+        //R Short sessions are scored over what they have rather than being
+        //R refused a number: stopping after three passes should still tell you
+        //R how those three went.
+        let width = min(SongResult.scoringWindow, cycles.count)
+        var bestWindow: ScoringWindow?
+        for start in 0...(cycles.count - width) {
+            let slice = cycles[start..<(start + width)]
+            let notes = slice.reduce(0) { $0 + $1.noteCount }
+            guard notes > 0 else { continue }
+            let score = slice.reduce(0) { $0 + $1.score }
+            let candidate = ScoringWindow(range: start...(start + width - 1),
+                                          accuracy: Double(score) / Double(notes * 100),
+                                          onBeat: slice.reduce(0) { $0 + $1.onBeat },
+                                          mistakes: slice.reduce(0) { $0 + $1.mistakes })
+            if candidate.accuracy > (bestWindow?.accuracy ?? -1) { bestWindow = candidate }
+        }
+        return bestWindow
     }
 
     /// Per-key summary, worst first — "where it slipped".

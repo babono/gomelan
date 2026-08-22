@@ -236,16 +236,25 @@ struct Mastery: Equatable {
     enum Rank: Int, CaseIterable {
         case gineman, pengawit, pengawak, pengecet, pekaad
 
-        /// Notes at which this rung begins. Spaced so the first is a session or
-        /// two away (a 16-slot half over 8 cycles is ~64 notes) and the last is
-        /// months of real practice, not an afternoon.
+        /// Notes at which this rung begins.
+        ///
+        /// Set against what a session actually produces now that practice loops
+        /// until you stop it. Ubitan Nyendok is a 2-second cycle with four polos
+        /// strokes in it — two strokes a second — so twenty minutes at a decent
+        /// hit rate is on the order of 1,400 landed notes. The first rungs were
+        /// written for a scored run of eight cycles (~64 notes) and a single
+        /// evening would have taken you past the top of the ladder.
+        ///
+        /// Pengawit lands within one solid session, so the ladder starts moving
+        /// early; Pekaad is a few dozen of them, which is the months of practice
+        /// the name is meant to stand for.
         var threshold: Int {
             switch self {
             case .gineman:  return 0
-            case .pengawit: return 200
-            case .pengawak: return 800
-            case .pengecet: return 2500
-            case .pekaad:   return 6000
+            case .pengawit: return 1_000
+            case .pengawak: return 5_000
+            case .pengecet: return 15_000
+            case .pekaad:   return 40_000
             }
         }
 

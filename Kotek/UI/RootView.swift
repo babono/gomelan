@@ -69,8 +69,8 @@ struct RootView: View {
         // was NOT handing over to another camera screen, and getting that wrong
         // in either direction is either a dead preview or a hot phone.
         //
-        // Camera-to-camera moves (demo → run) do not flip this, so the session
-        // is never stopped and restarted mid-flow.
+        // Camera-to-camera moves (aligning → baseline, countdown → playing) do
+        // not flip this, so the session is never stopped and restarted mid-flow.
         .onChange(of: isCameraScreen) { _, showsCamera in
             if !showsCamera { camera.stop() }
         }
@@ -82,7 +82,7 @@ struct RootView: View {
     /// Screens whose ground is the live camera feed rather than the pattern.
     private var isCameraScreen: Bool {
         switch app.screen {
-        case .framing, .aligning, .calibrating, .baseline, .watching,
+        case .framing, .aligning, .calibrating, .baseline,
              .countdown, .playing, .malletTest, .detectionTest, .audioTest,
              .captureTraining:
             return true
@@ -112,12 +112,6 @@ struct RootView: View {
             CalibrationView(camera: camera, audio: audio)
         case .chooseKotekan:
             ChooseKotekanView()
-        case .chooseHalf:
-            ChooseHalfView()
-        case .chooseCycles:
-            ChooseCyclesView()
-        case .watching:
-            WatchView(camera: camera, audio: audio, cue: cue)
         case .countdown, .playing:
             PlayView(camera: camera, audio: audio, cue: cue)
         case .results:

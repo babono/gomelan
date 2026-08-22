@@ -221,9 +221,9 @@ struct SettingsView: View {
             return "Unplayed · the grade starts on your first scored session"
         }
         let m = p.mastery
-        var line = "\(m.rank.title) — \(m.rank.gloss) · \(m.notes) notes landed"
+        var line = "\(m.rank.title) — \(m.rank.gloss) · \(m.notes.formatted()) notes landed"
         if let next = m.next, let togo = m.notesToNext {
-            line += " · \(togo) to \(next.title)"
+            line += " · \(togo.formatted()) to \(next.title)"
         }
         if let played = p.lastPlayedDate {
             line += " · played \(played.formatted(.relative(presentation: .named)))"

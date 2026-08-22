@@ -25,9 +25,6 @@ final class AppState {
         case calibrating        // baseline · learn the voice
         case baseline
         case chooseKotekan
-        case chooseHalf
-        case chooseCycles       // Dedicated repetition/cycles screen
-        case watching           // demo · the app plays it, you watch and listen
         case countdown
         case playing
         case results
@@ -45,8 +42,9 @@ final class AppState {
     // The kotekan session carried through selection → play.
     let kotekans: [Kotekan] = Kotekan.bundled
     var selectedKotekan: Kotekan?
+    /// Which half you are taking. Live: it is a toggle on the practice screen
+    /// now, not a screen of its own, so it can change mid-session.
     var chosenHalf: KotekanHalf = .polos
-    var chosenCycles: Int = 8
 
     /// The rendered note sequence the PlayEngine runs, built from the session.
     var selectedSong: Song?
@@ -54,23 +52,20 @@ final class AppState {
     /// you. The app plays it so the interlock is there even when you practise
     /// alone (§7); the gong layer is always underneath both.
     var partnerSong: Song?
-    /// The three voices, mutable independently and shared between the demo and
-    /// the run, so a choice made while listening carries into playing.
+    /// The two voices you can silence. Your own half starts muted — you are the
+    /// one playing it — and turning it on has the app play along, which is what
+    /// the "watch and listen" screen used to be for. The gong is not on this
+    /// list: it is the frame everything is judged against.
     var partnerAudible: Bool = true
-    var yourVoiceAudible: Bool = true
-    var colotomicAudible: Bool = true
+    var yourVoiceAudible: Bool = false
 
     /// Whether the scrolling score is shown. Off gives the bilah the whole
     /// screen, which is where the guidance you play from actually is.
     var riverVisible: Bool = true
-    var playMode: PlayMode = .play
     var lastResult: SongResult?
 
     // Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
-    /// Speed the demo screen plays the figure back at — the run itself is
-    /// always at tempo, so slowing the demo down is free.
-    var demoTempoScale: Double = 1.0
     // Audio cue toggles (§5.4)
     var metronomeEnabled: Bool = true
     var referenceToneEnabled: Bool = true
@@ -396,64 +391,46 @@ final class AppState {
     // MARK: - Session selection
 
     /// Step 1: Picked a kotekan figure; advance to choose half.
+    /// Take this figure and go.
+    ///
+    /// The count-in is now the only thing between the picker and playing. There
+    /// used to be three screens here — which half, how many cycles, and a demo
+    /// to sit through — and a gangsa player's verdict was that it is too much
+    /// asked before you can strike a bilah. Which half is a toggle on the
+    /// practice screen; how many cycles has no answer, because it loops until
+    /// you stop it; and the demo is the guide voice, one tap away mid-practice.
     func chooseKotekan(_ k: Kotekan) {
         selectedKotekan = k
-        screen = .chooseHalf
+        renderHalves()
+        screen = .countdown
+    }
+
+    /// Change sides without leaving the session.
+    func setHalf(_ half: KotekanHalf) {
+        guard half != chosenHalf else { return }
+        chosenHalf = half
+        renderHalves()
+    }
+
+    /// ONE cycle of each half. The engine repeats it for as long as the player
+    /// wants — rendering N copies up front is what the cycles screen existed to
+    /// choose, and there is no N any more.
+    private func renderHalves() {
+        guard let k = selectedKotekan else { return }
+        selectedSong = k.makeSong(half: chosenHalf, cycles: 1)
+        partnerSong = k.makeSong(half: chosenHalf.other, cycles: 1)
     }
 
     /// Step 2: Picked a half (Polos/Sangsih); advance to choose cycles.
-    func chooseHalf(_ half: KotekanHalf) {
-        chosenHalf = half
-        screen = .chooseCycles
-    }
-
-    /// Step 3: Picked cycles; render the session and go and watch it first.
-    ///
-    /// The demo and the run are two screens now (§4 Flow C): you watch and hear
-    /// the figure for as long as you like, then take the instrument yourself.
-    func startSession(cycles: Int) {
-        guard let k = selectedKotekan else { return }
-        chosenCycles = cycles
-        selectedSong = k.makeSong(half: chosenHalf, cycles: cycles)
-        partnerSong = k.makeSong(half: chosenHalf.other, cycles: cycles)
-        playMode = .play
-        demoTempoScale = 1.0
-        screen = .watching
-    }
-
-    /// One cycle of the chosen figure — what the demo screen loops.
-    var demoSong: Song? {
-        selectedKotekan?.makeSong(half: chosenHalf, cycles: 1)
-    }
-
-    /// The same cycle for the other half, so the demo can sound the whole weave.
-    var demoPartnerSong: Song? {
-        selectedKotekan?.makeSong(half: chosenHalf.other, cycles: 1)
-    }
-
-    /// Watched enough — hand the instrument over.
-    func beginPractice() { screen = .countdown }
-
-    /// Back from the demo to the cycle picker.
-    func backToCycles() { screen = .chooseCycles }
-
-    /// Watch the figure again (from the demo screen or the results screen).
-    func watchAgain() { screen = .watching }
-
     func countdownFinished() { screen = .playing }
 
     func finish(result: SongResult) {
-        recordSession(landed: result.judgements.filter { $0.result.onBeat }.count)
+        //R `landedNotes`, not the judgement list: that one is scoped to the half
+        //R the session ended on, and time spent on the other side of the kotekan
+        //R is just as much time spent on this gangsa.
+        recordSession(landed: result.landedNotes)
         lastResult = result
         screen = .results
-    }
-
-    /// A practice run ended. Nothing to score — practice returns no result at
-    /// all — but you still sat at this instrument, and that is what orders the
-    /// rail, so the session is recorded with no notes credited.
-    func practiceFinished() {
-        recordSession(landed: 0)
-        screen = .chooseKotekan
     }
 
     /// Fold a finished session into the active instrument: when it was played,
@@ -475,7 +452,6 @@ final class AppState {
 
     func retry() { screen = .countdown }
     func backToKotekan() { screen = .chooseKotekan }
-    func backToHalf() { screen = .chooseHalf }
     func openSettings() { screen = .settings }
     func closeSettings() { screen = .chooseKotekan }
     func openCalibration() { screen = .calibrating }

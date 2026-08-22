@@ -6,9 +6,15 @@
 //  triggering. Driven by tick(now:) from a TimelineView(.animation) so timing is
 //  frame-accurate (§13.5).
 //
-//  Two modes (§5.3):
-//   - .play     scored, timed, can miss
-//   - .practice no fail, waits for the correct key before advancing
+//  ONE session, looping until the player stops it. This used to be four things:
+//  a demo role that played the figure at you, a scored mode that ran N cycles
+//  and ended, a no-fail practice mode that waited for the right key, and a
+//  screen apiece to configure them. A gangsa player's verdict on that flow was
+//  that it is too much to get through before you can play a note — so the
+//  figure now simply goes around, scoring quietly in the background, and the
+//  only decision left inside a session is which half you are taking.
+//
+//  Nothing here fails or ends on its own. `end()` is called by the screen.
 //
 
 import SwiftUI
@@ -25,22 +31,10 @@ enum FlashKind: Equatable {
 }
 
 enum SessionPhase: Equatable {
-    case countIn    // gong only
-    case example    // app plays + shows
-    case userTurn   // user plays, highlight only
+    case countIn    // gong only, one colotomic cycle
+    case userTurn   // the figure is going round; you play
 
     var isUserPlaying: Bool { self == .userTurn }
-}
-
-/// Which half of the session this engine is running (§4 Flow C).
-///
-/// Demo and practice are separate screens: the demo loops the figure for as
-/// long as the player wants to watch and listen, and the practice run hands the
-/// instrument over straight after the count-in. One engine, two roles, so the
-/// timing, cues and overlay are identical in both.
-enum SessionRole: Equatable {
-    case demo
-    case practice
 }
 
 /// What the overlay should draw for a single key this frame.
@@ -58,17 +52,26 @@ enum NoteVoice: Equatable {
     case partner    // the half the app plays beside you
 }
 
-/// A note travelling along the river (§13.5). Position is time (x) against
-/// pitch (the key index), so the two halves read as one woven line.
-struct ApproachNote: Identifiable, Equatable {
+/// One stroke of the figure, placed on the CYCLE rather than on a moving
+/// stream (§13.5). `x` is where in the pattern it falls, 0…1, and it never
+/// moves — the playhead does.
+///
+/// The river used to scroll: notes slid right to left across a strike line, and
+/// three loops' worth of them had to be rendered at once so the stream never
+/// ran dry at the turn. It read as a rhythm game rather than as a figure. A
+/// kotekan is a fixed, memorisable shape that repeats, and showing it as one
+/// still shape you sweep through is both closer to what it is and far easier to
+/// learn from — the pattern stays put long enough to be read.
+struct CycleNote: Identifiable, Equatable {
     let id: String
     let keyIndex: Int
     let voice: NoteVoice
-    let xFraction: Double       // 0…1 across the track; strike line at 0.15
-    /// How wide the stroke is in track units — the note's own duration.
-    let widthFraction: Double
-    /// Set once your note has been judged, so its trail shows how it went.
+    let x: Double               // 0…1 through the pattern
+    let width: Double           // the stroke's own duration, same units
+    /// Set once your note has been judged this pass; cleared at the turn.
     var outcome: JudgementResult? = nil
+    /// The stroke due right now — what the bilah overlay is lighting.
+    var isCurrent: Bool = false
 }
 
 struct TrackMarker: Identifiable, Equatable {
@@ -78,24 +81,31 @@ struct TrackMarker: Identifiable, Equatable {
     let xFraction: Double
 }
 
+/// One completed pass, accumulated while it runs.
+private struct CycleTally {
+    var startMs: Double = 0
+    var noteCount = 0
+    var score = 0
+    var onBeat = 0
+    var mistakes = 0
+}
+
 @Observable
 final class PlayEngine {
     
     // Rendering outputs
     private(set) var renderStates: [Int: KeyRenderState] = [:]
-    private(set) var approachNotes: [ApproachNote] = []
+    /// The figure laid out across one pattern, still.
+    private(set) var cycleNotes: [CycleNote] = []
+    /// Where in the pattern the music is now, 0…1. The only thing that moves.
+    private(set) var playhead: Double = 0
     private(set) var trackMarkers: [TrackMarker] = []
     private(set) var currentTimeMs: Double = 0
     private(set) var currentBeatIndex: Int = 0
     private(set) var isFinished = false
     private(set) var phase: SessionPhase = .countIn
+    /// How many times the figure has come round. It only ever goes up.
     private(set) var loopIndex: Int = 0
-    private(set) var role: SessionRole = .practice
-    /// Fractional index into `notes` at the current pattern time: `2.5` is
-    /// halfway between the third and fourth stroke. Interpolated from the real
-    /// note times, so it stays honest on figures whose strokes are unevenly
-    /// spaced. Negative during the count-in, before the figure has started.
-    private(set) var noteProgress: Double = 0
     
     // Live judgement feed (for debug / practice feedback)
     private(set) var lastJudgement: NoteJudgement?
@@ -105,13 +115,12 @@ final class PlayEngine {
     var metronomeEnabled = true
     var referenceToneEnabled = true
     var onComplete: ((SongResult?) -> Void)?
-    /// "Kotekan Telu · Polos · 8×" — shown on the results screen.
+    /// "Kotekan Telu · Polos" — shown on the results screen.
     var sessionSubtitle = ""
 
     // Config
     private var song: Song = ResourceLoader.bundledSongs().first ?? Song(id: "", title: "", difficulty: .beginner, bpm: 60, requiredKeys: 0, durationMs: 0, notes: [])
     private var profile: InstrumentProfile?
-    private var mode: PlayMode = .play
     private var tempoScale: Double = 1
     
     // Play-mode state
@@ -120,26 +129,58 @@ final class PlayEngine {
     /// How each of your notes turned out this loop — colours its trail on the
     /// river. Separate from `judged`, which the example also uses as a "fired".
     private var outcomes: [JudgementResult?] = []
-    private var results: [NoteJudgement] = []
     private var referencedNotes: Set<String> = []
     private var lastBeatIndex = -1
+
+    /// Finished passes and every judgement, kept PER HALF and keyed on the
+    /// song's id ("ubitannyendok-polos").
+    ///
+    /// Accuracy is a claim about one half, so mixing polos passes into a sangsih
+    /// score would be meaningless — but simply clearing the history on a switch
+    /// sets a trap: peek at the other side for one cycle, come back, and an
+    /// otherwise good session reports nothing. Parking each half's history
+    /// instead means a switch costs nothing and coming back restores what you
+    /// had. `end()` reports the half you finished on.
+    ///
+    /// Keyed on the song id rather than on a `KotekanHalf` so the engine stays
+    /// ignorant of what a half is — it is handed songs, and that is all it needs
+    /// to know to keep two ledgers apart.
+    private var cyclesByPart: [String: [CycleScore]] = [:]
+    private var judgementsByPart: [String: [NoteJudgement]] = [:]
+    /// Notes that landed anywhere this session, either half. The gangsa's grade.
+    private var landedNotes = 0
+    private var tally = CycleTally()
+    /// Set when the half changes mid-pass. The pass is then dropped rather than
+    /// banked — see `setHalf`.
+    private var cycleVoided = false
+    /// Your own strokes that have already sounded this pass, so the guide voice
+    /// fires once each. Separate from `judged`, which means "scored".
+    private var guideFired: [Bool] = []
     
     
     // The partner's half: sounded by the app, never judged (§7).
     private var partnerNotes: [Note] = []
     private var partnerFired: [Bool] = []
-    /// The three voices, independently mutable. Learning a half often means
-    /// silencing everything else first and putting it back once the figure is in
-    /// the hands — so each is a switch, not a fixed arrangement.
+    /// The two voices you can silence. Learning a half often means hearing the
+    /// other one alone first and putting yours back once the figure is in the
+    /// hands — so each is a switch, not a fixed arrangement.
+    ///
+    /// YOUR half defaults to silent, because you are the one playing it: the app
+    /// sounding it too would mask your own mistakes. Turning it on makes the app
+    /// play along with you, which is how you check a figure you have half
+    /// forgotten without leaving the screen — it replaces the demo that used to
+    /// be a screen of its own.
+    ///
+    /// The gong is NOT on this list. The colotomic frame is what the cycle is
+    /// measured against; silencing it leaves the figure floating free with
+    /// nothing to be early or late against, and every judgement this engine
+    /// makes becomes meaningless.
     var partnerAudible = true
-    var yourVoiceAudible = true
-    var colotomicAudible = true
+    var yourVoiceAudible = false
     /// Stereo placement of the two halves, so they read as two players.
     private let yourPan: Float = -0.32
     private let partnerPan: Float = 0.32
 
-    // Practice-mode state
-    private(set) var practiceIndex = 0
     // Transient flash bookkeeping: keyIndex -> (kind, expiry host time)
     private var flashes: [Int: (FlashKind, Double)] = [:]
     
@@ -148,15 +189,25 @@ final class PlayEngine {
     // Tunables
     private let approachWindowMs: Double = 2200          // upcoming fill lead-in
     private let missWindowMs: Double = 200               // §5.1
-    private let practiceWindowMs: Double = 350           //R generous, practice is no-fail
     private let flashDuration: Double = 0.3
     
-    // One full colotomic cycle of gong before anything else happens.
+    // The count-in, in beats.
+    //
+    // HALF a colotomic cycle, and the colotomic phase is measured from the end
+    // of it (see `colotomicIndex`) — so the count-in runs kempur → kajar → kajar
+    // and lands the GONG exactly on the first slot of the figure.
+    //
+    // This was wrong before and did not show: 16 beats of count-in with the
+    // pulse counted from zero put the figure's first slot on the kempur, with
+    // the gong landing halfway through a 32-slot figure. Nothing on the old
+    // scrolling river made that visible. On a static cycle the gong rule is
+    // drawn straight through the pattern, and a figure that starts on the wrong
+    // half of the colotomic cycle is immediately, obviously wrong.
     private let introBeats = 16
-    /// Silent beats between loops so a repeat doesn't feel clipped. The demo
-    /// repeats the same figure over and over, so it closes the gap and lets the
-    /// gong land exactly on the turn of the cycle.
-    private var loopGapBeats = 0 /*: Int { role == .demo ? 0 : 2 }*/
+    /// Silent beats between loops. Zero: the figure repeats forever, so the gong
+    /// has to land exactly on the turn of the cycle. Any gap here and the pulse
+    /// walks away from the pattern a little more on every pass.
+    private var loopGapBeats = 0
     
     private var introMs: Double = 0
     private var patternMs: Double = 0
@@ -165,22 +216,17 @@ final class PlayEngine {
     
     // MARK: - Lifecycle
     
-    func configure(song: Song, partner: Song? = nil, mode: PlayMode, profile: InstrumentProfile,
-                   tempoScale: Double, role: SessionRole = .practice) {
-        self.role = role
+    func configure(song: Song, partner: Song? = nil, profile: InstrumentProfile,
+                   tempoScale: Double) {
         self.song = song
-        self.mode = mode
         self.profile = profile
-        // A scored run is always at tempo; the demo and no-fail practice can slow down.
-        self.tempoScale = (role == .demo || mode == .practice) ? max(0.25, tempoScale) : 1
-        self.notes = song.notes.sorted { $0.timeMs < $1.timeMs }
-        self.judged = Array(repeating: false, count: notes.count)
-        self.outcomes = Array(repeating: nil, count: notes.count)
-        self.partnerNotes = (partner?.notes ?? []).sorted { $0.timeMs < $1.timeMs }
-        self.partnerFired = Array(repeating: false, count: partnerNotes.count)
-        self.results = []
+        self.tempoScale = max(0.25, tempoScale)
+        self.cyclesByPart = [:]
+        self.judgementsByPart = [:]
+        self.landedNotes = 0
+        self.tally = CycleTally()
+        self.cycleVoided = false
         self.referencedNotes = []
-        self.practiceIndex = 0
         self.lastBeatIndex = -1
         self.flashes = [:]
         self.isFinished = false
@@ -188,9 +234,41 @@ final class PlayEngine {
         self.lastLoopIndex = -1
         self.phase = .countIn
         self.loopIndex = 0
-        self.noteProgress = 0
+        self.playhead = 0
         self.currentTimeMs = 0
+        loadHalves(song: song, partner: partner)
         recomputeTiming()
+    }
+
+    /// Swap which half you are playing WITHOUT stopping the clock.
+    ///
+    /// The gong keeps going, the cycle count keeps climbing and everything
+    /// already scored is kept — you are changing seats, not starting again. The
+    /// two halves of a kotekan are the same length at the same tempo, so
+    /// `patternMs` and the pattern origin are unaffected and the swap lands
+    /// mid-cycle without the pulse shifting under it.
+    ///
+    /// The pass in progress is written OFF, not half-scored. Its notes belonged
+    /// to the other half, and the new half's strokes that are already behind the
+    /// playhead auto-miss the instant they load — so banking it would drop a
+    /// meaningless near-zero into the graph every time somebody changed sides.
+    ///
+    /// Everything else about the half you are leaving is parked, not discarded:
+    /// see `cyclesByPart`.
+    func setHalf(song: Song, partner: Song?) {
+        self.song = song
+        loadHalves(song: song, partner: partner)
+        cycleVoided = true
+        recomputeTiming()
+    }
+
+    private func loadHalves(song: Song, partner: Song?) {
+        notes = song.notes.sorted { $0.timeMs < $1.timeMs }
+        judged = Array(repeating: false, count: notes.count)
+        outcomes = Array(repeating: nil, count: notes.count)
+        guideFired = Array(repeating: false, count: notes.count)
+        partnerNotes = (partner?.notes ?? []).sorted { $0.timeMs < $1.timeMs }
+        partnerFired = Array(repeating: false, count: partnerNotes.count)
     }
     
     func start() {
@@ -201,15 +279,26 @@ final class PlayEngine {
         startHostTime = CACurrentMediaTime()
     }
     
-    /// Shift the clock forward to absorb a pause (§13.4 .paused).
-    func adjustStart(by seconds: Double) {
-        startHostTime += seconds
-    }
-    
     func setTempoScale(_ scale: Double) {
-        guard role == .demo || mode != .play else { return }
         tempoScale = max(0.25, scale)
         recomputeTiming()
+    }
+
+    /// Stop the session and hand back what was played.
+    ///
+    /// Only COMPLETED passes are reported. The one in progress when the player
+    /// hits stop is discarded: it is a fragment of a figure, it would score as
+    /// near-total failure on the notes it never reached, and it would land in
+    /// the graph as a cliff at the end of every single session.
+    func end() {
+        guard !isFinished else { return }
+        isFinished = true
+        cue?.stop()
+        onComplete?(SongResult(songTitle: song.title,
+                               subtitle: sessionSubtitle,
+                               judgements: judgementsByPart[song.id] ?? [],
+                               cycles: cyclesByPart[song.id] ?? [],
+                               landedNotes: landedNotes))
     }
 
     private func recomputeTiming() {
@@ -224,6 +313,15 @@ final class PlayEngine {
     }
     
     private func scaledTime(_ note: Note) -> Double { Double(note.timeMs) / tempoScale }
+
+    /// Where an absolute beat sits in the 32-beat colotomic cycle, counted from
+    /// the first slot of the figure rather than from the start of the session.
+    /// Negative beats (the count-in) wrap, so the lead-in is the tail of a cycle
+    /// rather than a separate thing.
+    private func colotomicIndex(forBeat beat: Int) -> Int {
+        let fromFigure = beat - introBeats
+        return ((fromFigure % 32) + 32) % 32
+    }
     
     // MARK: - Frame tick
     
@@ -248,24 +346,25 @@ final class PlayEngine {
             //R The demo and the hand-over used to be two loops of one session,
             //R which meant sitting through the whole figure before playing a
             //R note. They are separate screens now, so the role decides.
-            phase = (role == .demo) ? .example : .userTurn
+            phase = .userTurn
 
             if idx != lastLoopIndex {
+                //R Close the pass that just ended BEFORE the arrays are wiped —
+                //R this is the one moment its score is final, and the turn of
+                //R the cycle is also the only place a running total can be cut
+                //R without splitting a note's judgement across two passes.
+                if lastLoopIndex >= 0 { closeCycle(index: lastLoopIndex) }
                 lastLoopIndex = idx
+                tally = CycleTally(startMs: patternOriginMs)
+                cycleVoided = false
                 judged = Array(repeating: false, count: notes.count)
                 outcomes = Array(repeating: nil, count: notes.count)
+                guideFired = Array(repeating: false, count: notes.count)
                 partnerFired = Array(repeating: false, count: partnerNotes.count)
                 flashes = [:]
-                if mode == .practice { practiceIndex = 0 }
             }
         }
-
-        //R The gangsa samples belong to the example. Cut whatever is still
-        //R ringing the moment "Your turn" starts, so the player isn't listening
-        //R to the app while they're supposed to be playing.
-        if phase != previousPhase, previousPhase == .example {
-            cue?.stopKeySamples()
-        }
+        _ = previousPhase
 
         var states: [Int: KeyRenderState] = [:]
         
@@ -280,25 +379,26 @@ final class PlayEngine {
         currentBeatIndex = max(0, beatIndex)
         if beatIndex != lastBeatIndex, currentTimeMs >= 0 {
             lastBeatIndex = beatIndex
-            if colotomicAudible {
-                switch beatIndex % 32 {
-                case 0:
-                    cue?.playGong()
-                    cue?.playKajar()
+            //R Unconditional. The colotomic frame is what everything else is
+            //R measured against — silence it and the figure floats free, with
+            //R nothing to be early or late against.
+            switch colotomicIndex(forBeat: beatIndex) {
+            case 0:
+                cue?.playGong()
+                cue?.playKajar()
 
-                case 4, 8, 12:
-                    cue?.playKajar()
+            case 4, 8, 12:
+                cue?.playKajar()
 
-                case 16:
-                    cue?.playKempur()
-                    cue?.playKajar()
+            case 16:
+                cue?.playKempur()
+                cue?.playKajar()
 
-                case 20, 24, 28:
-                    cue?.playKajar()
+            case 20, 24, 28:
+                cue?.playKajar()
 
-                default:
-                    break
-                }
+            default:
+                break
             }
             if metronomeEnabled { cue?.playClick() }
         }
@@ -313,53 +413,30 @@ final class PlayEngine {
         switch phase {
         case .countIn:
             break
-        case .example:
-            tickExample(now: now, patternTime: patternTime, states: &states)
         case .userTurn:
-            //R The bilah cue in "Your turn" is now driven purely by the clock, so
-            //R it always names the same key as the number sitting on the strike
-            //R line below. Play judges first, so a note it retires this frame
-            //R doesn't get cued.
-            if mode == .practice {
-                tickUserTurnCue(patternTime: patternTime, beatMs: beatMs, states: &states)
-                tickPractice(patternTime: patternTime, states: &states)
-            } else {
-                tickPlay(now: now, patternTime: patternTime, states: &states)
-                tickUserTurnCue(patternTime: patternTime, beatMs: beatMs, states: &states)
-            }
+            //R Judge first, so a note retired this frame doesn't also get cued.
+            tickPlay(now: now, patternTime: patternTime, states: &states)
+            tickUserTurnCue(patternTime: patternTime, beatMs: beatMs, states: &states)
+            tickGuide(patternTime: patternTime)
         }
-        
+
         renderStates = states
-        noteProgress = noteProgress(patternTime: patternTime)
-        rebuildTrack(beatMs: beatMs)
-        checkCompletion(now: now)
+        playhead = patternMs > 0 ? min(1, max(0, patternTime / patternMs)) : 0
+        rebuildTrack(patternTime: patternTime, beatMs: beatMs)
     }
 
-    /// Where the playhead sits in note-index space: `2.5` means halfway between
-    /// the third and fourth note. Interpolating between the real note times is
-    /// what keeps the scrolling row honest on figures whose strokes are unevenly
-    /// spaced (a rest between two notes is twice the gap of two adjacent ones).
-    private func noteProgress(patternTime: Double) -> Double {
-        guard let first = notes.first else { return 0 }
-        guard notes.count > 1 else {
-            return patternTime >= scaledTime(first) ? 0 : -1
-        }
-        let firstGap = scaledTime(notes[1]) - scaledTime(first)
-        if patternTime <= scaledTime(first) {
-            return (patternTime - scaledTime(first)) / max(1, firstGap)
-        }
-        for i in 0..<(notes.count - 1) {
-            let start = scaledTime(notes[i])
-            let end = scaledTime(notes[i + 1])
-            if patternTime < end {
-                return Double(i) + (patternTime - start) / max(1, end - start)
-            }
-        }
-        let last = notes.count - 1
-        let lastGap = scaledTime(notes[last]) - scaledTime(notes[last - 1])
-        return Double(last) + (patternTime - scaledTime(notes[last])) / max(1, lastGap)
+    /// Bank the pass that just ended.
+    private func closeCycle(index: Int) {
+        guard !cycleVoided, tally.noteCount > 0 else { return }
+        cyclesByPart[song.id, default: []].append(
+            CycleScore(index: index,
+                       startMs: tally.startMs,
+                       noteCount: tally.noteCount,
+                       score: tally.score,
+                       onBeat: tally.onBeat,
+                       mistakes: tally.mistakes))
     }
-    
+
     //BATAS SUCI
     //        func ensure(_ i: Int) -> KeyRenderState { states[i] ?? KeyRenderState() }
     //
@@ -383,18 +460,6 @@ final class PlayEngine {
     //        checkCompletion(now: now)
     //    }
     
-    //R The bilah cue itself: fill + approach ring for every note inside the
-    //R lead-in window. Shared by the example and by "Your turn" (both modes) so
-    //R the guidance is identical and unbroken across the phase change.
-    private func applyTimedCues(patternTime: Double, states: inout [Int: KeyRenderState]) {
-        for i in notes.indices where !judged[i] {
-            let until = scaledTime(notes[i]) - patternTime
-            if until <= approachWindowMs && until >= -missWindowMs {
-                applyCue(&states, key: notes[i].keyIndex, until: until)
-            }
-        }
-    }
-
     //R --------------------------------------------------------------------
     //R "Your turn" cue.
     //R
@@ -455,6 +520,27 @@ final class PlayEngine {
         }
     }
 
+    /// Your own half, played back beside you when you ask for it.
+    ///
+    /// This is what is left of the demo screen. Watching the figure used to mean
+    /// leaving the instrument and going somewhere else to hear it; now it is a
+    /// switch you flip mid-practice, the cycle never stops, and you can turn it
+    /// off again the moment the shape comes back to you.
+    ///
+    /// It never touches judgement. The bilah still light from the clock and your
+    /// strikes are still scored against it, so playing along with the guide is
+    /// scored exactly like playing without it.
+    private func tickGuide(patternTime: Double) {
+        guard yourVoiceAudible, !notes.isEmpty else { return }
+        for i in notes.indices where !guideFired[i] {
+            let until = scaledTime(notes[i]) - patternTime
+            if until <= 0, until > -60 {
+                guideFired[i] = true
+                cue?.playKeySample(index: notes[i].keyIndex, pan: yourPan)
+            }
+        }
+    }
+
     /// The partner's half — sounded, never judged and never cued on the bilah:
     /// those keys are not yours to strike.
     private func tickPartner(patternTime: Double) {
@@ -464,25 +550,6 @@ final class PlayEngine {
             if until <= 0, until > -60 {
                 partnerFired[i] = true
                 cue?.playKeySample(index: partnerNotes[i].keyIndex, pan: partnerPan, volume: 0.85)
-            }
-        }
-    }
-
-    // The app demonstrates: highlight the bilah AND play its recorded sample.
-    private func tickExample(now: Double, patternTime: Double, states: inout [Int: KeyRenderState]) {
-        applyTimedCues(patternTime: patternTime, states: &states)   //R
-        for i in notes.indices where !judged[i] {
-            let until = scaledTime(notes[i]) - patternTime
-            let key = notes[i].keyIndex
-
-            if until <= 0, until > -40 {
-                judged[i] = true
-
-                // Muting your own half still SHOWS it on the bilah — you can
-                // watch the figure without hearing it played for you.
-                if yourVoiceAudible { cue?.playKeySample(index: key, pan: yourPan) }
-
-                flash(.hit, at: key, now: now)
             }
         }
     }
@@ -511,20 +578,6 @@ final class PlayEngine {
         //        }
     }
     
-    private func tickPractice(patternTime: Double, states: inout [Int: KeyRenderState]) {
-        //R The expected-key hold lived here; it froze on one bilah until onset
-        //R detection fired, which is what looked like lag. The highlight comes
-        //R from tickUserTurnCue now, so all practice adds is the damp hint.
-        guard let current = currentNoteIndex(patternTime: patternTime), current > 0 else { return }
-
-        // Damp hint on the previous key (§5.5) — teach it, don't score it.
-        let prev = notes[current - 1].keyIndex
-        guard prev != notes[current].keyIndex else { return }
-        var ps = states[prev] ?? KeyRenderState()
-        ps.damp = true
-        states[prev] = ps
-    }
-    
     private func applyCue(_ states: inout [Int: KeyRenderState], key: Int, until: Double) {
         var s = states[key] ?? KeyRenderState()
         let fill = 1 - max(0, until) / approachWindowMs
@@ -539,12 +592,9 @@ final class PlayEngine {
     
     func registerStrike(keyIndex: Int, hostTime: Double, confidence: Double) {
         guard !isFinished, phase.isUserPlaying else { return }
-        switch mode {
-        case .play: registerPlayStrike(keyIndex: keyIndex, hostTime: hostTime)
-        case .practice: registerPracticeStrike(keyIndex: keyIndex, hostTime: hostTime)
-        }
+        registerPlayStrike(keyIndex: keyIndex, hostTime: hostTime)
     }
-    
+
     private func registerPlayStrike(keyIndex: Int, hostTime: Double) {
         let atMs = (hostTime - startHostTime) * 1000 - patternOriginMs
         // Nearest unjudged note in time within the miss window.
@@ -569,124 +619,87 @@ final class PlayEngine {
         }
     }
     
-    private func registerPracticeStrike(keyIndex: Int, hostTime: Double) {
-        guard practiceIndex < notes.count else { return }
-        let expected = notes[practiceIndex].keyIndex
-
-        if keyIndex == expected {
-            // Self-paced practice: hitting expected key is always a green hit!
-            flash(.hitPerfect, at: keyIndex, now: hostTime)
-            cue?.playHit()
-            practiceIndex += 1
-        } else {
-            // Wrong key struck -> Pale White
-            flash(.wrongOrOffBeat, at: keyIndex, now: hostTime)
-        }
-    }
-    
     // MARK: - The river (§13.5)
 
-    /// Builds one frame of the river: the colotomic pulse (gong/kempur/kajar/
-    /// beat) and both halves' notes, all mapped from the same absolute clock so
-    /// the weave stays aligned. Time runs along x, pitch is the key index, and
-    /// the strike line sits at `Theme.strikeLineFraction`.
-    private func rebuildTrack(beatMs: Double) {
-        let lookahead = Theme.approachLookaheadSeconds
-        let strike = Theme.strikeLineFraction
-        let trail = Theme.approachTrailSeconds
-
-        func xFor(_ absMs: Double) -> Double? {
-            let untilSec = (absMs - currentTimeMs) / 1000
-            guard untilSec <= lookahead, untilSec >= -trail else { return nil }
-            //R Not clamped any more: a played stroke has to keep sliding left
-            //R off the edge, otherwise everything piles up on x = 0.
-            return strike + (untilSec / lookahead) * (1 - strike)
-        }
-
-        /// A note's own length, in the same units as `xFraction`.
-        func widthFor(_ note: Note) -> Double {
-            let seconds = Double(note.durationMs) / tempoScale / 1000
-            return (seconds / lookahead) * (1 - strike)
-        }
+    /// Builds one frame of the score: the figure laid out across one pattern,
+    /// and the colotomic pulse that falls inside this pass.
+    ///
+    /// Nothing here moves. Positions are `time / patternMs`, fixed for as long
+    /// as the figure is, so the shape on screen is the shape you are learning —
+    /// `playhead` is the only value that changes, and NotesRiver sweeps a line
+    /// with it.
+    ///
+    /// The pulse markers ARE rebuilt every frame, and have to be: the colotomic
+    /// cycle is 32 beats while a figure may be 8, 16 or 32 slots long, so a
+    /// short figure goes round several times per gong and the gong lands on a
+    /// different pass each time. Placing them from the absolute beat index is
+    /// what keeps that honest — on Ubitan Nyendok the gong dot correctly shows
+    /// up on one pass in four rather than on every one.
+    private func rebuildTrack(patternTime: Double, beatMs: Double) {
+        guard patternMs > 0 else { trackMarkers = []; cycleNotes = []; return }
 
         var marks: [TrackMarker] = []
-        let firstBeat = max(0, Int((currentTimeMs - trail * 1000) / beatMs))
-        let lastBeat = Int((currentTimeMs + lookahead * 1000) / beatMs) + 1
+        let firstBeat = Int((patternOriginMs / beatMs).rounded(.down))
+        let lastBeat = Int(((patternOriginMs + patternMs) / beatMs).rounded(.up))
         if lastBeat >= firstBeat {
             for b in firstBeat...lastBeat {
-                guard let x = xFor(Double(b) * beatMs) else { continue }
-                marks.append(
-                    TrackMarker(
-                        id: b * 10 + 1,
-                        kind: .kajar,
-                        xFraction: x
-                    )
-                )
-
-                switch b % 32 {
-                case 0:
-                    marks.append(
-                        TrackMarker(
-                            id: b * 10 + 2,
-                            kind: .gong,
-                            xFraction: x
-                        )
-                    )
-
-                case 16:
-                    marks.append(
-                        TrackMarker(
-                            id: b * 10 + 2,
-                            kind: .kempur,
-                            xFraction: x
-                        )
-                    )
-
-                default:
-                    break
+                let x = (Double(b) * beatMs - patternOriginMs) / patternMs
+                guard x >= 0, x < 1 else { continue }
+                marks.append(TrackMarker(id: b * 10 + 1, kind: .kajar, xFraction: x))
+                switch colotomicIndex(forBeat: b) {
+                case 0:  marks.append(TrackMarker(id: b * 10 + 2, kind: .gong, xFraction: x))
+                case 16: marks.append(TrackMarker(id: b * 10 + 2, kind: .kempur, xFraction: x))
+                default: break
                 }
             }
         }
         trackMarkers = marks
 
-        // Notes are only shown once the count-in is over.
-        guard phase != .countIn else { approachNotes = []; return }
-        var out: [ApproachNote] = []
+        // The figure appears once the gong has established the cycle.
+        guard phase != .countIn else { cycleNotes = []; return }
 
-        //R Three loops' worth of origins: the one just gone (its last strokes are
-        //R still sliding away to the left), the current one, and the next (so the
-        //R river never runs dry at the turn of the cycle).
-        for loop in -1...1 {
-            let origin = patternOriginMs + Double(loop) * patternMs
-            let suffix = loop == 0 ? "" : "\(loop)"
-
-            for i in notes.indices {
-                guard let x = xFor(origin + scaledTime(notes[i])) else { continue }
-                out.append(ApproachNote(id: "y\(suffix)-\(notes[i].id)",
-                                        keyIndex: notes[i].keyIndex,
-                                        voice: .yours,
-                                        xFraction: x,
-                                        widthFraction: widthFor(notes[i]),
-                                        outcome: loop == 0 ? outcomes[i] : nil))
-            }
-
-            for i in partnerNotes.indices {
-                guard let x = xFor(origin + scaledTime(partnerNotes[i])) else { continue }
-                out.append(ApproachNote(id: "p\(suffix)-\(partnerNotes[i].id)",
-                                        keyIndex: partnerNotes[i].keyIndex,
-                                        voice: .partner,
-                                        xFraction: x,
-                                        widthFraction: widthFor(partnerNotes[i])))
-            }
+        func width(_ note: Note) -> Double {
+            min(0.25, Double(note.durationMs) / tempoScale / patternMs)
         }
-        approachNotes = out
+
+        let current = currentNoteIndex(patternTime: patternTime)
+        var out: [CycleNote] = []
+        out.reserveCapacity(notes.count + partnerNotes.count)
+
+        for i in notes.indices {
+            out.append(CycleNote(id: "y-\(notes[i].id)",
+                                 keyIndex: notes[i].keyIndex,
+                                 voice: .yours,
+                                 x: scaledTime(notes[i]) / patternMs,
+                                 width: width(notes[i]),
+                                 outcome: outcomes[i],
+                                 isCurrent: i == current))
+        }
+        for i in partnerNotes.indices {
+            out.append(CycleNote(id: "p-\(partnerNotes[i].id)",
+                                 keyIndex: partnerNotes[i].keyIndex,
+                                 voice: .partner,
+                                 x: scaledTime(partnerNotes[i]) / patternMs,
+                                 width: width(partnerNotes[i])))
+        }
+        cycleNotes = out
     }
-    
+
     // MARK: - Helpers
     
     private func record(_ result: JudgementResult, at key: Int, now: Double, playSound: Bool, timingErrorMs: Double = 0, storeResult: Bool = true) {
         let judgement = NoteJudgement(keyIndex: key, result: result, timingErrorMs: timingErrorMs)
-        if storeResult { results.append(judgement) }
+        if storeResult {
+            judgementsByPart[song.id, default: []].append(judgement)
+            if result.onBeat { landedNotes += 1 }
+            //R The pass in progress, tallied as it goes. Banked at the turn of
+            //R the cycle by `closeCycle` — see there for why only whole passes
+            //R reach the graph.
+            tally.noteCount += 1
+            tally.score += result.score
+            if result.onBeat { tally.onBeat += 1 }
+            if result == .miss || result == .wrongKey { tally.mistakes += 1 }
+        }
         lastJudgement = judgement
         switch result {
         case .perfect:
@@ -712,36 +725,4 @@ final class PlayEngine {
         flashes[key] = (kind, now + flashDuration)
     }
     
-    //    private func rebuildApproachTrack() {
-    //        guard mode == .play else { approachNotes = []; return }
-    //        let lookahead = Theme.approachLookaheadSeconds
-    //        var out: [ApproachNote] = []
-    //        for i in notes.indices where !judged[i] {
-    //            let untilSec = (scaledTime(notes[i]) - currentTimeMs) / 1000
-    //            guard untilSec <= lookahead, untilSec >= -0.2 else { continue }
-    //            let strike = Theme.strikeLineFraction
-    //            let x = strike + (untilSec / lookahead) * (1 - strike)
-    //            out.append(ApproachNote(id: notes[i].id, keyIndex: notes[i].keyIndex, xFraction: min(1, max(0, x))))
-    //        }
-    //        approachNotes = out
-    //    }
-    
-    private func checkCompletion(now: Double) {
-        //R The demo loops until the player says they're ready; only the scored
-        //R run ends by itself, and now after ONE pass — the example pass it used
-        //R to sit through lives on its own screen.
-        guard role == .practice, mode == .play else { return }
-        if loopIndex >= 1 { finish() }
-    }
-    
-    private func finish() {
-        guard !isFinished else { return }
-        isFinished = true
-        cue?.stop()
-        if mode == .play {
-            onComplete?(SongResult(songTitle: song.title, subtitle: sessionSubtitle, judgements: results))
-        } else {
-            onComplete?(nil) // practice: no score
-        }
-    }
 }

@@ -2,16 +2,24 @@
 //  PlayView.swift
 //  Kotek
 //
-//  The core loop screen (PRD §4 Flow C). Live camera feed + overlay guidance,
-//  driven by the PlayEngine on a display link. The river runs along the bottom
-//  showing both halves against the gong cycle; the header tracks the cycle
-//  count. Handles countdown, pause, and the live strike → judgement wiring from
-//  vision (and audio, when a baseline confirms strikes).
+//  THE screen (PRD §4 Flow C). Live camera feed + overlay guidance, driven by
+//  the PlayEngine on a display link. The score sits along the bottom showing
+//  both halves against the gong cycle; the header counts the passes. Handles the
+//  countdown and the live strike → judgement wiring from vision (and audio, when
+//  a baseline confirms strikes).
 //
-//  This screen is the player's turn only. Watching and hearing the figure
-//  happens first, on its own screen (WatchView), so after the gong count-in the
-//  instrument is handed straight over — with your partner's half still playing
-//  beside you.
+//  Everything a session used to be configured by now lives HERE, because a
+//  gangsa player's verdict on the old flow — kotekan, then which half, then how
+//  many cycles, then a demo to sit through — was that it is too much to get
+//  through before you can play a note. So:
+//
+//    · The figure loops until you stop it. There is no cycle count to choose
+//      and no end to reach; the counter only goes up.
+//    · Which half you play is a toggle up here, swappable mid-cycle without the
+//      gong stopping.
+//    · The demo is a switch: un-mute your own half and the app plays along.
+//    · Scoring happens quietly in the background. Nothing fails, nothing
+//      interrupts, and the score is only shown when you end the session.
 //
 
 import SwiftUI
@@ -37,8 +45,6 @@ struct PlayView: View {
     private let visionTeachingConfidence: Double = 0.75
 
     @State private var countdown: Int? = 3
-    @State private var paused = false
-    @State private var pauseStartedAt: Double = 0
 
     // Kept for the strike wiring; not surfaced during play (clean overlay).
     @State private var lastKey: Int?
@@ -46,7 +52,8 @@ struct PlayView: View {
     @State private var unclearAt: Double?
 
     var body: some View {
-        ZStack {
+        @Bindable var app = app
+        return ZStack {
             // 1. Camera preview edge-to-edge
             CameraPreview(camera: camera, forwardsRotation: true)
                 .ignoresSafeArea()
@@ -55,33 +62,37 @@ struct PlayView: View {
             OverlayView(keys: app.profile.keys, engine: engine)
                 .ignoresSafeArea()
 
-            // 3. Floating chrome (top bar + scrolling stroke row). This sits in
-            // front of the camera — as a `.background` it was drawn behind the
-            // opaque preview layer and never showed up at all.
+            // 3. Floating chrome (top bar, then the session controls and the
+            // score along the bottom). This sits in FRONT of the camera — as a
+            // `.background` it was drawn behind the opaque preview layer and
+            // never showed up at all.
             VStack(spacing: 0) {
                 topBar
                     .background(Theme.ink.opacity(0.75))
 
                 Spacer()
 
-                if app.riverVisible {
-                    NotesRiver(engine: engine,
-                               keyRange: keyRange,
-                               keyCount: app.profile.keys.count,
-                               yourHalf: app.chosenHalf)
-                }
-            }
+                VStack(spacing: 10) {
+                    HStack(spacing: 10) {
+                        halfSwitch
+                        Spacer()
+                        VoiceMixer(yourHalf: app.chosenHalf,
+                                   yourVoiceAudible: $app.yourVoiceAudible,
+                                   partnerAudible: $app.partnerAudible)
+                    }
+                    .padding(.horizontal, 24)
 
-            if countdown == nil, !paused {
-                phaseBanner
+                    if app.riverVisible {
+                        NotesRiver(engine: engine,
+                                   keyRange: keyRange,
+                                   keyCount: app.profile.keys.count,
+                                   yourHalf: app.chosenHalf)
+                    }
+                }
             }
 
             if let countdown {
                 CountdownOverlay(value: countdown)
-            }
-
-            if paused {
-                pauseOverlay
             }
         }
         .background {
@@ -101,13 +112,59 @@ struct PlayView: View {
         .onAppear(perform: setup)
         .onDisappear(perform: teardown)
         .task { await runVisionDetection() }
+        // Swapping halves mid-session. The engine keeps the clock and the score;
+        // all this has to do is hand it the new note arrays and re-point vision
+        // at the bilah that are now yours to strike.
+        .onChange(of: app.chosenHalf) { _, half in
+            guard let song = app.selectedSong else { return }
+            // The score reports the half you finished on, so the subtitle above
+            // it has to name that one and not the one you started with.
+            if let k = app.selectedKotekan {
+                engine.sessionSubtitle = "\(k.name) · \(half.title)"
+            }
+            engine.setHalf(song: song, partner: app.partnerSong)
+            let active = playedKeys
+            Task { await fusion?.setActiveKeys(active) }
+            audio.setDecompositionKeys(active)
+        }
+        .onChange(of: app.yourVoiceAudible) { _, new in engine.yourVoiceAudible = new }
+        .onChange(of: app.partnerAudible) { _, new in engine.partnerAudible = new }
     }
 
     // MARK: - Chrome
 
     private var sessionTitle: String {
-        guard let k = app.selectedKotekan else { return "" }
-        return "\(k.name) · \(app.chosenHalf.title)"
+        app.selectedKotekan?.name ?? ""
+    }
+
+    /// Change sides without stopping. The gong keeps going, the count keeps
+    /// climbing and everything already scored is kept — the engine swaps the
+    /// note arrays under a clock that never pauses, so the new half lands on
+    /// the same pulse the old one left.
+    ///
+    /// It sits beside the score rather than in the top bar because the score is
+    /// what it changes: tapping Sangsih swaps which row of blocks is solid and
+    /// numbered, directly above the control that did it.
+    private var halfSwitch: some View {
+        HStack(spacing: 0) {
+            ForEach([KotekanHalf.polos, .sangsih]) { half in
+                let selected = app.chosenHalf == half
+                Button { app.setHalf(half) } label: {
+                    Text(half.title)
+                        .font(.sans(12, weight: .semibold))
+                        .textCase(.uppercase)
+                        .tracking(1.4)
+                        .foregroundStyle(selected ? Theme.ink : Theme.copper)
+                        .padding(.vertical, 7)
+                        .padding(.horizontal, 14)
+                        .background(selected ? Theme.copper : .clear, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .padding(2)
+        .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1))
     }
 
     private var topBar: some View {
@@ -122,9 +179,7 @@ struct PlayView: View {
 
             // Its own view so the clock ticking doesn't re-evaluate the whole
             // screen sixty times a second just to move a counter.
-            CycleCounter(engine: engine,
-                         strokesPerCycle: max(1, app.selectedKotekan?.strokeCount(app.chosenHalf) ?? 1),
-                         totalCycles: app.chosenCycles)
+            CycleCounter(engine: engine)
 
             Spacer()
 
@@ -140,48 +195,26 @@ struct PlayView: View {
             .buttonStyle(.plain)
             .padding(.trailing, 10)
 
-            Button { pause() } label: {
-                Image(systemName: "xmark")
-                    .font(.sans(15, weight: .medium))
+            // Spelled out, not an X. This is the only way out of a session
+            // that never ends by itself, so it has to be findable — and a bare
+            // glyph in a corner is too easy to hit by accident for something
+            // that closes the thing you are in the middle of doing.
+            Button { endPractice() } label: {
+                Text("End practice")
+                    .font(.sans(13, weight: Theme.buttonWeight))
+                    .textCase(.uppercase)
+                    .tracking(Theme.buttonTracking)
                     .foregroundStyle(Theme.cream)
-                    .frame(width: 34, height: 34)
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.cream.opacity(0.3), lineWidth: 1))
+                    .padding(.horizontal, 16)
+                    .frame(height: 34)
+                    .overlay(RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Theme.cream.opacity(0.45), lineWidth: 1))
+                    .contentShape(RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 14)
-    }
-
-    /// Names the current session phase so the demo → hand-over reads clearly.
-    /// Uses the shared `PhaseBanner` chrome component.
-    private var phaseBanner: some View {
-        VStack {
-            Spacer().frame(height: 70)
-            PhaseBanner(phase: engine.phase)
-                .animation(.easeInOut(duration: 0.25), value: engine.phase)
-            Spacer()
-        }
-    }
-
-    private var pauseOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.65).ignoresSafeArea()
-            VStack(spacing: 24) {
-                Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
-                HStack(spacing: 16) {
-                    PillButton(title: "Resume", style: .filled) { resume() }
-                    PillButton(title: "Watch again", style: .outlined, tint: Theme.copper) {
-                        teardown()
-                        app.watchAgain()
-                    }
-                    PillButton(title: "Quit", style: .outlined, tint: Theme.copper) {
-                        teardown()
-                        app.backToKotekan()
-                    }
-                }
-            }
-        }
     }
 
     // MARK: - The river (§13.5)
@@ -210,22 +243,22 @@ struct PlayView: View {
         engine.metronomeEnabled = app.metronomeEnabled
         engine.referenceToneEnabled = app.referenceToneEnabled
         if let k = app.selectedKotekan {
-            engine.sessionSubtitle = "\(k.name) · \(app.chosenHalf.title) · \(app.chosenCycles)×"
+            engine.sessionSubtitle = "\(k.name) · \(app.chosenHalf.title)"
         }
         engine.onComplete = { result in
             Task { @MainActor in
                 teardown()
-                if let result { app.finish(result: result) } else { app.practiceFinished() }
+                if let result { app.finish(result: result) } else { app.backToKotekan() }
             }
         }
 
         // Your partner keeps playing the other half beside you (§7) unless it is
         // muted — the mixer on the watch screen carries its choices in here.
         engine.partnerAudible = app.partnerAudible
-        engine.colotomicAudible = app.colotomicAudible
+        engine.yourVoiceAudible = app.yourVoiceAudible
         if let song = app.selectedSong {
-            engine.configure(song: song, partner: app.partnerSong, mode: app.playMode,
-                             profile: app.profile, tempoScale: app.tempoScale, role: .practice)
+            engine.configure(song: song, partner: app.partnerSong,
+                             profile: app.profile, tempoScale: app.tempoScale)
         }
 
         let fusion = StrikeFusion(frames: camera.frameBuffer,
@@ -243,15 +276,11 @@ struct PlayView: View {
         }
 
         visionDetector.reset()
-        // Usually a no-op now: the ear is brought up on the demo screen so this
-        // transition does not have to wait for the audio hardware. Kept for the
-        // paths that arrive here without passing through it.
         try? audio.start(profile: app.profile)
-        // The mic has been live throughout the demo, listening to the app's own
-        // cues coming back off the speaker. None of that is the player, so the
-        // detector starts the run with an empty ring and no pending onsets —
-        // otherwise the example's last strokes could be judged as the first of
-        // the session.
+        //R Start with an empty ring and no pending onsets. Whatever the mic
+        //R picked up before the count-in — the room, the app's own cues coming
+        //R back off the speaker — is not the player, and it used to be able to
+        //R land as the first strike of the session.
         audio.resetDetector()
         // Let the ear form a second opinion, on the same bilah the eye is watching.
         audio.setKeyOpinionsEnabled(true)
@@ -263,7 +292,7 @@ struct PlayView: View {
         // Wire audio onset detection to immediately resolve key via vision:
         audio.onStrikeDetected = { hostTime in
             Task { @MainActor in
-                guard countdown == nil, !paused, !engine.isFinished else { return }
+                guard countdown == nil, !engine.isFinished else { return }
                 if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                     applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                     // Tally what the ear would have said, whether or not it is
@@ -295,7 +324,7 @@ struct PlayView: View {
         if useAudioConfirmation {
             audio.onConfirmedStrike = { hostTime in
                 Task { @MainActor in
-                    guard countdown == nil, !paused, !engine.isFinished else { return }
+                    guard countdown == nil, !engine.isFinished else { return }
                     if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                         applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                     }
@@ -329,7 +358,7 @@ struct PlayView: View {
             // stays high while the mallet lingers, so a rising-edge detector
             // fires once, latches, and then only ever adds phantoms.
             if !app.audioTriggersStrikes,
-               countdown == nil, !paused, !engine.isFinished,
+               countdown == nil, !engine.isFinished,
                let (scores, hostTime) = await fusion?.latestScores() {
                 let fired = visionDetector.process(scores: scores)
                 if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
@@ -348,20 +377,13 @@ struct PlayView: View {
         engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
     }
 
-    private func pause() {
-        guard countdown == nil, !paused else { return }
-        paused = true
-        pauseStartedAt = CACurrentMediaTime()
+    /// End the session and go to the score. `engine.end()` calls back through
+    /// `onComplete`, which tears down and navigates — so there is one exit path
+    /// whether the player pressed the button or something else stopped the run.
+    private func endPractice() {
+        guard countdown == nil else { return }
         displayLink.stop()
-        audio.stop()
-    }
-
-    private func resume() {
-        engine.adjustStart(by: CACurrentMediaTime() - pauseStartedAt)
-        try? audio.start(profile: app.profile)
-        visionDetector.reset()
-        displayLink.start()
-        paused = false
+        engine.end()
     }
 
     private func teardown() {
@@ -382,18 +404,16 @@ struct PlayView: View {
     }
 }
 
-/// "Cycle 3 / 8" — which time round the gong cycle the player is on, counted in
-/// strokes of the chosen half rather than wall-clock time, so the count-in
-/// doesn't bleed into it. Reads the engine itself to keep the per-frame
-/// invalidation off the rest of the screen.
+/// "Cycle 12" — how many times round the figure has been. No denominator: the
+/// session runs until the player stops it, so there is nothing to be out of.
+///
+/// Reads the engine itself to keep the per-frame invalidation off the rest of
+/// the screen.
 private struct CycleCounter: View {
     let engine: PlayEngine
-    let strokesPerCycle: Int
-    let totalCycles: Int
 
     var body: some View {
-        let cycle = min(totalCycles, Int(max(0, engine.noteProgress)) / strokesPerCycle + 1)
-        Text("Cycle \(cycle) / \(totalCycles)")
+        Text(engine.phase == .countIn ? "Count-in" : "Cycle \(engine.loopIndex + 1)")
             .font(.sans(14))
             .foregroundStyle(Theme.inkStone)
     }
