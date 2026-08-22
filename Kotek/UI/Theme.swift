@@ -144,6 +144,17 @@ enum Theme {
 
     static let keyOutlineWidth: CGFloat = 3
     static let keyCornerRadius: CGFloat = 6
+    /// Practice speeds, slowest first. 1× is the tempo the figure is notated
+    /// at; below it is for getting a shape into the hands, above it is for
+    /// proving it is actually there.
+    static let tempoScales: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5]
+
+    /// "0.75×". Trailing zeroes trimmed — "1.0×" beside "0.75×" reads as a
+    /// precision the setting does not have.
+    static func tempoLabel(_ scale: Double) -> String {
+        String(format: "%g×", scale)
+    }
+
     //R The approach-track geometry lived here — strike line at 0.15, three
     //R seconds of lookahead, 0.8s of trail. All of it belonged to a score that
     //R scrolled. NotesRiver draws one still cycle now and has no lookahead to

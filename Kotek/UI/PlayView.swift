@@ -75,6 +75,7 @@ struct PlayView: View {
                 VStack(spacing: 10) {
                     HStack(spacing: 10) {
                         halfSwitch
+                        tempoPicker
                         Spacer()
                         VoiceMixer(yourHalf: app.chosenHalf,
                                    yourVoiceAudible: $app.yourVoiceAudible,
@@ -115,17 +116,17 @@ struct PlayView: View {
         // Swapping halves mid-session. The engine keeps the clock and the score;
         // all this has to do is hand it the new note arrays and re-point vision
         // at the bilah that are now yours to strike.
-        .onChange(of: app.chosenHalf) { _, half in
+        .onChange(of: app.chosenHalf) { _, _ in
             guard let song = app.selectedSong else { return }
-            // The score reports the half you finished on, so the subtitle above
-            // it has to name that one and not the one you started with.
-            if let k = app.selectedKotekan {
-                engine.sessionSubtitle = "\(k.name) · \(half.title)"
-            }
+            engine.sessionSubtitle = sessionSubtitle
             engine.setHalf(song: song, partner: app.partnerSong)
             let active = playedKeys
             Task { await fusion?.setActiveKeys(active) }
             audio.setDecompositionKeys(active)
+        }
+        .onChange(of: app.tempoScale) { _, new in
+            engine.setTempoScale(new)
+            engine.sessionSubtitle = sessionSubtitle
         }
         .onChange(of: app.yourVoiceAudible) { _, new in engine.yourVoiceAudible = new }
         .onChange(of: app.partnerAudible) { _, new in engine.partnerAudible = new }
@@ -135,6 +136,16 @@ struct PlayView: View {
 
     private var sessionTitle: String {
         app.selectedKotekan?.name ?? ""
+    }
+
+    /// What the results screen is a score OF. Both the half and the speed are
+    /// in it because the score is parked per half AND per speed — eight cycles
+    /// at 0.5× and eight at 1.5× are not the same achievement, and a headline
+    /// number that does not say which one it belongs to invites the comparison
+    /// it cannot support.
+    private var sessionSubtitle: String {
+        let name = app.selectedKotekan?.name ?? ""
+        return "\(name) · \(app.chosenHalf.title) · \(Theme.tempoLabel(app.tempoScale))"
     }
 
     /// Change sides without stopping. The gong keeps going, the count keeps
@@ -165,6 +176,45 @@ struct PlayView: View {
         }
         .padding(2)
         .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1))
+    }
+
+    /// Speed, as a menu rather than a row of five pills.
+    ///
+    /// Two segmented controls side by side on a camera screen is more chrome
+    /// than the figure can spare, and unlike the half switch this is not a
+    /// comparison — you know which speed you want, you just need to reach it.
+    /// The current value stays on the button so the setting is readable without
+    /// opening anything.
+    ///
+    /// Changing it never stops the music: the engine rebases its clock so the
+    /// beat you are on survives the change. See `PlayEngine.setTempoScale`.
+    private var tempoPicker: some View {
+        @Bindable var app = app
+        return Menu {
+            Picker("Tempo", selection: $app.tempoScale) {
+                ForEach(Theme.tempoScales, id: \.self) { scale in
+                    Text(Theme.tempoLabel(scale)).tag(scale)
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "metronome")
+                    .font(.symbol(12, weight: .semibold))
+                Text(Theme.tempoLabel(app.tempoScale))
+                    .font(.sans(12, weight: .semibold))
+                    .tracking(1)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.symbol(9, weight: .semibold))
+            }
+            .foregroundStyle(Theme.copper)
+            .padding(.vertical, 7)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 34)
+            .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .menuOrder(.fixed)
+        .accessibilityLabel("Tempo, \(Theme.tempoLabel(app.tempoScale))")
     }
 
     private var topBar: some View {
@@ -242,9 +292,7 @@ struct PlayView: View {
         engine.cue = cue
         engine.metronomeEnabled = app.metronomeEnabled
         engine.referenceToneEnabled = app.referenceToneEnabled
-        if let k = app.selectedKotekan {
-            engine.sessionSubtitle = "\(k.name) · \(app.chosenHalf.title)"
-        }
+        engine.sessionSubtitle = sessionSubtitle
         engine.onComplete = { result in
             Task { @MainActor in
                 teardown()

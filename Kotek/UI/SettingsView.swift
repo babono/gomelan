@@ -126,12 +126,15 @@ struct SettingsView: View {
 
                     section("Practice tempo") {
                         Picker("Tempo", selection: $app.tempoScale) {
-                            Text("50%").tag(0.5)
-                            Text("75%").tag(0.75)
-                            Text("100%").tag(1.0)
+                            ForEach(Theme.tempoScales, id: \.self) { scale in
+                                Text(Theme.tempoLabel(scale)).tag(scale)
+                            }
                         }
                         .pickerStyle(.segmented)
-                        .frame(maxWidth: 320)
+                        .frame(maxWidth: 400)
+
+                        Text("Also on the practice screen, where it can be changed without stopping. Above 1× is faster than the figure is notated.")
+                            .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 400)
                     }
 
                     section("Audio cues") {

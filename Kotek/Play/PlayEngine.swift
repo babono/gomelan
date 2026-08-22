@@ -144,9 +144,12 @@ final class PlayEngine {
     ///
     /// Keyed on the song id rather than on a `KotekanHalf` so the engine stays
     /// ignorant of what a half is — it is handed songs, and that is all it needs
-    /// to know to keep two ledgers apart.
+    /// to know to keep two ledgers apart. SPEED is part of the key for the same
+    /// reason the half is: eight cycles at half tempo and eight at 1.5× are not
+    /// the same achievement, and averaging them describes neither.
     private var cyclesByPart: [String: [CycleScore]] = [:]
     private var judgementsByPart: [String: [NoteJudgement]] = [:]
+    private var partKey: String { "\(song.id)@\(tempoScale)" }
     /// Notes that landed anywhere this session, either half. The gangsa's grade.
     private var landedNotes = 0
     private var tally = CycleTally()
@@ -279,10 +282,34 @@ final class PlayEngine {
         startHostTime = CACurrentMediaTime()
     }
     
+    /// Change speed mid-session without the music jumping.
+    ///
+    /// Everything downstream is derived from `beatMs`, which tempo divides — so
+    /// naively assigning it moves the pattern boundaries under a clock that has
+    /// not moved. `currentTimeMs` stays put while `patternMs` shrinks, and going
+    /// to 1.5× would throw the cycle counter forward by a third of the session
+    /// and land the colotomic pulse somewhere unrelated to where the gong just
+    /// was.
+    ///
+    /// So the clock is rebased instead: measure where we are in BEATS, which is
+    /// the one position that should survive a tempo change, then move
+    /// `startHostTime` so the new beat length puts us at the same beat. The
+    /// fractional part carries too, so nothing re-triggers and nothing is
+    /// skipped — the next beat simply arrives sooner or later than the last one
+    /// did.
     func setTempoScale(_ scale: Double) {
-        tempoScale = max(0.25, scale)
+        let next = min(2, max(0.25, scale))
+        guard abs(next - tempoScale) > 0.001 else { return }
+        let beatsElapsed = currentTimeMs / beatMs
+        tempoScale = next
         recomputeTiming()
+        startHostTime = CACurrentMediaTime() - beatsElapsed * beatMs / 1000
+        //R The pass in progress spans two speeds, so it is not a fair reading of
+        //R either. Same reasoning as a mid-pass change of half.
+        cycleVoided = true
     }
+
+    private var beatMs: Double { 60000.0 / Double(song.bpm) / tempoScale }
 
     /// Stop the session and hand back what was played.
     ///
@@ -296,13 +323,12 @@ final class PlayEngine {
         cue?.stop()
         onComplete?(SongResult(songTitle: song.title,
                                subtitle: sessionSubtitle,
-                               judgements: judgementsByPart[song.id] ?? [],
-                               cycles: cyclesByPart[song.id] ?? [],
+                               judgements: judgementsByPart[partKey] ?? [],
+                               cycles: cyclesByPart[partKey] ?? [],
                                landedNotes: landedNotes))
     }
 
     private func recomputeTiming() {
-        let beatMs = 60000.0 / Double(song.bpm) / tempoScale
         introMs = Double(introBeats) * beatMs
         //R The loop has to be the figure's MUSICAL length (whole gong cycles),
         //R not the end of its last note — the last slots of a kotekan are often
@@ -328,8 +354,8 @@ final class PlayEngine {
     func tick(now: Double) {
         guard !isFinished else { return }
         currentTimeMs = (now - startHostTime) * 1000
-        
-        let beatMs = 60000.0 / Double(song.bpm) / tempoScale
+
+        let beatMs = self.beatMs
         
         let previousPhase = phase   //R
 
@@ -428,7 +454,7 @@ final class PlayEngine {
     /// Bank the pass that just ended.
     private func closeCycle(index: Int) {
         guard !cycleVoided, tally.noteCount > 0 else { return }
-        cyclesByPart[song.id, default: []].append(
+        cyclesByPart[partKey, default: []].append(
             CycleScore(index: index,
                        startMs: tally.startMs,
                        noteCount: tally.noteCount,
@@ -690,7 +716,7 @@ final class PlayEngine {
     private func record(_ result: JudgementResult, at key: Int, now: Double, playSound: Bool, timingErrorMs: Double = 0, storeResult: Bool = true) {
         let judgement = NoteJudgement(keyIndex: key, result: result, timingErrorMs: timingErrorMs)
         if storeResult {
-            judgementsByPart[song.id, default: []].append(judgement)
+            judgementsByPart[partKey, default: []].append(judgement)
             if result.onBeat { landedNotes += 1 }
             //R The pass in progress, tallied as it goes. Banked at the turn of
             //R the cycle by `closeCycle` — see there for why only whole passes
