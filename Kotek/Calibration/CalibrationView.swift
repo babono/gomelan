@@ -88,7 +88,7 @@ struct CalibrationView: View {
             SecondaryButton(title: "Cancel", systemImage: "xmark") { cancel() }
             Spacer()
             VStack(spacing: 4) {
-                SectionLabel("Baseline · learn this gamelan's voice", color: Theme.copper)
+                SectionLabel("Baseline · learn this gangsa's voice", color: Theme.copper)
                 Text(learned ? "voice learned" : "listening")
                     .font(.sans(13))
                     .foregroundStyle(.white.opacity(0.7))
@@ -426,7 +426,7 @@ struct StrikeBaselineView: View {
         }
         // The profile written here carries the baseline template, so it is no
         // longer a trivial file.
-        busyMessage = "Saving the instrument…"
+        busyMessage = "Saving the gangsa…"
         Task {
             await app.baselineFinishedAsync()
             busyMessage = nil

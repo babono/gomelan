@@ -215,7 +215,7 @@ struct PlayView: View {
         engine.onComplete = { result in
             Task { @MainActor in
                 teardown()
-                if let result { app.finish(result: result) } else { app.backToKotekan() }
+                if let result { app.finish(result: result) } else { app.practiceFinished() }
             }
         }
 

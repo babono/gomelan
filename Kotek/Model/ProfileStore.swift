@@ -38,13 +38,13 @@ nonisolated enum ProfileStore {
         //R deleted instrument reappeared out of nowhere.
         if let data = try? Data(contentsOf: listUrl),
            let profiles = try? decoder.decode([InstrumentProfile].self, from: data) {
-            return profiles
+            return byRecency(profiles)
         }
 
         // Migrate a legacy single-profile file, once.
         if let legacyData = try? Data(contentsOf: legacyUrl),
            let single = try? decoder.decode(InstrumentProfile.self, from: legacyData) {
-            let migrated = [single]
+            let migrated = byRecency([single])
             saveAll(migrated)
             //R Migration is one-way. Leaving the old file behind is what let it
             //R come back a second time.
@@ -53,6 +53,25 @@ nonisolated enum ProfileStore {
         }
 
         return []
+    }
+
+    /// Most recently played first, so the rail opens on the instrument the
+    /// player is most likely to be sitting at right now.
+    ///
+    /// Sorted HERE rather than in the picker because `loadAll` is the one door
+    /// every read comes through — `AppState` refreshes `savedProfiles` from it
+    /// in nine places, and an ordering applied at the view would have to be
+    /// remembered at all nine.
+    ///
+    /// Ties break on name so the order is stable: two profiles created in the
+    /// same second used to swap places on every reload.
+    private static func byRecency(_ profiles: [InstrumentProfile]) -> [InstrumentProfile] {
+        profiles.sorted { a, b in
+            if a.recency == b.recency {
+                return a.name.localizedCaseInsensitiveCompare(b.name) == .orderedAscending
+            }
+            return a.recency > b.recency
+        }
     }
 
     /// Save the complete list of instrument profiles to Documents.

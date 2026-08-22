@@ -105,8 +105,22 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
     var keys: [InstrumentKey]
     /// Generic gangsa-strike baseline template (L2-normalised float vector).
     var strikeBaseline: [Float]? = nil
-    /// Timestamp when this profile was last used.
+    /// Timestamp when this profile was last PLAYED — written when a session
+    /// ends, not when the card is tapped. It is what orders the rail.
     var lastUsedAt: String? = nil
+
+    /// Sessions finished on this instrument, and the notes in them that landed
+    /// (right key, near enough the beat). Together they are the grade.
+    ///
+    /// Optional rather than `= 0` for a reason that has already cost this app
+    /// once: synthesized `Decodable` does NOT fall back to a property's default
+    /// when the key is missing, and `ProfileStore.loadAll` decodes the whole
+    /// list with `try?`. A non-optional new field would make every profile
+    /// saved before this build throw, and take the player's entire instrument
+    /// list down with it. Same reason `strikeBaseline` and `fingerprint` are
+    /// optional.
+    var sessionCount: Int? = nil
+    var accurateNotes: Int? = nil
 
     /// Whether this instrument has a learned strike-sound baseline.
     var hasLearnedBaseline: Bool { !(strikeBaseline?.isEmpty ?? true) }
@@ -115,6 +129,38 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
     var calibratedKeyCount: Int { keys.filter(\.isCalibrated).count }
 
     var isFullyCalibrated: Bool { !keys.isEmpty && calibratedKeyCount == keys.count }
+
+    var sessionsPlayed: Int { sessionCount ?? 0 }
+    var notesLanded: Int { accurateNotes ?? 0 }
+
+    /// This instrument's grade — see `Mastery`.
+    var mastery: Mastery { Mastery(notesLanded: notesLanded) }
+
+    var hasBeenPlayed: Bool { lastUsedAt != nil || sessionsPlayed > 0 }
+
+    var lastPlayedDate: Date? { InstrumentProfile.date(from: lastUsedAt) }
+
+    /// The sort key for the rail: last played, falling back to when the
+    /// instrument was created.
+    ///
+    /// The fallback is the whole point. Sorting purely on "last played" buries
+    /// an instrument the moment you finish setting it up — four steps of work
+    /// and it lands at the far end of the rail behind everything you have ever
+    /// used, which is exactly when you most want it in front of you.
+    var recency: Date {
+        lastPlayedDate ?? InstrumentProfile.date(from: createdAt) ?? .distantPast
+    }
+
+    /// ISO8601 in, `Date` out. A free function rather than a cached
+    /// `ISO8601DateFormatter`: this target is MainActor by default, so a shared
+    /// formatter would be main-actor isolated — and `ProfileStore`, which sorts
+    /// by these dates and is deliberately `nonisolated`, could not touch it.
+    static func date(from iso: String?) -> Date? {
+        guard let iso else { return nil }
+        return try? Date(iso, strategy: .iso8601)
+    }
+
+    static func nowISO() -> String { Date().formatted(.iso8601) }
 
     /// Resize the profile to `count` keys, laying them out evenly across the
     /// frame as a starting point for manual alignment.
@@ -169,5 +215,85 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
                 fingerprint: nil
             )
         }
+    }
+}
+
+/// How far an instrument has been taken — the grade on its card.
+///
+/// Counted in notes that LANDED (right key, near enough the beat), not sessions
+/// or minutes. Time-based grades are farmable by leaving the phone on the stand,
+/// and session counts reward starting rather than playing; this rewards the one
+/// thing the app is for. Practice mode adds nothing to it on purpose — practice
+/// waits for you, so every note lands eventually, and a grade you can reach by
+/// being slow is not a grade.
+///
+/// The rungs are the sections of a Balinese composition, in the order a piece
+/// moves through them: a free opening, the beginning proper, the long body, the
+/// quickening, the close. A piece gets faster and denser as it goes, which is
+/// the same shape a player's arc has — and it teaches five words worth knowing
+/// instead of "Level 3".
+struct Mastery: Equatable {
+    enum Rank: Int, CaseIterable {
+        case gineman, pengawit, pengawak, pengecet, pekaad
+
+        /// Notes at which this rung begins. Spaced so the first is a session or
+        /// two away (a 16-slot half over 8 cycles is ~64 notes) and the last is
+        /// months of real practice, not an afternoon.
+        var threshold: Int {
+            switch self {
+            case .gineman:  return 0
+            case .pengawit: return 200
+            case .pengawak: return 800
+            case .pengecet: return 2500
+            case .pekaad:   return 6000
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .gineman:  return "Gineman"
+            case .pengawit: return "Pengawit"
+            case .pengawak: return "Pengawak"
+            case .pengecet: return "Pengecet"
+            case .pekaad:   return "Pekaad"
+            }
+        }
+
+        /// One line of English, because a rank nobody can translate is a badge
+        /// rather than a lesson.
+        var gloss: String {
+            switch self {
+            case .gineman:  return "the free opening"
+            case .pengawit: return "the beginning"
+            case .pengawak: return "the body"
+            case .pengecet: return "the quickening"
+            case .pekaad:   return "the close"
+            }
+        }
+    }
+
+    let notes: Int
+    let rank: Rank
+
+    init(notesLanded: Int) {
+        let n = max(0, notesLanded)
+        notes = n
+        rank = Rank.allCases.last { n >= $0.threshold } ?? .gineman
+    }
+
+    var next: Rank? { Rank(rawValue: rank.rawValue + 1) }
+
+    /// 0…1 through the current rung. The top rung reads full: there is nothing
+    /// left to fill towards, and a bar that never completes is a treadmill.
+    var progress: Double {
+        guard let next else { return 1 }
+        let span = Double(next.threshold - rank.threshold)
+        guard span > 0 else { return 1 }
+        return min(1, max(0, Double(notes - rank.threshold) / span))
+    }
+
+    var notesToNext: Int? {
+        guard let next else { return nil }
+        return max(0, next.threshold - notes)
     }
 }

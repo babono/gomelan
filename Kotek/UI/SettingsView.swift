@@ -39,7 +39,7 @@ struct SettingsView: View {
                                     .font(.sans(13, weight: .medium))
                                     .foregroundStyle(Theme.cream.opacity(0.55))
 
-                                TextField("Instrument name", text: $draftName)
+                                TextField("Gangsa name", text: $draftName)
                                     .textFieldStyle(.plain)
                                     .font(.serif(22))
                                     .foregroundStyle(Theme.cream)
@@ -66,20 +66,31 @@ struct SettingsView: View {
                                     }
                             }
 
-                            Text("\(app.profile.keyCount) keys · \(app.profile.calibratedKeyCount) tuned · \(app.profile.hasLearnedBaseline ? "voice learned" : "no voice yet")")
-                                .font(.sans(14))
-                                .foregroundStyle(Theme.cream.opacity(0.62))
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("\(app.profile.keyCount) keys · \(app.profile.calibratedKeyCount) tuned · \(app.profile.hasLearnedBaseline ? "voice learned" : "no voice yet")")
+                                    .font(.sans(14))
+                                    .foregroundStyle(Theme.cream.opacity(0.62))
+
+                                // The numbers behind the card's grade. They live
+                                // here rather than on the card because a rail is
+                                // read at a glance and a count of notes is not;
+                                // but "how much further" is a fair question and
+                                // this is the screen that owes an answer.
+                                Text(gradeLine)
+                                    .font(.sans(14))
+                                    .foregroundStyle(Theme.cream.opacity(0.62))
+                            }
 
                             FlowLayout(spacing: 10) {
                                 SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") { app.realign() }
                                 SecondaryButton(title: "Calibrate voice", systemImage: "waveform") { app.openCalibration() }
-                                SecondaryButton(title: "Switch instrument", systemImage: "arrow.triangle.2.circlepath") { app.openChooseInstrument() }
+                                SecondaryButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath") { app.openChooseInstrument() }
                             }
 
                             Button(role: .destructive) {
                                 showDeleteConfirm = true
                             } label: {
-                                Label("Delete this instrument", systemImage: "trash")
+                                Label("Delete this gangsa", systemImage: "trash")
                                     .font(.sans(15, weight: Theme.buttonWeight))
                                     .tracking(Theme.buttonTracking)
                                     .foregroundStyle(Theme.miss)
@@ -189,7 +200,7 @@ struct SettingsView: View {
         .onAppear { draftName = app.profile.name }
         // The picker can change the active instrument under this screen.
         .onChange(of: app.profile.id) { _, _ in draftName = app.profile.name }
-        .confirmationDialog("Delete this instrument?",
+        .confirmationDialog("Delete this gangsa?",
                             isPresented: $showDeleteConfirm,
                             titleVisibility: .visible) {
             Button("Delete \(app.profile.name)", role: .destructive) {
@@ -200,6 +211,24 @@ struct SettingsView: View {
         } message: {
             Text("Its key alignment and learned voice go with it. This cannot be undone.")
         }
+    }
+
+    /// The grade in full: rung, what it is called in English, how many notes
+    /// have landed on this instrument, and what the next rung costs.
+    private var gradeLine: String {
+        let p = app.profile
+        guard p.hasBeenPlayed else {
+            return "Unplayed · the grade starts on your first scored session"
+        }
+        let m = p.mastery
+        var line = "\(m.rank.title) — \(m.rank.gloss) · \(m.notes) notes landed"
+        if let next = m.next, let togo = m.notesToNext {
+            line += " · \(togo) to \(next.title)"
+        }
+        if let played = p.lastPlayedDate {
+            line += " · played \(played.formatted(.relative(presentation: .named)))"
+        }
+        return line
     }
 
     /// Write the typed name back, if it is actually a change.

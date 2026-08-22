@@ -196,12 +196,12 @@ final class AppState {
 
     // MARK: - Instrument Selection & Management
 
-    /// Make this the active instrument WITHOUT leaving the picker.
+    /// Make this the active instrument without leaving the picker.
     ///
-    /// Tapping a card and moving on are two decisions now: the card selects,
-    /// and the footer's confirm advances. That is what lets the whole card be
-    /// the target — a card that navigated on touch could not also be the thing
-    /// you compare against its neighbour before committing.
+    /// Still here even though tapping a card now goes straight through: the
+    /// picker uses it to land on a real instrument when the active one is not
+    /// on the rail, and it is the half of `selectInstrument` that has nothing
+    /// to do with navigation.
     func activateInstrument(_ p: InstrumentProfile) {
         profile = p
         ProfileStore.setSelectedID(p.id)
@@ -209,6 +209,11 @@ final class AppState {
         requireStrikeSound = p.hasLearnedBaseline
     }
 
+    /// Pick this instrument and go. One tap, because "which instrument" is the
+    /// only question the picker asks and a Next button underneath a card you
+    /// already tapped is a second confirmation of a decision nobody was in
+    /// doubt about. Renaming, re-aligning, recalibrating and deleting all live
+    /// in Settings, per instrument — the card carries none of them.
     func selectInstrument(_ p: InstrumentProfile) {
         activateInstrument(p)
         screen = .chooseKotekan
@@ -221,8 +226,13 @@ final class AppState {
         let count = savedProfiles.count + 1
         let newID = UUID().uuidString
         let name = "Gangsa #\(count)"
-        let dateStr = ISO8601DateFormatter().string(from: Date())
-        let newProfile = InstrumentProfile(id: newID, name: name, keyCount: 10, createdAt: dateStr, keys: InstrumentProfile.layout(count: 10))
+        //R One ISO8601 spelling for the whole app. `createdAt` is the rail's
+        //R sort key until an instrument has been played, so a format the parser
+        //R in `InstrumentProfile.date(from:)` cannot read would silently drop
+        //R every new instrument to the far end of the rail.
+        let newProfile = InstrumentProfile(id: newID, name: name, keyCount: 10,
+                                           createdAt: InstrumentProfile.nowISO(),
+                                           keys: InstrumentProfile.layout(count: 10))
 
         isAddingNewInstrument = true
         previousProfile = profile
@@ -301,11 +311,23 @@ final class AppState {
         screen = granted ? .chooseInstrument : .permissionsBlocked
     }
 
-    /// Step 1/4: how many keys does this instrument have? Chosen before framing
-    /// so the framing and mask steps know how many bilah to draw.
-    func keyCountChosen(_ count: Int) {
+    /// Step 1/4: how many keys does this gangsa have, and what is it called?
+    /// The count is chosen before framing so the framing and mask steps know how
+    /// many bilah to draw.
+    ///
+    /// The name rides along because this screen is only ever reached from
+    /// `addNewInstrument` — it IS the new-gangsa step. Naming it here, next to
+    /// the one other fact the app cannot infer, saves the player a trip to
+    /// Settings to fix "Gangsa #4" once they already have four of them.
+    func keyCountChosen(_ count: Int, name: String) {
         var updated = profile
         updated.resize(to: count)
+        //R An empty field keeps the generated name rather than writing a blank:
+        //R a nameless card is unpickable on the rail, and a cleared field is far
+        //R more likely to be an unfinished edit than an intention. Same guard as
+        //R Settings' rename.
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { updated.name = trimmed }
         profile = updated
         if !isAddingNewInstrument {
             saveProfile()
@@ -421,8 +443,32 @@ final class AppState {
     func countdownFinished() { screen = .playing }
 
     func finish(result: SongResult) {
+        recordSession(landed: result.judgements.filter { $0.result.onBeat }.count)
         lastResult = result
         screen = .results
+    }
+
+    /// A practice run ended. Nothing to score — practice returns no result at
+    /// all — but you still sat at this instrument, and that is what orders the
+    /// rail, so the session is recorded with no notes credited.
+    func practiceFinished() {
+        recordSession(landed: 0)
+        screen = .chooseKotekan
+    }
+
+    /// Fold a finished session into the active instrument: when it was played,
+    /// and how much of it landed.
+    ///
+    /// Written at the END of a run rather than the start, where a disk write
+    /// would sit between the countdown and the first beat. By the time this
+    /// fires the rail is two screens away, so re-sorting it costs nothing.
+    private func recordSession(landed: Int) {
+        var updated = profile
+        updated.lastUsedAt = InstrumentProfile.nowISO()
+        updated.sessionCount = updated.sessionsPlayed + 1
+        updated.accurateNotes = updated.notesLanded + landed
+        profile = updated
+        saveProfile()
     }
 
     // MARK: - Navigation

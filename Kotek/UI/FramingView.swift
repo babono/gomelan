@@ -52,7 +52,7 @@ struct FramingView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                TopBar(title: "Frame the instrument",
+                TopBar(title: "Frame the gangsa",
                        backTitle: "Back",
                        onBack: { app.screen = .choosingKeyCount },
                        trailingText: "2 / 4",
