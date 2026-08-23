@@ -33,9 +33,21 @@ import SwiftUI
 /// as progress and was the wrong thing for a mark that is supposed to be simply
 /// present. The pill underneath reports progress, and reports it alone.
 struct KotekWordmark: View {
+    /// The width the LATIN wordmark takes. The Sanskrit below is sized from it,
+    /// so one number governs the whole mark.
+    let width: CGFloat
+
     /// The artwork's own proportions (230 x 86), so the height follows from the
     /// width and the two screens cannot drift apart.
     static let aspectRatio: CGFloat = 230.0 / 86.0
+    /// The Sanskrit mark's own proportions (186 x 73).
+    static let sanskritAspectRatio: CGFloat = 186.0 / 73.0
+
+    /// How wide the Sanskrit sits under the wordmark, as a fraction of it.
+    /// Narrower on purpose: it is the second mark, and matching the width would
+    /// read as two logos stacked rather than one with its script beneath.
+    private static let sanskritScale: CGFloat = 0.55
+    private static let gapScale: CGFloat = 0.06
 
     /// The width the wordmark takes in a container this wide.
     static func width(in containerWidth: CGFloat) -> CGFloat {
@@ -48,20 +60,47 @@ struct KotekWordmark: View {
         containerHeight * 0.11
     }
 
-    var body: some View {
-        artwork
+    /// The whole mark's height, script included — what a screen laying out
+    /// around it needs, and the reason the width is a parameter rather than a
+    /// `.frame` the caller bolts on afterwards. A `GeometryReader` in here would
+    /// read the width but claim all the height going, which is precisely the
+    /// layout both screens cannot afford.
+    static func height(for width: CGFloat) -> CGFloat {
+        width / aspectRatio
+            + width * gapScale
+            + (width * sanskritScale) / sanskritAspectRatio
     }
 
-    /// Named `wordmark-kotek`, NOT `logo-kotek`. The app icon already claims
-    /// `logo-kotek` (see ASSETCATALOG_COMPILER_APPICON_NAME and
-    /// `Kotek/logo-kotek.icon`), and an asset catalog will happily compile two
-    /// unrelated things under one name — the icon stack and this artwork — and
-    /// leave `Image("logo-kotek")` to pick between them. Renaming is the fix;
-    /// do not name anything else `logo-kotek`.
-    private var artwork: some View {
-        Image("wordmark-kotek")
+    var body: some View {
+        VStack(spacing: width * Self.gapScale) {
+            // Named `wordmark-kotek`, NOT `logo-kotek`. The app icon already
+            // claims `logo-kotek` (see ASSETCATALOG_COMPILER_APPICON_NAME and
+            // `Kotek/logo-kotek.icon`), and an asset catalog will happily
+            // compile two unrelated things under one name — the icon stack and
+            // this artwork — and leave `Image("logo-kotek")` to pick between
+            // them. Renaming is the fix; do not name anything else
+            // `logo-kotek`.
+            image("wordmark-kotek", width: width, aspect: Self.aspectRatio)
+
+            image("logo-sanskrit",
+                  width: width * Self.sanskritScale,
+                  aspect: Self.sanskritAspectRatio)
+        }
+        // One accessibility element: VoiceOver reading two undescribed images
+        // in a row is worse than reading the name once.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Gomelan")
+    }
+
+    /// Both frames are given a HEIGHT as well as a width. `.fit` on its own only
+    /// constrains — a resizable image in a width-only frame is free to take the
+    /// height it likes, and the two marks would size independently of each
+    /// other.
+    private func image(_ name: String, width: CGFloat, aspect: CGFloat) -> some View {
+        Image(name)
             .resizable()
             .aspectRatio(contentMode: .fit)
+            .frame(width: width, height: width / aspect)
     }
 }
 

@@ -46,8 +46,7 @@ struct WelcomeView: View {
                     // the same numbers. See `KotekWordmark`.
                     Spacer().frame(height: KotekWordmark.topInset(in: h))
 
-                    KotekWordmark()
-                        .frame(width: KotekWordmark.width(in: proxy.size.width))
+                    KotekWordmark(width: KotekWordmark.width(in: proxy.size.width))
 
                     Spacer().frame(height: h * 0.07)
 

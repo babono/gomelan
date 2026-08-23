@@ -34,21 +34,26 @@ struct SplashView: View {
                 VStack(spacing: 0) {
                     Spacer().frame(height: KotekWordmark.topInset(in: h))
 
-                    KotekWordmark()
-                        .frame(width: KotekWordmark.width(in: w))
+                    KotekWordmark(width: KotekWordmark.width(in: w))
 
-                    Spacer().frame(height: h * 0.10)
+                    //R Tightened from 0.10 / 0.09 / 0.035 when the Sanskrit
+                    //R mark went under the wordmark. On a landscape 15 Pro the
+                    //R column had ~44pt of slack left and the script needs more
+                    //R than that; every item below here is sized from the
+                    //R WIDTH, so a wide short screen is where this overflows
+                    //R first and the one to check against.
+                    Spacer().frame(height: h * 0.06)
 
                     ProgressPill(progress: progress)
                         .frame(width: min(280, w * 0.32), height: min(38, h * 0.10))
 
-                    Spacer().frame(height: h * 0.09)
+                    Spacer().frame(height: h * 0.05)
 
                     Text("in collaboration with")
                         .font(.system(size: 13, weight: .regular))
                         .foregroundStyle(Theme.cream.opacity(0.72))
 
-                    Spacer().frame(height: h * 0.035)
+                    Spacer().frame(height: h * 0.03)
 
                     Image("logo-mekarbhuana")
                         .resizable()
