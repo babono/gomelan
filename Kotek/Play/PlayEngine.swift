@@ -39,10 +39,20 @@ enum SessionPhase: Equatable {
 
 /// What the overlay should draw for a single key this frame.
 struct KeyRenderState: Equatable {
-    var fill: Double = 0        // upcoming fill, 0…1 (§13.5 "fills from bottom")
+    var fill: Double = 0        // the NEAREST stroke's progress, 0…1 — the bar that fills from the bottom
     var strikeNow: Bool = false // solid highlight pulse
     var flash: FlashKind? = nil // transient hit/miss/wrong
     var damp: Bool = false      // dashed damp hint on the previous key (§5.5)
+    /// Every upcoming stroke on this bilah that is inside the cue window,
+    /// nearest first — one ring each, nested.
+    ///
+    /// A list rather than a single value because kotekan repeat a bar: on
+    /// Ubitan Nyendok key 7 is struck three times in eight slots, so inside a
+    /// four-beat window that bilah usually has TWO strokes coming. Collapsing
+    /// them to the nearest threw away the more useful half of the information —
+    /// "this bar, then this bar again" is the thing a player needs to see
+    /// coming, and it is exactly what a single ring cannot say.
+    var approaches: [Double] = []
 }
 
 /// Which of the two interlocking halves a note belongs to.
@@ -203,6 +213,13 @@ final class PlayEngine {
     /// inside it is drawn — but not the SPEED dial. The speed is constant at
     /// any value, which is the whole point of the constant existing.
     private let approachBeats: Double = 4
+
+    /// How many nested rings one bilah may carry.
+    ///
+    /// Two. One is a countdown; two is a countdown plus "and again straight
+    /// after", which is the shape of a kotekan. Three rings on one bar stop
+    /// being readable as distinct distances and start being a target.
+    private let maxApproachRings = 2
     private let missWindowMs: Double = 200               // §5.1
     private let flashDuration: Double = 0.3
     
@@ -556,6 +573,7 @@ final class PlayEngine {
         //R for the last 500 ms of every pass — the tail of a kotekan is usually
         //R rests, so there was no "next note" left to point at and the figure
         //R came round with no warning at all.
+        var pending: [Int: [Double]] = [:]
         for repetition in 0...1 {
             let origin = Double(repetition) * patternMs
             for i in notes.indices {
@@ -564,13 +582,22 @@ final class PlayEngine {
                 if repetition == 0, judged[i] { continue }
                 let until = scaledTime(notes[i]) + origin - patternTime
                 guard until > 0, until <= window else { continue }
-                var s = states[notes[i].keyIndex] ?? KeyRenderState()
-                //R A bilah struck twice inside one window keeps the NEARER of
-                //R the two. There is one ring per key and it should be counting
-                //R down to the next thing you do, not the one after it.
-                s.fill = max(s.fill, 1 - until / window)
-                states[notes[i].keyIndex] = s
+                pending[notes[i].keyIndex, default: []].append(1 - until / window)
             }
+        }
+
+        for (key, progresses) in pending {
+            //R Nearest first — highest progress is the one closest to landing.
+            //R Anything past the second is dropped rather than drawn small: see
+            //R `maxApproachRings`.
+            let nearest = Array(progresses.sorted(by: >).prefix(maxApproachRings))
+            var s = states[key] ?? KeyRenderState()
+            s.approaches = nearest
+            //R The bar that fills from the bottom follows the NEAREST stroke
+            //R only. There is one of it per bilah and it is a "how soon",
+            //R which two strokes cannot both answer.
+            s.fill = max(s.fill, nearest.first ?? 0)
+            states[key] = s
         }
 
         // Solid highlight on the note that is due right now.

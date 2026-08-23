@@ -62,7 +62,7 @@ struct OverlayView: View {
 
         // 2. The countdown to this stroke, filling from the bottom (§13.5). The
         //    key is the guidance now, so the approach has to be readable on the
-        //    bilah alone, without looking down at the river.
+        //    bilah alone, without looking down at the score.
         if state.fill > 0, !state.strikeNow {
             let fill = min(1, max(0, state.fill))
             var layer = ctx
@@ -72,20 +72,31 @@ struct OverlayView: View {
                                 width: rect.width,
                                 height: rect.height * fill)
             layer.fill(Path(filled), with: .color(Theme.copper.opacity(0.22 + 0.18 * fill)))
+        }
 
-            // A ring closing in from all four sides, so the approach also reads
-            // in the corner of the eye, where a fill level does not.
-            //
-            // Faint when it is far out and bold as it lands. The cue window is
-            // a fixed four beats now, so more than one stroke is in flight at
-            // once — and at a constant weight a bilah a second away would shout
-            // exactly as loudly as the one being played, which is how a
-            // lookahead turns into noise.
-            let pad = (1 - fill) * 16
+        // 2b. Rings closing in from all four sides, so the approach also reads
+        //     in the corner of the eye, where a fill level does not. One per
+        //     upcoming stroke on this bilah, nested — a bar you are about to
+        //     strike twice says so, which is the shape of a kotekan.
+        //
+        //     Drawn OUTSIDE the fill's `!strikeNow` guard on purpose: while you
+        //     are playing a note the ring for the next strike on that same bar
+        //     is the most useful thing on the screen, and hiding it was why a
+        //     7 → 7 repeat gave no warning at all.
+        for progress in state.approaches {
+            let fill = min(1, max(0, progress))
+            let pad = (1 - fill) * 20
             let ring = Path(roundedRect: rect.insetBy(dx: -pad, dy: -pad),
                             cornerRadius: radius + pad * 0.5)
-            ctx.stroke(ring, with: .color(Theme.copper.opacity(0.25 + 0.65 * fill)),
-                       lineWidth: 1.2)
+            // Squared, so it comes in almost invisible and only gathers weight
+            // in the last stretch. At a linear ramp — or worse, a constant one —
+            // a bilah a second away shouts as loudly as the one landing, which
+            // is how a lookahead turns into noise. Line weight follows, so the
+            // near ring is heavier as well as brighter.
+            let presence = fill * fill
+            ctx.stroke(ring,
+                       with: .color(Theme.copper.opacity(0.10 + 0.90 * presence)),
+                       lineWidth: 1 + 1.4 * fill)
         }
 
         // 3. NOW. A cream border plus a wash inside it — bright enough to catch
