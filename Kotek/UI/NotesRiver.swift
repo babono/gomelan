@@ -45,13 +45,18 @@ struct NotesRiver: View {
     /// The half you are playing; your partner has the other one.
     let yourHalf: KotekanHalf
 
-    private let pulseRowHeight: CGFloat = 14
+    private let pulseRowHeight: CGFloat = 12
     private let sideInset: CGFloat = 10
 
     private var rows: Int { max(1, keyRange.count) }
     /// Taller lanes than the scrolling version could afford — a number has to
     /// fit inside a block now, and an 8pt block cannot hold one.
-    private var laneHeight: CGFloat { min(20, max(13, 96 / CGFloat(rows))) }
+    ///
+    /// Trimmed from a 20pt cap to 17. This is peripheral context on a screen
+    /// whose subject is the instrument in front of you, and every point it takes
+    /// is a point of camera. 17 still leaves a 14pt block, which holds a bilah
+    /// number at the size below with room to spare.
+    private var laneHeight: CGFloat { min(17, max(12, 84 / CGFloat(rows))) }
     private var pitchBandHeight: CGFloat { CGFloat(rows) * laneHeight }
     private var trackHeight: CGFloat { pitchBandHeight + pulseRowHeight }
 
@@ -82,14 +87,14 @@ struct NotesRiver: View {
             // are only ever a handful of distinct keys in a figure.
             ForEach(Array(keyRange), id: \.self) { key in
                 Text(bilahLabel(key, count: keyCount))
-                    .font(.serif(min(13, laneHeight * 0.62), weight: .bold))
+                    .font(.serif(min(12, laneHeight * 0.62), weight: .bold))
                     .foregroundStyle(Theme.deep)
                     .tag(key)
             }
         }
         .frame(height: trackHeight)
         .padding(.horizontal, 20)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .frame(maxWidth: .infinity)
         .background(Theme.inkRaised.opacity(0.8))
         .overlay(alignment: .top) { Rectangle().fill(Theme.copper.opacity(0.2)).frame(height: 1) }

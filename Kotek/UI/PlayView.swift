@@ -80,7 +80,14 @@ struct PlayView: View {
                 // instrument the whole screen" button left a row of chrome
                 // behind and did not do what it said.
                 if app.bottomBarVisible {
-                    VStack(spacing: 10) {
+                    // ONE slab, not a floating row above a backed one. The
+                    // controls used to sit bare over the camera feed, which put
+                    // outlined pills and small type straight on top of the
+                    // outlined bilah — two sets of thin copper lines in the same
+                    // place, and the mixer chips landed unreadable across keys 8
+                    // and 9. They carry the score's own ground now, and the
+                    // score's top hairline falls between them as a divider.
+                    VStack(spacing: 0) {
                         HStack(spacing: 10) {
                             halfSwitch
                             tempoPicker
@@ -90,6 +97,9 @@ struct PlayView: View {
                                        partnerAudible: $app.partnerAudible)
                         }
                         .padding(.horizontal, 24)
+                        .padding(.vertical, 9)
+                        .frame(maxWidth: .infinity)
+                        .background(Theme.inkRaised.opacity(0.8))
 
                         NotesRiver(engine: engine,
                                    keyRange: keyRange,
