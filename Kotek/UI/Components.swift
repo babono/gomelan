@@ -256,7 +256,7 @@ struct TopBar: View {
     var trailingText: String? = nil
     /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
     var settingsAction: (() -> Void)? = nil
-    /// When set, an ⓘ button is shown at the trailing edge, before the gear.
+    /// When set, a help button is shown at the trailing edge, before the gear.
     var infoAction: (() -> Void)? = nil
     var tint: Color = Theme.cream
     var accent: Color = Theme.gold
@@ -301,7 +301,7 @@ struct TopBar: View {
                     }
                     if let infoAction {
                         Button(action: infoAction) {
-                            Image(systemName: "info.circle")
+                            Image(systemName: "questionmark.circle.fill")
                                 .font(.symbol(19, weight: .medium))
                                 .foregroundStyle(tint)
                                 //R Same 44pt target as the gear below, for the

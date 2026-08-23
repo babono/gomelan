@@ -2,8 +2,8 @@
 //  GuideView.swift
 //  Kotek
 //
-//  What the app is and how the grade works, in one panel. Reached from the ⓘ on
-//  the instrument picker, and shown once by itself the first time anybody opens
+//  What the app is and how the grade works, in one panel. Reached from the help
+//  button on the instrument picker, and shown once by itself the first time anybody opens
 //  the app — see `AppState.hasSeenGuide`.
 //
 //  A CUSTOM overlay rather than `.sheet`. A system sheet on a landscape phone
