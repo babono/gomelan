@@ -301,7 +301,7 @@ struct TopBar: View {
                     }
                     if let infoAction {
                         Button(action: infoAction) {
-                            Image(systemName: "questionmark.circle.fill")
+                            Image(systemName: "questionmark.circle")
                                 .font(.symbol(19, weight: .medium))
                                 .foregroundStyle(tint)
                                 //R Same 44pt target as the gear below, for the
