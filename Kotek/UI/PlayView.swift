@@ -154,6 +154,16 @@ struct PlayView: View {
     /// at 0.5× and eight at 1.5× are not the same achievement, and a headline
     /// number that does not say which one it belongs to invites the comparison
     /// it cannot support.
+    /// The record for exactly what is being played — this figure, this half,
+    /// this speed. Read here rather than inside the counter so the counter can
+    /// stay a leaf that only ever reads the engine.
+    private var record: Double? {
+        guard let k = app.selectedKotekan else { return nil }
+        return app.profile.record(kotekanId: k.id,
+                                  half: app.chosenHalf.rawValue,
+                                  tempo: app.tempoScale)?.accuracy
+    }
+
     private var sessionSubtitle: String {
         let name = app.selectedKotekan?.name ?? ""
         return "\(name) · \(app.chosenHalf.title) · \(Theme.tempoLabel(app.tempoScale))"
@@ -266,7 +276,7 @@ struct PlayView: View {
 
             // Its own view so the clock ticking doesn't re-evaluate the whole
             // screen sixty times a second just to move a counter.
-            SessionCounters(engine: engine)
+            SessionCounters(engine: engine, record: record)
 
             Spacer()
 
@@ -508,19 +518,38 @@ struct PlayView: View {
     }
 }
 
-/// "Cycle 12 · 148 landed" — how far round, and how much of it counted.
+/// "Cycle 12 · 148 · 86% / 94%" — how far round, how much of it counted, and
+/// how close you are to beating this figure.
 ///
 /// No denominator on the cycle: the session runs until the player stops it, so
-/// there is nothing to be out of. The second number is notes that LANDED, which
-/// is the one the gangsa's grade is made of — accuracy is a judgement and can
-/// go down, but this only ever goes up, so it is the number that belongs in
-/// front of somebody mid-practice.
+/// there is nothing to be out of.
 ///
-/// One view for both, reading the engine itself, so the whole per-frame
+/// The tick is notes that LANDED, which is what the gangsa's grade is made of.
+/// The pair after it is your best eight passes SO FAR against the record for
+/// this figure, half and speed.
+///
+/// Both live numbers only ever go UP, and that is deliberate. A running
+/// accuracy is the obvious thing to put here and the wrong one: it falls on
+/// every mistake, so it puts a dropping number in front of somebody in the
+/// middle of a figure and gives them something to watch that is not the
+/// instrument. A best cannot punish you for a bad pass — it just sits there
+/// until you beat it. It is also the same number the results screen reports,
+/// computed by the same function, so the target you were chasing during play is
+/// the score you are shown afterwards.
+///
+/// One view for all of it, reading the engine itself, so the whole per-frame
 /// invalidation stays inside this label instead of redrawing the screen around
 /// it sixty times a second.
 private struct SessionCounters: View {
     let engine: PlayEngine
+    /// The best this figure has ever been played on this gangsa, at this half
+    /// and speed. nil until eight consecutive cycles have been played once.
+    let record: Double?
+
+    private var beatingRecord: Bool {
+        guard let record, let best = engine.bestSoFar else { return false }
+        return best >= record
+    }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -536,10 +565,41 @@ private struct SessionCounters: View {
                 .foregroundStyle(Theme.hit)
                 .accessibilityLabel("\(engine.landedNotes) notes landed")
             }
+
+            if engine.bestSoFar != nil || record != nil {
+                HStack(spacing: 3) {
+                    if let best = engine.bestSoFar {
+                        Text(percent(best))
+                            .foregroundStyle(beatingRecord ? Theme.hit : Theme.cream)
+                    }
+                    if let record {
+                        if engine.bestSoFar != nil {
+                            Text("/").foregroundStyle(Theme.inkStone.opacity(0.6))
+                        }
+                        // The bar to clear, in the same gold the trophy uses on
+                        // the picker card, so the two read as the same fact.
+                        Text(percent(record)).foregroundStyle(Theme.gold)
+                    }
+                }
+                .accessibilityLabel(accessibilityLabel)
+            }
         }
         .font(.sans(14))
         .contentTransition(.numericText())
-        .animation(.snappy(duration: 0.2), value: engine.landedNotes)
+        .animation(.snappy(duration: 0.25), value: engine.landedNotes)
+        .animation(.snappy(duration: 0.25), value: engine.bestSoFar)
+    }
+
+    private func percent(_ value: Double) -> String {
+        "\(Int((value * 100).rounded()))%"
+    }
+
+    private var accessibilityLabel: String {
+        var parts: [String] = []
+        if let best = engine.bestSoFar { parts.append("best so far \(percent(best))") }
+        if let record { parts.append("record \(percent(record))") }
+        if beatingRecord { parts.append("beating the record") }
+        return parts.joined(separator: ", ")
     }
 }
 

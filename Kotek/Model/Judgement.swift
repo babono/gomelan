@@ -172,12 +172,18 @@ struct SongResult: Equatable {
     /// exactly the thing this screen exists to encourage. A best answers the
     /// question people actually ask — how well can I play this — and it can
     /// still only be beaten by playing well.
-    var best: ScoringWindow? {
+    var best: ScoringWindow? { SongResult.bestWindow(in: cycles) }
+
+    /// Free-standing so the live session can ask the same question the results
+    /// screen does, from the passes it has so far. Two implementations of "your
+    /// best eight" would be two chances to disagree, and the number in the top
+    /// bar during play has to be the number the score reports afterwards.
+    static func bestWindow(in cycles: [CycleScore]) -> ScoringWindow? {
         guard !cycles.isEmpty else { return nil }
-        //R Short sessions are scored over what they have rather than being
-        //R refused a number: stopping after three passes should still tell you
-        //R how those three went.
-        let width = min(SongResult.scoringWindow, cycles.count)
+        //R Short runs are scored over what they have rather than refused a
+        //R number: three passes in, "how are those three going" is a fair
+        //R question. Records are gated on a full window elsewhere.
+        let width = min(scoringWindow, cycles.count)
         var bestWindow: ScoringWindow?
         for start in 0...(cycles.count - width) {
             let slice = cycles[start..<(start + width)]

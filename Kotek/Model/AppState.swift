@@ -74,6 +74,11 @@ final class AppState {
     /// record destroys the old one.
     var previousRecord: Double?
     var lastSetRecord = false
+    /// The gangsa's landed-note total BEFORE the session that just ended, so
+    /// the results screen can animate from it to where it is now. Captured for
+    /// the same reason as `previousRecord`: crediting the session destroys the
+    /// number the animation has to start from.
+    var previousNotesLanded: Int?
 
     // Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
@@ -478,6 +483,7 @@ final class AppState {
     /// would sit between the countdown and the first beat. By the time this
     /// fires the rail is two screens away, so re-sorting it costs nothing.
     private func recordSession(landed: Int) {
+        previousNotesLanded = profile.notesLanded
         var updated = profile
         updated.lastUsedAt = InstrumentProfile.nowISO()
         updated.sessionCount = updated.sessionsPlayed + 1

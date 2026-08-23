@@ -115,6 +115,15 @@ final class PlayEngine {
     private(set) var phase: SessionPhase = .countIn
     /// How many times the figure has come round. It only ever goes up.
     private(set) var loopIndex: Int = 0
+    /// Your best eight consecutive passes SO FAR, on the half and speed you are
+    /// playing now — the same question the results screen answers, asked live.
+    ///
+    /// A best rather than a running accuracy, and that is the whole point: a
+    /// live average falls on every mistake, which puts a dropping number in
+    /// front of somebody in the middle of a figure and gives them something to
+    /// watch that is not the instrument. This can only go up. Recomputed once
+    /// per pass, never per frame.
+    private(set) var bestSoFar: Double?
     
     // Live judgement feed (for debug / practice feedback)
     private(set) var lastJudgement: NoteJudgement?
@@ -266,6 +275,7 @@ final class PlayEngine {
         self.lastLoopIndex = -1
         self.phase = .countIn
         self.loopIndex = 0
+        self.bestSoFar = nil
         self.playhead = 0
         self.currentTimeMs = 0
         loadHalves(song: song, partner: partner)
@@ -292,6 +302,7 @@ final class PlayEngine {
         loadHalves(song: song, partner: partner)
         cycleVoided = true
         recomputeTiming()
+        refreshBestSoFar()
     }
 
     private func loadHalves(song: Song, partner: Song?) {
@@ -336,6 +347,7 @@ final class PlayEngine {
         //R The pass in progress spans two speeds, so it is not a fair reading of
         //R either. Same reasoning as a mid-pass change of half.
         cycleVoided = true
+        refreshBestSoFar()
     }
 
     private var beatMs: Double { 60000.0 / Double(song.bpm) / tempoScale }
@@ -503,6 +515,15 @@ final class PlayEngine {
                        score: tally.score,
                        onBeat: tally.onBeat,
                        mistakes: tally.mistakes))
+        refreshBestSoFar()
+    }
+
+    /// The live best, recomputed from the ledger for whatever half and speed is
+    /// current. Called when a pass closes and whenever the ledger changes under
+    /// the session — switching sides or speed parks one and picks up another,
+    /// and the number in the bar has to follow.
+    private func refreshBestSoFar() {
+        bestSoFar = SongResult.bestWindow(in: cyclesByPart[partKey] ?? [])?.accuracy
     }
 
     //BATAS SUCI
