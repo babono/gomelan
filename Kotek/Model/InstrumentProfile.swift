@@ -353,7 +353,7 @@ struct Mastery: Equatable {
         /// deliberately about different things. Keep it that way.
         var gloss: String {
             switch self {
-            case .paria:    return "finding the bilah"
+            case .paria:    return "finding the keys"
             case .sudra:    return "the figure in the hands"
             case .waisya:   return "holding your half"
             case .ksatria:  return "interlocking at tempo"
