@@ -43,7 +43,6 @@ struct KeyRenderState: Equatable {
     var strikeNow: Bool = false // solid highlight pulse
     var flash: FlashKind? = nil // transient hit/miss/wrong
     var damp: Bool = false      // dashed damp hint on the previous key (§5.5)
-    var approachScale: Double = 0
 }
 
 /// Which of the two interlocking halves a note belongs to.
@@ -192,7 +191,18 @@ final class PlayEngine {
     private var startHostTime: Double = 0
     
     // Tunables
-    private let approachWindowMs: Double = 2200          // upcoming fill lead-in
+    /// How far ahead a stroke starts announcing itself, in BEATS.
+    ///
+    /// Beats rather than milliseconds so it tracks the tempo control: at 0.5×
+    /// the ring takes twice as long in wall-clock terms, which is what slowing
+    /// a figure down has to mean, and "four pulses out" goes on meaning the
+    /// same thing at every speed. Four is about a second at the tempo the
+    /// bundled figures are notated at.
+    ///
+    /// This is the clutter dial as well as the warning time — every stroke
+    /// inside it is drawn — but not the SPEED dial. The speed is constant at
+    /// any value, which is the whole point of the constant existing.
+    private let approachBeats: Double = 4
     private let missWindowMs: Double = 200               // §5.1
     private let flashDuration: Double = 0.3
     
@@ -504,16 +514,16 @@ final class PlayEngine {
     //R --------------------------------------------------------------------
     //R "Your turn" cue.
     //R
-    //R The bottom row and the bilah are both mapped from the same clock, so the
-    //R rule is simply: whichever number is on the strike line, that bilah is lit.
-    //R The note that has just arrived holds a solid highlight, then releases in
-    //R time for the next note's fill to read (otherwise a 4→4 repeat looks like
-    //R one long highlight). Nothing here waits on onset detection — that hold was
-    //R what pinned the highlight to one bilah while the row scrolled on.
+    //R The bilah and the score are both mapped from the same clock, so the rule
+    //R is simply: whichever stroke is due, that bilah is lit. The note that has
+    //R just arrived holds a solid highlight, then releases in time for the next
+    //R note's ring to read (otherwise a 4→4 repeat looks like one long
+    //R highlight). Nothing here waits on onset detection — that hold was what
+    //R pinned the highlight to one bilah while the figure moved on.
     //R --------------------------------------------------------------------
 
-    /// The note the row is showing at the strike line: the latest one whose time
-    /// has arrived. `notes` is sorted, so scan forward and keep the last match.
+    /// The note the overlay is showing as due: the latest one whose time has
+    /// arrived. `notes` is sorted, so scan forward and keep the last match.
     private func currentNoteIndex(patternTime: Double) -> Int? {
         var current: Int?
         for i in notes.indices {
@@ -524,26 +534,42 @@ final class PlayEngine {
         return current
     }
 
-    /// The next note still to come — the one the fill counts down to.
-    private func nextNoteIndex(patternTime: Double) -> Int? {
-        notes.indices.first { scaledTime(notes[$0]) > patternTime && !judged[$0] }
-    }
-
     private func tickUserTurnCue(patternTime: Double, beatMs: Double, states: inout [Int: KeyRenderState]) {
-        // Lead-in on the next note. It fills across the gap since the previous
-        // note, so the countdown matches the spacing of the numbers on the row
-        // instead of washing every key at once with a fixed 2.2s window.
-        if let next = nextNoteIndex(patternTime: patternTime) {
-            let dueAt = scaledTime(notes[next])
-            let previous = next > 0 ? scaledTime(notes[next - 1]) : dueAt - beatMs
-            let window = max(120, dueAt - previous)
-            let until = dueAt - patternTime
-            if until <= window {
-                let fill = min(1, max(0, 1 - until / window))
-                var s = states[notes[next].keyIndex] ?? KeyRenderState()
-                s.fill = max(s.fill, fill)
-                s.approachScale = 1.6 - 0.6 * fill
-                states[notes[next].keyIndex] = s
+        let window = approachBeats * beatMs
+
+        //R EVERY stroke inside the window, not just the next one.
+        //R
+        //R This used to cue one note at a time over a window equal to the GAP
+        //R since the previous stroke, which made the ring's speed a property of
+        //R the figure instead of of the clock. On Ubitan Nyendok the gaps
+        //R alternate 500 ms and 250 ms, so the ring closed at two different
+        //R rates on alternate strokes and its size stopped meaning anything —
+        //R which is exactly what it is for.
+        //R
+        //R Cueing only the next note is what forced that. A window longer than
+        //R the gap cannot start on time if the ring is not allowed to exist
+        //R until the previous stroke is out of the way: it would appear already
+        //R half closed and only travel the remainder. A fixed window needs
+        //R every note in it.
+        //R
+        //R Repetition 1 is the next time round. Without it the cue went dead
+        //R for the last 500 ms of every pass — the tail of a kotekan is usually
+        //R rests, so there was no "next note" left to point at and the figure
+        //R came round with no warning at all.
+        for repetition in 0...1 {
+            let origin = Double(repetition) * patternMs
+            for i in notes.indices {
+                //R Judged means struck or missed, and only ever applies to THIS
+                //R pass; the same stroke one repetition ahead is still to come.
+                if repetition == 0, judged[i] { continue }
+                let until = scaledTime(notes[i]) + origin - patternTime
+                guard until > 0, until <= window else { continue }
+                var s = states[notes[i].keyIndex] ?? KeyRenderState()
+                //R A bilah struck twice inside one window keeps the NEARER of
+                //R the two. There is one ring per key and it should be counting
+                //R down to the next thing you do, not the one after it.
+                s.fill = max(s.fill, 1 - until / window)
+                states[notes[i].keyIndex] = s
             }
         }
 
@@ -617,16 +643,6 @@ final class PlayEngine {
         //                cue?.playClick()
         //            }
         //        }
-    }
-    
-    private func applyCue(_ states: inout [Int: KeyRenderState], key: Int, until: Double) {
-        var s = states[key] ?? KeyRenderState()
-        let fill = 1 - max(0, until) / approachWindowMs
-        s.fill = max(s.fill, min(1, fill))
-        let scale = 1.6 - 0.6 * min(1, max(0, fill))
-        s.approachScale = s.approachScale > 0 ? min(s.approachScale, scale) : scale
-        if abs(until) <= 60 { s.strikeNow = true }
-        states[key] = s
     }
     
     // MARK: - Strike handling (from AudioEngineController, main queue)

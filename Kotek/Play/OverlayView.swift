@@ -75,10 +75,17 @@ struct OverlayView: View {
 
             // A ring closing in from all four sides, so the approach also reads
             // in the corner of the eye, where a fill level does not.
+            //
+            // Faint when it is far out and bold as it lands. The cue window is
+            // a fixed four beats now, so more than one stroke is in flight at
+            // once — and at a constant weight a bilah a second away would shout
+            // exactly as loudly as the one being played, which is how a
+            // lookahead turns into noise.
             let pad = (1 - fill) * 16
             let ring = Path(roundedRect: rect.insetBy(dx: -pad, dy: -pad),
                             cornerRadius: radius + pad * 0.5)
-            ctx.stroke(ring, with: .color(Theme.copper.opacity(0.9)), lineWidth: 1.2)
+            ctx.stroke(ring, with: .color(Theme.copper.opacity(0.25 + 0.65 * fill)),
+                       lineWidth: 1.2)
         }
 
         // 3. NOW. A cream border plus a wash inside it — bright enough to catch
