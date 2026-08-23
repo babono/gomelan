@@ -187,6 +187,9 @@ final class PlayEngine {
     /// that feeds the gangsa's grade, and the only running total worth putting
     /// in front of the player mid-session.
     private(set) var landedNotes = 0
+    /// When each bilah last had a strike accepted, so one physical hit reported
+    /// by both sensors is only scored once. See `registerStrike`.
+    private var lastStrikeAt: [Int: Double] = [:]
     private var tally = CycleTally()
     /// Set when the half changes mid-pass. The pass is then dropped rather than
     /// banked — see `setHalf`.
@@ -290,6 +293,7 @@ final class PlayEngine {
         self.cyclesByPart = [:]
         self.judgementsByPart = [:]
         self.landedNotes = 0
+        self.lastStrikeAt = [:]
         self.tally = CycleTally()
         self.cycleVoided = false
         self.referencedNotes = []
@@ -771,8 +775,31 @@ final class PlayEngine {
     
     func registerStrike(keyIndex: Int, hostTime: Double, confidence: Double) {
         guard judging, !isFinished, phase.isUserPlaying else { return }
+
+        //R The eye and the ear both report now, so one strike can arrive twice.
+        //R Dropping the second matters more than it sounds: the note it belongs
+        //R to is already judged, so the duplicate goes looking for the nearest
+        //R OPEN note and binds to the NEXT one — scoring a stroke the player has
+        //R not made yet, and taking the real one's place when it comes.
+        //R
+        //R Absolute difference, because the two do not agree on when: vision
+        //R fires as the mallet arrives over the bar, and audio reconstructs
+        //R backwards to the attack, so the later report can carry the earlier
+        //R timestamp.
+        if let previous = lastStrikeAt[keyIndex],
+           abs(hostTime - previous) < refractorySeconds { return }
+        lastStrikeAt[keyIndex] = hostTime
+
         registerPlayStrike(keyIndex: keyIndex, hostTime: hostTime)
     }
+
+    /// How close two reports of one bilah have to be to count as one strike.
+    ///
+    /// Half a slot, so it scales with the tempo control: the fastest anybody can
+    /// legitimately repeat a bar is once a slot, and half of that leaves room
+    /// for the eye and the ear to disagree about when without ever swallowing a
+    /// real second stroke. At 1x that is 125ms; at 1.5x, 83.
+    private var refractorySeconds: Double { beatMs * 0.5 / 1000 }
 
     private func registerPlayStrike(keyIndex: Int, hostTime: Double) {
         let atMs = (hostTime - startHostTime) * 1000 - patternOriginMs
