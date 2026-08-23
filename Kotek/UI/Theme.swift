@@ -129,18 +129,31 @@ enum Theme {
 
     // MARK: - Colotomic layer (gong / kempur / kajar)
 
+    /// One warm family — cream, amber, stone. The colotomic layer frames the
+    /// cycle rather than carrying a part, so it belongs to the ground rather
+    /// than to the voices, and reads as the quiet thing underneath them.
+    ///
+    /// Kajar was purple. That was fine while the voices were teal and indigo and
+    /// stopped being fine the moment sangsih became purple too: a pulse dot and
+    /// a stroke you are meant to play should never be one colour.
     static let gong = Color(hex: 0xF0DDA8)
     static let kempur = Color(hex: 0xD9A441)
-    static let kajar = Color(hex: 0xB98BC9)
+    static let kajar = Color(hex: 0xA89478)
 
     // MARK: - The two interlocking halves (§7)
 
     /// Polos and sangsih keep their own colour wherever they appear, so the
-    /// weave reads at a glance. Chosen to sit clearly apart from the gold/cream
-    /// of the chrome — these carry meaning, so they are allowed to leave the
-    /// warm family.
-    static let polosVoice = Color(hex: 0x5FBFB0)
-    static let sangsihVoice = Color(hex: 0x8E9BE8)
+    /// weave reads at a glance — the score, the picker cards, the mixer chips.
+    ///
+    /// They are two of the RANK colours rather than hues of their own. The app
+    /// had a teal, an indigo, a purple and five rungs, which is a lot of
+    /// separate meanings for an eye to keep apart on one warm ground; reusing
+    /// two of them costs nothing, because a rung and a half never appear in the
+    /// same place. Blue for polos, the steady half on the beat; purple for
+    /// sangsih, which answers between. Swapping the two is a one-line change if
+    /// it reads better the other way round.
+    static let polosVoice = rankWaisya
+    static let sangsihVoice = rankKsatria
 
     // MARK: - Mastery rungs
 
