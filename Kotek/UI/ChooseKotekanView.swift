@@ -98,9 +98,16 @@ struct ChooseKotekanView: View {
                 ForEach(kotekans.indices, id: \.self) { i in
                     let base = ((i - focused) % kotekans.count + kotekans.count) % kotekans.count
                     ForEach([base, base - kotekans.count], id: \.self) { d in
-                        card(kotekans[i], distance: CGFloat(d))
-                            .position(x: geo.size.width / 2 + CGFloat(d) * step + drag,
-                                      y: geo.size.height / 2)
+                        //R Two positions each, and most of them off the edge —
+                        //R so only build the ones that can actually be seen.
+                        //R Everything past a card and a half out is clipped
+                        //R anyway, and a view that is never visible is still a
+                        //R view SwiftUI has to diff on every touch move.
+                        if abs(CGFloat(d) + drag / step) < 1.9 {
+                            card(kotekans[i], isPlaying: i == focused, distance: CGFloat(d))
+                                .position(x: geo.size.width / 2 + CGFloat(d) * step + drag,
+                                          y: geo.size.height / 2)
+                        }
                     }
                 }
             }
@@ -132,7 +139,7 @@ struct ChooseKotekanView: View {
         return ((i % n) + n) % n
     }
 
-    private func card(_ k: Kotekan, distance d: CGFloat) -> some View {
+    private func card(_ k: Kotekan, isPlaying: Bool, distance d: CGFloat) -> some View {
         // How focused this card is, 0…1, following the drag so the neighbour
         // grows as it arrives rather than snapping when the gesture ends.
         let offset: CGFloat = d + drag / step
@@ -140,7 +147,7 @@ struct ChooseKotekanView: View {
         let isFocused: Bool = abs(offset) < 0.5
         let canPlay: Bool = app.kotekan(k, playableOn: app.profile)
 
-        return cardBody(k, canPlay: canPlay, isFocused: isFocused)
+        return cardBody(k, canPlay: canPlay, isPlaying: isPlaying)
             .padding(18)
             .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
             .background(Theme.deep.opacity(0.55 + 0.3 * nearness),
@@ -167,7 +174,7 @@ struct ChooseKotekanView: View {
     }
 
     @ViewBuilder
-    private func cardBody(_ k: Kotekan, canPlay: Bool, isFocused: Bool) -> some View {
+    private func cardBody(_ k: Kotekan, canPlay: Bool, isPlaying: Bool) -> some View {
         VStack(alignment: .leading, spacing: 7) {
             SectionLabel("Level \(k.level) · \(k.toneLabel)", color: Theme.terracotta)
 
@@ -180,7 +187,11 @@ struct ChooseKotekanView: View {
             //R The playhead only on the card that is sounding. A sweep on a card
             //R you cannot hear would be claiming something untrue about which
             //R figure is playing.
-            KotekanMiniScore(kotekan: k, playhead: isFocused ? engine.playhead : nil)
+            //R
+            //R `isPlaying` is index equality, not the drag-derived `isFocused`:
+            //R it must not flicker mid-swipe, and it must not make this depend
+            //R on the gesture.
+            KotekanMiniScore(kotekan: k, engine: isPlaying ? engine : nil)
                 .frame(height: 54)
                 .padding(.top, 2)
 

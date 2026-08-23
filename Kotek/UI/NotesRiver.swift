@@ -319,10 +319,25 @@ struct VoiceMixer: View {
 /// strike next". Two different questions, two different drawings.
 struct KotekanMiniScore: View {
     let kotekan: Kotekan
-    /// 0…1 through the cycle, or nil when this figure is not the one playing.
-    var playhead: Double?
+    /// The engine, when this figure is the one sounding — nil on every other
+    /// card. Passed as the engine rather than as a playhead VALUE on purpose:
+    /// a `Double` read out of it by the caller registers the caller's body as a
+    /// dependency, and the caller here is a carousel of eight cards, a top bar
+    /// and a footer. That rebuilt the entire screen sixty times a second, which
+    /// is what made swiping feel like it was catching. Read it in here and the
+    /// invalidation stops in here.
+    var engine: PlayEngine?
 
     var body: some View {
+        ZStack {
+            blocks
+            if let engine { Playhead(engine: engine) }
+        }
+    }
+
+    /// The figure itself. Nothing observable in here, so it is drawn once and
+    /// then left alone while the line above it moves.
+    private var blocks: some View {
         Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
             let range = kotekan.voicedKeyRange
             let rows = CGFloat(max(1, range.count))
@@ -363,7 +378,20 @@ struct KotekanMiniScore: View {
                 if let s { draw(s, slot: slot, color: Theme.sangsihVoice, half: false, rightHalf: false) }
             }
 
-            if let playhead {
+        }
+    }
+
+    /// The sweep, alone in its own view and its own layer. One thin rectangle is
+    /// the only thing that has any business being redrawn every frame.
+    private struct Playhead: View {
+        let engine: PlayEngine
+
+        var body: some View {
+            //R Read in the body, NOT in the draw closure: Observation registers
+            //R the dependency while the body runs, so a read that only happens
+            //R at draw time would never invalidate and the line would stall.
+            let playhead = engine.playhead
+            return Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
                 let x = size.width * min(1, max(0, playhead))
                 ctx.fill(Path(CGRect(x: x - 0.75, y: 0, width: 1.5, height: size.height)),
                          with: .color(Theme.cream.opacity(0.85)))
