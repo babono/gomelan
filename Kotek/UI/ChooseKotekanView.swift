@@ -56,9 +56,15 @@ struct ChooseKotekanView: View {
     @State private var dragOrigin: Double?
     @State private var muted = false
 
-    private let cardWidth: CGFloat = 250
+    //R Sized so the neighbours reach the glass. On a landscape phone the rail
+    //R has about 437 points either side of centre, and a card one slot out ends
+    //R at half a card past one step — so a step of 294 puts its outer edge at
+    //R 431, which is the edge for all practical purposes. At 250/20 it stopped
+    //R 42 points short on both sides and the three cards read as three cards
+    //R floating on a screen rather than as a piece of a rail.
+    private let cardWidth: CGFloat = 272
     private let cardHeight: CGFloat = 178
-    private let gap: CGFloat = 20
+    private let gap: CGFloat = 22
 
     private var step: CGFloat { cardWidth + gap }
     private var kotekans: [Kotekan] { app.kotekans }
@@ -81,6 +87,15 @@ struct ChooseKotekanView: View {
 
             carousel
                 .frame(maxHeight: .infinity)
+                //R The rail runs the full WIDTH of the glass, under the island
+                //R and past both rounded corners. A carousel that stops at the
+                //R safe area reads as a component sitting on a screen; one that
+                //R runs off both edges reads as a rail you are looking at part
+                //R of, which is the whole idea — there is no end to swipe off.
+                //R
+                //R Horizontal only. The bar and the footer keep their insets,
+                //R because a title under the island is a title nobody can read.
+                .ignoresSafeArea(.container, edges: .horizontal)
 
             footer
         }
