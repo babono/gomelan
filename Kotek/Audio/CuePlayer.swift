@@ -155,6 +155,33 @@ final class CuePlayer {
     //R AudioSessionManager owns the session. Nothing else touches it.
     //R --------------------------------------------------------------------
 
+    /// Whether the engine is genuinely producing audio, restarting it if it
+    /// quietly stopped.
+    ///
+    /// `started` is our flag and it does not know about interruptions. Send the
+    /// app to the background with a preview or a session running and iOS pulls
+    /// the audio session out; the engine stops, `started` stays true, and the
+    /// first cue after you come back calls play() on a node whose engine has no
+    /// IO cycle. That raises "player did not see an IO cycle" — an NSException,
+    /// which Swift cannot catch, so it takes the app with it. Every path that
+    /// touches a node goes through here.
+    private func ensureLive() -> Bool {
+        guard started else { return false }
+        if engine.isRunning { return true }
+        do {
+            try engine.start()
+            player.play()
+            return true
+        } catch {
+            //R Give up rather than retry every frame: the screen will stop and
+            //R restart us, and a failed start sixty times a second is worse than
+            //R silence.
+            print("[CuePlayer] engine would not restart: \(error)")
+            started = false
+            return false
+        }
+    }
+
     // MARK: - Cues
 
     /// A subtle metronome click on the beat.
@@ -181,22 +208,22 @@ final class CuePlayer {
     /// on one side, your partner's on the other, the way two players sit facing
     /// each other across the pair (§7).
     func playKeySample(index: Int, pan: Float = 0, volume: Float = 1) {
-        guard started, let buf = keyBuffers[index] else { return }
+        guard ensureLive(), let buf = keyBuffers[index] else { return }
         fire(buf, as: .key(index), isKeySample: true, pan: pan, volume: volume)   //R
     }
 
     func playGong() {
-        guard started, let buf = gongBuffer else { return }
+        guard ensureLive(), let buf = gongBuffer else { return }
         fire(buf, as: .gong)   //R
     }
 
     func playKempur() {
-        guard started, let buf = kempurBuffer else { return }
+        guard ensureLive(), let buf = kempurBuffer else { return }
         fire(buf, as: .kempur)   //R
     }
 
     func playKajar() {
-        guard started, let buf = kajarBuffer else { return }
+        guard ensureLive(), let buf = kajarBuffer else { return }
         fire(buf, as: .kajar)   //R
     }
 
@@ -204,7 +231,7 @@ final class CuePlayer {
     /// Called when the example hands over to "Your turn" so a 2s key sample
     /// doesn't keep ringing while the player is meant to be playing it.
     func stopKeySamples() {                                              //R
-        guard started else { return }                                    //R
+        guard started, engine.isRunning else { return }                  //R
         for node in voices where keyVoices.contains(ObjectIdentifier(node)) {  //R
             node.stop()                                                  //R
         }                                                                //R
@@ -218,7 +245,7 @@ final class CuePlayer {
     /// eight seconds, so muting it mid-stroke has to cut the one already sounding
     /// or the switch appears not to work.
     func stopColotomic() {                                               //R
-        guard started else { return }                                    //R
+        guard started, engine.isRunning else { return }                  //R
         for (voice, node) in activeVoice {                               //R
             if case .key = voice { continue }                            //R
             node.stop()                                                  //R
@@ -293,7 +320,7 @@ final class CuePlayer {
     // MARK: - Tone synthesis
 
     private func schedule(_ buffer: AVAudioPCMBuffer) {
-        guard started else { return }
+        guard ensureLive() else { return }
         player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
     }
 

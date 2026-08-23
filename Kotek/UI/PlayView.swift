@@ -27,6 +27,7 @@ import QuartzCore
 
 struct PlayView: View {
     @Environment(AppState.self) private var app
+    @Environment(\.scenePhase) private var scenePhase
     let camera: CameraController
     let audio: AudioEngineController
     let cue: CuePlayer
@@ -144,6 +145,13 @@ struct PlayView: View {
             let active = playedKeys
             Task { await fusion?.setActiveKeys(active) }
             audio.setDecompositionKeys(active)
+        }
+        //R Leaving the app pauses the session. Nobody plays a gangsa with the
+        //R phone in their pocket, and the clock would otherwise run on and score
+        //R every stroke of the absence as a miss — on top of coming back to an
+        //R audio engine iOS stopped underneath us.
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { pause() }
         }
         .onChange(of: app.tempoScale) { _, new in
             engine.setTempoScale(new)

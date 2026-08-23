@@ -38,6 +38,7 @@ import SwiftUI
 
 struct ChooseKotekanView: View {
     @Environment(AppState.self) private var app
+    @Environment(\.scenePhase) private var scenePhase
     let cue: CuePlayer
 
     @State private var engine = PlayEngine()
@@ -111,6 +112,14 @@ struct ChooseKotekanView: View {
         //R a four-figure rail, and going round should not restart what is
         //R already playing.
         .onChange(of: wrap(focusedSlot)) { _, _ in startPreview() }
+        //R Leaving the app must take the preview with it. Backgrounded, iOS
+        //R pulls the audio session and stops the engine underneath us — and the
+        //R display link comes back before anything says so, which is how a cue
+        //R ends up calling play() on a dead node. `CuePlayer.ensureLive` is the
+        //R backstop; this is not doing it in the first place.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { startPreview() } else { stopPreview() }
+        }
         .onChange(of: muted) { _, isMuted in
             engine.partnerAudible = !isMuted
             engine.yourVoiceAudible = !isMuted
@@ -142,30 +151,29 @@ struct ChooseKotekanView: View {
                     let offset = Double(slot) - position
                     card(kotekans[wrap(slot)],
                          isPlaying: slot == focusedSlot,
-                         offset: offset,
-                         onTap: { tap(slot) })
+                         offset: offset)
                         .position(x: geo.size.width / 2 + CGFloat(offset) * step,
                                   y: geo.size.height / 2)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
-            .gesture(swipe)
+            .gesture(swipe(width: geo.size.width))
         }
         .clipped()
     }
 
-    private var swipe: some Gesture {
-        //R One point, not eight. Eight is small on paper and perfectly legible
-        //R under a thumb: the rail sits still through the first millimetre and
-        //R then jumps eight points to catch up, which reads as the gesture
-        //R having to be earned before it is believed.
-        //R
-        //R Not zero, though. At zero the drag recognises on touch-down and the
-        //R cards' own tap gestures — focus a neighbour, start the focused one —
-        //R start losing to it. One point is under the noise floor of a finger
-        //R that is trying to hold still, so a tap stays a tap.
-        DragGesture(minimumDistance: 1)
+    /// ONE gesture for the whole rail — drag and tap both.
+    ///
+    /// Lowering `minimumDistance` did nothing, because the threshold was never
+    /// the reason it felt like the swipe had to be earned. The cards each had
+    /// their own `onTapGesture`, and a child gesture outranks a parent one in
+    /// SwiftUI: the drag could not begin until the taps had been given a chance
+    /// to lose, and that arbitration is the hesitation. There is nothing to
+    /// arbitrate now — the rail tracks from the first frame, and a touch that
+    /// never travelled is treated as a tap at the end of it.
+    private func swipe(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
             .onChanged { value in
                 //R Captured once, so the whole gesture is measured from where it
                 //R started rather than accumulating rounding on every callback.
@@ -174,11 +182,19 @@ struct ChooseKotekanView: View {
                 position = origin - value.translation.width / step
             }
             .onEnded { value in
+                let origin = dragOrigin ?? position
+                dragOrigin = nil
+
+                // A touch that went nowhere is a tap on whatever was under it.
+                guard abs(value.translation.width) >= 10 else {
+                    position = origin
+                    tap(slotUnder(x: value.startLocation.x, width: width, origin: origin))
+                    return
+                }
+
                 // Predicted, not actual: a flick that ends after 40pt but is
                 // still travelling should advance, and a slow drag of the same
                 // distance should not.
-                let origin = dragOrigin ?? position
-                dragOrigin = nil
                 let landing = origin - value.predictedEndTranslation.width / step
                 withAnimation(.snappy(duration: 0.32)) {
                     //R Never more than one card per gesture. A hard flick
@@ -188,6 +204,13 @@ struct ChooseKotekanView: View {
                     position = (landing.rounded()).clamped(to: origin - 1, origin + 1)
                 }
             }
+    }
+
+    /// Which slot sits under a point on the rail. The inverse of the `.position`
+    /// the cards are laid out with, so the two cannot disagree about what was
+    /// tapped.
+    private func slotUnder(x: CGFloat, width: CGFloat, origin: Double) -> Int {
+        Int((Double(x - width / 2) / Double(step) + origin).rounded())
     }
 
     private func tap(_ slot: Int) {
@@ -204,8 +227,7 @@ struct ChooseKotekanView: View {
         return ((i % n) + n) % n
     }
 
-    private func card(_ k: Kotekan, isPlaying: Bool, offset: Double,
-                      onTap: @escaping () -> Void) -> some View {
+    private func card(_ k: Kotekan, isPlaying: Bool, offset: Double) -> some View {
         // How focused this card is, 0…1. Taken from the same continuous
         // `position` the layout is, so the neighbour grows as it arrives — under
         // the finger during a drag and through the snap afterwards, with no
@@ -228,7 +250,8 @@ struct ChooseKotekanView: View {
             // behind it.
             .scaleEffect(0.84 + 0.16 * nearness)
             .opacity(0.35 + 0.65 * nearness)
-            .onTapGesture(perform: onTap)
+            //R No tap gesture here on purpose. See `swipe(width:)`.
+            .allowsHitTesting(false)
     }
 
     @ViewBuilder
