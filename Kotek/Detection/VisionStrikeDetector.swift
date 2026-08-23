@@ -28,6 +28,30 @@
 
 import Foundation
 
+/// The numbers both screens that watch for strikes have to agree on.
+///
+/// They did not. Test Detection had its own corroboration window, its own veto
+/// setting, and a slider that drove thresholds the play screen did not use —
+/// so tuning on the screen built for tuning taught you nothing about a session.
+/// Anything shared between the two lives here now, and the divergence has to be
+/// deliberate rather than accidental.
+nonisolated enum Detection {
+    /// How far from a sighting the ear may find the attack that goes with it.
+    /// Generous on purpose: vision leads the strike, so the onset arrives after
+    /// the sighting, and a window too tight vetoes real strokes — which is the
+    /// one failure a veto must never have.
+    static let corroborationWindow: Double = 0.15
+
+    /// The bar a crop must clear for an EAR-triggered event to accept it as the
+    /// key, given the bar vision uses to trigger itself.
+    ///
+    /// Deliberately lower. An ear-triggered event already has a sound behind
+    /// it, so vision only has to name the bilah — it does not also have to
+    /// decide whether anything happened, which is the harder half and the one
+    /// the self-trigger bar is set for.
+    static func namingThreshold(from trigger: Double) -> Double { trigger * 0.9 }
+}
+
 final class VisionStrikeDetector {
 
     /// Rising-edge threshold for a key nothing is due on.
@@ -45,6 +69,23 @@ final class VisionStrikeDetector {
     /// second, which is past what anyone plays and well inside the 250ms a
     /// bundled figure leaves between strokes.
     var minRearmSeconds = 0.09
+
+    /// Set all three bars from the one number a player can actually reach.
+    ///
+    /// The slider on Test Detection is the only detection control anyone tunes,
+    /// and the play screen used to ignore it — it carried its own hardcoded
+    /// 0.55 and 0.38, so the slider moved a threshold that governed nothing you
+    /// practise with. One call, both screens.
+    func apply(threshold: Double) {
+        enter = threshold
+        //R Seven tenths, the ratio the play screen was already using between
+        //R its two hardcoded bars. The expected key is easier to trigger; see
+        //R the note about expectation above.
+        enterExpected = threshold * 0.7
+        //R Re-arm well below the trigger so one strike cannot fire twice. The
+        //R relative dip is what actually clears between repeated strokes.
+        exit = threshold * 0.6
+    }
 
     private struct KeyState {
         var armed = true

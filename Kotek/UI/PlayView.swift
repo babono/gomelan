@@ -44,12 +44,6 @@ struct PlayView: View {
     /// bake a mistake into a template that then goes on to make more of them.
     private let visionTeachingConfidence: Double = 0.75
 
-    /// How far from a sighting the ear may find the attack that goes with it.
-    /// Generous on purpose: vision leads the strike, so the onset arrives after
-    /// the sighting, and a window too tight would veto real strokes — which is
-    /// the one failure this setting must never have.
-    private let corroborationWindow: Double = 0.15
-
     @State private var countdown: Int? = 3
     @State private var paused = false
     /// The control tour, when it is running. See `PracticeCoach`.
@@ -421,10 +415,14 @@ struct PlayView: View {
             await fusion.setActiveKeys(active)
             // Whatever was tuned in the detection screen governs play too —
             // otherwise that screen measures a detector nobody practises with.
-            await fusion.setMinHitProbability(app.visionThreshold)
+            await fusion.setMinHitProbability(Detection.namingThreshold(from: app.visionThreshold))
         }
 
         visionDetector.reset()
+        //R The slider on Test Detection governs the session too. It did not:
+        //R this detector carried its own hardcoded bars, so the one control
+        //R anyone tunes moved a number the play screen never read.
+        visionDetector.apply(threshold: app.visionThreshold)
         try? audio.start(profile: app.profile)
         //R Start with an empty ring and no pending onsets. Whatever the mic
         //R picked up before the count-in — the room, the app's own cues coming
@@ -557,7 +555,8 @@ struct PlayView: View {
                     //R in `heardOnly` it also holds the VETO: a sighting nothing
                     //R was heard for is a mallet moving, not a stroke, and the
                     //R model is not good enough to tell those apart on its own.
-                    let onset = audio.nearestOnset(to: hostTime, within: corroborationWindow)
+                    let onset = audio.nearestOnset(to: hostTime,
+                                                   within: Detection.corroborationWindow)
                     if app.requireStrikeSound, onset == nil { continue }
                     applyStrike(key: key, hostTime: onset ?? hostTime,
                                 confidence: scores[key] ?? 1)

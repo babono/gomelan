@@ -99,7 +99,6 @@ struct DetectionTestView: View {
     /// How far from a sighting an onset may sit and still corroborate it. Wider
     /// than the 0.08 used for timing snap, because here it only has to prove a
     /// strike happened, not say exactly when.
-    private let corroborationWindow: Double = 0.12
 
     var body: some View {
         @Bindable var app = app
@@ -165,7 +164,7 @@ struct DetectionTestView: View {
         .task { await runDetection() }
         .task { await pollDictionary() }
         .onChange(of: app.visionThreshold) { _, new in
-            Task { await fusion?.setMinHitProbability(new * 0.9) }
+            Task { await fusion?.setMinHitProbability(Detection.namingThreshold(from: new)) }
         }
     }
 
@@ -492,15 +491,16 @@ struct DetectionTestView: View {
             .scaleEffect(0.75, anchor: .leading)
             .frame(height: 22)
 
-            // Only meaningful when vision self-triggers. With the ear driving,
-            // a sound is what started the event, so there is nothing to veto —
-            // greyed rather than hidden so the relationship stays visible.
-            Toggle(isOn: $app.requireOnsetCorroboration) {
-                Text(app.audioTriggersStrikes ? "require sound (n/a)" : "require sound")
+            //R THE Detection setting from Settings, not a second one that only
+            //R existed here. Two switches meaning the same thing on two screens
+            //R is how a debug screen ends up testing something the app does not
+            //R do — which is exactly what had happened.
+            Toggle(isOn: Binding(get: { app.requireStrikeSound },
+                                 set: { app.requireStrikeSound = $0 })) {
+                Text("heard only")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.white.opacity(app.audioTriggersStrikes ? 0.3 : 0.75))
+                    .foregroundStyle(.white.opacity(0.75))
             }
-            .disabled(app.audioTriggersStrikes)
             .toggleStyle(.switch)
             .tint(Theme.hit)
             .scaleEffect(0.75, anchor: .leading)
@@ -569,34 +569,38 @@ struct DetectionTestView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Detection loop (identical to PlayView.runVisionDetection)
+    //R The same decision path as `PlayView.runVisionDetection`, and now
+    //R actually the same: both call `detector.apply(threshold:)`, both read
+    //R `Detection.corroborationWindow`, both veto on `app.requireStrikeSound`,
+    //R and vision self-triggers in both regardless of what the ear is doing.
+    //R The claim was here before the code matched it, which is the worst kind
+    //R of comment on a debug screen — it is the reason to trust what you are
+    //R watching.
 
     private func runDetection() async {
         detector.reset()
-        await fusion?.setMinHitProbability(app.visionThreshold * 0.9)
+        await fusion?.setMinHitProbability(Detection.namingThreshold(from: app.visionThreshold))
         while !Task.isCancelled {
             if overlaySize.width > 0, let (s, hostTime) = await fusion?.latestScores() {
                 scores = s
                 for (k, v) in s where v > (peakScores[k] ?? 0) { peakScores[k] = v }
-                detector.enter = app.visionThreshold
-                //R The slider drives BOTH bars: the expected key sits a little
-                //R under it, everything else a little over. This screen has no
-                //R figure running, so nothing is ever expected and only `enter`
-                //R is actually in play — but leaving them unlinked would have
-                //R the slider tuning a threshold the play screen no longer uses.
-                detector.enterExpected = app.visionThreshold * 0.76
-                // Re-arm well below the trigger so one strike cannot fire twice,
-                // while still clearing between genuine repeated notes.
-                detector.exit = app.visionThreshold * 0.6
-                let fired = app.audioTriggersStrikes
-                    ? []
-                    : detector.process(scores: s, now: hostTime)
+                //R One call, the same one the play screen makes. These were
+                //R set by hand here and hardcoded there, so the slider tuned a
+                //R threshold no session used.
+                detector.apply(threshold: app.visionThreshold)
+
+                //R Vision ALWAYS runs, exactly as it does in play. This used to
+                //R return nothing whenever the ear was allowed to trigger — and
+                //R since the ear is allowed to by default, the screen built for
+                //R watching vision showed none of it.
+                let fired = detector.process(scores: s, now: hostTime)
                 if let key = fired.max(by: { (s[$0] ?? 0) < (s[$1] ?? 0) }) {
-                    let onset = audio.nearestOnset(to: hostTime, within: 0.08)
-                        ?? audio.nearestOnset(to: hostTime, within: corroborationWindow)
-                    // Silence vetoes the sighting. Counted, so the screen can show
-                    // how much of the noise this is removing.
-                    if app.requireOnsetCorroboration, onset == nil {
+                    let onset = audio.nearestOnset(to: hostTime,
+                                                   within: Detection.corroborationWindow)
+                    //R The Detection setting, not a second one that only exists
+                    //R here. Silence vetoes the sighting in Heard only; counted,
+                    //R so the screen can show how much it is removing.
+                    if app.requireStrikeSound, onset == nil {
                         vetoed += 1
                         continue
                     }

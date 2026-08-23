@@ -118,9 +118,6 @@ final class AppState {
 
     /// Whether an audio onset must corroborate a sighting before it counts.
     /// Silence vetoes vision: a gangsa strike is the loudest thing in the room.
-    var requireOnsetCorroboration: Bool = Defaults.bool("requireOnset", true) {
-        didSet { Defaults.set("requireOnset", requireOnsetCorroboration) }
-    }
 
     /// Whether the ear fires the trigger and vision only says WHICH bar.
     ///
