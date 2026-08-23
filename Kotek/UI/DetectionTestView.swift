@@ -579,10 +579,18 @@ struct DetectionTestView: View {
                 scores = s
                 for (k, v) in s where v > (peakScores[k] ?? 0) { peakScores[k] = v }
                 detector.enter = app.visionThreshold
+                //R The slider drives BOTH bars: the expected key sits a little
+                //R under it, everything else a little over. This screen has no
+                //R figure running, so nothing is ever expected and only `enter`
+                //R is actually in play — but leaving them unlinked would have
+                //R the slider tuning a threshold the play screen no longer uses.
+                detector.enterExpected = app.visionThreshold * 0.76
                 // Re-arm well below the trigger so one strike cannot fire twice,
                 // while still clearing between genuine repeated notes.
                 detector.exit = app.visionThreshold * 0.6
-                let fired = app.audioTriggersStrikes ? [] : detector.process(scores: s)
+                let fired = app.audioTriggersStrikes
+                    ? []
+                    : detector.process(scores: s, now: hostTime)
                 if let key = fired.max(by: { (s[$0] ?? 0) < (s[$1] ?? 0) }) {
                     let onset = audio.nearestOnset(to: hostTime, within: 0.08)
                         ?? audio.nearestOnset(to: hostTime, within: corroborationWindow)

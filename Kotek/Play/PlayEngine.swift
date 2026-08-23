@@ -123,6 +123,11 @@ final class PlayEngine {
     private(set) var phase: SessionPhase = .countIn
     /// How many times the figure has come round. It only ever goes up.
     private(set) var loopIndex: Int = 0
+    /// The bilah the figure is asking for right now — the nearest unplayed
+    /// stroke, when one is within reach. Read by the vision detector, which
+    /// lowers its bar for this key and raises it for every other: see
+    /// `VisionStrikeDetector`.
+    private(set) var dueKey: Int?
     /// Your best eight consecutive passes SO FAR, on the half and speed you are
     /// playing now — the same question the results screen answers, asked live.
     ///
@@ -239,7 +244,10 @@ final class PlayEngine {
     /// after", which is the shape of a kotekan. Three rings on one bar stop
     /// being readable as distinct distances and start being a target.
     private let maxApproachRings = 2
-    private let missWindowMs: Double = 200               // §5.1
+    /// The widest a strike may ever be from a note and still be taken as that
+    /// note, and the longest an unplayed note is ever left open. Both are
+    /// really `strokeGap(around:)`; this is only the cap for a sparse figure.
+    private let maxWindowMs: Double = 500
     private let flashDuration: Double = 0.3
     
     // The count-in, in beats.
@@ -518,6 +526,7 @@ final class PlayEngine {
         }
 
         renderStates = states
+        dueKey = phase.isUserPlaying ? nearestOpenKey(patternTime: patternTime) : nil
         playhead = patternMs > 0 ? min(1, max(0, patternTime / patternMs)) : 0
         rebuildTrack(patternTime: patternTime, beatMs: beatMs)
     }
@@ -576,6 +585,47 @@ final class PlayEngine {
     //R highlight). Nothing here waits on onset detection — that hold was what
     //R pinned the highlight to one bilah while the figure moved on.
     //R --------------------------------------------------------------------
+
+    /// How much room a stroke has: the distance to whichever neighbour is
+    /// closer, wrapping round the turn of the cycle so the first and last
+    /// strokes are not treated as if they had all the time in the world.
+    ///
+    /// This is the one number the whole judgement rests on. It sets how near a
+    /// strike has to be to count as that note, how long a note waits before it
+    /// is written off, and where the boundaries between perfect, good and late
+    /// fall — all three scale together, which is what stops a fast figure being
+    /// graded as if it were a slow one, and what makes the tempo control widen
+    /// the windows as it slows the music.
+    private func strokeGap(around i: Int) -> Double {
+        guard notes.count > 1 else { return min(maxWindowMs, beatMs) }
+        let t = scaledTime(notes[i])
+        var gap = Double.greatestFiniteMagnitude
+        if i > 0 { gap = min(gap, t - scaledTime(notes[i - 1])) }
+        if i + 1 < notes.count { gap = min(gap, scaledTime(notes[i + 1]) - t) }
+        //R The turn of the cycle. The last stroke's next neighbour is the first
+        //R stroke of the pass after it, and the first stroke's previous
+        //R neighbour is the last of the pass before.
+        if i == 0 || i == notes.count - 1 {
+            let across = patternMs - scaledTime(notes[notes.count - 1]) + scaledTime(notes[0])
+            gap = min(gap, across)
+        }
+        return min(maxWindowMs, max(60, gap))
+    }
+
+    /// The key of the nearest stroke still open, if one is close enough to be
+    /// what the player is reaching for. Deliberately looks both ways: a stroke
+    /// just gone is as likely to be the one being played as a stroke just
+    /// coming, because a strike is reported after it happens.
+    private func nearestOpenKey(patternTime: Double) -> Int? {
+        var best: Int?
+        var bestErr = Double.greatestFiniteMagnitude
+        for i in notes.indices where !judged[i] {
+            let err = abs(scaledTime(notes[i]) - patternTime)
+            if err < bestErr { bestErr = err; best = i }
+        }
+        guard let best, bestErr <= strokeGap(around: best) else { return nil }
+        return notes[best].keyIndex
+    }
 
     /// The note the overlay is showing as due: the latest one whose time has
     /// arrived. `notes` is sorted, so scan forward and keep the last match.
@@ -690,7 +740,13 @@ final class PlayEngine {
         guard judging else { return }
         // Auto-miss notes whose window has fully passed.
         for i in notes.indices where !judged[i] {
-            if patternTime > scaledTime(notes[i]) + missWindowMs {
+            //R Written off when the NEXT stroke is due, not at a flat 200ms.
+            //R At 250ms a slot the old constant retired a note before a player
+            //R who was merely a little late could reach it — and their strike
+            //R then found nothing to bind to and vanished without so much as a
+            //R flash. Being missed for being late is fair; being missed and
+            //R ignored is not.
+            if patternTime > scaledTime(notes[i]) + strokeGap(around: i) {
                 judged[i] = true
                 outcomes[i] = .miss
                 record(.miss, at: notes[i].keyIndex, now: now, playSound: true)
@@ -720,19 +776,23 @@ final class PlayEngine {
 
     private func registerPlayStrike(keyIndex: Int, hostTime: Double) {
         let atMs = (hostTime - startHostTime) * 1000 - patternOriginMs
-        // Nearest unjudged note in time within the miss window.
+        //R Nearest unjudged note first, THEN ask whether it is near enough. The
+        //R window is that note's own spacing, so a dense figure stays tight and
+        //R a sparse one is forgiving, without a constant having to guess which
+        //R it is looking at.
         var target: Int?
-        var bestErr = missWindowMs
+        var bestErr = Double.greatestFiniteMagnitude
         for i in notes.indices where !judged[i] {
             let err = abs(scaledTime(notes[i]) - atMs)
-            if err <= bestErr { bestErr = err; target = i }
+            if err < bestErr { bestErr = err; target = i }
         }
-        guard let i = target else { return } // stray strike, ignore
-        
+        guard let i = target, bestErr <= strokeGap(around: i) else { return }
+
         judged[i] = true
         let err = scaledTime(notes[i]) - atMs
         if notes[i].keyIndex == keyIndex {
-            let result = JudgementResult.from(timingErrorMs: err)
+            let result = JudgementResult.from(timingErrorMs: err,
+                                              strokeGapMs: strokeGap(around: i))
             outcomes[i] = result
             record(result, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
         } else {

@@ -50,12 +50,31 @@ enum JudgementResult: String, Equatable {
     /// Correct key and reasonably on time — counts toward "on the beat".
     var onBeat: Bool { self == .perfect || self == .good }
 
-    /// Classify a timing error (in ms) against generous practice/play windows.
-    static func from(timingErrorMs: Double) -> JudgementResult {
+    /// Classify a timing error against the spacing of the figure being played.
+    ///
+    /// Relative to the STROKE GAP, not a flat number of milliseconds, with the
+    /// old flat numbers kept as ceilings. Both halves of that matter:
+    ///
+    /// The relative floor is what makes the middle grades exist at all. The
+    /// bundled figures run at 250ms a slot, so a flat 200ms Perfect is ±80% of
+    /// a stroke — everything that landed anywhere near the right stroke was
+    /// Perfect, and `.good` and `.lateEarly` were unreachable code. Being told
+    /// you are perfect when you are most of a stroke out is not encouragement,
+    /// it is a broken instrument.
+    ///
+    /// The absolute ceiling is what keeps a sparse figure honest: a rest of
+    /// four slots makes a 1000ms gap, and 45% of that would call a stroke
+    /// nearly half a second late "perfect".
+    ///
+    /// It also tracks the tempo control for free — `strokeGapMs` is measured in
+    /// scaled time, so slowing a figure down widens the windows with it, which
+    /// is what slowing down is for.
+    static func from(timingErrorMs: Double, strokeGapMs: Double) -> JudgementResult {
         let e = abs(timingErrorMs)
-        if e <= 200 { return .perfect }   // Generous Perfect (Green): 0..200ms
-        if e <= 350 { return .good }      // Good / Buffer OK (Terracotta Orange): 200..350ms
-        if e <= 500 { return .lateEarly } // Late/Early (Pale White): 350..500ms
+        let gap = max(60, strokeGapMs)
+        if e <= min(gap * 0.45, 200) { return .perfect }
+        if e <= min(gap * 0.70, 350) { return .good }
+        if e <= min(gap * 1.00, 500) { return .lateEarly }
         return .miss
     }
 }

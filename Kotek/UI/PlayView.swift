@@ -548,7 +548,9 @@ struct PlayView: View {
             if !app.audioTriggersStrikes,
                countdown == nil, !paused, !engine.isFinished,
                let (scores, hostTime) = await fusion?.latestScores() {
-                let fired = visionDetector.process(scores: scores)
+                let fired = visionDetector.process(scores: scores,
+                                                   expecting: engine.dueKey,
+                                                   now: hostTime)
                 if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
                     let strikeTime = audio.nearestOnset(to: hostTime, within: 0.12) ?? hostTime
                     applyStrike(key: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
