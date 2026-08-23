@@ -156,7 +156,16 @@ struct ChooseKotekanView: View {
     }
 
     private var swipe: some Gesture {
-        DragGesture(minimumDistance: 8)
+        //R One point, not eight. Eight is small on paper and perfectly legible
+        //R under a thumb: the rail sits still through the first millimetre and
+        //R then jumps eight points to catch up, which reads as the gesture
+        //R having to be earned before it is believed.
+        //R
+        //R Not zero, though. At zero the drag recognises on touch-down and the
+        //R cards' own tap gestures — focus a neighbour, start the focused one —
+        //R start losing to it. One point is under the noise floor of a finger
+        //R that is trying to hold still, so a tap stays a tap.
+        DragGesture(minimumDistance: 1)
             .onChanged { value in
                 //R Captured once, so the whole gesture is measured from where it
                 //R started rather than accumulating rounding on every callback.
