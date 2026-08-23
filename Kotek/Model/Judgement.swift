@@ -50,6 +50,18 @@ enum JudgementResult: String, Equatable {
     /// Correct key and reasonably on time — counts toward "on the beat".
     var onBeat: Bool { self == .perfect || self == .good }
 
+    /// The right bilah, at all. A LATE stroke is a hit: you found the key the
+    /// figure asked for, inside its own spacing, and were behind the beat doing
+    /// it. That is worth less than being on the beat and it is nothing like
+    /// striking the wrong bar, which is the company it used to keep — same
+    /// colour on the instrument, same colour on the score, and no credit
+    /// towards the gangsa.
+    ///
+    /// Kept separate from `onBeat` rather than folded into it: "on the beat" is
+    /// a claim about timing and stays perfect-or-good. This is a claim about
+    /// whether you played the note.
+    var isHit: Bool { self == .perfect || self == .good || self == .lateEarly }
+
     /// Classify a timing error against the spacing of the figure being played.
     ///
     /// Relative to the STROKE GAP, not a flat number of milliseconds, with the

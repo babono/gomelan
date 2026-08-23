@@ -22,8 +22,9 @@ import QuartzCore
 
 enum FlashKind: Equatable {
     case hitPerfect      // Green (exact right moment)
-    case hitGood         // Orange / Terracotta (buffer okay)
-    case wrongOrOffBeat  // Pale white (wrong key or off-beat)
+    case hitGood         // Gold (buffer okay)
+    case hitLate         // Amber (right bilah, behind the beat)
+    case wrongOrOffBeat  // Pale white (wrong key)
 
     static var hit: FlashKind { .hitPerfect }
     static var miss: FlashKind { .wrongOrOffBeat }
@@ -911,7 +912,10 @@ final class PlayEngine {
         let judgement = NoteJudgement(keyIndex: key, result: result, timingErrorMs: timingErrorMs)
         if storeResult {
             judgementsByPart[partKey, default: []].append(judgement)
-            if result.onBeat { landedNotes += 1 }
+            //R `isHit`, not `onBeat`: the grade counts how much of this gangsa
+            //R you have actually played, and a stroke that found the right bar
+            //R late is playing. Accuracy already docks it — see `score`.
+            if result.isHit { landedNotes += 1 }
             //R The pass in progress, tallied as it goes. Banked at the turn of
             //R the cycle by `closeCycle` — see there for why only whole passes
             //R reach the graph.
@@ -929,7 +933,12 @@ final class PlayEngine {
             flash(.hitGood, at: key, now: now)
             if playSound { cue?.playHit() }
         case .lateEarly:
-            flash(.wrongOrOffBeat, at: key, now: now)
+            //R Its own flash. This shared the wrong-key colour, so hitting the
+            //R right bar a little late lit the instrument exactly as if you had
+            //R hit the wrong one — while playing a hit sound, which is the
+            //R eye and the ear telling you opposite things about the same
+            //R stroke.
+            flash(.hitLate, at: key, now: now)
             if playSound { cue?.playHit() }
         case .wrongKey:
             flash(.wrongOrOffBeat, at: key, now: now)

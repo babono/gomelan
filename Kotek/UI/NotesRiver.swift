@@ -217,9 +217,12 @@ struct NotesRiver: View {
         if let outcome = note.outcome {
             switch outcome {
             case .perfect: return Theme.hit
-            case .good: return Theme.terracotta
-            case .lateEarly, .wrongKey: return Theme.wrong
-            case .miss: return Theme.miss
+            case .good: return Theme.gold
+            //R Late is a HIT, in the hit family. It used to share a colour with
+            //R wrongKey, which put the right bilah played a little behind the
+            //R beat next to the wrong bilah entirely.
+            case .lateEarly: return Theme.wrong
+            case .wrongKey, .miss: return Theme.miss
             }
         }
         return voiceColor(note.voice == .yours ? yourHalf : yourHalf.other)

@@ -120,12 +120,10 @@ struct OverlayView: View {
 
     private func flashColor(_ kind: FlashKind) -> Color {
         switch kind {
-        case .hitPerfect:
-            return Theme.hit // Vibrant Emerald Green (#4CAF50)
-        case .hitGood:
-            return Theme.terracotta // Terracotta / Warm Amber (#B35433)
-        case .wrongOrOffBeat:
-            return Color(hex: 0xE2E8F0) // Pale White
+        case .hitPerfect: return Theme.hit
+        case .hitGood: return Theme.gold
+        case .hitLate: return Theme.wrong
+        case .wrongOrOffBeat: return Theme.miss
         }
     }
 }
