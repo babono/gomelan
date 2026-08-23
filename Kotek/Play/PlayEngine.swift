@@ -20,17 +20,6 @@
 import SwiftUI
 import QuartzCore
 
-enum FlashKind: Equatable {
-    case hitPerfect      // Green (exact right moment)
-    case hitGood         // Gold (buffer okay)
-    case hitLate         // Amber (right bilah, behind the beat)
-    case wrongOrOffBeat  // Pale white (wrong key)
-
-    static var hit: FlashKind { .hitPerfect }
-    static var miss: FlashKind { .wrongOrOffBeat }
-    static var wrong: FlashKind { .wrongOrOffBeat }
-}
-
 enum SessionPhase: Equatable {
     case countIn    // gong only, one colotomic cycle
     case userTurn   // the figure is going round; you play
@@ -42,7 +31,16 @@ enum SessionPhase: Equatable {
 struct KeyRenderState: Equatable {
     var fill: Double = 0        // the NEAREST stroke's progress, 0…1 — the bar that fills from the bottom
     var strikeNow: Bool = false // solid highlight pulse
-    var flash: FlashKind? = nil // transient hit/miss/wrong
+    /// You got that one. The instrument says exactly one thing about a stroke
+    /// you have played — green, or nothing at all.
+    ///
+    /// It used to grade in colour: green, gold, amber, and a fourth for a wrong
+    /// bar. Four shades of feedback flashing past on a bilah you are looking at
+    /// while your hands are moving is not information, it is a decision to make
+    /// mid-stroke. Whether you were perfect or merely good belongs on the score
+    /// afterwards, where you can read it. Here the only useful answer is
+    /// whether to move on.
+    var hit: Bool = false
     var damp: Bool = false      // dashed damp hint on the previous key (§5.5)
     /// Every upcoming stroke on this bilah that is inside the cue window,
     /// nearest first — one ring each, nested.
@@ -224,7 +222,8 @@ final class PlayEngine {
     private let partnerPan: Float = 0.32
 
     // Transient flash bookkeeping: keyIndex -> (kind, expiry host time)
-    private var flashes: [Int: (FlashKind, Double)] = [:]
+    /// Key -> when its flash expires.
+    private var flashes: [Int: Double] = [:]
     
     private var startHostTime: Double = 0
     
@@ -478,12 +477,12 @@ final class PlayEngine {
 
         var states: [Int: KeyRenderState] = [:]
         
-        for (key, entry) in flashes where now <= entry.1 {
+        for (key, expiry) in flashes where now <= expiry {
             var s = states[key] ?? KeyRenderState()
-            s.flash = entry.0
+            s.hit = true
             states[key] = s
         }
-        flashes = flashes.filter { now <= $0.value.1 }
+        flashes = flashes.filter { now <= $0.value }
         
         let beatIndex = Int(currentTimeMs / beatMs)
         currentBeatIndex = max(0, beatIndex)
@@ -925,33 +924,22 @@ final class PlayEngine {
             if result == .miss || result == .wrongKey { tally.mistakes += 1 }
         }
         lastJudgement = judgement
-        switch result {
-        case .perfect:
-            flash(.hitPerfect, at: key, now: now)
+
+        //R The instrument flashes for a HIT and stays dark otherwise. A wrong
+        //R bar and a missed note both say the same thing — that was not the
+        //R note — and neither is worth lighting up the wrong bilah to say. The
+        //R miss cue still sounds, so being wrong is not silent; it just is not
+        //R painted onto the instrument you are trying to read.
+        if result.isHit {
+            flash(at: key, now: now)
             if playSound { cue?.playHit() }
-        case .good:
-            flash(.hitGood, at: key, now: now)
-            if playSound { cue?.playHit() }
-        case .lateEarly:
-            //R Its own flash. This shared the wrong-key colour, so hitting the
-            //R right bar a little late lit the instrument exactly as if you had
-            //R hit the wrong one — while playing a hit sound, which is the
-            //R eye and the ear telling you opposite things about the same
-            //R stroke.
-            flash(.hitLate, at: key, now: now)
-            if playSound { cue?.playHit() }
-        case .wrongKey:
-            flash(.wrongOrOffBeat, at: key, now: now)
-            if playSound { cue?.playMiss() }
-        case .miss:
-            // Auto-miss on timeout: DO NOT flash fill on key rect!
-            // Fills ONLY happen when the user physically strikes a key!
-            if playSound { cue?.playMiss() }
+        } else if playSound {
+            cue?.playMiss()
         }
     }
-    
-    private func flash(_ kind: FlashKind, at key: Int, now: Double) {
-        flashes[key] = (kind, now + flashDuration)
+
+    private func flash(at key: Int, now: Double) {
+        flashes[key] = now + flashDuration
     }
     
 }

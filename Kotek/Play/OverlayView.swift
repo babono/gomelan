@@ -106,9 +106,10 @@ struct OverlayView: View {
             ctx.stroke(shape, with: .color(Theme.cream), lineWidth: 3)
         }
 
-        // 4. Your strike landing: the only solid fill on the instrument.
-        if let flash = state.flash {
-            ctx.fill(shape, with: .color(flashColor(flash).opacity(0.85)))
+        // 4. Your strike landing: the only solid fill on the instrument, and
+        //    the only colour it ever takes.
+        if state.hit {
+            ctx.fill(shape, with: .color(Theme.hit.opacity(0.85)))
         }
 
         // 5. Damp hint on the key you should be silencing (§5.5).
@@ -118,12 +119,4 @@ struct OverlayView: View {
         }
     }
 
-    private func flashColor(_ kind: FlashKind) -> Color {
-        switch kind {
-        case .hitPerfect: return Theme.hit
-        case .hitGood: return Theme.gold
-        case .hitLate: return Theme.wrong
-        case .wrongOrOffBeat: return Theme.miss
-        }
-    }
 }

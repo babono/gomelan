@@ -215,13 +215,13 @@ struct NotesRiver: View {
     /// yours has been judged, it carries the verdict until the cycle turns.
     private func color(of note: CycleNote) -> Color {
         if let outcome = note.outcome {
+            //R Green for any hit, the miss colour for anything else — the same
+            //R two answers the instrument gives. Grading a stroke in colour
+            //R (green, gold, amber) meant three shades to tell apart on 14pt
+            //R blocks going past at four a second, to learn something the
+            //R accuracy figure says plainly at the end.
             switch outcome {
-            case .perfect: return Theme.hit
-            case .good: return Theme.gold
-            //R Late is a HIT, in the hit family. It used to share a colour with
-            //R wrongKey, which put the right bilah played a little behind the
-            //R beat next to the wrong bilah entirely.
-            case .lateEarly: return Theme.wrong
+            case .perfect, .good, .lateEarly: return Theme.hit
             case .wrongKey, .miss: return Theme.miss
             }
         }
