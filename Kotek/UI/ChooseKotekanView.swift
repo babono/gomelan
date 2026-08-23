@@ -20,6 +20,15 @@
 //  ground and no ornament that competes with content, and a rack of records
 //  would be the loudest thing in it.
 //
+//  The score lives INSIDE the card, not in a strip along the bottom. Nobody
+//  should be settling in here: a full-width score at the foot of the screen
+//  gives the picker content of its own and makes it somewhere to stay, when the
+//  whole job is to get you to an instrument with a mallet in your hand. Folded
+//  into the card it is part of the thing being chosen — and every card can
+//  carry one, playing or not, so the whole set can be compared by shape at a
+//  glance. That is also why the cards lost their blurb: the shape says more
+//  about a kotekan than a sentence about it does, and it says it faster.
+//
 //  Figures that need more bilah than the calibrated gangsa has can still be
 //  swiped to and heard; they simply cannot be started. Hearing what you are
 //  missing is a better reason to go and re-align than a greyed-out card.
@@ -38,7 +47,7 @@ struct ChooseKotekanView: View {
     @State private var muted = false
 
     private let cardWidth: CGFloat = 250
-    private let cardHeight: CGFloat = 176
+    private let cardHeight: CGFloat = 178
     private let gap: CGFloat = 20
 
     private var step: CGFloat { cardWidth + gap }
@@ -62,12 +71,6 @@ struct ChooseKotekanView: View {
                 .frame(maxHeight: .infinity)
 
             footer
-
-            NotesRiver(engine: engine,
-                       keyRange: current?.voicedKeyRange ?? 0...0,
-                       keyCount: app.profile.keys.count,
-                       yourHalf: .polos,
-                       bothHalves: true)
         }
         .onAppear { startPreview() }
         .onDisappear { stopPreview() }
@@ -137,7 +140,7 @@ struct ChooseKotekanView: View {
         let isFocused: Bool = abs(offset) < 0.5
         let canPlay: Bool = app.kotekan(k, playableOn: app.profile)
 
-        return cardBody(k, canPlay: canPlay)
+        return cardBody(k, canPlay: canPlay, isFocused: isFocused)
             .padding(18)
             .frame(width: cardWidth, height: cardHeight, alignment: .topLeading)
             .background(Theme.deep.opacity(0.55 + 0.3 * nearness),
@@ -164,8 +167,8 @@ struct ChooseKotekanView: View {
     }
 
     @ViewBuilder
-    private func cardBody(_ k: Kotekan, canPlay: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private func cardBody(_ k: Kotekan, canPlay: Bool, isFocused: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
             SectionLabel("Level \(k.level) · \(k.toneLabel)", color: Theme.terracotta)
 
             Text(k.name)
@@ -174,12 +177,12 @@ struct ChooseKotekanView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
-            Text(k.blurb)
-                .font(.sans(13))
-                .foregroundStyle(Theme.cream.opacity(0.6))
-                .lineSpacing(2)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
+            //R The playhead only on the card that is sounding. A sweep on a card
+            //R you cannot hear would be claiming something untrue about which
+            //R figure is playing.
+            KotekanMiniScore(kotekan: k, playhead: isFocused ? engine.playhead : nil)
+                .frame(height: 54)
+                .padding(.top, 2)
 
             Spacer(minLength: 4)
 
