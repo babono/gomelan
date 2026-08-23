@@ -87,8 +87,18 @@ struct CoachAnchors: PreferenceKey {
 
 extension View {
     /// Mark this view as what `step` points at.
+    ///
+    /// `transformAnchorPreference`, NOT `anchorPreference`. The second SETS the
+    /// preference for its subtree, wiping whatever the children put there — and
+    /// the targets nest: the top bar is one step, and the score cluster and the
+    /// panel button inside it are two more. Marking the bar deleted both of
+    /// them, so those steps came up dimming the whole screen with nothing lit,
+    /// which is the one failure mode that looks like the tour is broken rather
+    /// than mispointed. This one merges into what is already there.
     func coachTarget(_ step: CoachStep) -> some View {
-        anchorPreference(key: CoachAnchors.self, value: .bounds) { [step: $0] }
+        transformAnchorPreference(key: CoachAnchors.self, value: .bounds) { value, anchor in
+            value[step] = anchor
+        }
     }
 }
 
