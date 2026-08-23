@@ -47,6 +47,14 @@ struct PlayView: View {
 
     @State private var countdown: Int? = 3
     @State private var paused = false
+    /// The control tour, when it is running. See `PracticeCoach`.
+    @State private var coachStep: CoachStep?
+    /// Whether finishing the tour should start the session. True on a first run,
+    /// false when it was asked for from the pause overlay — where the session is
+    /// already going and the player just wants reminding what a button does.
+    @State private var coachStartsSession = false
+    /// The panel's state before the tour forced it open, restored afterwards.
+    @State private var panelWasVisible = false
     @State private var pauseStartedAt: Double = 0
 
     // Kept for the strike wiring; not surfaced during play (clean overlay).
@@ -90,12 +98,13 @@ struct PlayView: View {
                     // score's top hairline falls between them as a divider.
                     VStack(spacing: 0) {
                         HStack(spacing: 10) {
-                            halfSwitch
-                            tempoPicker
+                            halfSwitch.coachTarget(.half)
+                            tempoPicker.coachTarget(.tempo)
                             Spacer()
                             VoiceMixer(yourHalf: app.chosenHalf,
                                        yourVoiceAudible: $app.yourVoiceAudible,
                                        partnerAudible: $app.partnerAudible)
+                                .coachTarget(.voices)
                         }
                         .padding(.horizontal, 24)
                         .padding(.vertical, 9)
@@ -112,11 +121,30 @@ struct PlayView: View {
             }
             .animation(.easeInOut(duration: 0.22), value: app.bottomBarVisible)
 
-            if let countdown {
+            //R Hidden while the tour runs: on a first session the countdown has
+            //R not started, and a frozen "3" behind the dim reads as a stall.
+            if let countdown, coachStep == nil {
                 CountdownOverlay(value: countdown)
             }
 
-            if paused { pauseOverlay }
+            //R Likewise the pause card — the tour is reachable from it, and two
+            //R dimming layers would leave every lit control in shadow.
+            if paused, coachStep == nil { pauseOverlay }
+        }
+        .overlayPreferenceValue(CoachAnchors.self) { anchors in
+            //R Full-bleed, and the anchors are resolved against THIS proxy. A
+            //R safe-area-inset reader left undimmed strips down both edges and
+            //R along the bottom — and worse, would resolve every target into a
+            //R space offset from the one the spotlight is drawn in.
+            GeometryReader { proxy in
+                if let coachStep {
+                    PracticeCoachOverlay(step: coachStep,
+                                         target: anchors[coachStep].map { proxy[$0] },
+                                         onNext: advanceCoach,
+                                         onSkip: finishCoach)
+                }
+            }
+            .ignoresSafeArea()
         }
         .background {
             // Measures the full-bleed layout the preview/overlay fill, so the
@@ -231,6 +259,9 @@ struct PlayView: View {
                 Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
                     PillButton(title: "Resume", style: .filled) { resume() }
+                    PillButton(title: "Show me around", style: .outlined, tint: Theme.copper) {
+                        startCoach(startsSession: false)
+                    }
                     PillButton(title: "End practice", style: .outlined, tint: Theme.copper) {
                         //R Straight out. Going through `resume()` first would
                         //R boot the mic and let a beat of music through purely
@@ -312,6 +343,7 @@ struct PlayView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(app.bottomBarVisible ? "Hide the score" : "Show the score")
+            .coachTarget(.panelToggle)
             .padding(.trailing, 10)
 
             Button { pause() } label: {
@@ -328,6 +360,7 @@ struct PlayView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 14)
+        .coachTarget(.session)
     }
 
     // MARK: - The river (§13.5)
@@ -443,7 +476,51 @@ struct PlayView: View {
             }
         }
 
-        runCountdown()
+        //R The tour holds the session at the gate on a first run. `countdown`
+        //R stays at 3 rather than being cleared, so the strike guards keep
+        //R blocking while it is up; it simply is not drawn.
+        if app.hasSeenPracticeCoach {
+            runCountdown()
+        } else {
+            startCoach(startsSession: true)
+        }
+    }
+
+    // MARK: - The control tour
+
+    private func startCoach(startsSession: Bool, from first: CoachStep = .session) {
+        coachStartsSession = startsSession
+        panelWasVisible = app.bottomBarVisible
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if first.needsPanel { app.bottomBarVisible = true }
+            coachStep = first
+        }
+    }
+
+    private func advanceCoach() {
+        guard let coachStep else { return }
+        guard let next = CoachStep(rawValue: coachStep.rawValue + 1) else {
+            finishCoach()
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.24)) {
+            //R The last three steps point at controls inside the panel, so it
+            //R has to be up for them to be lit at all.
+            if next.needsPanel { app.bottomBarVisible = true }
+            self.coachStep = next
+        }
+    }
+
+    private func finishCoach() {
+        app.markPracticeCoachSeen()
+        withAnimation(.easeInOut(duration: 0.24)) {
+            //R Put the panel back where it was. Leaving it up would quietly undo
+            //R the default for every new player, one step after explaining that
+            //R the default is down.
+            app.bottomBarVisible = panelWasVisible
+            coachStep = nil
+        }
+        if coachStartsSession { runCountdown() }
     }
 
     private func runCountdown() {
@@ -584,23 +661,22 @@ private struct SessionCounters: View {
                 .accessibilityLabel("\(engine.landedNotes) notes landed")
             }
 
-            if engine.bestSoFar != nil || record != nil {
-                HStack(spacing: 3) {
-                    if let best = engine.bestSoFar {
-                        Text(percent(best))
-                            .foregroundStyle(beatingRecord ? Theme.hit : Theme.cream)
-                    }
-                    if let record {
-                        if engine.bestSoFar != nil {
-                            Text("/").foregroundStyle(Theme.inkStone.opacity(0.6))
-                        }
-                        // The bar to clear, in the same gold the trophy uses on
-                        // the picker card, so the two read as the same fact.
-                        Text(percent(record)).foregroundStyle(Theme.gold)
-                    }
+            //R Always drawn, even before a single pass has closed. Two reasons:
+            //R the control tour has to have something to point at before the
+            //R session has started, and appearing later would shift the whole
+            //R cluster sideways the moment the first cycle lands.
+            HStack(spacing: 3) {
+                Text(engine.bestSoFar.map(percent) ?? "—")
+                    .foregroundStyle(beatingRecord ? Theme.hit : Theme.cream)
+                if let record {
+                    Text("/").foregroundStyle(Theme.inkStone.opacity(0.6))
+                    // The bar to clear, in the same gold the trophy uses on the
+                    // picker card, so the two read as the same fact.
+                    Text(percent(record)).foregroundStyle(Theme.gold)
                 }
-                .accessibilityLabel(accessibilityLabel)
             }
+            .coachTarget(.score)
+            .accessibilityLabel(accessibilityLabel)
         }
         .font(.sans(14))
         .contentTransition(.numericText())
@@ -614,7 +690,7 @@ private struct SessionCounters: View {
 
     private var accessibilityLabel: String {
         var parts: [String] = []
-        if let best = engine.bestSoFar { parts.append("best so far \(percent(best))") }
+        parts.append(engine.bestSoFar.map { "best so far \(percent($0))" } ?? "no score yet")
         if let record { parts.append("record \(percent(record))") }
         if beatingRecord { parts.append("beating the record") }
         return parts.joined(separator: ", ")

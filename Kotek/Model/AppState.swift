@@ -178,6 +178,17 @@ final class AppState {
     private var seen: Set<String> = Set(Guide.allCases.filter { Defaults.bool($0.seenKey, false) }
                                                       .map(\.rawValue))
 
+    /// The practice screen's control tour. Not a `Guide` — it is a spotlight on
+    /// live controls rather than a panel of prose, and it is shown by the screen
+    /// that owns those controls rather than by `RootView`.
+    private(set) var hasSeenPracticeCoach = Defaults.bool("hasSeenPracticeCoach", false)
+
+    func markPracticeCoachSeen() {
+        guard !hasSeenPracticeCoach else { return }
+        hasSeenPracticeCoach = true
+        Defaults.set("hasSeenPracticeCoach", true)
+    }
+
     func openGuide(_ guide: Guide) { visibleGuide = guide }
 
     func closeGuide() {
