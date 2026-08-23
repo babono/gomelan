@@ -256,6 +256,8 @@ struct TopBar: View {
     var trailingText: String? = nil
     /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
     var settingsAction: (() -> Void)? = nil
+    /// When set, an ⓘ button is shown at the trailing edge, before the gear.
+    var infoAction: (() -> Void)? = nil
     var tint: Color = Theme.cream
     var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
@@ -296,6 +298,20 @@ struct TopBar: View {
                         Text(trailingText)
                             .font(.sans(13, weight: .medium))
                             .foregroundStyle(accent)
+                    }
+                    if let infoAction {
+                        Button(action: infoAction) {
+                            Image(systemName: "info.circle")
+                                .font(.symbol(19, weight: .medium))
+                                .foregroundStyle(tint)
+                                //R Same 44pt target as the gear below, for the
+                                //R same reason: a bare glyph in a corner is a
+                                //R 19pt target and the HIG minimum is 44.
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("How Gomelan works")
                     }
                     if let settingsAction {
                         Button(action: settingsAction) {

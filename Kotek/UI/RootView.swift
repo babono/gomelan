@@ -51,11 +51,19 @@ struct RootView: View {
         // moved. Sliding or scaling it would drag the wordmark with it and
         // break exactly the illusion this is for.
         .overlay {
+            if app.showsGuide {
+                GuideView { withAnimation(.easeInOut(duration: 0.2)) { app.closeGuide() } }
+            }
+        }
+        // BELOW the guide in the stack, so a first run shows the splash finish
+        // and hand over to the panel rather than the panel appearing behind it.
+        .overlay {
             if !preloader.isFinished {
                 SplashView(progress: preloader.progress)
                     .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: app.showsGuide)
         .animation(.easeInOut(duration: 0.55), value: preloader.isFinished)
         .task { await preloader.warm(camera: camera) }
         // Switch the camera off the moment the app leaves the screens that show

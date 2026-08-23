@@ -140,6 +140,33 @@ final class AppState {
     /// Whether the gangsa's strike-sound baseline has been learned this session.
     var baselineLearned: Bool = false
 
+    /// Whether the "how this works" panel is up. Presented by `RootView` so it
+    /// can cover any screen, rather than by whichever one happens to own the ⓘ.
+    var showsGuide = false
+    /// Survives relaunch: the panel introduces itself once, on a first run, and
+    /// after that it is only ever asked for. A guide that reappears is an
+    /// obstacle, not an introduction.
+    private(set) var hasSeenGuide = Defaults.bool("hasSeenGuide", false)
+
+    func openGuide() { showsGuide = true }
+
+    func closeGuide() {
+        showsGuide = false
+        markGuideSeen()
+    }
+
+    /// Show it unprompted the first time, and only the first time.
+    func showGuideIfFirstRun() {
+        guard !hasSeenGuide else { return }
+        showsGuide = true
+    }
+
+    private func markGuideSeen() {
+        guard !hasSeenGuide else { return }
+        hasSeenGuide = true
+        Defaults.set("hasSeenGuide", true)
+    }
+
     init() {
         let all = ProfileStore.loadAll()
         MalletHitClassifier.applyCropScale(mode: Defaults.int("cropScaleMode", 1))
