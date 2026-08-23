@@ -46,8 +46,8 @@ struct KotekWordmark: View {
     /// How wide the Sanskrit sits under the wordmark, as a fraction of it.
     /// Narrower on purpose: it is the second mark, and matching the width would
     /// read as two logos stacked rather than one with its script beneath.
-    private static let sanskritScale: CGFloat = 0.55
-    private static let gapScale: CGFloat = 0.06
+    private static let sanskritScale: CGFloat = 0.46
+    private static let gapScale: CGFloat = 0.02
 
     /// The width the wordmark takes in a container this wide.
     static func width(in containerWidth: CGFloat) -> CGFloat {
