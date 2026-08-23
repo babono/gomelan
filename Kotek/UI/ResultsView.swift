@@ -8,6 +8,14 @@
 //  the headline is your BEST stretch, not your average, and then what the
 //  session put into the gangsa.
 //
+//  Metered to FIT a landscape phone, like the guide panels: about 400pt of
+//  height, of which the header and the buttons take eighty, so the two blocks
+//  between them have roughly three hundred. It used to overrun by about the
+//  height of the button row — which put Retry below the fold on the one screen
+//  whose entire purpose is to offer you another go. The ScrollView stays as a
+//  backstop for an SE and for large Dynamic Type; it should not be doing
+//  anything on a normal phone.
+//
 //  A per-key "where it slipped" table used to sit under that. It was accurate
 //  and nobody needed it: on a figure of three or four bilah, being told which
 //  of them you were worst at is a statistic rather than an instruction — the
@@ -32,7 +40,7 @@ struct ResultsView: View {
                 header(result)
 
                 ScrollView(.vertical, showsIndicators: true) {
-                    VStack(spacing: 24) {
+                    VStack(spacing: 16) {
                         if let best = result.best {
                             HStack(alignment: .top, spacing: 28) {
                                 headline(best)
@@ -52,7 +60,7 @@ struct ResultsView: View {
                         bottomBar
                     }
                     .padding(.horizontal, 40)
-                    .padding(.vertical, 20)
+                    .padding(.vertical, 12)
                 }
             }
         } else {
@@ -70,7 +78,7 @@ struct ResultsView: View {
                     .foregroundStyle(Theme.terracotta)
             }
             .padding(.horizontal, 40)
-            .padding(.vertical, 16)
+            .padding(.vertical, 10)
             Rectangle().fill(Theme.charcoal.opacity(0.12)).frame(height: 1)
         }
     }
@@ -82,14 +90,14 @@ struct ResultsView: View {
             VStack(alignment: .leading, spacing: 0) {
                 SectionLabel("Accuracy", color: Theme.stone)
                 Text(String(format: "%.2f%%", best.accuracy * 100))
-                    .font(.serif(56))
+                    .font(.serif(46))
                     .foregroundStyle(Theme.charcoal)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 recordLine
             }
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 stat("On the beat", "\(best.onBeat)")
                 stat("Mistakes", "\(best.mistakes)")
             }
@@ -129,13 +137,13 @@ struct ResultsView: View {
         Text(text)
             .font(.sans(13, weight: .medium))
             .foregroundStyle(color)
-            .padding(.top, 6)
+            .padding(.top, 4)
     }
 
     private func stat(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             SectionLabel(label, color: Theme.stone)
-            Text(value).font(.serif(26)).foregroundStyle(Theme.charcoal)
+            Text(value).font(.serif(22)).foregroundStyle(Theme.charcoal)
         }
     }
 
@@ -149,11 +157,11 @@ struct ResultsView: View {
     /// best — otherwise the number above looks cherry-picked, which it is, and
     /// this shows exactly where from.
     private func performance(_ result: SongResult, best: ScoringWindow) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Performance", color: Theme.stone)
 
             PerformanceGraph(cycles: result.cycles, best: best.range)
-                .frame(height: 132)
+                .frame(height: 108)
                 .frame(maxWidth: .infinity)
 
             HStack {
@@ -185,7 +193,7 @@ struct ResultsView: View {
     }
 
     private var bottomBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             PillButton(title: "Back", style: .outlined, tint: Theme.charcoal) {
                 app.backToKotekan()
             }
@@ -194,8 +202,8 @@ struct ResultsView: View {
             }
             Spacer()
         }
-        .padding(.top, 4)
-        .padding(.bottom, 16)
+        .padding(.top, 2)
+        .padding(.bottom, 8)
     }
 }
 
@@ -297,7 +305,7 @@ private struct MasteryProgress: View {
     private var promoted: Bool { endMastery.rank != startMastery.rank }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 SectionLabel("Your gangsa", color: Theme.stone)
                 Spacer()
@@ -310,7 +318,7 @@ private struct MasteryProgress: View {
 
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(shownRank.title)
-                    .font(.serif(28))
+                    .font(.serif(24))
                     //R The rung's own colour, and it changes mid-animation on a
                     //R promotion — the name and the shade arrive together, which
                     //R is most of what makes the second stage read as a step up
@@ -341,7 +349,7 @@ private struct MasteryProgress: View {
                         .frame(width: max(4, geo.size.width * shownFraction))
                 }
             }
-            .frame(height: 8)
+            .frame(height: 7)
 
             Text(footnote)
                 .font(.sans(13))
