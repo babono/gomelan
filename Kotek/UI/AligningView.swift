@@ -94,13 +94,37 @@ struct AligningView: View {
         .busy(busyMessage)
         .onAppear {
             camera.start()
+            var fromFraming = false
             if keys.isEmpty {
                 //R Coming from framing, start inside the area just framed — the
                 //R saved fit belongs to wherever the instrument was last time.
-                keys = app.seedMasksFromFraming
+                fromFraming = app.seedMasksFromFraming
+                keys = fromFraming
                     ? InstrumentProfile.layout(count: app.profile.keyCount, in: app.framedRegion)
                     : app.profile.keys
                 app.seedMasksFromFraming = false
+            }
+
+            //R Auto-fit on the way through SETUP only, or when there is no fit
+            //R to protect.
+            //R
+            //R This screen is reached two ways and they want opposite things.
+            //R From framing it is step 3 of 4 and a guess is the whole service.
+            //R From Settings → Re-align you already have a fit, the play screen
+            //R is drawing the bilah from it right now, and running the detector
+            //R threw it away and replaced it with a fresh guess — which is why
+            //R re-aligning could come up looking nothing like the instrument
+            //R you had just been playing against.
+            //R
+            //R The comb fit makes it worse from Settings: `findInFramedRegion`
+            //R anchors on `app.framedRegion`, which is wherever the gangsa was
+            //R standing the day it was first framed, not where it is now.
+            //R
+            //R Auto-detect is still one tap away in the bottom bar. Asking for
+            //R it is fine; having it happen to you is not.
+            let shouldAutoFit = fromFraming || keys.isEmpty
+            if !shouldAutoFit {
+                status = "Your saved fit — drag to adjust, or Auto-detect to start over"
             }
             //R Predict where the bars are as soon as a frame arrives. Only a
             //R complete snap is applied: a partial one used to fling the first
@@ -113,9 +137,9 @@ struct AligningView: View {
             //R for an actual frame now — the session is already running, so that
             //R is usually immediate — and shows what it is doing.
             Task {
-                busyMessage = "Finding your keys…"
+                busyMessage = shouldAutoFit ? "Finding your keys…" : "Waking the camera…"
                 let started = CACurrentMediaTime()
-                await autoDetect(requireAll: true)
+                if shouldAutoFit { await autoDetect(requireAll: true) }
 
                 //R The prediction is the FAST part — the frames are already
                 //R flowing when we arrive, so it finishes in about a tenth of a
