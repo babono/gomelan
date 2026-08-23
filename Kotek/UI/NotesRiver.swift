@@ -44,6 +44,12 @@ struct NotesRiver: View {
     let keyCount: Int
     /// The half you are playing; your partner has the other one.
     let yourHalf: KotekanHalf
+    /// Draw both halves at full strength and label both.
+    ///
+    /// For the picker's preview, where you have not chosen a side yet: ghosting
+    /// one of them would be answering a question nobody has asked, and the
+    /// whole point of the preview is to show how the two lock together.
+    var bothHalves = false
 
     private let pulseRowHeight: CGFloat = 12
     private let sideInset: CGFloat = 10
@@ -143,7 +149,20 @@ struct NotesRiver: View {
             let block = Path(roundedRect: rect, cornerRadius: 3)
             let color = color(of: note)
 
-            if note.voice == .yours {
+            if note.isUnison, bothHalves, note.outcome == nil {
+                // Both halves land here together. Split down the middle rather
+                // than stacked: the block keeps its full height, so it still
+                // holds a number and still sits in one lane.
+                var left = ctx
+                left.clip(to: Path(CGRect(x: rect.minX, y: rect.minY,
+                                          width: rect.width / 2, height: rect.height)))
+                left.fill(block, with: .color(voiceColor(yourHalf).opacity(0.95)))
+
+                var right = ctx
+                right.clip(to: Path(CGRect(x: rect.midX, y: rect.minY,
+                                           width: rect.width / 2, height: rect.height)))
+                right.fill(block, with: .color(voiceColor(yourHalf.other).opacity(0.95)))
+            } else if note.voice == .yours || bothHalves {
                 ctx.fill(block, with: .color(color.opacity(0.95)))
             } else {
                 // Your partner's strokes are context, not instruction: outlined
@@ -159,7 +178,7 @@ struct NotesRiver: View {
             }
 
             // The number, on your own strokes only — see above.
-            if note.voice == .yours, let symbol = labels[note.keyIndex] {
+            if note.voice == .yours || bothHalves, let symbol = labels[note.keyIndex] {
                 ctx.draw(symbol, at: CGPoint(x: rect.midX, y: rect.midY))
             }
         }
@@ -203,8 +222,11 @@ struct NotesRiver: View {
             case .miss: return Theme.miss
             }
         }
-        let half = note.voice == .yours ? yourHalf : yourHalf.other
-        return half == .polos ? Theme.polosVoice : Theme.sangsihVoice
+        return voiceColor(note.voice == .yours ? yourHalf : yourHalf.other)
+    }
+
+    private func voiceColor(_ half: KotekanHalf) -> Color {
+        half == .polos ? Theme.polosVoice : Theme.sangsihVoice
     }
 
     /// Vertical rule for the colotomic frame; nil for a plain beat.

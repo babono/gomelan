@@ -119,7 +119,7 @@ struct RootView: View {
         case .calibrating:
             CalibrationView(camera: camera, audio: audio)
         case .chooseKotekan:
-            ChooseKotekanView()
+            ChooseKotekanView(cue: cue)
         case .countdown, .playing:
             PlayView(camera: camera, audio: audio, cue: cue)
         case .results:

@@ -81,6 +81,14 @@ struct CycleNote: Identifiable, Equatable {
     var outcome: JudgementResult? = nil
     /// The stroke due right now — what the bilah overlay is lighting.
     var isCurrent: Bool = false
+    /// Both halves strike this key on this slot.
+    ///
+    /// Not an edge case: the telu family is BUILT on a shared anchor tone, and
+    /// on Ubitan Nyendok it is half of what polos plays. Drawn as one block per
+    /// voice, the partner painted straight over it and polos looked like a
+    /// two-stroke figure — in the preview whose entire job is to show what the
+    /// figure is. One block, split down the middle, one number.
+    var isUnison: Bool = false
 }
 
 struct TrackMarker: Identifiable, Equatable {
@@ -140,6 +148,8 @@ final class PlayEngine {
     private var song: Song = ResourceLoader.bundledSongs().first ?? Song(id: "", title: "", difficulty: .beginner, bpm: 60, requiredKeys: 0, durationMs: 0, notes: [])
     private var profile: InstrumentProfile?
     private var tempoScale: Double = 1
+    /// Whether strokes are scored. See `configure`.
+    private var judging = true
     
     // Play-mode state
     private var notes: [Note] = []
@@ -244,7 +254,7 @@ final class PlayEngine {
     // scrolling river made that visible. On a static cycle the gong rule is
     // drawn straight through the pattern, and a figure that starts on the wrong
     // half of the colotomic cycle is immediately, obviously wrong.
-    private let introBeats = 16
+    private var introBeats = 16
     /// Silent beats between loops. Zero: the figure repeats forever, so the gong
     /// has to land exactly on the turn of the cycle. Any gap here and the pulse
     /// walks away from the pattern a little more on every pass.
@@ -257,8 +267,15 @@ final class PlayEngine {
     
     // MARK: - Lifecycle
     
+    /// `judging` off and `countIn` off is PREVIEW: the kotekan picker runs this
+    /// engine to sound a figure and draw it, with nobody at the instrument.
+    /// Without the first it would auto-miss every stroke nobody played and
+    /// paint the score red; without the second you would wait four seconds of
+    /// gong every time you swiped to another figure.
     func configure(song: Song, partner: Song? = nil, profile: InstrumentProfile,
-                   tempoScale: Double) {
+                   tempoScale: Double, judging: Bool = true, countIn: Bool = true) {
+        self.judging = judging
+        self.introBeats = countIn ? 16 : 0
         self.song = song
         self.profile = profile
         self.tempoScale = max(0.25, tempoScale)
@@ -670,6 +687,7 @@ final class PlayEngine {
     }
 
     private func tickPlay(now: Double, patternTime: Double, states: inout [Int: KeyRenderState]) {
+        guard judging else { return }
         // Auto-miss notes whose window has fully passed.
         for i in notes.indices where !judged[i] {
             if patternTime > scaledTime(notes[i]) + missWindowMs {
@@ -696,7 +714,7 @@ final class PlayEngine {
     // MARK: - Strike handling (from AudioEngineController, main queue)
     
     func registerStrike(keyIndex: Int, hostTime: Double, confidence: Double) {
-        guard !isFinished, phase.isUserPlaying else { return }
+        guard judging, !isFinished, phase.isUserPlaying else { return }
         registerPlayStrike(keyIndex: keyIndex, hostTime: hostTime)
     }
 
@@ -767,7 +785,14 @@ final class PlayEngine {
             min(0.25, Double(note.durationMs) / tempoScale / patternMs)
         }
 
+        let yourHits = Set(notes.map(\.id))
+
         let current = currentNoteIndex(patternTime: patternTime)
+        //R Which of your strokes the other half doubles. Keyed on the note's own
+        //R id, which is already "key-time", so this is the exact coincidence and
+        //R not a near one.
+        let partnerHits = Set(partnerNotes.map(\.id))
+
         var out: [CycleNote] = []
         out.reserveCapacity(notes.count + partnerNotes.count)
 
@@ -778,9 +803,12 @@ final class PlayEngine {
                                  x: scaledTime(notes[i]) / patternMs,
                                  width: width(notes[i]),
                                  outcome: outcomes[i],
-                                 isCurrent: i == current))
+                                 isCurrent: i == current,
+                                 isUnison: partnerHits.contains(notes[i].id)))
         }
         for i in partnerNotes.indices {
+            //R The doubled ones are already drawn, split, by the loop above.
+            guard !yourHits.contains(partnerNotes[i].id) else { continue }
             out.append(CycleNote(id: "p-\(partnerNotes[i].id)",
                                  keyIndex: partnerNotes[i].keyIndex,
                                  voice: .partner,
