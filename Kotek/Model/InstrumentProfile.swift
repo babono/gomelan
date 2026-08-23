@@ -9,6 +9,7 @@
 
 import Foundation
 import CoreGraphics
+import SwiftUI
 
 /// A rectangle normalised 0–1 against the video frame, so the overlay survives
 /// resolution and orientation changes (PRD §7).
@@ -288,56 +289,76 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
 /// waits for you, so every note lands eventually, and a grade you can reach by
 /// being slow is not a grade.
 ///
-/// The rungs are the sections of a Balinese composition, in the order a piece
-/// moves through them: a free opening, the beginning proper, the long body, the
-/// quickening, the close. A piece gets faster and denser as it goes, which is
-/// the same shape a player's arc has — and it teaches five words worth knowing
-/// instead of "Level 3".
+/// The rungs are the Balinese *wangsa*, lowest first, and each carries a colour
+/// from the grey-to-gold rarity run every player can already read without being
+/// told the order. The rungs used to be the sections of a composition
+/// (gineman → pekaad); those described a piece rather than a person, and a
+/// section name is not something anyone wants to BE.
+///
+/// A note on the bottom rung, for whoever edits this next: *paria* is not part
+/// of catur wangsa — the four wangsa are Brahmana, Ksatria, Waisya and Sudra,
+/// with Sudra by far the largest group in Bali. It is borrowed from the wider
+/// outcaste framing, and it is the one name here that says something about a
+/// player rather than about their playing. Renaming it touches this enum and
+/// nothing else; the thresholds, colours and every call site key off the case,
+/// not the string.
 struct Mastery: Equatable {
     enum Rank: Int, CaseIterable {
-        case gineman, pengawit, pengawak, pengecet, pekaad
+        case paria, sudra, waisya, ksatria, brahmana
 
         /// Notes at which this rung begins.
         ///
         /// Set against what a session actually produces now that practice loops
         /// until you stop it. Ubitan Nyendok is a 2-second cycle with four polos
         /// strokes in it — two strokes a second — so twenty minutes at a decent
-        /// hit rate is on the order of 1,400 landed notes. The first rungs were
+        /// hit rate is on the order of 1,400 landed notes. An earlier ladder was
         /// written for a scored run of eight cycles (~64 notes) and a single
-        /// evening would have taken you past the top of the ladder.
+        /// evening would have taken you past the top of it.
         ///
-        /// Pengawit lands within one solid session, so the ladder starts moving
-        /// early; Pekaad is a few dozen of them, which is the months of practice
-        /// the name is meant to stand for.
+        /// Sudra lands within one solid session, so the ladder starts moving
+        /// early; Brahmana is a few dozen of them.
         var threshold: Int {
             switch self {
-            case .gineman:  return 0
-            case .pengawit: return 1_000
-            case .pengawak: return 5_000
-            case .pengecet: return 15_000
-            case .pekaad:   return 40_000
+            case .paria:    return 0
+            case .sudra:    return 1_000
+            case .waisya:   return 5_000
+            case .ksatria:  return 15_000
+            case .brahmana: return 40_000
             }
         }
 
         var title: String {
             switch self {
-            case .gineman:  return "Gineman"
-            case .pengawit: return "Pengawit"
-            case .pengawak: return "Pengawak"
-            case .pengecet: return "Pengecet"
-            case .pekaad:   return "Pekaad"
+            case .paria:    return "Paria"
+            case .sudra:    return "Sudra"
+            case .waisya:   return "Waisya"
+            case .ksatria:  return "Ksatria"
+            case .brahmana: return "Brahmana"
             }
         }
 
         /// One line of English, because a rank nobody can translate is a badge
-        /// rather than a lesson.
+        /// rather than a lesson. Glossed by ROLE rather than by rank: what each
+        /// wangsa does is the interesting half, and "above the last one" is
+        /// already obvious from the bar.
         var gloss: String {
             switch self {
-            case .gineman:  return "the free opening"
-            case .pengawit: return "the beginning"
-            case .pengawak: return "the body"
-            case .pengecet: return "the quickening"
-            case .pekaad:   return "the close"
+            case .paria:    return "outside the walls"
+            case .sudra:    return "the working hands"
+            case .waisya:   return "the merchants"
+            case .ksatria:  return "the warriors"
+            case .brahmana: return "the priests"
+            }
+        }
+
+        /// Grey, green, blue, purple, gold. See `Theme.rankParia` and friends.
+        var color: Color {
+            switch self {
+            case .paria:    return Theme.rankParia
+            case .sudra:    return Theme.rankSudra
+            case .waisya:   return Theme.rankWaisya
+            case .ksatria:  return Theme.rankKsatria
+            case .brahmana: return Theme.rankBrahmana
             }
         }
     }
@@ -348,7 +369,7 @@ struct Mastery: Equatable {
     init(notesLanded: Int) {
         let n = max(0, notesLanded)
         notes = n
-        rank = Rank.allCases.last { n >= $0.threshold } ?? .gineman
+        rank = Rank.allCases.last { n >= $0.threshold } ?? .paria
     }
 
     var next: Rank? { Rank(rawValue: rank.rawValue + 1) }

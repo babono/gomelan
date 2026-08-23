@@ -147,7 +147,11 @@ struct ChooseInstrumentView: View {
                     .font(.sans(12, weight: .semibold))
                     .textCase(.uppercase)
                     .tracking(2)
-                    .foregroundStyle(played ? Theme.gold : Theme.cream.opacity(0.35))
+                    //R The rung's own colour is the fastest thing to read on a
+                    //R rail of cards — grey to gold is an order nobody has to be
+                    //R taught, so a glance sorts the instruments before a single
+                    //R word has been read.
+                    .foregroundStyle(played ? mastery.rank.color : Theme.cream.opacity(0.35))
                     .fixedSize()
 
                 if played {
@@ -164,7 +168,7 @@ struct ChooseInstrumentView: View {
                     Capsule().fill(Theme.cream.opacity(0.12))
                     if played {
                         Capsule()
-                            .fill(Theme.gold)
+                            .fill(mastery.rank.color)
                             // A floor of 3pt so a freshly-played instrument
                             // shows something. A bar at literally zero width is
                             // indistinguishable from a broken one.

@@ -304,7 +304,7 @@ private struct MasteryProgress: View {
     let landed: Int
 
     @State private var shownFraction: Double = 0
-    @State private var shownRank: Mastery.Rank = .gineman
+    @State private var shownRank: Mastery.Rank = .paria
     @State private var shownNotes: Int = 0
     @State private var arrived = false
 
@@ -327,7 +327,11 @@ private struct MasteryProgress: View {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(shownRank.title)
                     .font(.serif(28))
-                    .foregroundStyle(Theme.charcoal)
+                    //R The rung's own colour, and it changes mid-animation on a
+                    //R promotion — the name and the shade arrive together, which
+                    //R is most of what makes the second stage read as a step up
+                    //R rather than as a bar starting over.
+                    .foregroundStyle(shownRank.color)
                 Text(shownRank.gloss)
                     .font(.sans(14))
                     .foregroundStyle(Theme.stone)
@@ -337,10 +341,10 @@ private struct MasteryProgress: View {
                         .font(.sans(12, weight: .semibold))
                         .textCase(.uppercase)
                         .tracking(1.5)
-                        .foregroundStyle(Theme.onButtonFill)
+                        .foregroundStyle(Theme.deep)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(Theme.buttonFill, in: Capsule())
+                        .background(shownRank.color, in: Capsule())
                         .transition(.scale.combined(with: .opacity))
                 }
             }
@@ -349,7 +353,7 @@ private struct MasteryProgress: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.charcoal.opacity(0.12))
                     Capsule()
-                        .fill(Theme.terracotta)
+                        .fill(shownRank.color)
                         .frame(width: max(4, geo.size.width * shownFraction))
                 }
             }
@@ -374,10 +378,10 @@ private struct MasteryProgress: View {
     /// Start where the session started, then travel.
     ///
     /// A promotion is two moves, not one. Interpolating straight to the new
-    /// rung's progress would run the bar BACKWARDS — 92% of Pengawak to 4% of
-    /// Pengecet — which reads as losing ground at the exact moment you gained
-    /// it. So the old rung fills to the end first, then the label changes and
-    /// the new one fills from nothing.
+    /// rung's progress would run the bar BACKWARDS — 92% of Sudra to 4% of
+    /// Waisya — which reads as losing ground at the exact moment you gained it.
+    /// So the old rung fills to the end first, then the label changes and the
+    /// new one fills from nothing.
     private func run() {
         shownRank = startMastery.rank
         shownFraction = startMastery.progress

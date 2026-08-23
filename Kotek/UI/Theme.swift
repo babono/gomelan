@@ -142,6 +142,22 @@ enum Theme {
     static let polosVoice = Color(hex: 0x5FBFB0)
     static let sangsihVoice = Color(hex: 0x8E9BE8)
 
+    // MARK: - Mastery rungs
+
+    /// The five rungs of a gangsa's grade, lowest first — see `Mastery`.
+    ///
+    /// A cool-to-warm run ending in gold, which is the rarity ladder every
+    /// player already knows how to read: grey means new, gold means arrived, and
+    /// nobody has to be told the order. Held down in saturation so five strong
+    /// accents do not turn the instrument rail into a paint chart — they sit ON
+    /// the warm brown ground rather than fighting it, next to the cool voices
+    /// above, which are the app's precedent for a non-brown accent.
+    static let rankParia = Color(hex: 0x9A8F86)
+    static let rankSudra = Color(hex: 0x7FB069)
+    static let rankWaisya = Color(hex: 0x5FA8D3)
+    static let rankKsatria = Color(hex: 0xA97CD1)
+    static let rankBrahmana = Color(hex: 0xE8B44A)
+
     static let keyOutlineWidth: CGFloat = 3
     static let keyCornerRadius: CGFloat = 6
     /// Practice speeds, slowest first. 1× is the tempo the figure is notated
