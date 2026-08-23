@@ -9,15 +9,22 @@
 //  Drawn in a single `Canvas` rather than a stack of `Image` views. The pattern
 //  is one tile repeated across the whole screen — at 724x360 that is a dozen or
 //  so copies in landscape — and as a ForEach of Images it would be a dozen view
-//  identities to diff every frame, behind everything else the app is doing. One
-//  draw pass costs the same whether it paints one tile or thirty.
+//  identities to diff. One draw pass costs the same whether it paints one tile
+//  or thirty.
 //
-//  The loop is seamless because the offset is taken modulo the tile size. The
-//  drift is only ever a translation of an already-rendered tile, so there is no
-//  per-frame layout, no re-rasterising, and nothing accumulates: at any speed
-//  the phase stays inside one tile and the arithmetic cannot drift out of range
-//  however long the app is left running.
+//  IT DRAWS ONCE. The canvas used to live inside a `TimelineView(.animation)`
+//  and repaint at 30fps forever, with the phase folded into the tile origins.
+//  That is a full-screen fill plus nine large blits, thirty times a second, on
+//  every non-camera screen in the app — and it measured on device at GPU 54% /
+//  CPU 32% with the phone sitting on the landing screen doing nothing at all.
+//  Ambient decoration was the most expensive thing running.
 //
+//  So the drift is a Core Animation translation of a canvas that never
+//  repaints: one tile larger than the screen on each axis, slid from -tile to 0
+//  by a `repeatForever` linear animation. The render server interpolates the
+//  transform and the app process does no work per frame. The loop is seamless
+//  for the same reason it always was — the pattern is periodic in one tile, so
+//  offset 0 and offset -tile are the same picture and the wrap is invisible.
 
 import SwiftUI
 
@@ -47,47 +54,64 @@ struct PatternBackground: View {
     /// Set false for screens where the ground is a live camera image.
     var showsGround = true
 
+    /// Flipped once, on appear. Everything after that happens on the render
+    /// server: `repeatForever` keeps the transform moving with no further help
+    /// from SwiftUI, so leaving a screen up costs nothing.
+    @State private var drifted = false
+
     var body: some View {
-        // Capped at 30fps rather than following the display link. At 9pt/s the
-        // pattern moves less than a third of a point between frames at 120Hz —
-        // invisible, and it would be redrawing every tile to achieve it. This is
-        // ambient decoration and must never compete with the play loop.
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            // Modulo keeps the phase inside a single tile, so the motion is
-            // continuous but the number fed to the renderer never grows.
-            let phaseX = (t * speed).truncatingRemainder(dividingBy: tile.width)
-            let phaseY = (t * speed).truncatingRemainder(dividingBy: tile.height)
+        GeometryReader { geo in
+            ZStack {
+                if showsGround { Theme.ground }
 
-            Canvas(opaque: false, rendersAsynchronously: true) { context, size in
-                if showsGround {
-                    context.fill(Path(CGRect(origin: .zero, size: size)),
-                                 with: .color(Theme.ground))
-                }
-                guard let symbol = context.resolveSymbol(id: 0) else { return }
-
-                context.opacity = opacity
-                // Start one tile off-screen on each axis so the leading edge is
-                // always covered as the phase advances.
-                var y = phaseY - tile.height
-                while y < size.height {
-                    var x = phaseX - tile.width
-                    while x < size.width {
-                        context.draw(symbol,
-                                     in: CGRect(x: x, y: y,
-                                                width: tile.width, height: tile.height))
-                        x += tile.width
-                    }
-                    y += tile.height
-                }
-            } symbols: {
-                Image("bg-pattern")
-                    .resizable()
-                    .tag(0)
+                //R One tile of slack on each axis, so the visible window stays
+                //R covered at both ends of the travel: at offset 0 by the tiles
+                //R starting at the origin, and at -tile by the ones after them.
+                tiles
+                    .frame(width: geo.size.width + tile.width,
+                           height: geo.size.height + tile.height,
+                           alignment: .topLeading)
+                    .opacity(opacity)
+                    .offset(x: drifted ? 0 : -tile.width,
+                            y: drifted ? 0 : -tile.height)
+                    //R Both axes wrap on ONE duration, so a single value drives
+                    //R the whole drift. The tile is wider than it is tall, so
+                    //R this travels at a shallower angle than the old
+                    //R equal-speed diagonal — on decoration moving nine points
+                    //R a second, past caring.
+                    .animation(.linear(duration: tile.width / speed)
+                                .repeatForever(autoreverses: false),
+                               value: drifted)
             }
+            .clipped()
+            .onAppear { drifted = true }
         }
         .allowsHitTesting(false)
         .ignoresSafeArea()
+    }
+
+    /// The tiled field, painted once. No phase in here: the drift is a transform
+    /// applied to the result, which is exactly what keeps this closure from
+    /// being called again.
+    private var tiles: some View {
+        Canvas(opaque: false, rendersAsynchronously: false) { context, size in
+            guard let symbol = context.resolveSymbol(id: 0) else { return }
+            var y: CGFloat = 0
+            while y < size.height {
+                var x: CGFloat = 0
+                while x < size.width {
+                    context.draw(symbol,
+                                 in: CGRect(x: x, y: y,
+                                            width: tile.width, height: tile.height))
+                    x += tile.width
+                }
+                y += tile.height
+            }
+        } symbols: {
+            Image("bg-pattern")
+                .resizable()
+                .tag(0)
+        }
     }
 }
 

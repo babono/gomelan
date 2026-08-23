@@ -122,19 +122,29 @@ struct WelcomeView: View {
 /// slowly up and down about a fixed home, with a little horizontal sway, and
 /// turns continuously.
 ///
-/// Motion is derived from the clock, not stored: every position and angle is a
-/// function of `t` and the mark's own row below. Nothing to update, nothing to
-/// keep in sync, and the whole field is a single `Canvas` draw rather than six
-/// views to diff every frame.
+/// Motion used to be derived from the clock: every position and angle a function
+/// of `t`, redrawn in one `Canvas` inside a `TimelineView` at 30fps. Elegant,
+/// and the second most expensive thing in the app — a full-screen canvas with
+/// six rotated blits, thirty times a second, on a screen where nothing happens.
+/// Measured on device it and the pattern behind it together ran GPU 54% / CPU
+/// 32% with the phone simply sitting here.
+///
+/// Each mark is its own view now, and every motion is a `repeatForever` Core
+/// Animation: the render server interpolates the transforms and the app process
+/// does nothing at all per frame. `easeInOut` autoreversing is a sine to within
+/// a couple of percent, which is well inside what a sixteen-point drift can
+/// show.
 ///
 /// The rates are deliberately incommensurate and the seeds are arbitrary, so the
 /// six never fall into step — which is what makes it read as drifting rather
-/// than pulsing. Each rotation period is a whole number of seconds' worth of a
-/// full turn, so a mark always comes back to where it started: the loop is
-/// seamless however long the screen is left up.
+/// than pulsing. Rotation is a full turn per period, so a mark always comes back
+/// to where it started and the loop is seamless however long the screen is left
+/// up. Alternate marks start their drift at the opposite end of the travel,
+/// which is what the old per-mark phase seed was for.
 private struct Ornaments: View {
     /// One ornament, at rest on its own side of the screen.
-    private struct Mark {
+    struct Mark: Identifiable {
+        let id: Int
         let art: Int
         /// Fractions of the frame — so the arrangement survives a different
         /// aspect ratio instead of collecting in a corner.
@@ -149,8 +159,6 @@ private struct Ornaments: View {
         let sway: Double
         /// Seconds for one full turn. Negative turns anticlockwise.
         let spinPeriod: Double
-        /// Where each cycle starts, so nothing begins together.
-        let phase: Double
         let opacity: Double
     }
 
@@ -158,64 +166,68 @@ private struct Ornaments: View {
     /// symmetric arrangement reads as a border rather than as scattered marks.
     private let marks: [Mark] = [
         // Left
-        Mark(art: 0, x: 0.08, y: 0.16, size: 58, rise: 16, risePeriod: 11, sway: 0.35, spinPeriod:  38, phase: 0.00, opacity: 0.50),
-        Mark(art: 1, x: 0.14, y: 0.48, size: 44, rise: 12, risePeriod:  8, sway: 0.30, spinPeriod: -29, phase: 1.90, opacity: 0.38),
-        Mark(art: 0, x: 0.06, y: 0.79, size: 66, rise: 19, risePeriod: 14, sway: 0.25, spinPeriod:  47, phase: 3.40, opacity: 0.45),
+        Mark(id: 0, art: 0, x: 0.08, y: 0.16, size: 58, rise: 16, risePeriod: 11, sway: 0.35, spinPeriod:  38, opacity: 0.50),
+        Mark(id: 1, art: 1, x: 0.14, y: 0.48, size: 44, rise: 12, risePeriod:  8, sway: 0.30, spinPeriod: -29, opacity: 0.38),
+        Mark(id: 2, art: 0, x: 0.06, y: 0.79, size: 66, rise: 19, risePeriod: 14, sway: 0.25, spinPeriod:  47, opacity: 0.45),
         // Right
-        Mark(art: 1, x: 0.90, y: 0.13, size: 62, rise: 18, risePeriod: 13, sway: 0.28, spinPeriod: -34, phase: 0.90, opacity: 0.46),
-        Mark(art: 0, x: 0.84, y: 0.45, size: 46, rise: 13, risePeriod:  9, sway: 0.32, spinPeriod:  26, phase: 2.60, opacity: 0.36),
-        Mark(art: 1, x: 0.92, y: 0.76, size: 54, rise: 15, risePeriod: 12, sway: 0.27, spinPeriod: -41, phase: 4.20, opacity: 0.44),
+        Mark(id: 3, art: 1, x: 0.90, y: 0.13, size: 62, rise: 18, risePeriod: 13, sway: 0.28, spinPeriod: -34, opacity: 0.46),
+        Mark(id: 4, art: 0, x: 0.84, y: 0.45, size: 46, rise: 13, risePeriod:  9, sway: 0.32, spinPeriod:  26, opacity: 0.36),
+        Mark(id: 5, art: 1, x: 0.92, y: 0.76, size: 54, rise: 15, risePeriod: 12, sway: 0.27, spinPeriod: -41, opacity: 0.44),
     ]
 
-    /// The size the artwork is rasterised at. Every mark is drawn at this size
-    /// or smaller, so the scale is always downwards — resolving a symbol at its
-    /// natural 64pt and blowing it up would soften the largest ones.
-    private static let symbolSize: CGFloat = 96
-
     var body: some View {
-        // 30fps, like the pattern behind it. Nothing here moves fast enough for
-        // more to be visible, and this is ambient decoration that must never
-        // compete with anything else the app is doing.
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-
-            Canvas { context, size in
-                for mark in marks {
-                    guard let symbol = context.resolveSymbol(id: mark.art) else { continue }
-
-                    let rise = sin(2 * .pi * (t / mark.risePeriod) + mark.phase) * mark.rise
-                    // Sway runs against a different period from the rise, so the
-                    // pair traces a slow wandering figure rather than a straight
-                    // diagonal back and forth.
-                    let sway = cos(2 * .pi * (t / (mark.risePeriod * 1.6)) + mark.phase)
-                        * mark.rise * mark.sway
-
-                    let centre = CGPoint(x: mark.x * size.width + sway,
-                                         y: mark.y * size.height + rise)
-                    let turns = t / mark.spinPeriod + mark.phase
-
-                    var layer = context
-                    layer.opacity = mark.opacity
-                    layer.translateBy(x: centre.x, y: centre.y)
-                    layer.rotate(by: .radians(turns * 2 * .pi))
-                    layer.draw(symbol,
-                               in: CGRect(x: -mark.size / 2, y: -mark.size / 2,
-                                          width: mark.size, height: mark.size))
-                }
-            } symbols: {
-                // Framed rather than left at their natural size so the vector
-                // artwork is rasterised big enough for the largest mark above.
-                Image("ornament-1")
-                    .resizable()
-                    .frame(width: Self.symbolSize, height: Self.symbolSize)
-                    .tag(0)
-                Image("ornament-2")
-                    .resizable()
-                    .frame(width: Self.symbolSize, height: Self.symbolSize)
-                    .tag(1)
+        GeometryReader { geo in
+            ForEach(marks) { mark in
+                DriftingMark(mark: mark, inverted: mark.id.isMultiple(of: 2))
+                    .position(x: mark.x * geo.size.width,
+                              y: mark.y * geo.size.height)
             }
         }
         .allowsHitTesting(false)
+    }
+}
+
+/// One ornament: turning, rising and swaying, all of it on the render server.
+///
+/// Three separate `.animation(_:value:)` modifiers rather than one. Each only
+/// responds to its own value, so the three motions keep their own periods —
+/// which is the point: rise and sway run against each other so the pair traces a
+/// slow wandering figure rather than a straight diagonal back and forth.
+private struct DriftingMark: View {
+    let mark: Ornaments.Mark
+    /// Start this one at the far end of its travel, so neighbours with similar
+    /// periods do not set off together.
+    let inverted: Bool
+
+    @State private var spun = false
+    @State private var risen = false
+    @State private var swayed = false
+
+    private var art: String { mark.art == 0 ? "ornament-1" : "ornament-2" }
+    private var direction: Double { inverted ? -1 : 1 }
+    private var swayBy: Double { mark.rise * mark.sway }
+
+    var body: some View {
+        Image(art)
+            .resizable()
+            .frame(width: mark.size, height: mark.size)
+            .opacity(mark.opacity)
+            .rotationEffect(.degrees(spun ? (mark.spinPeriod < 0 ? -360 : 360) : 0))
+            .animation(.linear(duration: abs(mark.spinPeriod))
+                        .repeatForever(autoreverses: false), value: spun)
+            .offset(y: (risen ? mark.rise : -mark.rise) * direction)
+            //R Half the period: one leg of an autoreversing animation is half a
+            //R round trip, and `risePeriod` has always meant the round trip.
+            .animation(.easeInOut(duration: mark.risePeriod / 2)
+                        .repeatForever(autoreverses: true), value: risen)
+            .offset(x: (swayed ? swayBy : -swayBy) * direction)
+            .animation(.easeInOut(duration: mark.risePeriod * 1.6 / 2)
+                        .repeatForever(autoreverses: true), value: swayed)
+            .onAppear {
+                spun = true
+                risen = true
+                swayed = true
+            }
     }
 }
 
@@ -296,7 +308,12 @@ private struct BilahRow: View {
     private let dipDecay = 0.09
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+        //R 20fps, down from 30. This one cannot become a Core Animation the way
+        //R the pattern and the ornaments did — the glow and the dip are decay
+        //R envelopes off a hashed stroke schedule, not a transform — so the only
+        //R lever is how often it repaints. It is a 470x142 strip rather than a
+        //R full screen, so it was never the expensive one; a third off is free.
+        TimelineView(.animation(minimumInterval: 1.0 / 20.0)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
 
             Canvas { context, size in
