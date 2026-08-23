@@ -151,31 +151,50 @@ final class AppState {
     /// Whether the gangsa's strike-sound baseline has been learned this session.
     var baselineLearned: Bool = false
 
-    /// Whether the "how this works" panel is up. Presented by `RootView` so it
-    /// can cover any screen, rather than by whichever one happens to own the ⓘ.
-    var showsGuide = false
-    /// Survives relaunch: the panel introduces itself once, on a first run, and
-    /// after that it is only ever asked for. A guide that reappears is an
-    /// obstacle, not an introduction.
-    private(set) var hasSeenGuide = Defaults.bool("hasSeenGuide", false)
+    /// The explainers, one per screen that has something to explain.
+    ///
+    /// Split rather than one long panel because they answer questions asked at
+    /// different moments: `app` is "what is this thing and what is the grade",
+    /// asked at the instrument picker where a rank is already on a card, and
+    /// `kotekan` is "what am I actually choosing between", asked one screen
+    /// later. Reading the second before you have an instrument would be reading
+    /// about something you cannot yet do.
+    enum Guide: String, CaseIterable, Identifiable {
+        case app
+        case kotekan
 
-    func openGuide() { showsGuide = true }
+        var id: String { rawValue }
+        /// `app` keeps the original key so anyone who has already dismissed it
+        /// is not shown it again by this change.
+        var seenKey: String { self == .app ? "hasSeenGuide" : "hasSeenGuide.\(rawValue)" }
+    }
+
+    /// Which panel is up, if any. Presented by `RootView` so it can cover any
+    /// screen, rather than by whichever one happens to own the question mark.
+    var visibleGuide: Guide?
+    /// Survives relaunch: each panel introduces itself once, on a first run, and
+    /// after that is only ever asked for. A guide that reappears is an obstacle,
+    /// not an introduction.
+    private var seen: Set<String> = Set(Guide.allCases.filter { Defaults.bool($0.seenKey, false) }
+                                                      .map(\.rawValue))
+
+    func openGuide(_ guide: Guide) { visibleGuide = guide }
 
     func closeGuide() {
-        showsGuide = false
-        markGuideSeen()
+        if let visibleGuide { markSeen(visibleGuide) }
+        visibleGuide = nil
     }
 
     /// Show it unprompted the first time, and only the first time.
-    func showGuideIfFirstRun() {
-        guard !hasSeenGuide else { return }
-        showsGuide = true
+    func showGuideIfFirstRun(_ guide: Guide) {
+        guard !seen.contains(guide.rawValue), visibleGuide == nil else { return }
+        visibleGuide = guide
     }
 
-    private func markGuideSeen() {
-        guard !hasSeenGuide else { return }
-        hasSeenGuide = true
-        Defaults.set("hasSeenGuide", true)
+    private func markSeen(_ guide: Guide) {
+        guard !seen.contains(guide.rawValue) else { return }
+        seen.insert(guide.rawValue)
+        Defaults.set(guide.seenKey, true)
     }
 
     init() {

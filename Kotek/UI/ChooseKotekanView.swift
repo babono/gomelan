@@ -83,7 +83,7 @@ struct ChooseKotekanView: View {
             TopBar(title: "Choose your kotekan",
                    onBack: { app.openChooseInstrument() },
                    settingsAction: { app.openSettings() },
-                   infoAction: { app.openGuide() })
+                   infoAction: { app.openGuide(.kotekan) })
 
             carousel
                 .frame(maxHeight: .infinity)
@@ -99,7 +99,13 @@ struct ChooseKotekanView: View {
 
             footer
         }
-        .onAppear { startPreview() }
+        .onAppear {
+            //R The second explainer, and it belongs HERE rather than folded into
+            //R the first: "what am I choosing between" is a question you only
+            //R have once you are looking at the choice.
+            app.showGuideIfFirstRun(.kotekan)
+            startPreview()
+        }
         .onDisappear { stopPreview() }
         //R Keyed on the WRAPPED index: slot 4 and slot 0 are the same figure on
         //R a four-figure rail, and going round should not restart what is

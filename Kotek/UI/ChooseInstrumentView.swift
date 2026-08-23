@@ -41,7 +41,7 @@ struct ChooseInstrumentView: View {
                    onBack: { app.screen = .welcome },
                    trailingText: app.savedProfiles.isEmpty
                         ? nil : "\(app.savedProfiles.count) saved",
-                   infoAction: { app.openGuide() })
+                   infoAction: { app.openGuide(.app) })
 
             if app.savedProfiles.isEmpty {
                 emptyState
@@ -60,7 +60,7 @@ struct ChooseInstrumentView: View {
             //R cards already carry a rank and a progress bar, and a first-time
             //R player has no way to know what either means. Welcome is one
             //R button and a wordmark, which is too early to explain anything.
-            app.showGuideIfFirstRun()
+            app.showGuideIfFirstRun(.app)
 
             guard let first = app.savedProfiles.first,
                   !app.savedProfiles.contains(where: { $0.id == app.profile.id })
