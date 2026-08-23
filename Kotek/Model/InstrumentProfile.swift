@@ -295,13 +295,16 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
 /// (gineman → pekaad); those described a piece rather than a person, and a
 /// section name is not something anyone wants to BE.
 ///
+/// The names are borrowed as a familiar ORDER and nothing more. Every gloss
+/// talks about the kotekan, never about the wangsa — see `gloss`, which is the
+/// line that keeps this a grade rather than a claim about anybody.
+///
 /// A note on the bottom rung, for whoever edits this next: *paria* is not part
 /// of catur wangsa — the four wangsa are Brahmana, Ksatria, Waisya and Sudra,
 /// with Sudra by far the largest group in Bali. It is borrowed from the wider
-/// outcaste framing, and it is the one name here that says something about a
-/// player rather than about their playing. Renaming it touches this enum and
-/// nothing else; the thresholds, colours and every call site key off the case,
-/// not the string.
+/// outcaste framing, and it is the only name here that carries a slur in its
+/// history. Renaming it touches this enum and nothing else; the thresholds,
+/// colours and every call site key off the case, not the string.
 struct Mastery: Equatable {
     enum Rank: Int, CaseIterable {
         case paria, sudra, waisya, ksatria, brahmana
@@ -337,17 +340,24 @@ struct Mastery: Equatable {
             }
         }
 
-        /// One line of English, because a rank nobody can translate is a badge
-        /// rather than a lesson. Glossed by ROLE rather than by rank: what each
-        /// wangsa does is the interesting half, and "above the last one" is
-        /// already obvious from the bar.
+        /// One line describing YOUR PLAYING — never the wangsa.
+        ///
+        /// This matters more than it looks. Glossing the social role ("the
+        /// merchants", "the priests") had the app explaining a caste hierarchy
+        /// to the person using it, and pinning the bottom of it on a beginner.
+        /// Pointed at the kotekan instead, the names are just a ladder people
+        /// already know the order of, and every line says something true about
+        /// the player rather than something loaded about anybody else.
+        ///
+        /// So the rung is the label and the gloss is the skill, and the two are
+        /// deliberately about different things. Keep it that way.
         var gloss: String {
             switch self {
-            case .paria:    return "outside the walls"
-            case .sudra:    return "the working hands"
-            case .waisya:   return "the merchants"
-            case .ksatria:  return "the warriors"
-            case .brahmana: return "the priests"
+            case .paria:    return "finding the bilah"
+            case .sudra:    return "the figure in the hands"
+            case .waisya:   return "holding your half"
+            case .ksatria:  return "interlocking at tempo"
+            case .brahmana: return "the weave is yours"
             }
         }
 
