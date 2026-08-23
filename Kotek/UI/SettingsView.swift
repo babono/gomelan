@@ -142,11 +142,18 @@ struct SettingsView: View {
                             .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
                         Toggle("Reference tone (one beat ahead)", isOn: $app.referenceToneEnabled)
                             .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
+                        Toggle("Play my half as a guide", isOn: $app.yourVoiceAudible)
+                            .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
+                        Text(app.yourVoiceAudible
+                             ? "The app sounds the part you are learning, in time with the bilah, so you can copy it. Turn it off once the figure is in your hands — it is played back on the same keys you strike, so it also makes you harder to hear."
+                             : "The bilah light up but stay silent. The only strokes in the room are yours.")
+                            .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
+
                         Toggle("Partner plays the other half", isOn: $app.partnerAudible)
                             .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
                         Text(app.partnerAudible
-                             ? "The app plays the half you're not playing, so the kotekan interlocks even when you practise alone. The gong layer is always there."
-                             : "You play against the gong alone.")
+                             ? "The app takes the other half, so the kotekan interlocks even when you practise alone. The gong layer is always there."
+                             : "You play against the gong alone. Turn this on once the figure is steady — that is when it becomes a kotekan.")
                             .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
                     }
 

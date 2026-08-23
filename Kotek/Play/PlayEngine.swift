@@ -194,22 +194,22 @@ final class PlayEngine {
     // The partner's half: sounded by the app, never judged (§7).
     private var partnerNotes: [Note] = []
     private var partnerFired: [Bool] = []
-    /// The two voices you can silence. Learning a half often means hearing the
-    /// other one alone first and putting yours back once the figure is in the
-    /// hands — so each is a switch, not a fixed arrangement.
+    /// The two voices you can silence — see `AppState` for which starts where
+    /// and why. Defaults here match: your half on, the partner off.
     ///
-    /// YOUR half defaults to silent, because you are the one playing it: the app
-    /// sounding it too would mask your own mistakes. Turning it on makes the app
-    /// play along with you, which is how you check a figure you have half
-    /// forgotten without leaving the screen — it replaces the demo that used to
-    /// be a screen of its own.
+    /// Worth knowing when detection is poor: your half is played back through
+    /// the speaker on the SAME bilah you are striking, and echo cancellation is
+    /// off because it would corrupt the analysis this engine depends on. So the
+    /// guide raises the onset detector's threshold and muddies the ear's key
+    /// opinion in a way the partner's half — different keys, mostly — does not.
+    /// Muting it is the first thing to try before touching anything in Settings.
     ///
     /// The gong is NOT on this list. The colotomic frame is what the cycle is
     /// measured against; silencing it leaves the figure floating free with
     /// nothing to be early or late against, and every judgement this engine
     /// makes becomes meaningless.
-    var partnerAudible = true
-    var yourVoiceAudible = false
+    var partnerAudible = false
+    var yourVoiceAudible = true
     /// Stereo placement of the two halves, so they read as two players.
     private let yourPan: Float = -0.32
     private let partnerPan: Float = 0.32

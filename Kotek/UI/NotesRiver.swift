@@ -243,9 +243,9 @@ struct NotesRiver: View {
 // MARK: - Voice mixer
 
 /// The legend IS the mixer. Each colour names a voice on the score, and tapping
-/// it silences that voice — so learning a half can start with your partner
-/// alone and add your own back once the figure is in the hands, which is how
-/// kotekan is taught anyway.
+/// it silences that voice — so a figure can be learned by hearing it played
+/// first, then heard against the other half once it is in the hands, which is
+/// the order kotekan is taught in anyway.
 ///
 /// Muting never hides anything: a silenced voice still draws on the score and
 /// still lights the bilah, so you can watch a part you have chosen not to hear.
@@ -254,9 +254,8 @@ struct NotesRiver: View {
 /// figure with nothing to be early or late against cannot be practised.
 struct VoiceMixer: View {
     let yourHalf: KotekanHalf
-    /// Off by default: you are the one playing this half. Turning it on makes
-    /// the app play along, which is how you check a figure you have half
-    /// forgotten without leaving the screen.
+    /// ON by default: you cannot copy what you have not heard. Mute it once the
+    /// figure is in your hands and the only polos in the room is yours.
     @Binding var yourVoiceAudible: Bool
     @Binding var partnerAudible: Bool
 

@@ -52,12 +52,23 @@ final class AppState {
     /// you. The app plays it so the interlock is there even when you practise
     /// alone (§7); the gong layer is always underneath both.
     var partnerSong: Song?
-    /// The two voices you can silence. Your own half starts muted — you are the
-    /// one playing it — and turning it on has the app play along, which is what
-    /// the "watch and listen" screen used to be for. The gong is not on this
-    /// list: it is the frame everything is judged against.
-    var partnerAudible: Bool = true
-    var yourVoiceAudible: Bool = false
+    /// The two voices you can silence, in the order a figure is learned.
+    ///
+    /// YOUR half sounds by default. You cannot copy what you have not heard —
+    /// this is how kotekan is taught, the teacher plays the part and you take
+    /// it — so the app states the expectation first and the bilah light in time
+    /// with it. Mute it once the figure is in your hands and the only polos in
+    /// the room is yours.
+    ///
+    /// The PARTNER starts silent, and is the reward rather than the setting:
+    /// turn it on and you are suddenly playing against the other half, which is
+    /// what a kotekan actually is. Arriving in both parts at once, before you
+    /// know either, is just a lot of bronze.
+    ///
+    /// The gong is on neither list. It is the frame everything is judged
+    /// against, so it is never optional.
+    var partnerAudible: Bool = false
+    var yourVoiceAudible: Bool = true
 
     /// Whether the practice screen's bottom panel — the half switch, the tempo,
     /// the voice chips and the score — is up.

@@ -112,7 +112,7 @@ struct GuideView: View {
                   "Your phone sits on a stand above the gangsa. The camera sees which key you strike; the mic hears when. The next key lights up on the instrument.")
 
             block("Kotekan",
-                  "Two players share a figure: polos on the beat, sangsih between. You take a half, the app plays the other. Swap sides any time.")
+                  "Two players share a figure: polos on the beat, sangsih between. You take a half — the app plays it for you to copy, and takes the other when you ask.")
 
             block("Practice",
                   "The figure loops until you end it. Nothing fails. Your score is your best eight cycles in a row — that is what sets a record.")
