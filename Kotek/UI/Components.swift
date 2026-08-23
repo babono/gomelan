@@ -524,3 +524,12 @@ struct ShareSheet: UIViewControllerRepresentable {
 extension URL: @retroactive Identifiable {
     public var id: String { absoluteString }
 }
+
+
+extension Comparable {
+    /// `x.clamped(to: a, b)` — reads better inline than nesting min and max, and
+    /// is harder to get the wrong way round.
+    func clamped(to lower: Self, _ upper: Self) -> Self {
+        min(max(self, lower), upper)
+    }
+}

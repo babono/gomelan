@@ -42,8 +42,18 @@ struct ChooseKotekanView: View {
 
     @State private var engine = PlayEngine()
     @State private var displayLink = DisplayLink()
-    @State private var focused = 0
-    @State private var drag: CGFloat = 0
+    /// Which SLOT is centred, as a continuous unbounded number.
+    ///
+    /// Not an index and not wrapped. A wrapped index has to renumber every card
+    /// the moment focus moves, and a card that is renumbered is a card SwiftUI
+    /// throws away and rebuilds — so the snap could only ever cross-fade
+    /// between two arrangements instead of sliding between them. Slot 5 is
+    /// simply the figure at `wrap(5)`, one place right of slot 4, forever: the
+    /// identity of what is on screen never changes, so moving `position` moves
+    /// the cards.
+    @State private var position: Double = 0
+    /// Where `position` was when the current drag began.
+    @State private var dragOrigin: Double?
     @State private var muted = false
 
     private let cardWidth: CGFloat = 250
@@ -52,8 +62,10 @@ struct ChooseKotekanView: View {
 
     private var step: CGFloat { cardWidth + gap }
     private var kotekans: [Kotekan] { app.kotekans }
+    /// The centred slot, and the figure sitting in it.
+    private var focusedSlot: Int { Int(position.rounded()) }
     private var current: Kotekan? {
-        kotekans.indices.contains(focused) ? kotekans[focused] : kotekans.first
+        kotekans.isEmpty ? nil : kotekans[wrap(focusedSlot)]
     }
     private var playable: Bool {
         guard let current else { return false }
@@ -74,7 +86,10 @@ struct ChooseKotekanView: View {
         }
         .onAppear { startPreview() }
         .onDisappear { stopPreview() }
-        .onChange(of: focused) { _, _ in startPreview() }
+        //R Keyed on the WRAPPED index: slot 4 and slot 0 are the same figure on
+        //R a four-figure rail, and going round should not restart what is
+        //R already playing.
+        .onChange(of: wrap(focusedSlot)) { _, _ in startPreview() }
         .onChange(of: muted) { _, isMuted in
             engine.partnerAudible = !isMuted
             engine.yourVoiceAudible = !isMuted
@@ -94,21 +109,22 @@ struct ChooseKotekanView: View {
     /// the seam disappears in both directions.
     private var carousel: some View {
         GeometryReader { geo in
+            //R Two slots of margin each side. A card is 250 wide on a rail with
+            //R about 440 points of half-screen, so anything two slots out is
+            //R fully off the edge — which is where views should be entering and
+            //R leaving, since that is the one place a transition cannot be seen.
+            let first = Int((position - 2).rounded(.down))
+            let last = Int((position + 2).rounded(.up))
+
             ZStack {
-                ForEach(kotekans.indices, id: \.self) { i in
-                    let base = ((i - focused) % kotekans.count + kotekans.count) % kotekans.count
-                    ForEach([base, base - kotekans.count], id: \.self) { d in
-                        //R Two positions each, and most of them off the edge —
-                        //R so only build the ones that can actually be seen.
-                        //R Everything past a card and a half out is clipped
-                        //R anyway, and a view that is never visible is still a
-                        //R view SwiftUI has to diff on every touch move.
-                        if abs(CGFloat(d) + drag / step) < 1.9 {
-                            card(kotekans[i], isPlaying: i == focused, distance: CGFloat(d))
-                                .position(x: geo.size.width / 2 + CGFloat(d) * step + drag,
-                                          y: geo.size.height / 2)
-                        }
-                    }
+                ForEach(first...last, id: \.self) { slot in
+                    let offset = Double(slot) - position
+                    card(kotekans[wrap(slot)],
+                         isPlaying: slot == focusedSlot,
+                         offset: offset,
+                         onTap: { tap(slot) })
+                        .position(x: geo.size.width / 2 + CGFloat(offset) * step,
+                                  y: geo.size.height / 2)
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)
@@ -120,18 +136,37 @@ struct ChooseKotekanView: View {
 
     private var swipe: some Gesture {
         DragGesture(minimumDistance: 8)
-            .onChanged { drag = $0.translation.width }
+            .onChanged { value in
+                //R Captured once, so the whole gesture is measured from where it
+                //R started rather than accumulating rounding on every callback.
+                let origin = dragOrigin ?? position
+                dragOrigin = origin
+                position = origin - value.translation.width / step
+            }
             .onEnded { value in
                 // Predicted, not actual: a flick that ends after 40pt but is
                 // still travelling should advance, and a slow drag of the same
                 // distance should not.
-                let moved = -value.predictedEndTranslation.width / step
-                let by = Int(moved.rounded())
-                withAnimation(.snappy(duration: 0.3)) {
-                    focused = wrap(focused + by)
-                    drag = 0
+                let origin = dragOrigin ?? position
+                dragOrigin = nil
+                let landing = origin - value.predictedEndTranslation.width / step
+                withAnimation(.snappy(duration: 0.32)) {
+                    //R Never more than one card per gesture. A hard flick
+                    //R computes a landing four slots away, and four figures in
+                    //R a blur is not an audition — the preview cannot even keep
+                    //R up with it.
+                    position = (landing.rounded()).clamped(to: origin - 1, origin + 1)
                 }
             }
+    }
+
+    private func tap(_ slot: Int) {
+        if slot == focusedSlot {
+            let k = kotekans[wrap(slot)]
+            if app.kotekan(k, playableOn: app.profile) { start(k) }
+        } else {
+            withAnimation(.snappy(duration: 0.32)) { position = Double(slot) }
+        }
     }
 
     private func wrap(_ i: Int) -> Int {
@@ -139,12 +174,13 @@ struct ChooseKotekanView: View {
         return ((i % n) + n) % n
     }
 
-    private func card(_ k: Kotekan, isPlaying: Bool, distance d: CGFloat) -> some View {
-        // How focused this card is, 0…1, following the drag so the neighbour
-        // grows as it arrives rather than snapping when the gesture ends.
-        let offset: CGFloat = d + drag / step
-        let nearness: CGFloat = max(0, 1 - min(abs(offset), 1.6) / 1.6)
-        let isFocused: Bool = abs(offset) < 0.5
+    private func card(_ k: Kotekan, isPlaying: Bool, offset: Double,
+                      onTap: @escaping () -> Void) -> some View {
+        // How focused this card is, 0…1. Taken from the same continuous
+        // `position` the layout is, so the neighbour grows as it arrives — under
+        // the finger during a drag and through the snap afterwards, with no
+        // separate animation to keep in step.
+        let nearness: CGFloat = max(0, 1 - min(abs(CGFloat(offset)), 1.6) / 1.6)
         let canPlay: Bool = app.kotekan(k, playableOn: app.profile)
 
         return cardBody(k, canPlay: canPlay, isPlaying: isPlaying)
@@ -162,15 +198,7 @@ struct ChooseKotekanView: View {
             // behind it.
             .scaleEffect(0.84 + 0.16 * nearness)
             .opacity(0.35 + 0.65 * nearness)
-            .onTapGesture {
-                if isFocused {
-                    if canPlay { start(k) }
-                } else {
-                    withAnimation(.snappy(duration: 0.3)) {
-                        focused = wrap(focused + Int(offset.rounded()))
-                    }
-                }
-            }
+            .onTapGesture(perform: onTap)
     }
 
     @ViewBuilder
@@ -188,9 +216,9 @@ struct ChooseKotekanView: View {
             //R you cannot hear would be claiming something untrue about which
             //R figure is playing.
             //R
-            //R `isPlaying` is index equality, not the drag-derived `isFocused`:
-            //R it must not flicker mid-swipe, and it must not make this depend
-            //R on the gesture.
+            //R Keyed on the SLOT being the centred one, not on how near the
+            //R card has drifted: which card owns the engine must not flicker
+            //R part-way through a gesture.
             KotekanMiniScore(kotekan: k, engine: isPlaying ? engine : nil)
                 .frame(height: 54)
                 .padding(.top, 2)
