@@ -36,7 +36,6 @@ struct PlayView: View {
     @State private var displayLink = DisplayLink()
     @State private var fusion: StrikeFusion?
     @State private var visionDetector = VisionStrikeDetector()
-    @State private var useAudioConfirmation = false
     @State private var overlaySize: CGSize = .zero
 
     /// How sure vision must be before its answer is used as a training label for
@@ -44,6 +43,12 @@ struct PlayView: View {
     /// is the bar for ACTING on a sighting — teaching from a marginal crop would
     /// bake a mistake into a template that then goes on to make more of them.
     private let visionTeachingConfidence: Double = 0.75
+
+    /// How far from a sighting the ear may find the attack that goes with it.
+    /// Generous on purpose: vision leads the strike, so the onset arrives after
+    /// the sighting, and a window too tight would veto real strokes — which is
+    /// the one failure this setting must never have.
+    private let corroborationWindow: Double = 0.15
 
     @State private var countdown: Int? = 3
     @State private var paused = false
@@ -464,17 +469,11 @@ struct PlayView: View {
             }
         }
 
-        useAudioConfirmation = app.requireStrikeSound && (audio.hasStrikeBaseline || app.profile.hasLearnedBaseline)
-        if useAudioConfirmation {
-            audio.onConfirmedStrike = { hostTime in
-                Task { @MainActor in
-                    guard countdown == nil, !paused, !engine.isFinished else { return }
-                    if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
-                        applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
-                    }
-                }
-            }
-        }
+        //R `onConfirmedStrike` used to be wired here as a THIRD trigger, under
+        //R a setting called "require strike sound" — which added strikes rather
+        //R than requiring anything, and did the opposite of what its own label
+        //R promised. The requirement is a veto now and lives in the vision loop;
+        //R the baseline still gates what the ear reports at all, upstream.
 
         //R The tour holds the session at the gate on a first run. `countdown`
         //R stays at 3 rather than being cleared, so the strike guards keep
@@ -552,8 +551,16 @@ struct PlayView: View {
                                                    expecting: engine.dueKey,
                                                    now: hostTime)
                 if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
-                    let strikeTime = audio.nearestOnset(to: hostTime, within: 0.12) ?? hostTime
-                    applyStrike(key: key, hostTime: strikeTime, confidence: scores[key] ?? 1)
+                    //R The ear does two jobs here and they are separable. It
+                    //R sharpens the TIME — vision fires as the mallet arrives
+                    //R over the bar, the attack is the moment that counts — and
+                    //R in `heardOnly` it also holds the VETO: a sighting nothing
+                    //R was heard for is a mallet moving, not a stroke, and the
+                    //R model is not good enough to tell those apart on its own.
+                    let onset = audio.nearestOnset(to: hostTime, within: corroborationWindow)
+                    if app.requireStrikeSound, onset == nil { continue }
+                    applyStrike(key: key, hostTime: onset ?? hostTime,
+                                confidence: scores[key] ?? 1)
                 }
             }
             try? await Task.sleep(for: .milliseconds(25))

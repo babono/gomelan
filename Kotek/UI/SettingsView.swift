@@ -27,11 +27,6 @@ struct SettingsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 30) {
-                    // This is the instrument's own settings — everything that
-                    // used to be a control on its card in the picker. Naming
-                    // first, because it is the only thing here you author; then
-                    // the two calibration steps in the order setup runs them;
-                    // then leaving, then deleting, last and apart.
                     section(app.profile.name) {
                         VStack(alignment: .leading, spacing: 16) {
                             VStack(alignment: .leading, spacing: 6) {
@@ -167,44 +162,40 @@ struct SettingsView: View {
                     }
 
                     section("Detection") {
-                        // THE lever when detection stops working in a room.
-                        //
-                        // The camera ALWAYS triggers now. This adds the ear
-                        // alongside it — the two used to be either/or, and each
-                        // is bad at something the other is good at. The camera
-                        // cannot tell a second strike on one bilah from a mallet
-                        // that never left it; the ear can, because a re-attack
-                        // is an energy increase even mid-decay, which is exactly
-                        // what the onset detector looks for.
-                        //
-                        // What the ear is bad at is a room. It measures a strike
-                        // against a rolling MEDIAN of recent loudness, so
-                        // anything that raises the noise floor raises the bar a
-                        // strike has to clear — a busy hall, and the app's own
-                        // playback coming back off the speaker, with echo
-                        // cancellation off because it would corrupt the very
-                        // analysis this depends on. That includes the guide
-                        // voice, which plays by default on the same keys you are
-                        // striking.
-                        //
-                        // It is here rather than only in the debug screen
-                        // because it is the first thing to reach for when the
-                        // app cannot hear, and hunting for it under Test
-                        // Detection is not something anyone does mid-exhibition.
-                        Toggle("Sound triggers strikes too", isOn: $app.audioTriggersStrikes)
-                            .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
-                        Text(app.audioTriggersStrikes
-                             ? "The mic can register a strike as well as the camera, and it is the one that catches a bar struck twice in a row. Best in a quiet room — a loud one raises the threshold a strike has to clear."
-                             : "The camera alone, and the room is ignored entirely. Turn this off in a loud space, or if the app's own playback is being heard as strikes.")
-                            .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
+                        //R ONE choice, where there were two switches whose names
+                        //R gave no clue how they combined — and one of which did
+                        //R the opposite of what it said: "require strike sound"
+                        //R added a third trigger rather than requiring anything.
+                        //R
+                        //R It is the first thing to reach for when the app stops
+                        //R registering strikes, or starts registering ones
+                        //R nobody played, so it lives here rather than only in
+                        //R the debug screens. Hunting for it under Test
+                        //R Detection is not something anyone does mid-session.
+                        Picker("Detection", selection: Binding(
+                            get: { app.detectionMode },
+                            set: { app.detectionMode = $0 }
+                        )) {
+                            ForEach(AppState.DetectionMode.allCases) { mode in
+                                Text(mode.title).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 400)
 
-                        Toggle("Require strike sound", isOn: $app.requireStrikeSound)
-                            .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.charcoal)
-                        Text(app.requireStrikeSound
-                             ? "A hit only counts with a real gangsa strike sound — blocks hovering, but needs a learned baseline (Test Audio)."
-                             : "Vision alone counts the hit. More forgiving; a hovered mallet can register.")
-                            .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 360)
+                        Text(app.detectionMode.detail)
+                            .font(.sans(13)).foregroundStyle(Theme.stone).frame(maxWidth: 400)
+
+                        if app.detectionMode == .heardOnly, app.yourVoiceAudible {
+                            Text("Your half is playing through the speaker on the same keys you strike, which raises the bar an attack has to clear. Mute it under Audio cues if strikes start going missing.")
+                                .font(.sans(13)).foregroundStyle(Theme.miss).frame(maxWidth: 400)
+                        }
                     }
+                    // This is the instrument's own settings — everything that
+                    // used to be a control on its card in the picker. Naming
+                    // first, because it is the only thing here you author; then
+                    // the two calibration steps in the order setup runs them;
+                    // then leaving, then deleting, last and apart.
                 }
                 .padding(.horizontal, 40)
                 .padding(.vertical, 28)

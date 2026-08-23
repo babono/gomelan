@@ -97,7 +97,7 @@ final class AppState {
     var metronomeEnabled: Bool = true
     var referenceToneEnabled: Bool = true
 
-    /// Require a real gangsa strike sound (spectral baseline) to register a hit.
+    /// A sighting the microphone did not hear is discarded. See `DetectionMode`.
     var requireStrikeSound: Bool = false
 
     // MARK: - Detection tuning
@@ -130,6 +130,56 @@ final class AppState {
     /// impulsive and has no such problem.
     var audioTriggersStrikes: Bool = Defaults.bool("audioTriggers", true) {
         didSet { Defaults.set("audioTriggers", audioTriggersStrikes) }
+    }
+
+    /// The three ways the two sensors can be arranged, as one choice instead of
+    /// two booleans whose interaction nobody could predict from their names.
+    ///
+    /// The camera always triggers. What varies is whether the microphone gets a
+    /// vote, and whether it gets a veto — and those are not a sensitivity dial
+    /// in the same direction, which is exactly why two switches were the wrong
+    /// shape for it. A vote makes detection MORE willing, a veto makes it less,
+    /// and the pair had four states, two of which nobody would ever want.
+    enum DetectionMode: String, CaseIterable, Identifiable {
+        case cameraOnly
+        case cameraAndMic
+        case heardOnly
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .cameraOnly:   return "Camera"
+            case .cameraAndMic: return "Camera + mic"
+            case .heardOnly:    return "Heard only"
+            }
+        }
+
+        /// Written as a symptom, not a mechanism. Nobody opens this menu
+        /// curious about sensor fusion; they open it because something is
+        /// wrong, and the fastest way to the right setting is a line that
+        /// describes what is wrong.
+        var detail: String {
+            switch self {
+            case .cameraOnly:
+                return "The microphone is ignored, so nothing in the room can trigger a stroke or block one. Use this in a loud hall — a mallet that hovers over a bar can still register."
+            case .cameraAndMic:
+                return "Either can register a stroke. The most willing of the three, and the microphone is what catches a bar struck twice in a row, which the camera cannot see."
+            case .heardOnly:
+                return "A stroke counts only where the camera sees one and the microphone hears the attack. Use this when strokes register that you did not play."
+            }
+        }
+    }
+
+    var detectionMode: DetectionMode {
+        get {
+            if !audioTriggersStrikes { return .cameraOnly }
+            return requireStrikeSound ? .heardOnly : .cameraAndMic
+        }
+        set {
+            audioTriggersStrikes = newValue != .cameraOnly
+            requireStrikeSound = newValue == .heardOnly
+        }
     }
 
     /// Index into the fill/centre/fit options. Must match how the current model
