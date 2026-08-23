@@ -5,8 +5,14 @@
 //  The score, shown only when the player ends a session (PRD §4 Flow C, §8).
 //  Practice loops indefinitely and never interrupts, so this is the one moment
 //  the app says anything about how it went — and the tone stays encouraging:
-//  the headline is your BEST stretch, not your average, then where it slipped,
-//  framed as observations rather than failures.
+//  the headline is your BEST stretch, not your average, and then what the
+//  session put into the gangsa.
+//
+//  A per-key "where it slipped" table used to sit under that. It was accurate
+//  and nobody needed it: on a figure of three or four bilah, being told which
+//  of them you were worst at is a statistic rather than an instruction — the
+//  answer is always to go round again. `SongResult.breakdown` still computes
+//  it if it ever earns a place back.
 //
 //  Why a best: a session that runs until you stop it can only drag an average
 //  down, since every warm-up pass and every stretch where you paused to look at
@@ -42,8 +48,6 @@ struct ResultsView: View {
                         MasteryProgress(profile: app.profile,
                                         before: app.previousNotesLanded,
                                         landed: result.landedNotes)
-
-                        if result.best != nil, !result.breakdown.isEmpty { slipped(result) }
 
                         bottomBar
                     }
@@ -160,26 +164,6 @@ struct ResultsView: View {
             }
             .font(.sans(12))
             .foregroundStyle(Theme.stone)
-        }
-    }
-
-    private func slipped(_ result: SongResult) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionLabel("Where it slipped", color: Theme.stone)
-            ForEach(result.breakdown) { row in
-                HStack(spacing: 12) {
-                    Text(bilahLabel(row.keyIndex, count: app.profile.keys.count))
-                        .font(.serif(18, weight: .semibold))
-                        .foregroundStyle(Theme.charcoal)
-                        .frame(width: 26, alignment: .leading)
-                    StatBar(fraction: row.accuracy,
-                            color: row.accuracy >= 0.7 ? Theme.terracotta : Theme.charcoal.opacity(0.6))
-                    Text(row.note)
-                        .font(.sans(13))
-                        .foregroundStyle(Theme.stone)
-                        .frame(width: 140, alignment: .trailing)
-                }
-            }
         }
     }
 
