@@ -611,7 +611,7 @@ struct PlayView: View {
         // Keep what the session taught. Without this the dictionary starts empty
         // every time and never gets past its first four strikes per key, which
         // is the whole reason it can improve at all.
-        audio.learnedTemplates { templates in
+        audio.learnedAtoms { templates in
             guard !templates.isEmpty else { return }
             app.storeLinearTemplates(templates)
         }

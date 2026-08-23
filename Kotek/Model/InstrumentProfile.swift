@@ -91,6 +91,31 @@ struct InstrumentKey: Codable, Identifiable, Equatable {
     /// a few passes and gets better every session — see `KeyDecomposer`.
     var linearTemplate: [Float]?
 
+    /// How many strikes went into `linearTemplate`.
+    ///
+    /// Saved because the atom is only trusted after four of them, and without a
+    /// count there was no way to write down a key that had reached two — so it
+    /// was not written at all, and the next session started that key from zero.
+    /// A dictionary that can only be saved once it is finished is one that
+    /// mostly never gets saved.
+    ///
+    /// Optional for the usual reason: synthesized `Decodable` does not fall
+    /// back to a default for a missing key, and `ProfileStore.loadAll` decodes
+    /// the whole list with `try?`. Profiles written before this build read as
+    /// nil and are taken at face value — see `learnedAtom`.
+    var linearTemplateCount: Int?
+
+    /// The learned spectrum with its example count, if there is one.
+    ///
+    /// A profile from before the count existed is assumed fully trusted: it was
+    /// only ever written at four examples, because that was the old threshold
+    /// to be written at all.
+    var learnedAtom: LearnedAtom? {
+        guard let linearTemplate, !linearTemplate.isEmpty else { return nil }
+        return LearnedAtom(bands: linearTemplate,
+                           examples: linearTemplateCount ?? KeyDecomposer.strikesToTrustAtom)
+    }
+
     var id: Int { index }
 
     var isCalibrated: Bool { !(fingerprint?.isEmpty ?? true) }

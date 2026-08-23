@@ -289,13 +289,17 @@ final class AppState {
     /// Written straight to disk without touching `screen` or anything else the
     /// UI observes — this lands as the results screen is appearing, and a
     /// session's worth of listening is not worth a redraw.
-    func storeLinearTemplates(_ templates: [Int: [Float]]) {
-        guard !templates.isEmpty else { return }
+    func storeLinearTemplates(_ atoms: [Int: LearnedAtom]) {
+        guard !atoms.isEmpty else { return }
         var changed = false
-        for (index, vector) in templates {
+        for (index, atom) in atoms {
             guard let position = profile.keys.firstIndex(where: { $0.index == index }) else { continue }
-            if profile.keys[position].linearTemplate != vector {
-                profile.keys[position].linearTemplate = vector
+            //R The count matters as much as the vector. Storing one without the
+            //R other is what made a half-learned key unsaveable.
+            if profile.keys[position].linearTemplate != atom.bands
+                || profile.keys[position].linearTemplateCount != atom.examples {
+                profile.keys[position].linearTemplate = atom.bands
+                profile.keys[position].linearTemplateCount = atom.examples
                 changed = true
             }
         }

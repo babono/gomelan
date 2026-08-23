@@ -356,13 +356,13 @@ final class AudioEngineController {
         classifier = KeyClassifier(config: config, keys: keys)
 
         let decomposer = KeyDecomposer(bandCount: config.fpBands)
-        var templates: [Int: [Float]] = [:]
+        var atoms: [Int: LearnedAtom] = [:]
         for key in keys {
-            if let template = key.linearTemplate, template.count == config.fpBands {
-                templates[key.index] = template
+            if let atom = key.learnedAtom, atom.bands.count == config.fpBands {
+                atoms[key.index] = atom
             }
         }
-        decomposer.load(templates: templates)
+        decomposer.load(atoms: atoms)
         self.decomposer = decomposer
         setOpinions([])
 
@@ -731,10 +731,10 @@ final class AudioEngineController {
     }
 
     /// Learned atoms, to fold back into the profile at the end of a session.
-    func learnedTemplates(completion: @escaping ([Int: [Float]]) -> Void) {
+    func learnedAtoms(completion: @escaping ([Int: LearnedAtom]) -> Void) {
         queue.async { [weak self] in
-            let templates = self?.decomposer?.templates() ?? [:]
-            DispatchQueue.main.async { completion(templates) }
+            let atoms = self?.decomposer?.snapshot() ?? [:]
+            DispatchQueue.main.async { completion(atoms) }
         }
     }
 

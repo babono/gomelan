@@ -157,7 +157,7 @@ struct DetectionTestView: View {
         }
         .onDisappear {
             audio.onStrikeDetected = nil
-            audio.learnedTemplates { templates in app.storeLinearTemplates(templates) }
+            audio.learnedAtoms { templates in app.storeLinearTemplates(templates) }
             audio.setKeyOpinionsEnabled(false)
             audio.stop()
         }

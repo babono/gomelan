@@ -32,6 +32,16 @@
 
 import Accelerate
 
+/// One key's learned spectrum, and how many strikes went into it.
+///
+/// The count is half the atom. Without it, partial progress cannot be written
+/// down, and a dictionary that can only be saved once it is finished is a
+/// dictionary that mostly never gets saved.
+nonisolated struct LearnedAtom: Equatable {
+    var bands: [Float]
+    var examples: Int
+}
+
 struct KeyActivation {
     let keyIndex: Int
     /// Raw activation, in the observation's units — carries loudness.
@@ -270,21 +280,35 @@ final class KeyDecomposer {
     }
 
     /// Seed from templates persisted with the profile.
-    func load(templates: [Int: [Float]]) {
+    func load(atoms: [Int: LearnedAtom]) {
         learned.removeAll()
-        for (index, vector) in templates where vector.count == bandCount {
-            if let unit = Self.l2Normalised(vector) {
-                learned[index] = (sum: unit, count: Self.strikesToTrustAtom)
+        for (index, atom) in atoms where atom.bands.count == bandCount {
+            if let unit = Self.l2Normalised(atom.bands) {
+                learned[index] = (sum: unit, count: max(1, atom.examples))
             }
         }
         rebuild()
     }
 
-    /// Current atoms, for persisting back into the profile.
-    func templates() -> [Int: [Float]] {
-        var out: [Int: [Float]] = [:]
-        for (index, entry) in learned where entry.count >= Self.strikesToTrustAtom {
-            if let unit = Self.l2Normalised(entry.sum) { out[index] = unit }
+    /// Everything learned so far, for persisting back into the profile.
+    ///
+    /// EVERY key, including the ones that have not reached
+    /// `strikesToTrustAtom` yet — which is the whole point. This used to filter
+    /// on the trust threshold, so a session that collected one, two or three
+    /// examples of a bilah saved nothing for it and the next session started
+    /// that key from zero. Four examples in one sitting is not a given; four
+    /// across four sittings ought to be, and was not.
+    ///
+    /// The count travels with the vector, so trust is a property of the atom
+    /// rather than of the session that happened to be running. `trustedKeys`
+    /// still refuses to DECOMPOSE with anything under four, so nothing this
+    /// changes reaches a judgement — it only stops the counter being reset.
+    func snapshot() -> [Int: LearnedAtom] {
+        var out: [Int: LearnedAtom] = [:]
+        for (index, entry) in learned {
+            if let unit = Self.l2Normalised(entry.sum) {
+                out[index] = LearnedAtom(bands: unit, examples: entry.count)
+            }
         }
         return out
     }
