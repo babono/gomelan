@@ -64,6 +64,37 @@ struct WelcomeView: View {
         .accessibilityHint("Opens a short introduction")
     }
 
+    /// The background read, for anyone who arrives not knowing what a gamelan
+    /// is — and only for them. Beside the credit rather than in the column, for
+    /// the same reason: this screen is a wordmark and one way in, and a second
+    /// thing to read in the middle of it would make the way in the third thing
+    /// you notice.
+    ///
+    /// Quieter than the credit above it. That one carries a logo and has to
+    /// hold together as a mark; this is a line of type, and matching its weight
+    /// would give an optional explainer the same standing as the people the app
+    /// was made with.
+    private var aboutGamelan: some View {
+        Button { app.openGuide(.gamelan) } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "questionmark.circle")
+                    .font(.symbol(12, weight: .medium))
+                Text("What is gamelan?")
+                    .font(.sans(13))
+            }
+            .foregroundStyle(Theme.cream.opacity(0.62))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radius)
+                    .strokeBorder(Theme.cream.opacity(0.16), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens a short introduction to gamelan and kotekan")
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let h = proxy.size.height
@@ -106,7 +137,10 @@ struct WelcomeView: View {
                 VStack {
                     HStack {
                         Spacer()
-                        collaborator
+                        VStack(alignment: .trailing, spacing: 8) {
+                            collaborator
+                            aboutGamelan
+                        }
                     }
                     Spacer()
                 }

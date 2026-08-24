@@ -43,11 +43,15 @@ struct GuideView: View {
                 GuideColumns { KotekanGuideWeave() } right: { KotekanGuideLegend() }
             }
         case .mekarBhuana:
-            //R Does not scroll: it pages. See `MekarBhuanaSlides`.
+            //R Does not scroll: it pages. See `GuideSlides`.
             GuidePanel(title: "Mekar Bhuana",
                        titleImage: "logo-mekarbhuana",
                        onClose: onClose, scrolls: false) {
-                MekarBhuanaSlides()
+                GuideSlides(slides: MekarBhuanaDeck.slides)
+            }
+        case .gamelan:
+            GuidePanel(title: "Gamelan", onClose: onClose, scrolls: false) {
+                GuideSlides(slides: GamelanDeck.slides)
             }
         }
     }
@@ -377,47 +381,41 @@ private struct KotekanGuideLegend: View {
 
 // MARK: - "Mekar Bhuana"
 
-/// One topic, one picture.
+/// What fills a slide's picture half.
 ///
-/// ADD SLIDES HERE. `image` is the asset name and is optional: a slide with no
-/// artwork yet lays its text across the whole panel rather than reserving a
-/// hole for a picture that is not there, so a name can be filled in later
-/// without anything else moving.
-private struct MekarSlide: Identifiable {
+/// `.none` is not a placeholder — a slide without art lays its text across the
+/// whole panel rather than reserving a hole for a picture that is not there, so
+/// a deck can be written before its photographs exist and gain them one at a
+/// time without anything else moving.
+enum GuideArt {
+    case none
+    case photo(String)
+    /// A figure drawn from its own data, in the colours the score uses. Better
+    /// than a photograph of an interlock, which shows you people playing rather
+    /// than the thing being explained.
+    case figure(Kotekan)
+}
+
+/// One topic, one picture.
+struct GuideSlide: Identifiable {
     let id = UUID()
-    var image: String?
+    var art: GuideArt = .none
     var title: String
     var text: String
-    /// Somewhere to go next. Only the last slide has one — an outbound link
+    /// Somewhere to go next. Only ever the LAST slide — an outbound link
     /// partway through is an invitation to leave before you have read the rest.
     var link: URL? = nil
 }
 
-/// The panel pages instead of scrolling.
+/// A panel that pages instead of scrolling.
 ///
-/// Four short topics beat one dense column: the first draft fitted only by
-/// cutting the picture to 132pt and pushing "Visiting" into the other column to
-/// keep it above the fold. A slide has one thing to say and the whole panel to
-/// say it in, so the photograph gets the full height and the prose stops
-/// competing with it.
-private struct MekarBhuanaSlides: View {
+/// Short topics beat one dense column: the first deck fitted only by cutting
+/// its picture to 132pt and pushing a section into the other column to keep it
+/// above the fold. A slide has one thing to say and the whole panel to say it
+/// in, so the artwork gets the full height and the prose stops competing.
+struct GuideSlides: View {
+    let slides: [GuideSlide]
     @State private var index = 0
-
-    private let slides: [MekarSlide] = [
-        MekarSlide(image: "photo-mekarbhuana",
-                   title: "To blossom around the world",
-                   text: "That is what Mekar Bhuana means, and it is the hope behind it: that Bali's oldest music and dance become known again, at home and beyond it."),
-        MekarSlide(image: "photo-founder",
-                   title: "The centre",
-                   text: "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Vaughan Hatch founded it in 2000 around an antique Semara Pagulingan he restored, having found how few classical ensembles were ever recorded. Putu Evie Suyadnyani, a Legong dancer, brought the dance in 2004."),
-        MekarSlide(image: "photo-collection",
-                   title: "Collection",
-                   text: "Twenty-seven gamelan sets: twenty-two in Bali, five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an Angklung set from Lombok restored in 2019."),
-        MekarSlide(image: "photo-centre",
-                   title: "Visiting",
-                   text: "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. The centre is a family home, so there are no walk-ins — book by email two weeks ahead.",
-                   link: URL(string: "https://balimusicanddance.com")),
-    ]
 
     var body: some View {
         VStack(spacing: 10) {
@@ -426,9 +424,9 @@ private struct MekarBhuanaSlides: View {
                     slide(slides[i]).tag(i)
                 }
             }
-            //R Own dots, drawn below. The system's sit INSIDE the paging area,
-            //R which costs the picture the height they occupy, and they are a
-            //R blue-grey nothing on a warm ground.
+            //R Our own dots, drawn below. The system's sit INSIDE the paging
+            //R area, which costs the picture the height they occupy, and they
+            //R are a blue-grey nothing on a warm ground.
             .tabViewStyle(.page(indexDisplayMode: .never))
 
             dots
@@ -436,55 +434,76 @@ private struct MekarBhuanaSlides: View {
     }
 
     @ViewBuilder
-    private func slide(_ slide: MekarSlide) -> some View {
-        if let image = slide.image {
+    private func slide(_ slide: GuideSlide) -> some View {
+        if case .none = slide.art {
+            //R No artwork: the words take the room rather than leaving a hole
+            //R where a picture is going to go.
+            text(slide)
+                .frame(maxWidth: 520, alignment: .topLeading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        } else {
             HStack(alignment: .top, spacing: 24) {
-                //R FILL, not fit: the slot is far taller than these
-                //R photographs, and fitting leaves a strip in the middle of an
-                //R empty half. Nothing lives in their corners.
-                //R
-                //R The image is an OVERLAY on a `Color.clear`, not a framed
-                //R image, and that is not decoration. A resizable image with
-                //R `.fill` negotiates its own size from its aspect ratio, so a
-                //R SQUARE photograph in a wide slot demanded more height than
-                //R the row had — which pushed the text column taller than the
-                //R page and clipped its heading off the top. One slide silently
-                //R lost its title, and only that slide, because only its photo
-                //R was square. `Color.clear` takes whatever it is offered and
-                //R the picture is painted into it, so the artwork can be any
-                //R shape at all and the layout never hears about it.
-                Color.clear
-                    .overlay(
-                        Image(image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    )
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.radius)
-                            .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
-                    )
-                    .accessibilityHidden(true)
+                art(slide.art).frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 //R TOP-aligned and height-bounded. Without the maxHeight the
                 //R column sizes to its content, and a slide whose text runs
                 //R long is then centred in a frame smaller than itself — which
-                //R clips the title off the top AND the link off the bottom, so
-                //R the one slide with somewhere to go loses the way there.
+                //R clips the title off the top AND the link off the bottom.
                 text(slide)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-        } else {
-            //R No picture yet: the words take the room rather than leaving a
-            //R hole where one is going to go.
-            text(slide)
-                .frame(maxWidth: 520, alignment: .topLeading)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
-    private func text(_ slide: MekarSlide) -> some View {
+    @ViewBuilder
+    private func art(_ art: GuideArt) -> some View {
+        switch art {
+        case .none:
+            EmptyView()
+
+        case .photo(let name):
+            //R FILL, not fit: the slot is far taller than these photographs, and
+            //R fitting leaves a strip in the middle of an empty half.
+            //R
+            //R The image is an OVERLAY on a `Color.clear`, not a framed image,
+            //R and that is not decoration. A resizable image with `.fill`
+            //R negotiates its own size from its aspect ratio, so a SQUARE
+            //R photograph in a wide slot demanded more height than the row had —
+            //R which pushed the text column taller than the page and clipped its
+            //R heading off the top. One slide silently lost its title, and only
+            //R that slide, because only its photo was square. `Color.clear`
+            //R takes whatever it is offered and the picture is painted into it,
+            //R so artwork can be any shape and the layout never hears about it.
+            Color.clear
+                .overlay(Image(name).resizable().aspectRatio(contentMode: .fill))
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.radius)
+                        .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
+                )
+                .accessibilityHidden(true)
+
+        case .figure(let kotekan):
+            //R The real figure, from the real data, in the colours the score
+            //R uses — so the thing being explained is the thing being shown, and
+            //R it cannot drift out of date with the app around it.
+            VStack {
+                Spacer(minLength: 0)
+                KotekanMiniScore(kotekan: kotekan).frame(height: 92)
+                Spacer(minLength: 0)
+            }
+            .padding(18)
+            .background(Theme.ground.opacity(0.5), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radius)
+                    .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
+            )
+            .accessibilityHidden(true)
+        }
+    }
+
+    private func text(_ slide: GuideSlide) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(slide.title)
                 .font(.serif(24))
@@ -499,30 +518,31 @@ private struct MekarBhuanaSlides: View {
 
             Spacer(minLength: 8)
 
-            if let link = slide.link {
-                //R A link, not a button. A filled slab is the weight this app
-                //R gives to the thing you came to do, and leaving for a website
-                //R is not that — it competed with Got it, two loud pills in one
-                //R small panel. Underlined and italic is what a link has always
-                //R looked like, and the arrow says it leaves the app.
-                Link(destination: link) {
-                    HStack(spacing: 5) {
-                        Text("balimusicanddance.com")
-                            .font(.sans(13))
-                            .italic()
-                            .underline()
-                        Image(systemName: "arrow.up.right")
-                            .font(.symbol(11, weight: .semibold))
-                    }
-                    .foregroundStyle(Theme.buttonFill)
-                    //R Drawn at its own size, hit at 44. The HIG minimum is not
-                    //R optional just because the thing is small type.
-                    .padding(.vertical, 12)
-                    .contentShape(Rectangle())
-                }
-                .accessibilityLabel("Visit balimusicanddance.com")
-            }
+            if let link = slide.link { linkButton(link) }
         }
+    }
+
+    /// A link, not a button. A filled slab is the weight this app gives the
+    /// thing you came to do, and leaving for a website is not that — it competed
+    /// with Got it, two loud pills in one small panel. Underlined and italic is
+    /// what a link has always looked like, and the arrow says it leaves the app.
+    private func linkButton(_ link: URL) -> some View {
+        Link(destination: link) {
+            HStack(spacing: 5) {
+                Text((link.host() ?? "Open").replacingOccurrences(of: "www.", with: ""))
+                    .font(.sans(13))
+                    .italic()
+                    .underline()
+                Image(systemName: "arrow.up.right")
+                    .font(.symbol(11, weight: .semibold))
+            }
+            .foregroundStyle(Theme.buttonFill)
+            //R Drawn at its own size, hit at 44. The HIG minimum is not optional
+            //R just because the thing is small type.
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Visit \(link.host() ?? "the website")")
     }
 
     private var dots: some View {
@@ -545,5 +565,47 @@ private struct MekarBhuanaSlides: View {
     }
 }
 
+// MARK: - The decks
 
+enum MekarBhuanaDeck {
+    static let slides: [GuideSlide] = [
+        GuideSlide(art: .photo("photo-mekarbhuana"),
+                   title: "To blossom around the world",
+                   text: "That is what Mekar Bhuana means, and it is the hope behind it: that Bali's oldest music and dance become known again, at home and beyond it."),
+        GuideSlide(art: .photo("photo-founder"),
+                   title: "The centre",
+                   text: "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Vaughan Hatch founded it in 2000 around an antique Semara Pagulingan he restored, having found how few classical ensembles were ever recorded. Putu Evie Suyadnyani, a Legong dancer, brought the dance in 2004."),
+        GuideSlide(art: .photo("photo-collection"),
+                   title: "Collection",
+                   text: "Twenty-seven gamelan sets: twenty-two in Bali, five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an Angklung set from Lombok restored in 2019."),
+        GuideSlide(art: .photo("photo-centre"),
+                   title: "Visiting",
+                   text: "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. The centre is a family home, so there are no walk-ins — book by email two weeks ahead.",
+                   link: URL(string: "https://balimusicanddance.com")),
+    ]
+}
 
+/// The music itself, for anyone who arrives without knowing any of it.
+///
+/// Deliberately NOT the same job as the panel behind the question mark on the
+/// kotekan picker. That one is a reference you open mid-flow — which half is
+/// which, what the colours on a card mean. This is the background read: what
+/// the music IS, why it is built the way it is, and why an app about it has to
+/// learn one instrument at a time.
+///
+/// ART CAN BE ADDED LATER: set `art:` on any of these. The interlock slide draws
+/// a real figure rather than waiting for a photograph, because a picture of
+/// people playing shows you people playing, not the thing being explained.
+enum GamelanDeck {
+    static let slides: [GuideSlide] = [
+        GuideSlide(title: "Gamelan",
+                   text: "A tuned bronze orchestra, played as one instrument rather than a room of soloists. A set is forged and tuned together and stays together — and no two villages tune alike, so an instrument from one gamelan will not sit in another. There is no standard pitch to fall back on."),
+        GuideSlide(title: "The gangsa",
+                   text: "Bronze bilah suspended over bamboo resonators, struck with a wooden panggul and damped with the other hand. The damping matters as much as the striking: bronze rings for seconds, and a note left to ring blurs into the one after it."),
+        GuideSlide(art: .figure(Kotekan.bundled[0]),
+                   title: "Interlocking",
+                   text: "A kotekan is a line too fast for one player, so it is split between two. Polos lands on the beat, sangsih answers between, and neither part is the tune — the tune is what appears when both are going. Beside this, one figure with both halves in place."),
+        GuideSlide(title: "The gong cycle",
+                   text: "Balinese time is circular. A gong stroke marks the turn of the cycle, kempur the halfway point, and kajar the pulse underneath. Everything above is measured against that frame, which is why Kotek plays it under every session and never lets you switch it off."),
+    ]
+}

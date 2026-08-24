@@ -212,6 +212,10 @@ final class AppState {
         /// Who we made this with. Never shown unasked — a credit that
         /// introduces itself over the landing screen is an ad.
         case mekarBhuana
+        /// The music itself. Also only ever asked for: somebody who already
+        /// knows what a gamelan is should never have to dismiss an explanation
+        /// of one to reach their instrument.
+        case gamelan
 
         var id: String { rawValue }
         /// `app` keeps the original key so anyone who has already dismissed it
