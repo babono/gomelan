@@ -185,6 +185,7 @@ struct PracticeCoachOverlay: View {
                 }
                 Spacer()
                 PillButton(title: isLast ? "Start" : "Next",
+                           trailingSystemImage: "arrow.right",
                            style: .filled, compact: true, action: onNext)
             }
             .padding(.top, 2)

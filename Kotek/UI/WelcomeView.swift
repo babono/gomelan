@@ -50,7 +50,7 @@ struct WelcomeView: View {
 
                     Spacer().frame(height: h * 0.07)
 
-                    PillButton(title: "Get started", style: .filled) {
+                    PillButton(title: "Get started", trailingSystemImage: "arrow.right", style: .filled) {
                         music.stop()
                         app.begin()
                     }

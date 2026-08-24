@@ -89,7 +89,7 @@ struct KotekWordmark: View {
         // One accessibility element: VoiceOver reading two undescribed images
         // in a row is worse than reading the name once.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Gomelan")
+        .accessibilityLabel("Kotek")
     }
 
     /// Both frames are given a HEIGHT as well as a width. `.fit` on its own only
@@ -113,6 +113,10 @@ enum PillStyle { case filled, outlined, secondary }
 struct PillButton: View {
     let title: String
     var systemImage: String? = nil
+    /// An icon AFTER the label. For the buttons that carry you forward through
+    /// a flow — a leading icon labels what a button is, a trailing arrow says
+    /// where it goes, and those are different jobs on the same control.
+    var trailingSystemImage: String? = nil
     var style: PillStyle = .outlined
     var tint: Color = Theme.gold
     var uppercase: Bool = true
@@ -137,6 +141,11 @@ struct PillButton: View {
                     // SF has real weights, unlike the face this used to be, so
                     // a button label can simply BE the weight it wants.
                     .font(.sans(compact ? 14 : 19, weight: Theme.buttonWeight))
+
+                if let trailingSystemImage {
+                    Image(systemName: trailingSystemImage)
+                        .font(.symbol(compact ? 13 : 16, weight: .semibold))
+                }
             }
             .foregroundStyle(foreground)
             .padding(.horizontal, compact ? 18 : 30)
@@ -311,7 +320,7 @@ struct TopBar: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("How Gomelan works")
+                        .accessibilityLabel("How Kotek works")
                     }
                     if let settingsAction {
                         Button(action: settingsAction) {

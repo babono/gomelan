@@ -62,7 +62,7 @@ struct KeyCountView: View {
                         .frame(height: 72)
                         .frame(maxWidth: 260)
 
-                    PillButton(title: "Next", style: .outlined) {
+                    PillButton(title: "Next", trailingSystemImage: "arrow.right", style: .outlined) {
                         // Landscape keyboards cover most of the screen, so this
                         // button can be tapped while the field still holds an
                         // uncommitted edit. Drop focus first and read the draft

@@ -35,7 +35,7 @@ struct GuideView: View {
     var body: some View {
         switch guide {
         case .app:
-            GuidePanel(title: "How Gomelan works", onClose: onClose) {
+            GuidePanel(title: "How Kotek works", onClose: onClose) {
                 AppGuideConcept()
             } right: {
                 AppGuideGrade()
@@ -184,7 +184,7 @@ struct GuideLead: View {
 }
 
 
-// MARK: - "How Gomelan works"
+// MARK: - "How Kotek works"
 
 private struct AppGuideConcept: View {
     var body: some View {

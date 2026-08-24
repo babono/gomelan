@@ -149,6 +149,10 @@ struct CalibrationView: View {
                 HStack(spacing: 14) {
                     PillButton(title: "Reset", style: .outlined, tint: Theme.inkStone) { reset() }
                     PillButton(title: learned ? "Continue" : "Listening…",
+                               //R Only once it IS a next button. While it still
+                               //R says "Listening…" it is a status, and an arrow
+                               //R on a status promises something it cannot do.
+                               trailingSystemImage: learned ? "arrow.right" : nil,
                                style: learned ? .filled : .outlined,
                                tint: Theme.copper) {
                         if learned { commit() }

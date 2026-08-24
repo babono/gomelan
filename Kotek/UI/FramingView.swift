@@ -102,7 +102,7 @@ struct FramingView: View {
 
             Spacer(minLength: 12)
 
-            PillButton(title: "Continue", style: .filled, tint: Theme.copper, compact: true) {
+            PillButton(title: "Continue", trailingSystemImage: "arrow.right", style: .filled, tint: Theme.copper, compact: true) {
                 //R Cover the gap the tap opens: the next screen builds a fresh
                 //R preview layer, which is black until it gets its first frame.
                 //R The spinner starts here and the aligning screen picks it up

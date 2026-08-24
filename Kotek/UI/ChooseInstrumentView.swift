@@ -261,14 +261,14 @@ struct ChooseInstrumentView: View {
                 .font(.serif(30))
                 .foregroundStyle(Theme.cream)
 
-            Text("Every gamelan is tuned differently, so Gomelan learns your gangsa — where the keys are and how they sound.")
+            Text("Every gamelan is tuned differently, so Kotek learns your gangsa — where the keys are and how they sound.")
                 .font(.sans(15))
                 .foregroundStyle(Theme.cream.opacity(0.62))
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
                 .frame(maxWidth: 440)
 
-            PillButton(title: "Set up · 4 steps", style: .filled) {
+            PillButton(title: "Set up · 4 steps", trailingSystemImage: "arrow.right", style: .filled) {
                 app.addNewInstrument()
             }
             .padding(.top, 4)

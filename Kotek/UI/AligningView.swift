@@ -195,7 +195,7 @@ struct AligningView: View {
             }
             .disabled(detecting)
 
-            PillButton(title: "Calibrate", style: .filled, tint: Theme.copper, compact: true) {
+            PillButton(title: "Calibrate", trailingSystemImage: "arrow.right", style: .filled, tint: Theme.copper, compact: true) {
                 confirmAlignment()
             }
         }

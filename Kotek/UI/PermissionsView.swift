@@ -35,7 +35,7 @@ struct PermissionsBlockedView: View {
                 .font(.serif(30))
                 .foregroundStyle(Theme.charcoal)
                 .multilineTextAlignment(.center)
-            Text("Gomelan needs to see your gangsa and hear which key you play. Enable both in Settings to continue.")
+            Text("Kotek needs to see your gangsa and hear which key you play. Enable both in Settings to continue.")
                 .font(.sans(15))
                 .foregroundStyle(Theme.stone)
                 .multilineTextAlignment(.center)

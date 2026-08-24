@@ -330,7 +330,7 @@ struct ChooseKotekanView: View {
             Spacer()
 
             if let current {
-                PillButton(title: "Start", style: .filled, compact: true) { start(current) }
+                PillButton(title: "Start", trailingSystemImage: "arrow.right", style: .filled, compact: true) { start(current) }
                     .disabled(!playable)
                     .opacity(playable ? 1 : 0.4)
             }
