@@ -44,7 +44,9 @@ struct GuideView: View {
             }
         case .mekarBhuana:
             //R Does not scroll: it pages. See `MekarBhuanaSlides`.
-            GuidePanel(title: "Mekar Bhuana", onClose: onClose, scrolls: false) {
+            GuidePanel(title: "Mekar Bhuana",
+                       titleImage: "logo-mekarbhuana",
+                       onClose: onClose, scrolls: false) {
                 MekarBhuanaSlides()
             }
         }
@@ -71,6 +73,10 @@ struct GuideView: View {
 /// you add a paragraph to a column, take one out.
 struct GuidePanel<Content: View>: View {
     let title: String
+    /// An asset to draw in place of the title. The title is still given, and
+    /// still read out — a logo is a picture of a word, and VoiceOver cannot see
+    /// it.
+    var titleImage: String? = nil
     var onClose: () -> Void
     /// Whether the body scrolls. True for the columns, which are metered to fit
     /// but need a backstop; false for anything that manages its own height —
@@ -128,13 +134,22 @@ struct GuidePanel<Content: View>: View {
     /// hunting for the way out.
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .font(.serif(24))
-                .textCase(.uppercase)
-                .tracking(1.5)
-                .foregroundStyle(Theme.cream)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            if let titleImage {
+                Image(titleImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(height: 26)
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 4 }
+                    .accessibilityLabel(title)
+            } else {
+                Text(title)
+                    .font(.serif(24))
+                    .textCase(.uppercase)
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.cream)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
 
             Spacer(minLength: 16)
 
@@ -373,6 +388,9 @@ private struct MekarSlide: Identifiable {
     var image: String?
     var title: String
     var text: String
+    /// Somewhere to go next. Only the last slide has one — an outbound link
+    /// partway through is an invitation to leave before you have read the rest.
+    var link: URL? = nil
 }
 
 /// The panel pages instead of scrolling.
@@ -389,15 +407,16 @@ private struct MekarBhuanaSlides: View {
         MekarSlide(image: "photo-mekarbhuana",
                    title: "To blossom around the world",
                    text: "That is what Mekar Bhuana means, and it is the hope behind it: that Bali's oldest music and dance become known again, at home and beyond it."),
-        MekarSlide(image: nil,
+        MekarSlide(image: "photo-founder",
                    title: "The centre",
-                   text: "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Founded in 2000 by Vaughan Hatch around an antique Semara Pagulingan he restored, after finding how few classical ensembles had ever been recorded — and how many had been melted down. Putu Evie Suyadnyani, a Legong dancer and singer, brought the dance in 2004."),
-        MekarSlide(image: nil,
+                   text: "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Vaughan Hatch founded it in 2000 around an antique Semara Pagulingan he restored, having found how few classical ensembles were ever recorded. Putu Evie Suyadnyani, a Legong dancer, brought the dance in 2004."),
+        MekarSlide(image: "photo-collection",
                    title: "The collection",
-                   text: "Twenty-seven gamelan sets: twenty-two in Bali and five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an unusual Angklung set from Lombok restored in 2019."),
-        MekarSlide(image: nil,
+                   text: "Twenty-seven gamelan sets: twenty-two in Bali, five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an Angklung set from Lombok restored in 2019."),
+        MekarSlide(image: "photo-centre",
                    title: "Visiting",
-                   text: "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. Hands-on gamelan or dance, or both. The centre is a family home, so there are no walk-ins — book by email at least two weeks ahead."),
+                   text: "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. The centre is a family home, so there are no walk-ins — book by email two weeks ahead.",
+                   link: URL(string: "https://balimusicanddance.com")),
     ]
 
     var body: some View {
@@ -435,14 +454,20 @@ private struct MekarBhuanaSlides: View {
                     )
                     .accessibilityHidden(true)
 
-                text(slide).frame(maxWidth: .infinity, alignment: .leading)
+                //R TOP-aligned and height-bounded. Without the maxHeight the
+                //R column sizes to its content, and a slide whose text runs
+                //R long is then centred in a frame smaller than itself — which
+                //R clips the title off the top AND the link off the bottom, so
+                //R the one slide with somewhere to go loses the way there.
+                text(slide)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         } else {
             //R No picture yet: the words take the room rather than leaving a
             //R hole where one is going to go.
             text(slide)
-                .frame(maxWidth: 520, alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: 520, alignment: .topLeading)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
@@ -459,7 +484,24 @@ private struct MekarBhuanaSlides: View {
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 8)
+
+            if let link = slide.link {
+                Link(destination: link) {
+                    HStack(spacing: 8) {
+                        Text("balimusicanddance.com")
+                            .font(.sans(13, weight: .semibold))
+                        Image(systemName: "arrow.up.right")
+                            .font(.symbol(12, weight: .semibold))
+                    }
+                    .foregroundStyle(Theme.deep)
+                    .padding(.horizontal, 16)
+                    .frame(height: 38)
+                    .background(Theme.buttonFill, in: RoundedRectangle(cornerRadius: Theme.radius))
+                    .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+                }
+                .accessibilityLabel("Visit balimusicanddance.com")
+            }
         }
     }
 
