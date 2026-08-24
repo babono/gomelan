@@ -43,14 +43,25 @@ struct WelcomeView: View {
                 Image("logo-mekarbhuana")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 132)
-                    .opacity(0.72)
+                    .frame(width: 138)
+                    .opacity(0.9)
             }
-            .padding(8)
-            .contentShape(Rectangle())
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            //R A border, because without one it was indistinguishable from the
+            //R printed credit it is made of — a logo sitting in a corner reads
+            //R as a colophon, and nobody taps a colophon. The outline is what
+            //R makes it a control.
+            .background(Theme.cream.opacity(0.05), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radius)
+                    .strokeBorder(Theme.cream.opacity(0.22), lineWidth: 1)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("About Mekar Bhuana")
+        .accessibilityHint("Opens a short introduction")
     }
 
     var body: some View {

@@ -36,21 +36,16 @@ struct GuideView: View {
         switch guide {
         case .app:
             GuidePanel(title: "How Kotek works", onClose: onClose) {
-                AppGuideConcept()
-            } right: {
-                AppGuideGrade()
+                GuideColumns { AppGuideConcept() } right: { AppGuideGrade() }
             }
         case .kotekan:
             GuidePanel(title: "Kotekan", onClose: onClose) {
-                KotekanGuideWeave()
-            } right: {
-                KotekanGuideLegend()
+                GuideColumns { KotekanGuideWeave() } right: { KotekanGuideLegend() }
             }
         case .mekarBhuana:
-            GuidePanel(title: "Mekar Bhuana", onClose: onClose) {
-                MekarBhuanaPortrait()
-            } right: {
-                MekarBhuanaStory()
+            //R Does not scroll: it pages. See `MekarBhuanaSlides`.
+            GuidePanel(title: "Mekar Bhuana", onClose: onClose, scrolls: false) {
+                MekarBhuanaSlides()
             }
         }
     }
@@ -74,11 +69,14 @@ struct GuideView: View {
 /// rungs under the fold. The ScrollView stays as a backstop for an SE and for
 /// large Dynamic Type — it should not be doing anything on a normal phone. If
 /// you add a paragraph to a column, take one out.
-struct GuidePanel<Left: View, Right: View>: View {
+struct GuidePanel<Content: View>: View {
     let title: String
     var onClose: () -> Void
-    @ViewBuilder var left: Left
-    @ViewBuilder var right: Right
+    /// Whether the body scrolls. True for the columns, which are metered to fit
+    /// but need a backstop; false for anything that manages its own height —
+    /// a pager inside a scroll view has no height to page within.
+    var scrolls: Bool = true
+    @ViewBuilder var content: Content
 
     var body: some View {
         ZStack {
@@ -95,21 +93,21 @@ struct GuidePanel<Left: View, Right: View>: View {
         .transition(.opacity)
     }
 
+    private var body_: some View {
+        content
+            .padding(.horizontal, 26)
+            .padding(.top, 6)
+            .padding(.bottom, 16)
+    }
+
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
 
-            ScrollView {
-                HStack(alignment: .top, spacing: 30) {
-                    left.frame(maxWidth: .infinity, alignment: .leading)
-
-                    Rectangle().fill(Theme.cream.opacity(0.12)).frame(width: 1)
-
-                    right.frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(.horizontal, 26)
-                .padding(.top, 6)
-                .padding(.bottom, 16)
+            if scrolls {
+                ScrollView { body_ }
+            } else {
+                body_
             }
         }
         .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
@@ -145,6 +143,22 @@ struct GuidePanel<Left: View, Right: View>: View {
         }
         .padding(.horizontal, 22)
         .padding(.top, 14)
+    }
+}
+
+/// The two-column body the explainer panels use: wide and short is what a
+/// landscape phone is, and a single column would put half of every panel below
+/// the fold.
+struct GuideColumns<Left: View, Right: View>: View {
+    @ViewBuilder var left: Left
+    @ViewBuilder var right: Right
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 30) {
+            left.frame(maxWidth: .infinity, alignment: .leading)
+            Rectangle().fill(Theme.cream.opacity(0.12)).frame(width: 1)
+            right.frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 
@@ -348,62 +362,126 @@ private struct KotekanGuideLegend: View {
 
 // MARK: - "Mekar Bhuana"
 
-/// The photograph, filling its column.
+/// One topic, one picture.
 ///
-/// A picture rather than more prose, and it earns the space: this panel is
-/// about a place with a garden, a pavilion and twenty-two gamelan in it, and no
-/// paragraph does that job as fast as one photograph of it does.
-private struct MekarBhuanaPortrait: View {
+/// ADD SLIDES HERE. `image` is the asset name and is optional: a slide with no
+/// artwork yet lays its text across the whole panel rather than reserving a
+/// hole for a picture that is not there, so a name can be filled in later
+/// without anything else moving.
+private struct MekarSlide: Identifiable {
+    let id = UUID()
+    var image: String?
+    var title: String
+    var text: String
+}
+
+/// The panel pages instead of scrolling.
+///
+/// Four short topics beat one dense column: the first draft fitted only by
+/// cutting the picture to 132pt and pushing "Visiting" into the other column to
+/// keep it above the fold. A slide has one thing to say and the whole panel to
+/// say it in, so the photograph gets the full height and the prose stops
+/// competing with it.
+private struct MekarBhuanaSlides: View {
+    @State private var index = 0
+
+    private let slides: [MekarSlide] = [
+        MekarSlide(image: "photo-mekarbhuana",
+                   title: "To blossom around the world",
+                   text: "That is what Mekar Bhuana means, and it is the hope behind it: that Bali's oldest music and dance become known again, at home and beyond it."),
+        MekarSlide(image: nil,
+                   title: "The centre",
+                   text: "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Founded in 2000 by Vaughan Hatch around an antique Semara Pagulingan he restored, after finding how few classical ensembles had ever been recorded — and how many had been melted down. Putu Evie Suyadnyani, a Legong dancer and singer, brought the dance in 2004."),
+        MekarSlide(image: nil,
+                   title: "The collection",
+                   text: "Twenty-seven gamelan sets: twenty-two in Bali and five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an unusual Angklung set from Lombok restored in 2019."),
+        MekarSlide(image: nil,
+                   title: "Visiting",
+                   text: "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. Hands-on gamelan or dance, or both. The centre is a family home, so there are no walk-ins — book by email at least two weeks ahead."),
+    ]
+
     var body: some View {
+        VStack(spacing: 10) {
+            TabView(selection: $index) {
+                ForEach(slides.indices, id: \.self) { i in
+                    slide(slides[i]).tag(i)
+                }
+            }
+            //R Own dots, drawn below. The system's sit INSIDE the paging area,
+            //R which costs the picture the height they occupy, and they are a
+            //R blue-grey nothing on a warm ground.
+            .tabViewStyle(.page(indexDisplayMode: .never))
+
+            dots
+        }
+    }
+
+    @ViewBuilder
+    private func slide(_ slide: MekarSlide) -> some View {
+        if let image = slide.image {
+            HStack(alignment: .top, spacing: 24) {
+                //R FILL, not fit. The column is far taller than the photo's
+                //R 16:9, so fitting leaves a strip in the middle of an empty
+                //R half. Nothing lives in the corners of these pictures.
+                Image(image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.radius)
+                            .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
+                    )
+                    .accessibilityHidden(true)
+
+                text(slide).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        } else {
+            //R No picture yet: the words take the room rather than leaving a
+            //R hole where one is going to go.
+            text(slide)
+                .frame(maxWidth: 520, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func text(_ slide: MekarSlide) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Image("photo-mekarbhuana")
-                .resizable()
-                //R FILL, not fit. The column is narrower than the photo's 16:9,
-                //R so fitting would letterbox it into a strip and leave the rest
-                //R of the column empty — worse than losing a little off the
-                //R sides of a picture that has no subject in its corners.
-                .aspectRatio(contentMode: .fill)
-                .frame(height: 132)
-                .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.radius)
-                        .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
-                )
-                .accessibilityLabel("The Mekar Bhuana centre in Denpasar")
+            Text(slide.title)
+                .font(.serif(24))
+                .foregroundStyle(Theme.cream)
+                .fixedSize(horizontal: false, vertical: true)
 
-            Text("Mekar Bhuana Centre · Denpasar, Bali")
-                .font(.sans(12))
-                .foregroundStyle(Theme.cream.opacity(0.5))
+            Text(slide.text)
+                .font(.sans(14))
+                .foregroundStyle(Theme.cream.opacity(0.78))
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
 
-            Image("logo-mekarbhuana")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 150)
-                .padding(.top, 2)
-                .accessibilityHidden(true)
-
-            //R Visiting lives on THIS side. Four blocks in the right column
-            //R pushed it under the fold — and it is the only part of this panel
-            //R anybody might act on, so it is the last thing that should be the
-            //R one you have to scroll for.
-            GuideBlock("Visiting",
-                       "Lessons and workshops with English-speaking experts. A family home, so no walk-ins — book by email two weeks ahead.")
-                .padding(.top, 4)
+            Spacer(minLength: 0)
         }
+    }
+
+    private var dots: some View {
+        HStack(spacing: 7) {
+            ForEach(slides.indices, id: \.self) { i in
+                Button { withAnimation(.snappy(duration: 0.25)) { index = i } } label: {
+                    Circle()
+                        .fill(i == index ? Theme.buttonFill : Theme.cream.opacity(0.22))
+                        .frame(width: 7, height: 7)
+                        //R The dot is drawn at 7pt and hit at 30. A row of
+                        //R seven-point targets is a row of near-misses.
+                        .frame(width: 30, height: 26)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Slide \(i + 1) of \(slides.count)")
+            }
+        }
+        .frame(height: 26)
     }
 }
 
-private struct MekarBhuanaStory: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            GuideLead("“To blossom around the world” — the hope that Bali's oldest music and dance become known again, at home and beyond it.")
 
-            GuideBlock("The centre",
-                       "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Founded in 2000 by Vaughan Hatch around an antique Semara Pagulingan he restored; Putu Evie Suyadnyani brought the dance in 2004.")
 
-            GuideBlock("The collection",
-                       "Twenty-seven gamelan sets, twenty-two in Bali and five in Aotearoa New Zealand — including ensembles that exist nowhere else, restored from instruments that had fallen silent.")
-        }
-    }
-}
