@@ -32,68 +32,79 @@ struct WelcomeView: View {
     /// broadband means it masks the gong far more than an equal level implies.
     private static let duckedMusicLevel: Float = 0.4
 
-    /// Tapping the logo opens the panel about them. Only ever opened by asking:
-    /// a credit that introduces itself over the landing screen is an ad.
-    private var collaborator: some View {
-        Button { app.openGuide(.mekarBhuana) } label: {
-            VStack(alignment: .trailing, spacing: 3) {
-                Text("in collaboration with")
-                    .font(.sans(10))
-                    .foregroundStyle(Theme.cream.opacity(0.4))
-                Image("logo-mekarbhuana")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 138)
-                    .opacity(0.9)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
-            //R A border, because without one it was indistinguishable from the
-            //R printed credit it is made of — a logo sitting in a corner reads
-            //R as a colophon, and nobody taps a colophon. The outline is what
-            //R makes it a control.
-            .background(Theme.cream.opacity(0.05), in: RoundedRectangle(cornerRadius: Theme.radius))
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.radius)
-                    .strokeBorder(Theme.cream.opacity(0.22), lineWidth: 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+    /// The two corner buttons are drawn to ONE size and share the chrome that
+    /// makes them one.
+    ///
+    /// They started as whatever their contents happened to need — a logo under
+    /// a caption, and a line of type — so they were different heights,
+    /// different widths, and read as two unrelated things that had drifted into
+    /// the same corner. A pair has to look like a pair before either of them
+    /// reads as a control at all.
+    ///
+    /// Both stay in the CORNER rather than the column: this screen is a
+    /// wordmark and one way in, and a second thing to read in the middle of it
+    /// would make the way in the third thing you notice. And both are only ever
+    /// opened by asking — a credit that introduces itself over the landing
+    /// screen is an ad, and somebody who knows what a gamelan is should not
+    /// have to dismiss an explanation of one to reach their instrument.
+    private static let cornerSize = CGSize(width: 168, height: 40)
+
+    private func cornerButton<V: View>(_ label: String,
+                                       hint: String,
+                                       guide: AppState.Guide,
+                                       @ViewBuilder content: () -> V) -> some View {
+        Button { app.openGuide(guide) } label: {
+            content()
+                .frame(width: Self.cornerSize.width, height: Self.cornerSize.height)
+                //R The border is what makes these controls. Without one they
+                //R read as exactly what they are made of — a printed colophon
+                //R and a line of type — and nobody taps a colophon.
+                .background(Theme.cream.opacity(0.05),
+                            in: RoundedRectangle(cornerRadius: Theme.radius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.radius)
+                        .strokeBorder(Theme.cream.opacity(0.2), lineWidth: 1)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("About Mekar Bhuana")
-        .accessibilityHint("Opens a short introduction")
+        .accessibilityLabel(label)
+        .accessibilityHint(hint)
+    }
+
+    /// Their mark, and nothing else.
+    ///
+    /// "In collaboration with" is gone: it was a caption explaining a logo, and
+    /// a logo in the corner of a landing screen does not need explaining — it
+    /// needed a border, which it now has. Losing the line is also what lets the
+    /// mark sit on one row, which is what lets the two buttons match.
+    private var collaborator: some View {
+        cornerButton("About Mekar Bhuana",
+                     hint: "Opens a short introduction",
+                     guide: .mekarBhuana) {
+            Image("logo-mekarbhuana")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 22)
+        }
     }
 
     /// The background read, for anyone who arrives not knowing what a gamelan
-    /// is — and only for them. Beside the credit rather than in the column, for
-    /// the same reason: this screen is a wordmark and one way in, and a second
-    /// thing to read in the middle of it would make the way in the third thing
-    /// you notice.
-    ///
-    /// Quieter than the credit above it. That one carries a logo and has to
-    /// hold together as a mark; this is a line of type, and matching its weight
-    /// would give an optional explainer the same standing as the people the app
-    /// was made with.
+    /// is — and only for them.
     private var aboutGamelan: some View {
-        Button { app.openGuide(.gamelan) } label: {
+        cornerButton("About gamelan",
+                     hint: "Opens a short introduction to gamelan and kotekan",
+                     guide: .gamelan) {
             HStack(spacing: 6) {
                 Image(systemName: "questionmark.circle")
                     .font(.symbol(12, weight: .medium))
                 Text("What is gamelan?")
                     .font(.sans(13))
             }
-            .foregroundStyle(Theme.cream.opacity(0.62))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.radius)
-                    .strokeBorder(Theme.cream.opacity(0.16), lineWidth: 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+            .foregroundStyle(Theme.cream.opacity(0.72))
         }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens a short introduction to gamelan and kotekan")
     }
+
 
     var body: some View {
         GeometryReader { proxy in
