@@ -46,6 +46,12 @@ struct GuideView: View {
             } right: {
                 KotekanGuideLegend()
             }
+        case .mekarBhuana:
+            GuidePanel(title: "Mekar Bhuana", onClose: onClose) {
+                MekarBhuanaPortrait()
+            } right: {
+                MekarBhuanaStory()
+            }
         }
     }
 }
@@ -337,5 +343,67 @@ private struct KotekanGuideLegend: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - "Mekar Bhuana"
+
+/// The photograph, filling its column.
+///
+/// A picture rather than more prose, and it earns the space: this panel is
+/// about a place with a garden, a pavilion and twenty-two gamelan in it, and no
+/// paragraph does that job as fast as one photograph of it does.
+private struct MekarBhuanaPortrait: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image("photo-mekarbhuana")
+                .resizable()
+                //R FILL, not fit. The column is narrower than the photo's 16:9,
+                //R so fitting would letterbox it into a strip and leave the rest
+                //R of the column empty — worse than losing a little off the
+                //R sides of a picture that has no subject in its corners.
+                .aspectRatio(contentMode: .fill)
+                .frame(height: 132)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.radius)
+                        .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
+                )
+                .accessibilityLabel("The Mekar Bhuana centre in Denpasar")
+
+            Text("Mekar Bhuana Centre · Denpasar, Bali")
+                .font(.sans(12))
+                .foregroundStyle(Theme.cream.opacity(0.5))
+
+            Image("logo-mekarbhuana")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 150)
+                .padding(.top, 2)
+                .accessibilityHidden(true)
+
+            //R Visiting lives on THIS side. Four blocks in the right column
+            //R pushed it under the fold — and it is the only part of this panel
+            //R anybody might act on, so it is the last thing that should be the
+            //R one you have to scroll for.
+            GuideBlock("Visiting",
+                       "Lessons and workshops with English-speaking experts. A family home, so no walk-ins — book by email two weeks ahead.")
+                .padding(.top, 4)
+        }
+    }
+}
+
+private struct MekarBhuanaStory: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GuideLead("“To blossom around the world” — the hope that Bali's oldest music and dance become known again, at home and beyond it.")
+
+            GuideBlock("The centre",
+                       "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Founded in 2000 by Vaughan Hatch around an antique Semara Pagulingan he restored; Putu Evie Suyadnyani brought the dance in 2004.")
+
+            GuideBlock("The collection",
+                       "Twenty-seven gamelan sets, twenty-two in Bali and five in Aotearoa New Zealand — including ensembles that exist nowhere else, restored from instruments that had fallen silent.")
+        }
     }
 }

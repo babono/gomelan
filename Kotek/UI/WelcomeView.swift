@@ -32,6 +32,27 @@ struct WelcomeView: View {
     /// broadband means it masks the gong far more than an equal level implies.
     private static let duckedMusicLevel: Float = 0.4
 
+    /// Tapping the logo opens the panel about them. Only ever opened by asking:
+    /// a credit that introduces itself over the landing screen is an ad.
+    private var collaborator: some View {
+        Button { app.openGuide(.mekarBhuana) } label: {
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("in collaboration with")
+                    .font(.sans(10))
+                    .foregroundStyle(Theme.cream.opacity(0.4))
+                Image("logo-mekarbhuana")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 132)
+                    .opacity(0.72)
+            }
+            .padding(8)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("About Mekar Bhuana")
+    }
+
     var body: some View {
         GeometryReader { proxy in
             let h = proxy.size.height
@@ -63,6 +84,23 @@ struct WelcomeView: View {
 
                     Spacer()
                 }
+
+                // The collaborator's mark, top trailing.
+                //
+                // A CORNER, not the column. The middle of this screen is a
+                // wordmark, a script and one button, and that emptiness is the
+                // whole design — putting a second logo into it would make the
+                // landing screen a page of credits. Up here it reads as a
+                // colophon: present, quiet, and obviously not the way in.
+                VStack {
+                    HStack {
+                        Spacer()
+                        collaborator
+                    }
+                    Spacer()
+                }
+                .padding(.top, 14)
+                .padding(.trailing, 22)
 
                 // Anchored to the bottom edge and allowed to run off it, so the
                 // instrument reads as continuing past the screen rather than

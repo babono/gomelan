@@ -209,6 +209,9 @@ final class AppState {
     enum Guide: String, CaseIterable, Identifiable {
         case app
         case kotekan
+        /// Who we made this with. Never shown unasked — a credit that
+        /// introduces itself over the landing screen is an ad.
+        case mekarBhuana
 
         var id: String { rawValue }
         /// `app` keeps the original key so anyone who has already dismissed it
