@@ -411,7 +411,7 @@ private struct MekarBhuanaSlides: View {
                    title: "The centre",
                    text: "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Vaughan Hatch founded it in 2000 around an antique Semara Pagulingan he restored, having found how few classical ensembles were ever recorded. Putu Evie Suyadnyani, a Legong dancer, brought the dance in 2004."),
         MekarSlide(image: "photo-collection",
-                   title: "The collection",
+                   title: "Collection",
                    text: "Twenty-seven gamelan sets: twenty-two in Bali, five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an Angklung set from Lombok restored in 2019."),
         MekarSlide(image: "photo-centre",
                    title: "Visiting",
@@ -439,13 +439,26 @@ private struct MekarBhuanaSlides: View {
     private func slide(_ slide: MekarSlide) -> some View {
         if let image = slide.image {
             HStack(alignment: .top, spacing: 24) {
-                //R FILL, not fit. The column is far taller than the photo's
-                //R 16:9, so fitting leaves a strip in the middle of an empty
-                //R half. Nothing lives in the corners of these pictures.
-                Image(image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                //R FILL, not fit: the slot is far taller than these
+                //R photographs, and fitting leaves a strip in the middle of an
+                //R empty half. Nothing lives in their corners.
+                //R
+                //R The image is an OVERLAY on a `Color.clear`, not a framed
+                //R image, and that is not decoration. A resizable image with
+                //R `.fill` negotiates its own size from its aspect ratio, so a
+                //R SQUARE photograph in a wide slot demanded more height than
+                //R the row had — which pushed the text column taller than the
+                //R page and clipped its heading off the top. One slide silently
+                //R lost its title, and only that slide, because only its photo
+                //R was square. `Color.clear` takes whatever it is offered and
+                //R the picture is painted into it, so the artwork can be any
+                //R shape at all and the layout never hears about it.
+                Color.clear
+                    .overlay(
+                        Image(image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    )
                     .clipped()
                     .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
                     .overlay(
@@ -487,18 +500,25 @@ private struct MekarBhuanaSlides: View {
             Spacer(minLength: 8)
 
             if let link = slide.link {
+                //R A link, not a button. A filled slab is the weight this app
+                //R gives to the thing you came to do, and leaving for a website
+                //R is not that — it competed with Got it, two loud pills in one
+                //R small panel. Underlined and italic is what a link has always
+                //R looked like, and the arrow says it leaves the app.
                 Link(destination: link) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 5) {
                         Text("balimusicanddance.com")
-                            .font(.sans(13, weight: .semibold))
+                            .font(.sans(13))
+                            .italic()
+                            .underline()
                         Image(systemName: "arrow.up.right")
-                            .font(.symbol(12, weight: .semibold))
+                            .font(.symbol(11, weight: .semibold))
                     }
-                    .foregroundStyle(Theme.deep)
-                    .padding(.horizontal, 16)
-                    .frame(height: 38)
-                    .background(Theme.buttonFill, in: RoundedRectangle(cornerRadius: Theme.radius))
-                    .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+                    .foregroundStyle(Theme.buttonFill)
+                    //R Drawn at its own size, hit at 44. The HIG minimum is not
+                    //R optional just because the thing is small type.
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Visit balimusicanddance.com")
             }
