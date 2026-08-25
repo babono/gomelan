@@ -98,7 +98,27 @@ final class AppState {
     var referenceToneEnabled: Bool = true
 
     /// A sighting the microphone did not hear is discarded. See `DetectionMode`.
-    var requireStrikeSound: Bool = false
+    ///
+    /// PERSISTED, and it did not used to be — which made the detection mode
+    /// silently reset to "Heard only" on any calibrated instrument. It was a
+    /// plain stored property re-derived from `hasLearnedBaseline` in three
+    /// places, so a learned baseline (permanent, once captured) re-imposed the
+    /// microphone veto on every launch and every instrument switch, and nothing
+    /// chosen on the detection screen survived either.
+    ///
+    /// The distinction that was missing: a baseline makes the veto POSSIBLE, so
+    /// it is a sensible default the first time. It is not a decision, and it
+    /// must not overwrite one. Below, `hasLearnedBaseline` may still clamp this
+    /// OFF — an instrument with no baseline cannot veto on sound at all — but it
+    /// may never turn it back on.
+    ///
+    /// This mattered more than a stale toggle: both the marker path and the
+    /// vision self-trigger honour this flag, so every session spent testing
+    /// camera-only detection was quietly running with the microphone holding a
+    /// veto over it.
+    var requireStrikeSound: Bool = Defaults.bool("requireStrikeSound", false) {
+        didSet { Defaults.set("requireStrikeSound", requireStrikeSound) }
+    }
 
     // MARK: - Detection tuning
     //
@@ -380,7 +400,13 @@ final class AppState {
         if let current = ProfileStore.loadSelected() {
             self.profile = current
             self.baselineLearned = current.hasLearnedBaseline
-            self.requireStrikeSound = current.hasLearnedBaseline
+            //R The baseline seeds this only on the very first launch that has
+            //R one. After that the stored choice wins — see the property.
+            if !Defaults.has("requireStrikeSound") {
+                self.requireStrikeSound = current.hasLearnedBaseline
+            } else if !current.hasLearnedBaseline {
+                self.requireStrikeSound = false
+            }
         } else {
             self.profile = ResourceLoader.defaultProfile()
         }
@@ -454,7 +480,10 @@ final class AppState {
         profile = p
         ProfileStore.setSelectedID(p.id)
         baselineLearned = p.hasLearnedBaseline
-        requireStrikeSound = p.hasLearnedBaseline
+        //R Clamp down only. Switching to an instrument that HAS a baseline is
+        //R not a request to turn the microphone veto back on, and treating it
+        //R as one is what made the mode reset itself behind your back.
+        if !p.hasLearnedBaseline { requireStrikeSound = false }
     }
 
     /// Pick this instrument and go. One tap, because "which instrument" is the
@@ -529,7 +558,7 @@ final class AppState {
             profile = next
             ProfileStore.setSelectedID(next.id)
             baselineLearned = next.hasLearnedBaseline
-            requireStrikeSound = next.hasLearnedBaseline
+            if !next.hasLearnedBaseline { requireStrikeSound = false }
         } else {
             // Nothing left: back to the same state as a fresh install, so the
             // empty list offers setup rather than pointing at a ghost.

@@ -23,6 +23,16 @@ nonisolated enum Defaults {
     static func int(_ key: String, _ fallback: Int) -> Int {
         UserDefaults.standard.object(forKey: key) as? Int ?? fallback
     }
+    /// Whether anything has ever been written for this key.
+    ///
+    /// The difference between "the user chose false" and "the user has not
+    /// chosen" — which `bool(_:_:)` cannot express, and which is exactly what a
+    /// setting with a computed default needs in order to stop overwriting the
+    /// choice with the default on every launch.
+    static func has(_ key: String) -> Bool {
+        UserDefaults.standard.object(forKey: key) != nil
+    }
+
     static func set(_ key: String, _ value: Any) {
         UserDefaults.standard.set(value, forKey: key)
     }
