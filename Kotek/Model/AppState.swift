@@ -179,6 +179,117 @@ final class AppState {
         }
     }
 
+    /// Detect the mallet by its retroreflective marker instead of by the CNN.
+    ///
+    /// A toggle rather than a replacement because the two fail in opposite ways.
+    /// The classifier degrades — a poor sighting is still a number — while the
+    /// marker path is all or nothing: with the tape out of view or the exposure
+    /// wrong for the room it reports no mallet at all. See `MarkerTracker`.
+    var markerVision: Bool = Defaults.bool("markerVision", false) {
+        didSet { Defaults.set("markerVision", markerVision) }
+    }
+
+    /// Where the phone is looking from. Index into `MarkerPOV`.
+    ///
+    /// Prototype-scoped for now: it changes how the marker path names a bilah,
+    /// and nothing else. The aligning flow, the profile schema and the on-bilah
+    /// overlay all still assume a view from above, and a front view makes the
+    /// last of those genuinely hard — foreshortened slivers are a poor surface
+    /// to draw guidance on. That is a bigger question than detection and it is
+    /// deliberately not answered here.
+    var markerPOV: Int = Defaults.int("markerPOV", MarkerPOV.top.rawValue) {
+        didSet { Defaults.set("markerPOV", markerPOV) }
+    }
+
+    /// Front-view band geometry — the x extent the bilah span, a bulge term for
+    /// a phone set down off-axis, and which end key 0 is at.
+    var markerBandLeft: Double = Defaults.double("markerBandLeft", 0.05) {
+        didSet { Defaults.set("markerBandLeft", markerBandLeft) }
+    }
+    var markerBandRight: Double = Defaults.double("markerBandRight", 0.95) {
+        didSet { Defaults.set("markerBandRight", markerBandRight) }
+    }
+    var markerBandSkew: Double = Defaults.double("markerBandSkew", 0) {
+        didSet { Defaults.set("markerBandSkew", markerBandSkew) }
+    }
+    var markerBandFlip: Bool = Defaults.bool("markerBandFlip", false) {
+        didSet { Defaults.set("markerBandFlip", markerBandFlip) }
+    }
+
+    /// Ignore everything above this fraction of the frame. Front view only, in
+    /// practice: from above there is nothing up there but more instrument.
+    var markerROITop: Double = Defaults.double("markerROITop", 0) {
+        didSet { Defaults.set("markerROITop", markerROITop) }
+    }
+
+    /// The marker vouches for the CLASSIFIER's sighting instead of replacing it.
+    ///
+    /// The problem this answers is specific and was reported from the stand: in
+    /// camera-only mode a frame with no mallet in it still registers a stroke.
+    /// `requireStrikeSound` already covers that, but it covers it with the
+    /// microphone — which is the sensor the exhibition wants to stop depending
+    /// on, and which cannot tell a stroke on this instrument from a stroke on
+    /// the one beside it. A marker is a direct answer to "was the mallet there",
+    /// and it is the same camera frame the classifier just scored.
+    var requireMarker: Bool = Defaults.bool("requireMarker", false) {
+        didSet { Defaults.set("requireMarker", requireMarker) }
+    }
+
+    /// How far outside a bilah the marker may sit and still vouch for it.
+    /// Generous by default: the gate exists to reject an EMPTY frame, and a
+    /// margin too tight turns it into a second detector that can veto the first.
+    var markerGateMargin: Double = Defaults.double("markerGateMargin", 0.06) {
+        didSet { Defaults.set("markerGateMargin", markerGateMargin) }
+    }
+
+    /// Which colour tape is on the mallet. Index into `MarkerColour`.
+    var markerColour: Int = Defaults.int("markerColour", MarkerColour.red.rawValue) {
+        didSet { Defaults.set("markerColour", markerColour) }
+    }
+
+    /// Brightness, 0–255, that a pixel's BRIGHTEST CHANNEL must reach to be
+    /// marker. A new key rather than the old "markerLuma": the quantity changed
+    /// from luma to channel value, so a stored number tuned against the old
+    /// meaning is not merely stale, it is measuring something else.
+    var markerBrightness: Double = Defaults.double("markerBrightness", 235) {
+        didSet { Defaults.set("markerBrightness", markerBrightness) }
+    }
+
+    /// How far a coloured marker's channel must lead the other two.
+    var markerSaturationFloor: Double = Defaults.double("markerSaturationFloor", 60) {
+        didSet { Defaults.set("markerSaturationFloor", markerSaturationFloor) }
+    }
+
+    /// Stops below metered exposure while marker vision is on. Negative.
+    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5) {
+        didSet { Defaults.set("markerExposureBias", markerExposureBias) }
+    }
+
+    /// Colour spread, 0–255, a bright pixel may have and still be marker. Warm
+    /// torches need this higher than instinct suggests — see MarkerTracker.
+    var markerSaturation: Double = Defaults.double("markerSaturation", 70) {
+        didSet { Defaults.set("markerSaturation", markerSaturation) }
+    }
+
+    /// How far past the head marker the striking point sits, as a fraction of
+    /// the gap between the two markers.
+    ///
+    /// Persisted like the rest, but it is the one value here that describes the
+    /// MALLET rather than the room or the model — it is fixed by where the tape
+    /// was put, so it survives a change of venue and has to be reset whenever a
+    /// mallet is re-taped. Near zero is right for a hammer-shaped panggul, whose
+    /// contact point sits under the head and therefore almost on top of the head
+    /// marker when seen from above.
+    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35) {
+        didSet { Defaults.set("markerTipExtension", markerTipExtension) }
+    }
+
+    /// How fast the tip must be travelling before its turnaround counts as a
+    /// strike, in frame-normalised units per sample.
+    var markerMinSpeed: Double = Defaults.double("markerMinSpeed", 0.004) {
+        didSet { Defaults.set("markerMinSpeed", markerMinSpeed) }
+    }
+
     /// Index into the fill/centre/fit options. Must match how the current model
     /// was trained — see MalletHitClassifier.cropAndScale.
     var cropScaleMode: Int = Defaults.int("cropScaleMode", 1) {

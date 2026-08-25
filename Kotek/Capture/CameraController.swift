@@ -179,7 +179,13 @@ final class CameraController: NSObject {
         do {
             try device.lockForConfiguration()
             if device.isFocusModeSupported(.locked) { device.focusMode = .locked }
-            if device.isExposureModeSupported(.locked) { device.exposureMode = .locked }
+            //R Exposure is marker mode's to own while it is on. Both this and
+            //R `enableContinuousAutoFocus` are called from screen setup, AFTER
+            //R the toggle has already configured the device — so without the
+            //R guard, entering the detection screen in marker mode handed the
+            //R exposure straight back to autoexposure and the marker stopped
+            //R being the only bright thing in the frame.
+            if !markerVisionActive, device.isExposureModeSupported(.locked) { device.exposureMode = .locked }
             device.unlockForConfiguration()
         } catch {
             // Non-fatal: some devices won't allow locking; overlay still works.
@@ -194,15 +200,99 @@ final class CameraController: NSObject {
     /// focus is handed back. Screens that don't need a frozen overlay call this.
     func enableContinuousAutoFocus() {
         sessionQueue.async { [weak self] in
-            guard let device = self?.device else { return }
+            guard let self, let device = self.device else { return }
             do {
                 try device.lockForConfiguration()
                 if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
-                if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
+                if !self.markerVisionActive, device.isExposureModeSupported(.continuousAutoExposure) {
+                    device.exposureMode = .continuousAutoExposure
+                }
                 if device.isSmoothAutoFocusSupported { device.isSmoothAutoFocusEnabled = true }
                 device.unlockForConfiguration()
             } catch {
                 // Non-fatal: leave whatever mode the device is already in.
+            }
+        }
+    }
+
+    // MARK: - Marker vision (torch + shortened exposure)
+
+    /// Whether the device is currently held in the marker exposure. Touched only
+    /// on `sessionQueue`, which is also the only place the lock/unlock paths run.
+    private var markerVisionActive = false
+
+    /// Light the scene from beside the lens and expose for the marker instead of
+    /// for the room.
+    ///
+    /// Retroreflective tape returns light along the axis it came in on, so the
+    /// torch is not optional here — it is the entire mechanism. With it on and
+    /// the exposure pulled down, the tape still clips to white while everything
+    /// lit only by the room falls into the floor, and finding the mallet becomes
+    /// a threshold rather than a recognition problem.
+    ///
+    /// `exposureBias` is in stops below what the scene metered at. Around -2.5
+    /// keeps the gangsa visible in the preview — which matters, because the
+    /// player is looking at this feed — while putting a clear gap between the
+    /// marker and the brightest bronze. Push it to -5 or beyond and the frame
+    /// goes essentially black except the marker, which is the most robust the
+    /// detector gets and the least usable the preview gets.
+    ///
+    /// The duration ceiling is doing separate work from the brightness. A mallet
+    /// crosses a bar fast enough to smear badly at 1/30 s, and a smeared marker
+    /// has a centroid halfway through its own travel — so the exposure is capped
+    /// short even when the bias alone would not have required it.
+    func setMarkerVision(_ on: Bool, exposureBias: Double = -2.5, torchLevel: Float = 0.8) {
+        sessionQueue.async { [weak self] in
+            guard let self, let device = self.device else { return }
+            self.markerVisionActive = on
+            do {
+                try device.lockForConfiguration()
+                defer { device.unlockForConfiguration() }
+
+                if on {
+                    if device.hasTorch, device.isTorchAvailable {
+                        try? device.setTorchModeOn(level: min(torchLevel, AVCaptureDevice.maxAvailableTorchLevel))
+                    }
+                    // White balance locked too: the tracker separates the marker
+                    // from a gilded frame by how COLOURLESS it is, and a white
+                    // balance that drifts moves that boundary underneath it.
+                    if device.isWhiteBalanceModeSupported(.locked) { device.whiteBalanceMode = .locked }
+
+                    guard device.isExposureModeSupported(.custom) else { return }
+                    let format = device.activeFormat
+                    // Total light currently being gathered, in ISO-seconds — the
+                    // one quantity that survives trading duration against gain.
+                    let metered = CMTimeGetSeconds(device.exposureDuration) * Double(device.iso)
+                    let target = metered * pow(2.0, exposureBias)
+
+                    let minDuration = max(CMTimeGetSeconds(format.minExposureDuration), 1.0 / 8000.0)
+                    let maxDuration = min(CMTimeGetSeconds(format.maxExposureDuration), 1.0 / 250.0)
+                    let minISO = Double(format.minISO), maxISO = Double(format.maxISO)
+
+                    // Spend the budget on gain before duration: a short exposure
+                    // is what kills the smear, so it is the part not to give back.
+                    var duration = min(max(target / minISO, minDuration), maxDuration)
+                    var iso = target / duration
+                    if iso < minISO { iso = minISO; duration = min(max(target / iso, minDuration), maxDuration) }
+                    if iso > maxISO { iso = maxISO }
+
+                    device.setExposureModeCustom(duration: CMTimeMakeWithSeconds(duration, preferredTimescale: 1_000_000),
+                                                 iso: Float(iso),
+                                                 completionHandler: nil)
+                } else {
+                    if device.hasTorch { device.torchMode = .off }
+                    if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                        device.whiteBalanceMode = .continuousAutoWhiteBalance
+                    }
+                    if device.isExposureModeSupported(.continuousAutoExposure) {
+                        device.exposureMode = .continuousAutoExposure
+                    }
+                }
+            } catch {
+                // Non-fatal, and it degrades honestly: without the torch and the
+                // exposure the marker simply is not the brightest thing in frame,
+                // the tracker finds nothing, and the screen says so.
+                self.markerVisionActive = false
             }
         }
     }

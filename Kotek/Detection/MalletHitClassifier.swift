@@ -209,6 +209,27 @@ enum CropMapper {
                       height: bottomRight.y - topLeft.y)
     }
 
+    /// The point form of `overlayRect`, for a detector that reports positions
+    /// rather than boxes — the marker tracker finds a mallet tip, not a crop.
+    ///
+    /// Written as its own function rather than by passing a zero-sized rect
+    /// through `overlayRect`: that works, but it reads as a trick and the
+    /// degenerate width is exactly the kind of thing a later edit "fixes".
+    static func overlayPoint(bufferNormalized p: CGPoint,
+                             bufferSize: CGSize,
+                             viewSize: CGSize) -> CGPoint {
+        guard bufferSize.width > 0, bufferSize.height > 0,
+              viewSize.width > 0, viewSize.height > 0 else { return p }
+
+        let scale = max(viewSize.width / bufferSize.width,
+                        viewSize.height / bufferSize.height)
+        let offsetX = (bufferSize.width * scale - viewSize.width) / 2
+        let offsetY = (bufferSize.height * scale - viewSize.height) / 2
+
+        return CGPoint(x: (p.x * bufferSize.width * scale - offsetX) / viewSize.width,
+                       y: (p.y * bufferSize.height * scale - offsetY) / viewSize.height)
+    }
+
     /// The inverse of `bufferRect`: takes a rect normalised to the camera buffer
     /// (Vision's output, 0–1 of the image, top-left origin) and returns it in the
     /// overlay's view-normalised space, undoing the same aspect-fill crop. Used to
