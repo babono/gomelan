@@ -81,11 +81,29 @@ enum JudgementResult: String, Equatable {
     /// It also tracks the tempo control for free — `strokeGapMs` is measured in
     /// scaled time, so slowing a figure down widens the windows with it, which
     /// is what slowing down is for.
-    static func from(timingErrorMs: Double, strokeGapMs: Double) -> JudgementResult {
+    ///
+    /// `leniency` widens the two grades that count towards accuracy, and only
+    /// those. The ratios are capped rather than scaled freely, because there is
+    /// a floor below which this stops being a grade at all: the constants above
+    /// exist BECAUSE a flat 200ms Perfect once made `.good` and `.lateEarly`
+    /// unreachable code, and turning the dial to maximum would rebuild that with
+    /// extra steps. The cap keeps a real, if thin, band above `good`.
+    static func from(timingErrorMs: Double, strokeGapMs: Double,
+                     leniency: Double = 1.0) -> JudgementResult {
         let e = abs(timingErrorMs)
         let gap = max(60, strokeGapMs)
-        if e <= min(gap * 0.45, 200) { return .perfect }
-        if e <= min(gap * 0.70, 350) { return .good }
+        let k = max(1.0, leniency)
+        //R The caps are what stop this becoming a flat grade, and their values
+        //R set the useful end of the slider: 0.45k reaches 0.60 at k=1.33 and
+        //R 0.70k reaches 0.90 at k=1.29, so the control is live across its whole
+        //R 1.0–1.3 range and saturates exactly where it runs out. Picked in that
+        //R order — cap first, then range — because the first attempt had the
+        //R caps biting at 1.22 against a slider that went to 1.6, so the top
+        //R third of the travel moved nothing.
+        let perfectRatio = min(0.45 * k, 0.60)
+        let goodRatio = min(0.70 * k, 0.90)
+        if e <= min(gap * perfectRatio, 200 * k) { return .perfect }
+        if e <= min(gap * goodRatio, 350 * k) { return .good }
         if e <= min(gap * 1.00, 500) { return .lateEarly }
         return .miss
     }

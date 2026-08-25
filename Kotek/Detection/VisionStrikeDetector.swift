@@ -76,7 +76,14 @@ final class VisionStrikeDetector {
     /// and the play screen used to ignore it — it carried its own hardcoded
     /// 0.55 and 0.38, so the slider moved a threshold that governed nothing you
     /// practise with. One call, both screens.
-    func apply(threshold: Double) {
+    ///
+    /// `relativeDip` rides along because it is not a free-standing preference —
+    /// it is THE number that decides whether a bar struck twice in a row
+    /// registers twice, and it was hardcoded here while every other bar moved
+    /// with the slider. So the one control anybody tunes governed everything
+    /// about detection except its most-reported failure.
+    func apply(threshold: Double, relativeDip: Double? = nil) {
+        if let relativeDip { self.relativeDip = relativeDip }
         enter = threshold
         //R Seven tenths, the ratio the play screen was already using between
         //R its two hardcoded bars. The expected key is easier to trigger; see

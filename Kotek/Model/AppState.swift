@@ -97,6 +97,33 @@ final class AppState {
     var metronomeEnabled: Bool = true
     var referenceToneEnabled: Bool = true
 
+    /// Whether a stroke on a bilah nothing is due on may take the note that is
+    /// due, scored as a wrong bar. See `PlayEngine.scoresWrongBar` for why this
+    /// defaults off — in camera-only mode it is how a travelling mallet destroys
+    /// a note the player then plays correctly.
+    var scoresWrongBar: Bool = Defaults.bool("scoresWrongBar", false) {
+        didSet { Defaults.set("scoresWrongBar", scoresWrongBar) }
+    }
+
+    /// Whether each stroke's verdict is called on the bilah as it happens.
+    ///
+    /// On by default because without it a miss is INVISIBLE on the instrument —
+    /// see `PlayEngine.Floater`. Off restores the wordless overlay the guidance
+    /// layer was designed around.
+    var callsStrokes: Bool = Defaults.bool("callsStrokes", true) {
+        didSet { Defaults.set("callsStrokes", callsStrokes) }
+    }
+
+    /// How forgiving the timing grades are. 1.0 is the figure as notated.
+    ///
+    /// Deliberately affects the GRADE and not whether a stroke registers. When
+    /// notes go missing entirely that is a matching problem, not a strictness
+    /// one, and reaching for this dial to fix it only hides it — see the note
+    /// on the matcher in `PlayEngine.registerPlayStrike`.
+    var judgementLeniency: Double = Defaults.double("judgementLeniency", 1.25) {
+        didSet { Defaults.set("judgementLeniency", judgementLeniency) }
+    }
+
     /// A sighting the microphone did not hear is discarded. See `DetectionMode`.
     ///
     /// PERSISTED, and it did not used to be — which made the detection mode
@@ -134,6 +161,24 @@ final class AppState {
     /// Confidence vision must reach to name a bar. See DetectionTestView.
     var visionThreshold: Double = Defaults.double("visionThreshold", 0.5) {
         didSet { Defaults.set("visionThreshold", visionThreshold) }
+    }
+
+    /// How far the vision score must fall from its own peak before the same
+    /// bilah can register again.
+    ///
+    /// The double-note control, and the reason repeated strokes go missing in
+    /// camera-only mode. The classifier is a PRESENCE detector: it reports that
+    /// the mallet is over the bar, which stays true through the small bounce
+    /// between two strokes on one bilah. The score dips a little and the
+    /// Schmitt trigger never re-arms, so the second stroke is never seen.
+    ///
+    /// Lowering this is the only lever the classifier path has. It trades
+    /// against double-firing on a single stroke, so it cannot go far — which is
+    /// why the mode that pairs the camera with the microphone exists at all, and
+    /// why the marker path (which times an impact rather than a presence) does
+    /// not need this number.
+    var visionRelativeDip: Double = Defaults.double("visionRelativeDip", 0.12) {
+        didSet { Defaults.set("visionRelativeDip", visionRelativeDip) }
     }
 
     /// Whether an audio onset must corroborate a sighting before it counts.

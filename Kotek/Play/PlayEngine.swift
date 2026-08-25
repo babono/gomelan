@@ -111,6 +111,124 @@ final class PlayEngine {
     
     // Rendering outputs
     private(set) var renderStates: [Int: KeyRenderState] = [:]
+
+    /// A stroke's verdict, said once on the bilah and gone.
+    ///
+    /// Exists because a MISS leaves no mark on the instrument at all. `record`
+    /// flashes only on a hit — a deliberate choice, so a wrong bar is never lit
+    /// up — with the consequence that a note you missed and a note the app never
+    /// saw look exactly alike from the stand. Both simply stop being drawn. That
+    /// is the "notes vanish without going green" report, and no amount of
+    /// tuning would have shown it, because the two cases were rendered
+    /// identically.
+    ///
+    /// `unmatched` is the one that earns this feature. A strike that binds to no
+    /// note is discarded in silence by `registerPlayStrike`, so until now it
+    /// left no trace anywhere: not on the instrument, not in the score, not in
+    /// the tally. It is also exactly the event worth catching.
+    struct Floater: Identifiable, Equatable {
+        let id: Int
+        let keyIndex: Int
+        let label: FloaterLabel
+        /// Host time, matched against `renderNow`.
+        let bornAt: Double
+    }
+
+    enum FloaterLabel: Int, CaseIterable, Sendable {
+        case perfect, goodEarly, goodLate, late, miss, wrongKey, unmatched
+
+        var text: String {
+            switch self {
+            case .perfect:   return "PERFECT"
+            case .goodEarly: return "GOOD · early"
+            case .goodLate:  return "GOOD · late"
+            case .late:      return "LATE"
+            case .miss:      return "MISS"
+            case .wrongKey:  return "WRONG BAR"
+            case .unmatched: return "NO NOTE DUE"
+            }
+        }
+
+        /// Canvas symbol identity, in an Int range no bilah can reach.
+        ///
+        /// THE OFFSET IS LOAD-BEARING. The overlay's `symbols:` builder holds two
+        /// ForEach — one over the keys, one over these — and SwiftUI flattens
+        /// them into a single view list whose IDs must be unique. `InstrumentKey.id`
+        /// is the key index, so 0…9; identifying these by `rawValue` gave 0…6 in
+        /// the same list and SwiftUI trapped outright — "child view IDs must be
+        /// unique" — the instant a session started.
+        ///
+        /// An Int offset rather than a string namespace because this is resolved
+        /// inside the per-frame draw loop, and the file's whole reason for using
+        /// symbols is to keep allocation out of it.
+        var symbolID: Int { 1_000 + rawValue }
+
+        /// Bucketed rather than showing the millisecond error, so every label is
+        /// one of seven and can be pre-rendered as a Canvas symbol. Resolving
+        /// live text per frame is the thing this overlay was rebuilt to stop
+        /// doing — see the file header — and "early or late" is the half of the
+        /// number anyone can act on anyway.
+        static func from(_ result: JudgementResult, timingErrorMs: Double) -> FloaterLabel {
+            switch result {
+            case .perfect:   return .perfect
+            case .good:      return timingErrorMs > 0 ? .goodEarly : .goodLate
+            case .lateEarly: return .late
+            case .miss:      return .miss
+            case .wrongKey:  return .wrongKey
+            }
+        }
+    }
+
+    private(set) var floaters: [Floater] = []
+    private var floaterSeq = 0
+    /// Host time of the frame being drawn, so the overlay can age each floater.
+    private(set) var renderNow: Double = 0
+    /// How long a verdict stays up. Short on purpose: it has to be readable in
+    /// peripheral vision without ever becoming something to look AT.
+    let floaterDuration: Double = 0.9
+
+    /// Whether verdicts are called at all. Off restores the wordless overlay.
+    var callsStrokes = true
+
+    /// Whether a stroke that matched NO note announces itself.
+    ///
+    /// Off, and only because of how often it fires. With `scoresWrongBar` off —
+    /// the default — every travelling phantom lands here, so one floater per
+    /// phantom buried the verdicts worth reading under the ones that were only
+    /// noise. The label stays in `FloaterLabel` and this is the one line that
+    /// brings it back, because it remains the right instrument for the next
+    /// "notes are vanishing" report; it is simply the wrong thing to leave on
+    /// while playing.
+    var callsUnmatchedStrokes = false
+
+    /// Strokes this session that found no note to bind to.
+    ///
+    /// Counted whether or not they are announced, so turning the floater off
+    /// hides the noise without discarding what it was measuring. Nothing
+    /// displays this yet — it is here so the question "how much is travel
+    /// costing me" has an answer that does not require turning the spam back on.
+    private(set) var discardedStrikes = 0
+
+    /// Whether a stroke that matches no due note may still take the note that
+    /// IS due, and be scored as a wrong bar.
+    ///
+    /// Off by default, and the asymmetry is the reason. A travelling mallet
+    /// crossing a bilah on its way somewhere else is a real sighting in
+    /// camera-only mode — vision has no way to know the mallet was passing
+    /// rather than landing — and with this on, that phantom BINDS to the note
+    /// actually due, marks it judged, and scores it wrong. The correct stroke
+    /// then arrives to find nothing open. One phantom costs a note the player
+    /// played properly.
+    ///
+    /// With it off, a genuine wrong bar becomes a miss instead of a wrong-bar:
+    /// the player still loses the note, just with less specific feedback. Losing
+    /// precision on a stroke you got wrong is a far smaller price than losing a
+    /// stroke you got right, so the default follows the cheaper mistake.
+    ///
+    /// Worth turning ON when the microphone is in the loop, where it costs
+    /// nothing: an onset only fires on an actual attack, so there are no
+    /// travelling phantoms for it to mis-bind.
+    var scoresWrongBar = false
     /// The figure laid out across one pattern, still.
     private(set) var cycleNotes: [CycleNote] = []
     /// Where in the pattern the music is now, 0…1. The only thing that moves.
@@ -294,6 +412,8 @@ final class PlayEngine {
         self.judgementsByPart = [:]
         self.landedNotes = 0
         self.lastStrikeAt = [:]
+        self.floaters = []
+        self.discardedStrikes = 0
         self.tally = CycleTally()
         self.cycleVoided = false
         self.referencedNotes = []
@@ -437,6 +557,13 @@ final class PlayEngine {
     func tick(now: Double) {
         guard !isFinished else { return }
         currentTimeMs = (now - startHostTime) * 1000
+        renderNow = now
+        //R Only assign when something actually expired. `floaters` is observed,
+        //R and rewriting an identical array sixty times a second would
+        //R invalidate the overlay every frame for nothing.
+        if let first = floaters.first, now - first.bornAt > floaterDuration {
+            floaters.removeAll { now - $0.bornAt > floaterDuration }
+        }
 
         let beatMs = self.beatMs
         
@@ -801,25 +928,75 @@ final class PlayEngine {
     /// real second stroke. At 1x that is 125ms; at 1.5x, 83.
     private var refractorySeconds: Double { beatMs * 0.5 / 1000 }
 
+    /// How much wider than notated the timing grades are. 1.0 is the figure as
+    /// written; above that, the same stroke earns a better grade.
+    ///
+    /// Set from `AppState.judgementLeniency` on the way into a session. It does
+    /// NOT widen the window a stroke has to land in to count at all — that stays
+    /// the note's own spacing, because a stroke closer to the next note than to
+    /// this one is not a generous reading of this one, it is the wrong note.
+    var leniency: Double = 1.0
+
     private func registerPlayStrike(keyIndex: Int, hostTime: Double) {
         let atMs = (hostTime - startHostTime) * 1000 - patternOriginMs
-        //R Nearest unjudged note first, THEN ask whether it is near enough. The
-        //R window is that note's own spacing, so a dense figure stays tight and
-        //R a sparse one is forgiving, without a constant having to guess which
-        //R it is looking at.
+        //R Prefer a note on the BAR ACTUALLY STRUCK, and among those the
+        //R EARLIEST still open. Nearest-unjudged-of-any-note was the rule, and
+        //R it is what made two consecutive strokes on one bilah disappear.
+        //R
+        //R Two notes on the same key at 1000 and 1250. A stroke 130ms late for
+        //R the first is 120ms EARLY for the second, so nearest bound it to the
+        //R second — which went green. The first then auto-missed on its own
+        //R deadline, flashing red at a moment the player had already left, and
+        //R their real second stroke arrived to find nothing open and was
+        //R discarded in silence. One note graded, one missed unseen, one stroke
+        //R thrown away. Reported as "notes vanish without going green", which is
+        //R exactly what it looks like from the stand.
+        //R
+        //R Neither half of the rule works alone. Key-preference cannot separate
+        //R two notes that are the SAME key; earliest-first alone breaks the
+        //R skipped-note case, binding a stroke on the bar now due to the bar
+        //R just abandoned. Together they handle both, and the any-key fallback
+        //R below is what keeps a genuine wrong-bar stroke reportable as one.
+        //R
+        //R The window is still that note's own spacing, so a dense figure stays
+        //R tight and a sparse one forgiving.
         var target: Int?
-        var bestErr = Double.greatestFiniteMagnitude
-        for i in notes.indices where !judged[i] {
-            let err = abs(scaledTime(notes[i]) - atMs)
-            if err < bestErr { bestErr = err; target = i }
+        for i in notes.indices where !judged[i] && notes[i].keyIndex == keyIndex {
+            guard abs(scaledTime(notes[i]) - atMs) <= strokeGap(around: i) else { continue }
+            //R `notes` is sorted by time, so the first in range IS the earliest.
+            target = i
+            break
         }
-        guard let i = target, bestErr <= strokeGap(around: i) else { return }
+
+        //R The any-key fallback, and the whole of what `scoresWrongBar` gates.
+        //R Note what it does when it fires: it binds a stroke to a note on a
+        //R DIFFERENT bilah and marks that note judged. That is the right reading
+        //R when the ear triggered — a sound happened, and it was the wrong bar —
+        //R and the wrong one when the camera is triggering itself, where the
+        //R sighting may be a mallet in transit over a bar it never struck.
+        if target == nil, scoresWrongBar {
+            var bestErr = Double.greatestFiniteMagnitude
+            for i in notes.indices where !judged[i] {
+                let err = abs(scaledTime(notes[i]) - atMs)
+                if err < bestErr { bestErr = err; target = i }
+            }
+            if let t = target, bestErr > strokeGap(around: t) { target = nil }
+        }
+        guard let i = target else {
+            //R The stroke that used to disappear. It is not a miss — no note is
+            //R docked and nothing is tallied — but the player made it, so it is
+            //R counted either way, and announced only when asked for.
+            discardedStrikes += 1
+            if callsUnmatchedStrokes { call(.unmatched, at: keyIndex, now: hostTime) }
+            return
+        }
 
         judged[i] = true
         let err = scaledTime(notes[i]) - atMs
         if notes[i].keyIndex == keyIndex {
             let result = JudgementResult.from(timingErrorMs: err,
-                                              strokeGapMs: strokeGap(around: i))
+                                              strokeGapMs: strokeGap(around: i),
+                                              leniency: leniency)
             outcomes[i] = result
             record(result, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
         } else {
@@ -924,6 +1101,7 @@ final class PlayEngine {
             if result == .miss || result == .wrongKey { tally.mistakes += 1 }
         }
         lastJudgement = judgement
+        call(FloaterLabel.from(result, timingErrorMs: timingErrorMs), at: key, now: now)
 
         //R The instrument flashes for a HIT and stays dark otherwise. A wrong
         //R bar and a missed note both say the same thing — that was not the
@@ -936,6 +1114,15 @@ final class PlayEngine {
         } else if playSound {
             cue?.playMiss()
         }
+    }
+
+    private func call(_ label: FloaterLabel, at key: Int, now: Double) {
+        guard callsStrokes else { return }
+        floaterSeq += 1
+        floaters.append(Floater(id: floaterSeq, keyIndex: key, label: label, bornAt: now))
+        //R A ceiling, because a detector misbehaving is exactly when these
+        //R arrive fastest and exactly when the overlay must stay legible.
+        if floaters.count > 6 { floaters.removeFirst(floaters.count - 6) }
     }
 
     private func flash(at key: Int, now: Double) {

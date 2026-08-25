@@ -385,6 +385,9 @@ struct PlayView: View {
         if app.fixedMount { camera.lockFocusAndExposure() } else { camera.enableContinuousAutoFocus() }
 
         engine.cue = cue
+        engine.leniency = app.judgementLeniency
+        engine.callsStrokes = app.callsStrokes
+        engine.scoresWrongBar = app.scoresWrongBar
         engine.metronomeEnabled = app.metronomeEnabled
         engine.referenceToneEnabled = app.referenceToneEnabled
         engine.sessionSubtitle = sessionSubtitle
@@ -422,7 +425,7 @@ struct PlayView: View {
         //R The slider on Test Detection governs the session too. It did not:
         //R this detector carried its own hardcoded bars, so the one control
         //R anyone tunes moved a number the play screen never read.
-        visionDetector.apply(threshold: app.visionThreshold)
+        visionDetector.apply(threshold: app.visionThreshold, relativeDip: app.visionRelativeDip)
         try? audio.start(profile: app.profile)
         //R Start with an empty ring and no pending onsets. Whatever the mic
         //R picked up before the count-in — the room, the app's own cues coming

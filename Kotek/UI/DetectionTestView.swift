@@ -855,6 +855,12 @@ struct DetectionTestView: View {
                         .foregroundStyle(Theme.copper)
                 }
                 Slider(value: $app.visionThreshold, in: 0.05...0.95, step: 0.05)
+                tuningRow("re-arm dip", value: $app.visionRelativeDip, range: 0.02...0.40, step: 0.01,
+                          display: String(format: "%.2f", app.visionRelativeDip))
+                Text("lower = repeated strokes on one bar register; too low = one stroke fires twice")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .fixedSize(horizontal: false, vertical: true)
                     .tint(Theme.copper)
                     .frame(height: 20)
                 // Peak score since reset. Strike each bilah a few times, read the
@@ -1017,7 +1023,7 @@ struct DetectionTestView: View {
                 //R One call, the same one the play screen makes. These were
                 //R set by hand here and hardcoded there, so the slider tuned a
                 //R threshold no session used.
-                detector.apply(threshold: app.visionThreshold)
+                detector.apply(threshold: app.visionThreshold, relativeDip: app.visionRelativeDip)
 
                 //R Vision ALWAYS runs, exactly as it does in play. This used to
                 //R return nothing whenever the ear was allowed to trigger — and
