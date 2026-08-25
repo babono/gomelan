@@ -183,6 +183,24 @@ final class PlayEngine {
     private var floaterSeq = 0
     /// Host time of the frame being drawn, so the overlay can age each floater.
     private(set) var renderNow: Double = 0
+
+    /// Milliseconds until the figure's first note, or nil once it has passed.
+    ///
+    /// The count-in is 16 beats of gong — four seconds at the bundled tempo —
+    /// and the 3-2-1 used to be three wall-clock sleeps that ran BEFORE the
+    /// engine was even started. So the player counted down to nothing, and then
+    /// four more seconds of gong went by before the figure arrived. Two clocks,
+    /// neither aware of the other.
+    ///
+    /// Published so the cue can be derived from the music instead: one clock,
+    /// and the "1" lands on the beat before the first stroke at any tempo.
+    private(set) var msUntilFirstNote: Double?
+
+    /// 3, 2, 1 — nil outside the last three seconds before the first note.
+    var countdownNumber: Int? {
+        guard let ms = msUntilFirstNote, ms <= 3000 else { return nil }
+        return max(1, Int((ms / 1000).rounded(.up)))
+    }
     /// How long a verdict stays up. Short on purpose: it has to be readable in
     /// peripheral vision without ever becoming something to look AT.
     let floaterDuration: Double = 0.9
@@ -558,6 +576,10 @@ final class PlayEngine {
         guard !isFinished else { return }
         currentTimeMs = (now - startHostTime) * 1000
         renderNow = now
+        //R Monotonic, so this falls to nil exactly once and never returns — the
+        //R cue cannot reappear at the top of a loop.
+        let firstNoteAt = introMs + (notes.first.map(scaledTime) ?? 0)
+        msUntilFirstNote = currentTimeMs < firstNoteAt ? firstNoteAt - currentTimeMs : nil
         //R Only assign when something actually expired. `floaters` is observed,
         //R and rewriting an identical array sixty times a second would
         //R invalidate the overlay every frame for nothing.

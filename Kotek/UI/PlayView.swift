@@ -44,7 +44,13 @@ struct PlayView: View {
     /// bake a mistake into a template that then goes on to make more of them.
     private let visionTeachingConfidence: Double = 0.75
 
-    @State private var countdown: Int? = 3
+    /// What the pre-roll is saying, or nil once the figure has started.
+    ///
+    /// Replaces a bare `Int?` because there are now two things to show and one
+    /// of them is not a number: the wait while the count-in runs, and then the
+    /// last three seconds of it. Both block the strike guards below, which is
+    /// why they are one value and not two booleans that could disagree.
+    @State private var startCue: StartCue? = .getReady
     @State private var paused = false
     /// The control tour, when it is running. See `PracticeCoach`.
     @State private var coachStep: CoachStep?
@@ -122,8 +128,8 @@ struct PlayView: View {
 
             //R Hidden while the tour runs: on a first session the countdown has
             //R not started, and a frozen "3" behind the dim reads as a stall.
-            if let countdown, coachStep == nil {
-                CountdownOverlay(value: countdown)
+            if let startCue, coachStep == nil {
+                CountdownOverlay(cue: startCue)
             }
 
             //R Likewise the pause card — the tour is reachable from it, and two
@@ -442,7 +448,7 @@ struct PlayView: View {
         // Wire audio onset detection to immediately resolve key via vision:
         audio.onStrikeDetected = { hostTime in
             Task { @MainActor in
-                guard countdown == nil, !paused, !engine.isFinished else { return }
+                guard startCue == nil, !paused, !engine.isFinished else { return }
                 if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
                     applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
                     // Tally what the ear would have said, whether or not it is
@@ -476,8 +482,8 @@ struct PlayView: View {
         //R promised. The requirement is a veto now and lives in the vision loop;
         //R the baseline still gates what the ear reports at all, upstream.
 
-        //R The tour holds the session at the gate on a first run. `countdown`
-        //R stays at 3 rather than being cleared, so the strike guards keep
+        //R The tour holds the session at the gate on a first run. `startCue`
+        //R stays set rather than being cleared, so the strike guards keep
         //R blocking while it is up; it simply is not drawn.
         if app.hasSeenPracticeCoach {
             runCountdown()
@@ -524,17 +530,51 @@ struct PlayView: View {
     }
 
     private func runCountdown() {
+        //R The clock starts from the MUSIC now, not from three wall-clock sleeps
+        //R run beside it. Those used to finish before the 16-beat gong count-in
+        //R had even begun, so "1" was followed by four more seconds of nothing,
+        //R and at any tempo but the bundled one the two drifted apart as well.
+        //R
+        //R THE DELAY IS NOT THE OLD COUNTDOWN COMING BACK, and it must not be
+        //R removed as if it were. `engine.start()` calls `cue.start()`, which
+        //R builds and starts a SECOND AVAudioEngine; `audio.start(profile:)`
+        //R has just called `AudioSessionManager.configure()` and installed a
+        //R microphone tap. `setActive(true)` returns before the route change it
+        //R triggers has finished, and bringing an output engine up inside that
+        //R window yields an engine that reports `isRunning` and plays nothing —
+        //R no throw, no log, and `ensureLive()` cannot see it either, because it
+        //R only rescues an engine that actually stopped. The three-second sleep
+        //R was hiding this by accident; taking it out made the cues go silent.
+        //R
+        //R Costs nothing visible: the count-in is four seconds of gong, and
+        //R "Get ready…" is already on screen for all of it.
         Task { @MainActor in
-            for value in stride(from: 3, through: 1, by: -1) {
-                countdown = value
-                try? await Task.sleep(for: .seconds(1))
-            }
-            countdown = nil
-            app.countdownFinished()
+            try? await Task.sleep(for: .milliseconds(400))
             engine.start()
-            displayLink.onFrame = { now in engine.tick(now: now) }
-            displayLink.start()
+            startDisplayLink()
         }
+    }
+
+    private func startDisplayLink() {
+        displayLink.onFrame = { now in
+            engine.tick(now: now)
+
+            let next: StartCue? = engine.msUntilFirstNote == nil
+                ? nil
+                : engine.countdownNumber.map(StartCue.count) ?? .getReady
+
+            //R Assigned only when it CHANGES. This runs on the display link, and
+            //R writing observed state every frame would re-evaluate the whole
+            //R play screen sixty times a second — the exact cost OverlayView is
+            //R built to keep to itself.
+            guard next != startCue else { return }
+            startCue = next
+            //R Fires exactly once: `msUntilFirstNote` is monotonic to nil, so
+            //R this transition happens on the frame the figure begins and never
+            //R again.
+            if next == nil { app.countdownFinished() }
+        }
+        displayLink.start()
     }
 
     /// The self-triggering vision loop. `latestScores` now suspends onto the
@@ -546,7 +586,7 @@ struct PlayView: View {
             // stays high while the mallet lingers, so a rising-edge detector
             // fires once, latches, and then only ever adds phantoms.
             if !app.audioTriggersStrikes,
-               countdown == nil, !paused, !engine.isFinished,
+               startCue == nil, !paused, !engine.isFinished,
                let (scores, hostTime) = await fusion?.latestScores() {
                 let fired = visionDetector.process(scores: scores,
                                                    expecting: engine.dueKey,
@@ -577,7 +617,7 @@ struct PlayView: View {
     }
 
     private func pause() {
-        guard countdown == nil, !paused, !engine.isFinished else { return }
+        guard startCue == nil, !paused, !engine.isFinished else { return }
         paused = true
         pauseStartedAt = CACurrentMediaTime()
         displayLink.stop()
@@ -601,7 +641,7 @@ struct PlayView: View {
     /// `onComplete`, which tears down and navigates — so there is one exit path
     /// whether the player pressed the button or something else stopped the run.
     private func endPractice() {
-        guard countdown == nil, !paused else { return }
+        guard startCue == nil, !paused else { return }
         displayLink.stop()
         engine.end()
     }
@@ -708,17 +748,34 @@ private struct SessionCounters: View {
     }
 }
 
-/// The 3-2-1 countdown over the live feed (§4 Flow C).
+/// What the screen says before the figure starts.
+enum StartCue: Equatable {
+    /// The count-in is running and the first stroke is more than three seconds
+    /// off. The gong is already sounding, so this is a caption on something
+    /// audible rather than a blank wait.
+    case getReady
+    case count(Int)
+}
+
+/// The pre-roll over the live feed (§4 Flow C).
 private struct CountdownOverlay: View {
-    let value: Int
+    let cue: StartCue
     var body: some View {
         ZStack {
             Color.black.opacity(0.4).ignoresSafeArea()
-            Text("\(value)")
-                .font(.serif(160, weight: .regular))
-                .foregroundStyle(Theme.cream)
-                .transition(.scale.combined(with: .opacity))
-                .id(value)
+            switch cue {
+            case .getReady:
+                Text("Get ready…")
+                    .font(.serif(44, weight: .regular))
+                    .foregroundStyle(Theme.cream)
+                    .transition(.opacity)
+            case .count(let value):
+                Text("\(value)")
+                    .font(.serif(160, weight: .regular))
+                    .foregroundStyle(Theme.cream)
+                    .transition(.scale.combined(with: .opacity))
+                    .id(value)
+            }
         }
     }
 }
