@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Export settings for a TestFlight / App Store build.
+	     Used by:  xcodebuild -exportArchive -archivePath ... -exportOptionsPlist ExportOptions.plist -exportPath ...
+	     Requires an Apple Distribution certificate; a Development one will be
+	     rejected at export, not at archive. -->
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>U96VKD93X4</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<!-- Leave symbol upload on: it is what makes TestFlight crash reports
+	     readable, and this app does most of its work off the main thread where
+	     an unsymbolicated trace tells you nothing. -->
+	<key>uploadSymbols</key>
+	<true/>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

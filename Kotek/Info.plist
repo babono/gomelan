@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Kotek</string>
+
+	<!-- Required: the app requests both on first run. Without these iOS
+	     terminates the process at the permission prompt rather than denying
+	     it, and App Store review rejects the build. Worded for the person
+	     being asked, not for us. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Kotek watches your gangsa to see which keys you strike, so it can show you where you are in the kotekan.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing.</string>
+
+	<!-- Answers the export-compliance question at upload instead of on every
+	     build. True only in the sense that HTTPS is used; no encryption is
+	     implemented here. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
+	<!-- The launch screen is the FIRST thing shown, before any of our code
+	     runs, and by default it is a plain white page. Against a splash screen
+	     on the warm brown ground that reads as a white flash on every launch,
+	     which is exactly the kind of thing a splash screen is supposed to stop.
+	     Painting it the same brown makes launch → splash one continuous surface
+	     with only the wordmark fading up on top of it. -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
+
+	<key>UIAppFonts</key>
+	<array>
+		<string>Dream Orphans.otf</string>
+		<string>Dream Orphans Bd.otf</string>
+		<string>Dream Orphans It.otf</string>
+		<string>Dream Orphans Bd It.otf</string>
+	</array>
+</dict>
+</plist>
