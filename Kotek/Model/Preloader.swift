@@ -47,8 +47,8 @@ import AVFoundation
 @MainActor
 @Observable
 final class Preloader {
-    /// 0…1, for the progress bar. Advances as each step lands rather than on a
-    /// timer — the bar is reporting real work, not animating over it.
+    /// 0…1, for the progress bar. What has actually landed, held between the
+    /// bounds of whichever `Stop` the bar is currently at — see `stops`.
     private(set) var progress: Double = 0
     /// True once everything below has finished AND the floor time has elapsed.
     private(set) var isFinished = false
@@ -60,12 +60,64 @@ final class Preloader {
     /// splash would appear and vanish within a couple of frames — which reads as
     /// a rendering fault rather than as a screen.
     ///
-    /// Two seconds specifically, because the splash has something to say: it
-    /// carries the Mekar Bhuana credit, and a collaborator's name that cannot be
-    /// read is not a credit. This is the one screen in the app whose duration is
-    /// set by how long it takes to READ rather than by how long the work takes,
-    /// so it does not shrink if the work ever gets faster.
+    /// It is now the SHORTER of the two things setting the splash's length —
+    /// `stops` dwells for three seconds and `fullDwell` for another — and it
+    /// stays as the guarantee rather than the schedule: whatever the bar is
+    /// doing, the screen is up for at least this long.
     private let minimumDuration: Duration = .seconds(2)
+
+    /// How long the bar sits full before the splash hands over.
+    ///
+    /// Not one of the `stops`, and it cannot be: those are ceilings the pacer
+    /// walks BESIDE the work, and a dwell at 100% that could elapse while the
+    /// work was still running would be a lie. This one is at the tail, after
+    /// everything has actually finished.
+    ///
+    /// The bar takes a quarter-second to reach full, so this leaves about
+    /// three-quarters of a second of it visibly complete. A bar that hits 100%
+    /// and vanishes in the same frame never reads as having finished — it reads
+    /// as having been interrupted, which is a strange last impression for a
+    /// screen whose whole job is to say the work is done.
+    private let fullDwell: Duration = .seconds(1)
+
+    /// Where the bar stops on its way across, and how long it sits there.
+    ///
+    /// On a warm launch all three steps land within a couple of frames of each
+    /// other, so left alone the bar goes from nothing to full in one animation
+    /// and the screen behind it never registers — the floor holds the SCREEN for
+    /// two seconds, but the bar has finished moving inside the first quarter of
+    /// one, which reads as a picture rather than as loading.
+    ///
+    /// So the crossing is paced. Eleven percent for a second out of the gate,
+    /// then two seconds at sixty-seven, then away. Neither number is round on
+    /// purpose: a bar resting on 10 or 70 looks like a placeholder, and eleven
+    /// percent of a pill this size is just past the readout, so the fill is
+    /// visibly somewhere rather than visibly nowhere.
+    ///
+    /// A stop is a CEILING, not a script. The bar still shows what has actually
+    /// landed — it simply will not report past the current stop until the dwell
+    /// is over, and will not fall below the one before it. On a warm launch the
+    /// work is finished before the first dwell ends, so the ceilings are all
+    /// anyone ever sees and the crossing is 11 → 67 → 100. On a cold one the bar
+    /// climbs through the middle stop under its own steam and the dwell is spent
+    /// somewhere below it.
+    ///
+    /// It does NOT delay the work. The pacer runs on its own clock beside the
+    /// task group, which starts at the same moment it does.
+    private struct Stop {
+        var mark: Double
+        var dwell: Duration
+    }
+
+    private static let stops: [Stop] = [
+        Stop(mark: 0.11, dwell: .seconds(1)),
+        Stop(mark: 0.67, dwell: .seconds(2)),
+    ]
+
+    /// The band the bar is allowed to report inside, right now. The lower bound
+    /// is the stop it has left, the upper the one it is sitting at.
+    private var floorMark: Double = Preloader.stops[0].mark
+    private var ceilingMark: Double = Preloader.stops[0].mark
 
     /// Each unit of work, weighted by roughly how long it takes, so the bar
     /// moves at a believable rate instead of jumping.
@@ -97,6 +149,29 @@ final class Preloader {
         hasStarted = true
 
         let started = ContinuousClock.now
+
+        // Beside the work, never in front of it: this task and the group below
+        // start together, and the only thing the pacer governs is how far
+        // `publish` is willing to go. See `stops`.
+        let pacer = Task { [self] in
+            //R Seeded with the FIRST stop rather than 0, because the bar's
+            //R opening move is to that stop — floor and ceiling are equal for
+            //R the first dwell, which is what pins it at 11% while the work
+            //R behind it may already have finished.
+            var left = Self.stops[0].mark
+
+            for stop in Self.stops {
+                floorMark = left
+                ceilingMark = stop.mark
+                publish()
+                try? await Task.sleep(for: stop.dwell)
+                left = stop.mark
+            }
+
+            floorMark = left
+            ceilingMark = 1
+            publish()
+        }
 
         await withTaskGroup(of: Step.self) { group in
             group.addTask {
@@ -131,13 +206,15 @@ final class Preloader {
 
             for await step in group {
                 done.insert(step)
-                withAnimation(.easeOut(duration: 0.35)) {
-                    progress = Step.allCases
-                        .filter { done.contains($0) }
-                        .reduce(0) { $0 + $1.weight }
-                }
+                publish()
             }
         }
+
+        // The dwells add up to three seconds, so on a warm launch this is what
+        // the splash's length actually is — the two-second floor below has
+        // already elapsed inside it. Awaiting it is also what stops a stray
+        // `publish` from landing after the bar has been set to 1.
+        _ = await pacer.value
 
         // The kajar under every button press. Cheap — it shortens and re-encodes
         // one already-decoded sample and prepares four players — but it is main-
@@ -154,6 +231,29 @@ final class Preloader {
         if remaining > .zero { try? await Task.sleep(for: remaining) }
 
         withAnimation(.easeOut(duration: 0.25)) { progress = 1 }
+
+        // Full, and then a beat. See `fullDwell`.
+        try? await Task.sleep(for: fullDwell)
+
         isFinished = true
+    }
+
+    /// Show what has actually landed, held inside the current stop's band.
+    ///
+    /// Both bounds earn their place. Without the floor the bar would fall back —
+    /// the lightest step is weighted 0.30, so a launch where nothing has landed
+    /// yet would drop it from 67% to nothing the moment a dwell ended. Without
+    /// the ceiling there is no dwell at all: on a warm launch every step has
+    /// landed before the first one is over.
+    ///
+    /// It never moves backwards regardless. A progress bar that retreats is a
+    /// bug report, whatever the numbers underneath it are doing.
+    private func publish() {
+        let landed = Step.allCases
+            .filter { done.contains($0) }
+            .reduce(0) { $0 + $1.weight }
+        let shown = min(ceilingMark, max(floorMark, landed))
+        guard shown > progress else { return }
+        withAnimation(.easeOut(duration: 0.35)) { progress = shown }
     }
 }

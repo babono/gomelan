@@ -80,10 +80,21 @@ settings:
       SWIFT_COMPILATION_MODE: wholemodule
       VALIDATE_PRODUCT: YES
 
+# The app's only third-party dependency, and it is here for one reason: the
+# onboarding's interlock slide is authored as two dotLottie files (a zip of a
+# Lottie JSON plus its PNG assets). Nothing in the system frameworks plays one.
+packages:
+  Lottie:
+    url: https://github.com/airbnb/lottie-ios
+    from: "4.6.1"
+
 targets:
   Kotek:
     type: application
     platform: iOS
+    dependencies:
+      - package: Lottie
+        product: Lottie
     sources:
       - path: Kotek
         excludes:
@@ -102,7 +113,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: "$(PRODUCT_BUNDLE_IDENTIFIER)"
         # Bump for EVERY upload: App Store Connect rejects a build number it
         # has already seen for this marketing version, at the end of the upload.
-        CURRENT_PROJECT_VERSION: 5
+        CURRENT_PROJECT_VERSION: 6
         ENABLE_PREVIEWS: YES
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Kotek/Info.plist

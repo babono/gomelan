@@ -2,8 +2,8 @@
 //  SplashView.swift
 //  Kotek
 //
-//  The launch screen: the wordmark, a loading pill, and the Mekar Bhuana credit
-//  underneath.
+//  The launch screen: the wordmark, a loading pill, the Mekar Bhuana credit
+//  underneath, and who built it along the foot.
 //
 //  It is a progress screen, not a delay. Everything it waits on is real work
 //  the app used to do later and more visibly — see `Preloader` — so the time
@@ -22,6 +22,40 @@ import SwiftUI
 struct SplashView: View {
     /// 0…1. Drives the pill.
     var progress: Double
+
+    /// Who built it, along the foot.
+    ///
+    /// The same line the marketing site carries in its footer, set the same
+    /// way: the academy is the part with weight behind it, so it and the mark
+    /// beside it are the bright half and the words either side hold back.
+    ///
+    /// ONE `Text`, concatenated, rather than an `HStack` of four. The Apple
+    /// mark has to sit on the baseline of the words around it and scale with
+    /// them under Dynamic Type — an image in a stack is a box beside the type
+    /// that does neither, and lining it up by eye means re-lining it up at
+    /// every text size.
+    ///
+    /// It belongs on THIS screen rather than the landing one. It is about 370pt
+    /// of type at this size, and the landing screen has nowhere to put a line
+    /// that long: the top corner is where the wordmark's ink starts, and the
+    /// foot is the instrument, which runs off the bottom edge by design. Here
+    /// it is one more line in a column of credits, on the one screen whose
+    /// duration is set by how long its text takes to read.
+    private var builtAt: some View {
+        (
+            Text("Built at  ").foregroundStyle(Theme.cream.opacity(0.5))
+            + Text(Image(systemName: "apple.logo")).foregroundStyle(Theme.cream.opacity(0.82))
+            + Text("  Apple Developer Academy Bali  ").foregroundStyle(Theme.cream.opacity(0.82))
+            + Text("for the gamelan community.").foregroundStyle(Theme.cream.opacity(0.5))
+        )
+        .font(.sans(12))
+        .lineLimit(1)
+        .minimumScaleFactor(0.75)
+        //R VoiceOver cannot read an inline symbol, and "Built at  Apple
+        //R Developer Academy Bali" with a picture in the middle of it is a
+        //R sentence with a hole. Stated once, as a sentence.
+        .accessibilityLabel("Built at Apple Developer Academy Bali, for the gamelan community")
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -58,9 +92,21 @@ struct SplashView: View {
                     Image("logo-mekarbhuana")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: min(320, w * 0.36))
+                        //R Taken down from 320 / 0.36. It is the second credit
+                        //R on the screen now rather than the last thing on it,
+                        //R and at the old size it out-weighed the wordmark it
+                        //R sits under.
+                        .frame(width: min(260, w * 0.29))
 
+                    //R The slack in the column collects HERE, between the two
+                    //R credits, so the built-at line sits a fixed distance off
+                    //R the bottom edge on every screen while the block above it
+                    //R stays packed under the wordmark.
                     Spacer(minLength: 0)
+
+                    builtAt
+
+                    Spacer().frame(height: h * 0.06)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -71,27 +117,32 @@ struct SplashView: View {
 
 // MARK: - Progress pill
 
-/// The loading bar from the design: a tan track that a dark fill sweeps across,
-/// with the percentage read out in the middle of it.
+/// The loading bar from the design: a cream track that a deeper gold fills
+/// across, with the percentage read out in the middle of it.
 ///
-/// The inversion is intentional and worth not "fixing" — the filled part is the
-/// DARK one, so the bar empties of tan rather than filling with it. That is
-/// what the design shows, and it is also the quieter of the two: a bright bar
-/// growing across a dark screen would pull the eye off the wordmark and the
-/// credit, which are the only things on this screen worth looking at.
+/// The track is `Theme.buttonFill` — the same #FDDC8A slab every primary button
+/// in the app is made of — so the type on it is `Theme.onButtonFill`, the token
+/// named for exactly that job. The pill is the one place the app shows that
+/// surface before you have anything to press.
 ///
-/// The number sits still in the centre while the fill passes underneath it, so
-/// no single colour can stay legible: dark type vanishes into the fill, light
-/// type vanishes into the track. It is therefore drawn TWICE — once dark for
-/// the tan track, then again in tan and clipped to the fill — so each digit
-/// inverts exactly as the boundary crosses it, and a digit that is half-crossed
-/// is half of each. One shape definition feeds both the fill and that clip, so
-/// they cannot drift apart.
+/// It used to run the other way: a tan track that a DARK fill swept across, so
+/// the bar emptied of tan rather than filling with it. That inversion cost the
+/// readout a double draw — dark type vanished into the dark fill and light type
+/// vanished into the light track, so the number was painted twice and clipped
+/// to the boundary, inverting digit by digit as the fill crossed them. With
+/// both halves of the bar light, one dark readout reads on both and all of that
+/// machinery goes. If the palette ever inverts again, that is the trick to
+/// bring back.
 private struct ProgressPill: View {
     var progress: Double
 
     /// The gutter between the fill and the track around it.
     private let inset: CGFloat = 3
+
+    /// The swept portion. The one colour in the app that exists only here — a
+    /// gold deep enough to read against #FDDC8A without becoming a second
+    /// accent, which `Theme.gold` at #C9A063 was too close to the track to do.
+    private let sweep = Color(hex: 0xBF9145)
 
     var body: some View {
         GeometryReader { proxy in
@@ -103,20 +154,16 @@ private struct ProgressPill: View {
                                 (size.width - inset * 2) * clamped)
 
             ZStack(alignment: .leading) {
-                Capsule().fill(Theme.bronze)
+                Capsule().fill(Theme.buttonFill)
 
                 fill(width: fillWidth, in: size)
-                    .foregroundStyle(Theme.deep)
+                    .foregroundStyle(sweep)
 
+                //R One draw, one colour. See the note above the type: dark
+                //R reads on the track AND on the sweep now, so the number no
+                //R longer has to invert as the boundary crosses it.
                 readout
-                    .foregroundStyle(Theme.deep)
-                    .overlay {
-                        readout
-                            .foregroundStyle(Theme.bronze)
-                            .mask(alignment: .leading) {
-                                fill(width: fillWidth, in: size)
-                            }
-                    }
+                    .foregroundStyle(Theme.onButtonFill)
                     .frame(width: size.width, height: size.height)
             }
         }
@@ -125,7 +172,7 @@ private struct ProgressPill: View {
         .accessibilityValue(Text(progress, format: .percent.precision(.fractionLength(0))))
     }
 
-    /// The swept portion — the fill itself, and the clip that inverts the type.
+    /// The swept portion.
     private func fill(width: CGFloat, in size: CGSize) -> some View {
         Capsule()
             .frame(width: width, height: size.height - inset * 2)

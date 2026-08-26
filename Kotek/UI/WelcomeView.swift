@@ -38,39 +38,46 @@ struct WelcomeView: View {
     /// broadband means it masks the gong far more than an equal level implies.
     private static let duckedMusicLevel: Float = 0.4
 
-    /// The two corner buttons are drawn to ONE size and share the chrome that
-    /// makes them one.
+    /// The bordered slab in the corner — one caller now, the collaborator's
+    /// mark, and kept as a shell because what it holds is a picture rather than
+    /// a control and needs telling apart from the ornament behind it.
     ///
-    /// They started as whatever their contents happened to need — a logo under
-    /// a caption, and a line of type — so they were different heights,
-    /// different widths, and read as two unrelated things that had drifted into
-    /// the same corner. A pair has to look like a pair before either of them
-    /// reads as a control at all.
+    /// Both corner affordances stay in the CORNER rather than the column: this
+    /// screen is a wordmark and one way in, and a second thing to read in the
+    /// middle of it would make the way in the third thing you notice. And from
+    /// here both are only ever opened by ASKING — a credit that introduces
+    /// itself over the landing screen is an ad, and the introduction has
+    /// already had its one unasked showing as the splash handed over (see
+    /// `OnboardingView`).
     ///
-    /// Both stay in the CORNER rather than the column: this screen is a
-    /// wordmark and one way in, and a second thing to read in the middle of it
-    /// would make the way in the third thing you notice. And both are only ever
-    /// opened by asking — a credit that introduces itself over the landing
-    /// screen is an ad, and somebody who knows what a gamelan is should not
-    /// have to dismiss an explanation of one to reach their instrument.
-    private static let cornerSize = CGSize(width: 168, height: 40)
+    /// It SIZES TO ITS MARK. The width was a flat 168pt from the days when this
+    /// held a logo above a caption and a second slab held a line of type, and
+    /// the pair had to match to read as a pair. There is no pair any more, and
+    /// a mark floating in the middle of a slab a third wider than itself reads
+    /// as a button waiting for a label that never arrives.
+    private static let cornerHeight: CGFloat = 40
 
     private func cornerButton<V: View>(_ label: String,
                                        hint: String,
-                                       guide: AppState.Guide,
+                                       action: @escaping () -> Void,
                                        @ViewBuilder content: () -> V) -> some View {
-        Button { app.openGuide(guide) } label: {
+        Button(action: action) {
             content()
-                .frame(width: Self.cornerSize.width, height: Self.cornerSize.height)
-                //R The border is what makes these controls. Without one they
-                //R read as exactly what they are made of — a printed colophon
-                //R and a line of type — and nobody taps a colophon.
+                .padding(.horizontal, 12)
+                .frame(height: Self.cornerHeight)
+                //R The border is what makes this a control. Without one it
+                //R reads as exactly what it is made of — a printed colophon —
+                //R and nobody taps a colophon.
                 .background(Theme.cream.opacity(0.05),
                             in: RoundedRectangle(cornerRadius: Theme.radius))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.radius)
                         .strokeBorder(Theme.cream.opacity(0.2), lineWidth: 1)
                 )
+                //R Drawn at 40, hit at 44. The design wants the slab this tall,
+                //R and the HIG minimum is not optional just because the drawing
+                //R is four points short of it.
+                .frame(minHeight: 44)
                 .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
         .buttonStyle(.kajar)
@@ -87,7 +94,7 @@ struct WelcomeView: View {
     private var collaborator: some View {
         cornerButton("About Mekar Bhuana",
                      hint: "Opens a short introduction",
-                     guide: .mekarBhuana) {
+                     action: { app.openGuide(.mekarBhuana) }) {
             Image("logo-mekarbhuana")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -95,20 +102,47 @@ struct WelcomeView: View {
         }
     }
 
-    /// The background read, for anyone who arrives not knowing what a gamelan
-    /// is — and only for them.
-    private var aboutGamelan: some View {
-        cornerButton("About gamelan",
-                     hint: "Opens a short introduction to gamelan and kotekan",
-                     guide: .gamelan) {
-            HStack(spacing: 6) {
-                Image(systemName: "questionmark.circle")
-                    .font(.symbol(12, weight: .medium))
-                Text("What is gamelan?")
-                    .font(.sans(13))
-            }
-            .foregroundStyle(Theme.cream.opacity(0.72))
+    /// The introduction, again.
+    ///
+    /// This used to be "What is gamelan?", opening a four-slide panel of
+    /// background reading. The onboarding covers the same ground in the same
+    /// shape — slides, one idea each — and having two decks meant deciding
+    /// which of them a first-time player was supposed to read. It opens the
+    /// same deck the `?` on the instrument picker does, and wears the same
+    /// glyph, so the two are recognisably one control in two places.
+    ///
+    /// A BARE GLYPH — no slab, no border, unlike the mark beside it.
+    ///
+    /// It was a labelled slab under the mark, then a bordered square next to
+    /// it, and both were the same mistake: a box in this corner is a claim on
+    /// attention, and two boxes read as a menu on a screen whose entire design
+    /// is one button in a lot of empty ground. The mark needs its border
+    /// because a logo is a picture and a picture has to be told apart from the
+    /// ornament behind it. A question mark does not — it is already the most
+    /// universally understood control on a screen, and boxing it says nothing
+    /// the glyph did not already say.
+    ///
+    /// The name survives for VoiceOver, which is where a name belongs.
+    ///
+    /// It wears the same glyph as the `?` in the app's top bars without opening
+    /// the same thing — those are references pinned to the screen you are on
+    /// (what the grade means, what a kotekan is), and this is the introduction
+    /// from the top. Same question mark because it is the same gesture: this is
+    /// the thing to press when you do not know what you are looking at.
+    private var howItWorks: some View {
+        Button { app.openOnboarding() } label: {
+            Image(systemName: "questionmark.circle")
+                .font(.symbol(19, weight: .medium))
+                .foregroundStyle(Theme.cream.opacity(0.72))
+                //R Drawn at 19, hit at 44. A bare glyph in a corner is a 19pt
+                //R target and the HIG minimum is 44 — the same trade the
+                //R `TopBar` glyphs make, for the same reason.
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.kajar)
+        .accessibilityLabel("How Kotek works")
+        .accessibilityHint("Replays the introduction")
     }
 
 
@@ -144,7 +178,7 @@ struct WelcomeView: View {
                     Spacer()
                 }
 
-                // The collaborator's mark, top trailing.
+                // The collaborator's mark and the help glyph, top trailing.
                 //
                 // A CORNER, not the column. The middle of this screen is a
                 // wordmark, a script and one button, and that emptiness is the
@@ -152,12 +186,17 @@ struct WelcomeView: View {
                 // landing screen a page of credits. Up here it reads as a
                 // colophon: present, quiet, and obviously not the way in.
                 VStack {
-                    HStack {
+                    HStack(spacing: 2) {
                         Spacer()
-                        VStack(alignment: .trailing, spacing: 8) {
-                            collaborator
-                            aboutGamelan
-                        }
+                        //R Help LEADS the mark. Reading order in the corner
+                        //R runs inward from the edge, and the credit is the
+                        //R thing that belongs hard against it.
+                        //R
+                        //R Spacing 2, not 8: the glyph carries 44pt of target
+                        //R around a 19pt drawing, so it brings ~12pt of its own
+                        //R air to the join already.
+                        howItWorks
+                        collaborator
                     }
                     Spacer()
                 }
@@ -167,6 +206,12 @@ struct WelcomeView: View {
                 // Anchored to the bottom edge and allowed to run off it, so the
                 // instrument reads as continuing past the screen rather than
                 // sitting on a shelf.
+                //
+                //R A credit line spent a version underneath this, which cost
+                //R the bleed and a third of the instrument's size — nothing can
+                //R sit below something that runs off the screen. It reads
+                //R better on the splash, where there is a column with room in
+                //R it and a reader with nothing else to do.
                 VStack {
                     Spacer()
                     Pelawah()

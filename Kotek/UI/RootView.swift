@@ -57,8 +57,15 @@ struct RootView: View {
                 }
             }
         }
-        // BELOW the guide in the stack, so a first run shows the splash finish
-        // and hand over to the panel rather than the panel appearing behind it.
+        // ABOVE the guides: this one is the whole screen, and a panel showing
+        // through it would be a panel nobody asked for.
+        .overlay {
+            if app.showingOnboarding {
+                OnboardingView { app.closeOnboarding() }
+            }
+        }
+        // BELOW both, so a first run shows the splash finish and hand over to
+        // the introduction rather than the introduction appearing behind it.
         .overlay {
             if !preloader.isFinished {
                 SplashView(progress: preloader.progress)
@@ -66,8 +73,16 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: app.visibleGuide)
+        .animation(.easeInOut(duration: 0.3), value: app.showingOnboarding)
         .animation(.easeInOut(duration: 0.55), value: preloader.isFinished)
-        .task { await preloader.warm(camera: camera) }
+        .task {
+            await preloader.warm(camera: camera)
+            // Raised BEFORE the splash finishes fading, deliberately: the
+            // introduction is laid out and drawn underneath it, and the splash
+            // reveals it. Waiting for the fade to end instead would show the
+            // landing screen for half a second and then cover it up.
+            app.showOnboardingIfFirstRun()
+        }
         // Switch the camera off the moment the app leaves the screens that show
         // one. Nothing ever called `camera.stop()` — the session ran from the
         // framing step until the app was killed, through the kotekan picker,

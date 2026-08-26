@@ -41,6 +41,10 @@ struct ChooseInstrumentView: View {
                    onBack: { app.screen = .welcome },
                    trailingText: app.savedProfiles.isEmpty
                         ? nil : "\(app.savedProfiles.count) saved",
+                   //R The instrument and its grade, not the introduction. This
+                   //R screen asks you to choose a "gangsa" and puts a rank chip
+                   //R on every card; those are the questions people arrive here
+                   //R with, and neither is one the onboarding answers.
                    infoAction: { app.openGuide(.app) })
 
             if app.savedProfiles.isEmpty {
@@ -56,10 +60,16 @@ struct ChooseInstrumentView: View {
         // leaving it pointing at a card nobody can see is the one genuinely
         // confusing outcome here. Land on the first.
         .onAppear {
-            //R The first screen anybody lands on with something to explain: the
-            //R cards already carry a rank and a progress bar, and a first-time
-            //R player has no way to know what either means. Welcome is one
-            //R button and a wordmark, which is too early to explain anything.
+            //R Once, on a first run, like every other panel in the app: each
+            //R one introduces itself on the step it belongs to and is only ever
+            //R asked for after that. The cards here carry a rank chip and a
+            //R progress bar, and nothing else on the screen says what either
+            //R means.
+            //R
+            //R It does NOT duplicate the onboarding, which has already had its
+            //R own unasked showing by now. The onboarding is what the APP is;
+            //R this is what a gangsa is and what the chip on the card in front
+            //R of you means — see `GuideView`.
             app.showGuideIfFirstRun(.app)
 
             guard let first = app.savedProfiles.first,

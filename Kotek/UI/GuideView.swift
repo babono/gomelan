@@ -2,9 +2,23 @@
 //  GuideView.swift
 //  Kotek
 //
-//  What the app is and how the grade works, in one panel. Reached from the help
-//  button on the instrument picker, and shown once by itself the first time anybody opens
-//  the app — see `AppState.hasSeenGuide`.
+//  The explainer panels: what the grade on a card means, what a kotekan is, and
+//  who we made this with. Each is reached by ASKING for it — a help button in a
+//  top bar, or the Mekar Bhuana mark in the corner of the landing screen.
+//  Nothing in here introduces itself any more; `OnboardingView` does that, once,
+//  as the splash hands over.
+//
+//  One panel used to live here and no longer does: "Gamelan", the background
+//  read behind a "What is gamelan?" button on the landing screen. Two decks of
+//  background meant deciding which one a first-time player was supposed to read.
+//  That button opens the onboarding now.
+//
+//  And one changed its subject. "How Kotek works" carried the rig, the kotekan,
+//  practice AND the grade, and appeared unasked over the instrument picker on a
+//  first run. The onboarding says the first three better than a dimmed panel
+//  could, so the panel stopped being about the app and became about the
+//  INSTRUMENT — what a gangsa is, that it is the only one Kotek reads, and what
+//  the grade on each card means. Which is what that screen actually asks.
 //
 //  A CUSTOM overlay rather than `.sheet`. A system sheet on a landscape phone
 //  arrives as a card with its own grabber, its own chrome and its own idea of
@@ -13,17 +27,16 @@
 //  This is a dimmed backdrop and a panel, which is all a sheet was going to be.
 //
 //  Two columns because the screen is a landscape phone: wide and short. A single
-//  scrolling column would put the grade — the half people came here to read —
-//  below the fold on every device.
+//  scrolling column would put half of every panel below the fold.
 //
 //  It is metered to FIT, not to scroll. A landscape phone gives about 400pt of
-//  height; the header and footer take a hundred of it, so the two columns have
+//  height; the header and footer take a hundred of it, so the columns have
 //  roughly 250pt between them and every number below was chosen against that.
-//  The first draft was written at a comfortable reading size and put four of the
-//  five rungs under the fold, which is the same failure as a single column. The
-//  ScrollView stays as a backstop for an SE and for large Dynamic Type — it
-//  should not be doing anything on a normal phone. If you add a paragraph here,
-//  take one out.
+//  An early draft was written at a comfortable reading size and put four of the
+//  five grade rungs under the fold, which is the same failure as a single
+//  column. The ScrollView stays as a backstop for an SE and for large Dynamic
+//  Type — it should not be doing anything on a normal phone. If you add a
+//  paragraph here, take one out.
 //
 
 import SwiftUI
@@ -35,8 +48,8 @@ struct GuideView: View {
     var body: some View {
         switch guide {
         case .app:
-            GuidePanel(title: "How Kotek works", onClose: onClose) {
-                GuideColumns { AppGuideConcept() } right: { AppGuideGrade() }
+            GuidePanel(title: "Your gangsa", onClose: onClose) {
+                GuideColumns { AppGuideInstrument() } right: { AppGuideGrade() }
             }
         case .kotekan:
             GuidePanel(title: "Kotekan", onClose: onClose) {
@@ -48,10 +61,6 @@ struct GuideView: View {
                        titleImage: "logo-mekarbhuana",
                        onClose: onClose, scrolls: false) {
                 GuideSlides(slides: MekarBhuanaDeck.slides)
-            }
-        case .gamelan:
-            GuidePanel(title: "Gamelan", onClose: onClose, scrolls: false) {
-                GuideSlides(slides: GamelanDeck.slides)
             }
         }
     }
@@ -223,27 +232,37 @@ struct GuideLead: View {
 }
 
 
-// MARK: - "How Kotek works"
+// MARK: - "Your gangsa"
 
-private struct AppGuideConcept: View {
+/// What the instrument on the other side of the camera is, and why it is the
+/// only one.
+///
+/// Not a rewrite of the onboarding. The onboarding says what the APP is — the
+/// rig, the interlock, the tracking. This says what a GANGSA is, which is the
+/// question this screen raises by asking you to choose one and by calling the
+/// thing you are choosing a word most people have never read.
+private struct AppGuideInstrument: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            GuideBlock("The rig",
-                       "Your phone sits on a stand above the gangsa. The camera sees which key you strike; the mic hears when. The next key lights up on the instrument.")
+            GuideBlock("The instrument",
+                       "Bronze bilah over bamboo resonators, struck with a panggul and damped with the other hand. Bronze rings for seconds, so damping matters as much as striking.")
 
-            GuideBlock("Kotekan",
-                       "Two players share a figure: polos on the beat, sangsih between. You take a half, the app plays the other when you ask.")
+            GuideBlock("Only the gangsa",
+                       "Kotek reads one instrument. Reyong, jegogan, kendang and the rest of the gamelan are not supported yet.")
 
-            GuideBlock("Practice",
-                       "The figure loops until you end it. Nothing fails. Your score is your best eight cycles in a row — that is what sets a record.")
+            GuideBlock("Yours, specifically",
+                       "No two gamelan are tuned alike, so the app learns your instrument once — where its keys are, how a strike sounds — and keeps it. Each card here is one.")
         }
     }
 }
 
+/// The five rungs, what each is called, and what it costs in notes.
 private struct AppGuideGrade: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionLabel("Your gangsa's grade", color: Theme.gold)
+            //R The heading is back: with a column beside it, the panel title
+            //R covers both halves and can no longer name this one.
+            SectionLabel("Its grade", color: Theme.gold)
 
             GuideLead("Notes that land — right key, near enough the beat — build the grade of the gangsa you played them on. It only ever goes up.")
 
@@ -393,6 +412,11 @@ enum GuideArt {
     /// A figure drawn from its own data, in the colours the score uses. Better
     /// than a photograph of an interlock, which shows you people playing rather
     /// than the thing being explained.
+    ///
+    /// NOTHING USES THIS at the moment — its one caller was the "Gamelan" deck,
+    /// which `OnboardingView` replaced. Kept because it is the only art case
+    /// that cannot go out of date with the app, and the next deck that needs to
+    /// SHOW an interlock rather than describe one will want it back.
     case figure(Kotekan)
 }
 
@@ -582,30 +606,5 @@ enum MekarBhuanaDeck {
                    title: "Visiting",
                    text: "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. The centre is a family home, so there are no walk-ins — book by email two weeks ahead.",
                    link: URL(string: "https://balimusicanddance.com")),
-    ]
-}
-
-/// The music itself, for anyone who arrives without knowing any of it.
-///
-/// Deliberately NOT the same job as the panel behind the question mark on the
-/// kotekan picker. That one is a reference you open mid-flow — which half is
-/// which, what the colours on a card mean. This is the background read: what
-/// the music IS, why it is built the way it is, and why an app about it has to
-/// learn one instrument at a time.
-///
-/// ART CAN BE ADDED LATER: set `art:` on any of these. The interlock slide draws
-/// a real figure rather than waiting for a photograph, because a picture of
-/// people playing shows you people playing, not the thing being explained.
-enum GamelanDeck {
-    static let slides: [GuideSlide] = [
-        GuideSlide(title: "Gamelan",
-                   text: "A tuned bronze orchestra, played as one instrument rather than a room of soloists. A set is forged and tuned together and stays together — and no two villages tune alike, so an instrument from one gamelan will not sit in another. There is no standard pitch to fall back on."),
-        GuideSlide(title: "The gangsa",
-                   text: "Bronze bilah suspended over bamboo resonators, struck with a wooden panggul and damped with the other hand. The damping matters as much as the striking: bronze rings for seconds, and a note left to ring blurs into the one after it."),
-        GuideSlide(art: .figure(Kotekan.bundled[0]),
-                   title: "Interlocking",
-                   text: "A kotekan is a line too fast for one player, so it is split between two. Polos lands on the beat, sangsih answers between, and neither part is the tune — the tune is what appears when both are going. Beside this, one figure with both halves in place."),
-        GuideSlide(title: "The gong cycle",
-                   text: "Balinese time is circular. A gong stroke marks the turn of the cycle, kempur the halfway point, and kajar the pulse underneath. Everything above is measured against that frame, which is why Kotek plays it under every session and never lets you switch it off."),
     ]
 }

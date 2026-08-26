@@ -377,25 +377,40 @@ final class AppState {
     /// The explainers, one per screen that has something to explain.
     ///
     /// Split rather than one long panel because they answer questions asked at
-    /// different moments: `app` is "what is this thing and what is the grade",
-    /// asked at the instrument picker where a rank is already on a card, and
-    /// `kotekan` is "what am I actually choosing between", asked one screen
-    /// later. Reading the second before you have an instrument would be reading
-    /// about something you cannot yet do.
+    /// different moments: `app` is "what am I choosing, and what does the rank
+    /// on it mean", asked at the instrument picker, and `kotekan` is "what am I
+    /// actually choosing between", asked one screen later.
+    ///
+    /// Each one introduces itself ONCE, on the step it belongs to, and is only
+    /// ever asked for after that — `showGuideIfFirstRun` on that screen's
+    /// `onAppear`. The exception is `mekarBhuana`, which is a credit rather than
+    /// an explanation: it has no step of its own and nothing on screen is
+    /// waiting on it, so it is only ever opened by pressing the mark.
+    ///
+    /// There used to be a `gamelan` case as well — the background read behind a
+    /// "What is gamelan?" button on the landing screen. `OnboardingView`
+    /// replaced it: two decks of background meant deciding which one a
+    /// first-time player was supposed to read, and that button opens the
+    /// onboarding now.
+    ///
+    /// `app` changed its subject rather than went. It used to be "How Kotek
+    /// works" — the rig, the kotekan, practice, and the grade — and the
+    /// onboarding now says the first three better than a dimmed panel ever did.
+    /// So it became "Your gangsa": what the instrument IS, that it is the only
+    /// one Kotek reads, and what the grade on each card means. The name stays
+    /// `app` because ~a dozen `UserDefaults` installs key off it.
     enum Guide: String, CaseIterable, Identifiable {
+        /// The grade ladder, from the instrument picker's help button.
         case app
         case kotekan
         /// Who we made this with. Never shown unasked — a credit that
         /// introduces itself over the landing screen is an ad.
         case mekarBhuana
-        /// The music itself. Also only ever asked for: somebody who already
-        /// knows what a gamelan is should never have to dismiss an explanation
-        /// of one to reach their instrument.
-        case gamelan
 
         var id: String { rawValue }
-        /// `app` keeps the original key so anyone who has already dismissed it
-        /// is not shown it again by this change.
+        /// `app` keeps the original key from when it was "How Kotek works", so
+        /// that anyone who had already dismissed it stays dismissed if it is
+        /// ever shown unprompted again.
         var seenKey: String { self == .app ? "hasSeenGuide" : "hasSeenGuide.\(rawValue)" }
     }
 
@@ -407,6 +422,35 @@ final class AppState {
     /// not an introduction.
     private var seen: Set<String> = Set(Guide.allCases.filter { Defaults.bool($0.seenKey, false) }
                                                       .map(\.rawValue))
+
+    // MARK: - The introduction
+
+    /// Whether the three-slide introduction is up. Presented by `RootView` for
+    /// the same reason the guides are — it covers whatever screen you are on.
+    var showingOnboarding = false
+
+    /// Survives relaunch. It introduces itself once, on a first run, and after
+    /// that is only ever asked for: an introduction that reappears is an
+    /// obstacle.
+    private var hasSeenOnboarding = Defaults.bool("hasSeenOnboarding", false)
+
+    /// Asked for — from the help button on the instrument picker.
+    func openOnboarding() { showingOnboarding = true }
+
+    /// Unasked, once. Called when the splash hands over, so the introduction is
+    /// already in place underneath it and is REVEALED rather than dropped on
+    /// top of a landing screen you had just started to read.
+    func showOnboardingIfFirstRun() {
+        guard !hasSeenOnboarding else { return }
+        showingOnboarding = true
+    }
+
+    func closeOnboarding() {
+        showingOnboarding = false
+        guard !hasSeenOnboarding else { return }
+        hasSeenOnboarding = true
+        Defaults.set("hasSeenOnboarding", true)
+    }
 
     /// The practice screen's control tour. Not a `Guide` — it is a spotlight on
     /// live controls rather than a panel of prose, and it is shown by the screen
