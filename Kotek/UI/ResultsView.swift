@@ -194,7 +194,10 @@ struct ResultsView: View {
 
     private var bottomBar: some View {
         HStack(spacing: 14) {
-            PillButton(title: "Back", style: .outlined, tint: Theme.charcoal) {
+            // Named for where it goes, not for the direction it goes in: this
+            // lands on the kotekan picker, and "Back" from a result reads like
+            // it might undo the session you just played.
+            PillButton(title: "Choose another kotekan", style: .outlined, tint: Theme.charcoal) {
                 app.backToKotekan()
             }
             PillButton(title: "Retry", style: .filled, tint: Theme.terracotta) {

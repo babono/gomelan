@@ -567,6 +567,121 @@ struct BusyOverlay: View {
     }
 }
 
+// MARK: - Confirm
+
+/// A yes/no the app asks in its own voice.
+///
+/// This replaced `.confirmationDialog`, which is a fine control and the wrong
+/// one here: the system sheet arrives as a white (or system-dark) card with
+/// system type and system button metrics, in a landscape-locked app that has one
+/// warm ground, one type family and no light/dark flip in it — and it discards
+/// any `buttonStyle` it is handed, so its buttons were the only two in the app
+/// that could not strike a kajar by being buttons.
+///
+/// Same panel as `BusyOverlay` and `GuidePanel`, because it is the same object:
+/// something floating over the screen with the app's ground under it.
+struct ConfirmDialog: View {
+    let title: String
+    let message: String
+    let confirmTitle: String
+    /// The confirming button's colour. `Theme.miss` — the app's red — for
+    /// anything that destroys something, which so far is all of them.
+    var confirmTint: Color = Theme.miss
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    var body: some View {
+        ZStack {
+            // Tapping outside is a cancel, as it is on the guide panels. The
+            // panel swallows its own taps.
+            Color.black.opacity(0.72)
+                .ignoresSafeArea()
+                .onTapGesture { KajarTick.strike(); onCancel() }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text(title)
+                    .font(.serif(24))
+                    .textCase(.uppercase)
+                    .tracking(1.5)
+                    .foregroundStyle(Theme.cream)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text(message)
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.75))
+                    .lineSpacing(1)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 12) {
+                    Spacer(minLength: 0)
+                    PillButton(title: "Cancel", style: .outlined, tint: Theme.cream, compact: true) {
+                        onCancel()
+                    }
+                    //R The destructive button is outlined in its own colour
+                    //R rather than filled with it. `.filled` is the cream slab —
+                    //R the app's one "do this" — and the delete is precisely not
+                    //R the thing being recommended.
+                    Button(action: onConfirm) {
+                        Text(confirmTitle)
+                            .textCase(.uppercase)
+                            .tracking(Theme.buttonTracking)
+                            .font(.sans(14, weight: Theme.buttonWeight))
+                            .foregroundStyle(confirmTint)
+                            .lineLimit(1)
+                            .padding(.horizontal, 18)
+                            .frame(height: 38)
+                            .overlay(RoundedRectangle(cornerRadius: Theme.radius)
+                                .strokeBorder(confirmTint.opacity(0.6), lineWidth: 1.5))
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+                            // Drawn at 38, targeted at 44 — see `PillButton`.
+                            .frame(minHeight: 44)
+                            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+                    }
+                    .buttonStyle(.kajar)
+                }
+                .padding(.top, 4)
+            }
+            .padding(24)
+            .frame(maxWidth: 520)
+            .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22)
+                .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1))
+            .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
+            .padding(.horizontal, 28)
+        }
+    }
+}
+
+extension View {
+    /// Asks `title` over this view while `isPresented`, in the app's own panel.
+    ///
+    /// Dismisses itself before running `action`, so the caller's handler is free
+    /// to change screen without the dialog animating out over the next one.
+    func confirm(_ isPresented: Binding<Bool>,
+                 title: String,
+                 message: String,
+                 confirmTitle: String,
+                 confirmTint: Color = Theme.miss,
+                 action: @escaping () -> Void) -> some View {
+        overlay {
+            if isPresented.wrappedValue {
+                ConfirmDialog(title: title,
+                              message: message,
+                              confirmTitle: confirmTitle,
+                              confirmTint: confirmTint,
+                              onConfirm: {
+                                  isPresented.wrappedValue = false
+                                  action()
+                              },
+                              onCancel: { isPresented.wrappedValue = false })
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: isPresented.wrappedValue)
+    }
+}
+
 extension View {
     /// Covers this view with `BusyOverlay` while `message` is non-nil.
     ///

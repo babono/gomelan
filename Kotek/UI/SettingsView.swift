@@ -323,20 +323,12 @@ struct SettingsView: View {
         .onAppear { draftName = app.profile.name }
         // The picker can change the active instrument under this screen.
         .onChange(of: app.profile.id) { _, _ in draftName = app.profile.name }
-        .confirmationDialog("Delete this gangsa?",
-                            isPresented: $showDeleteConfirm,
-                            titleVisibility: .visible) {
-            // The two buttons in the app that cannot take `.buttonStyle(.kajar)`
-            // — a confirmation dialog draws its own and discards any style it is
-            // given — so they strike the tick from their actions instead.
-            Button("Delete \(app.profile.name)", role: .destructive) {
-                KajarTick.strike()
-                app.deleteInstrument(app.profile.id)
-                app.openChooseInstrument()
-            }
-            Button("Cancel", role: .cancel) { KajarTick.strike() }
-        } message: {
-            Text("Its key alignment and learned voice go with it. This cannot be undone.")
+        .confirm($showDeleteConfirm,
+                 title: "Delete this gangsa?",
+                 message: "Its key alignment and learned voice go with it. This cannot be undone.",
+                 confirmTitle: "Delete \(app.profile.name)") {
+            app.deleteInstrument(app.profile.id)
+            app.openChooseInstrument()
         }
     }
 
