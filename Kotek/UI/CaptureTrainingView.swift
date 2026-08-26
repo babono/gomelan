@@ -96,7 +96,10 @@ struct CaptureTrainingView: View {
                     // That is why this always selected key 9.
                     .frame(width: rect.width, height: rect.height)
                     .contentShape(Rectangle())
-                    .onTapGesture { target = (target == key.index) ? nil : key.index }
+                    .onTapGesture {
+                        KajarTick.strike()
+                        target = (target == key.index) ? nil : key.index
+                    }
                     .position(x: rect.midX, y: rect.midY)
             }
         }
@@ -172,7 +175,7 @@ struct CaptureTrainingView: View {
                             .background(intent == option ? Theme.copper : .black.opacity(0.55),
                                         in: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.kajar)
                 }
 
                 Button(action: captureNow) {
@@ -186,7 +189,7 @@ struct CaptureTrainingView: View {
                     .background(canCapture ? Theme.terracotta : Color.gray.opacity(0.5),
                                 in: Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kajar)
                 .disabled(!canCapture)
 
                 Button(action: exportAll) {
@@ -196,7 +199,7 @@ struct CaptureTrainingView: View {
                         .padding(10)
                         .background(Theme.copper.opacity(0.85), in: Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kajar)
                 .disabled(exporting)
 
                 Button { capture.clear() } label: {
@@ -206,7 +209,7 @@ struct CaptureTrainingView: View {
                         .padding(10)
                         .background(.black.opacity(0.55), in: Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kajar)
             }
             .padding(.bottom, 22)
         }

@@ -583,7 +583,7 @@ struct DetectionTestView: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.white.opacity(0.6))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kajar)
             }
 
             ScrollView(.vertical, showsIndicators: true) {
@@ -623,7 +623,7 @@ struct DetectionTestView: View {
                                 .background(app.markerColour == c.rawValue ? Theme.copper : .white.opacity(0.15),
                                             in: Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.kajar)
                     }
                 }
                 Text(MarkerColour(rawValue: app.markerColour)?.note ?? "")
@@ -641,7 +641,7 @@ struct DetectionTestView: View {
                                 .background(app.markerPOV == p.rawValue ? Theme.accent : .white.opacity(0.15),
                                             in: Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.kajar)
                     }
                 }
 
@@ -783,7 +783,7 @@ struct DetectionTestView: View {
                             .background(app.cropScaleMode == i ? Theme.copper : .white.opacity(0.15),
                                         in: Capsule())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.kajar)
                 }
             }
             if let failure = MalletHitClassifier.lastFailure {
@@ -878,7 +878,7 @@ struct DetectionTestView: View {
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.white.opacity(0.6))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.kajar)
                 }
             }
 
@@ -990,7 +990,7 @@ struct DetectionTestView: View {
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(.black.opacity(0.6), in: Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kajar)
     }
 
     //R The same decision path as `PlayView.runVisionDetection`, and now

@@ -96,7 +96,7 @@ struct SettingsView: View {
                                         .strokeBorder(Theme.miss.opacity(0.5), lineWidth: 1))
                                     .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.kajar)
                             .padding(.top, 4)
                         }
                     }
@@ -126,6 +126,7 @@ struct SettingsView: View {
                             }
                         }
                         .pickerStyle(.segmented)
+                        .kajarOnChange(of: app.tempoScale)
                         .frame(maxWidth: 400)
 
                         Text("Also on the practice screen, where it can be changed without stopping. Above 1× is faster than the figure is notated.")
@@ -213,6 +214,7 @@ struct SettingsView: View {
                             }
                         }
                         .pickerStyle(.segmented)
+                        .kajarOnChange(of: app.detectionMode)
                         .frame(maxWidth: 400)
 
                         Text(app.detectionMode.detail)
@@ -239,11 +241,15 @@ struct SettingsView: View {
         .confirmationDialog("Delete this gangsa?",
                             isPresented: $showDeleteConfirm,
                             titleVisibility: .visible) {
+            // The two buttons in the app that cannot take `.buttonStyle(.kajar)`
+            // — a confirmation dialog draws its own and discards any style it is
+            // given — so they strike the tick from their actions instead.
             Button("Delete \(app.profile.name)", role: .destructive) {
+                KajarTick.strike()
                 app.deleteInstrument(app.profile.id)
                 app.openChooseInstrument()
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) { KajarTick.strike() }
         } message: {
             Text("Its key alignment and learned voice go with it. This cannot be undone.")
         }

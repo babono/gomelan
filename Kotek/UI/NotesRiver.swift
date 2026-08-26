@@ -325,7 +325,7 @@ struct VoiceMixer: View {
             .background(isOn.wrappedValue ? Theme.ink.opacity(0.55) : .clear, in: Capsule())
             .overlay(Capsule().strokeBorder(Theme.inkStone.opacity(0.35), lineWidth: 1))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kajar)
     }
 }
 

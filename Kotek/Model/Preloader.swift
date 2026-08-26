@@ -139,6 +139,13 @@ final class Preloader {
             }
         }
 
+        // The kajar under every button press. Cheap — it shortens and re-encodes
+        // one already-decoded sample and prepares four players — but it is main-
+        // actor work, and the first thing anyone taps is the button on the very
+        // next screen. Doing it here means that first tick is not the one that
+        // arrives late.
+        KajarTick.shared.warm()
+
         // Hold the floor, measured from when warming began rather than from
         // here, so the wait is only ever the REMAINDER of the minimum — a slow
         // warm-up on a cold launch costs nothing extra, and a fast one still

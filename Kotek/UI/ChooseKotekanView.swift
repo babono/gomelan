@@ -214,6 +214,7 @@ struct ChooseKotekanView: View {
     }
 
     private func tap(_ slot: Int) {
+        KajarTick.strike()
         if slot == focusedSlot {
             let k = kotekans[wrap(slot)]
             if app.kotekan(k, playableOn: app.profile) { start(k) }
@@ -318,7 +319,7 @@ struct ChooseKotekanView: View {
                 .overlay(Capsule().strokeBorder(Theme.cream.opacity(0.22), lineWidth: 1))
                 .contentShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kajar)
             .accessibilityLabel(muted ? "Unmute the preview" : "Mute the preview")
 
             Spacer()

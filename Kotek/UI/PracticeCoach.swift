@@ -125,7 +125,7 @@ struct PracticeCoachOverlay: View {
             //R Nothing underneath is reachable while the tour is up. Half of
             //R these controls change what the next step is pointing at.
             .contentShape(Rectangle())
-            .onTapGesture(perform: onNext)
+            .onTapGesture { KajarTick.strike(); onNext() }
             .animation(.easeInOut(duration: 0.24), value: target)
         }
         .transition(.opacity)
@@ -181,7 +181,7 @@ struct PracticeCoachOverlay: View {
                     Button("Skip", action: onSkip)
                         .font(.sans(13, weight: .medium))
                         .foregroundStyle(Theme.cream.opacity(0.5))
-                        .buttonStyle(.plain)
+                        .buttonStyle(.kajar)
                 }
                 Spacer()
                 PillButton(title: isLast ? "Start" : "Next",

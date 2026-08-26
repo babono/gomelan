@@ -67,7 +67,7 @@ struct WelcomeView: View {
                 )
                 .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kajar)
         .accessibilityLabel(label)
         .accessibilityHint(hint)
     }

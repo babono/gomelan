@@ -351,6 +351,11 @@ struct StrikeBaselineView: View {
                 .frame(maxWidth: 420)
                 .background(capturing ? Color.red : Theme.accent, in: RoundedRectangle(cornerRadius: 14))
             }
+            // `.plain`, not `.kajar` — the ONE control in the app with no tick
+            // on it. This button starts the microphone learning what a strike
+            // on this gangsa sounds like, and a kajar rung by the press itself
+            // would still be decaying inside the first window that capture
+            // records. The app would learn that a button is a strike.
             .buttonStyle(.plain)
 
             if let count = strikeCount, count > 0, !capturing {

@@ -94,7 +94,7 @@ struct GuidePanel<Content: View>: View {
             // stray touch while reading does not dismiss it.
             Color.black.opacity(0.72)
                 .ignoresSafeArea()
-                .onTapGesture(perform: onClose)
+                .onTapGesture { KajarTick.strike(); onClose() }
 
             panel
                 .padding(.horizontal, 28)
@@ -557,7 +557,7 @@ struct GuideSlides: View {
                         .frame(width: 30, height: 26)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kajar)
                 .accessibilityLabel("Slide \(i + 1) of \(slides.count)")
             }
         }

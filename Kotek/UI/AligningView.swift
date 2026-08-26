@@ -175,7 +175,7 @@ struct AligningView: View {
             .font(.sans(13, weight: .medium))
             .foregroundStyle(Theme.inkStone)
             .underline()
-            .buttonStyle(.plain)
+            .buttonStyle(.kajar)
 
             // Spanner: reveal/hide the row-level fit controls.
             Button {
@@ -188,7 +188,7 @@ struct AligningView: View {
                     .background(showAdjust ? Theme.copper : .clear, in: Circle())
                     .overlay(Circle().strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kajar)
 
             PillButton(title: "Auto-detect", style: .outlined, tint: Theme.copper, compact: true) {
                 Task { await autoDetect() }
@@ -412,7 +412,7 @@ struct AligningView: View {
                 .frame(width: 26, height: 26)
                 .overlay(Circle().strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kajar)
     }
 
     /// Resize all masks around their own centres.

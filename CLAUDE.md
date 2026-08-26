@@ -93,7 +93,12 @@ actually occurred.
   Note that the Python side lives **outside this repo** — the notebook is not checked in.
 - `CuePlayer.swift`, `SampleLibrary.swift`, `SplashChime.swift`, `TitleMusic.swift`,
   `AudioSessionManager.swift` (`.measurement` mode disables AGC and echo cancellation —
-  do not omit it), `CalibrationFile.swift`.
+  do not omit it), `PCMWav.swift`, `CalibrationFile.swift`.
+- `KajarTick.swift` — the kajar under every button press, on its own `AVAudioPlayer`
+  pool rather than CuePlayer's engine, which is silent outside a session. Reached
+  through `.buttonStyle(.kajar)` / `.toggleStyle(.kajar)` in `Components.swift`. The
+  baseline capture button in `CalibrationView` is the one control deliberately without
+  it — read the comment there before "fixing" it.
 
 ### `Kotek/Capture/` + `Kotek/Detection/` — vision
 

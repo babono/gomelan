@@ -133,7 +133,7 @@ struct ChooseInstrumentView: View {
                                   lineWidth: isCurrent ? 2 : 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kajar)
         .accessibilityLabel(accessibilityLabel(profile))
         .accessibilityAddTraits(isCurrent ? [.isButton, .isSelected] : .isButton)
         .accessibilityHint("Plays this gangsa")
@@ -210,7 +210,7 @@ struct ChooseInstrumentView: View {
                     .strokeBorder(Theme.cream.opacity(0.18), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.kajar)
         .accessibilityLabel("Add a gangsa")
     }
 

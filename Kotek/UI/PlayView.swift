@@ -242,7 +242,7 @@ struct PlayView: View {
                         .padding(.horizontal, 14)
                         .background(selected ? Theme.copper : .clear, in: Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.kajar)
                 .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
             }
         }
@@ -315,6 +315,10 @@ struct PlayView: View {
             .contentShape(Capsule())
         }
         .menuOrder(.fixed)
+        // A `Menu` gives no press to hook and its rows are not our buttons, so
+        // the tick follows the selection. Opening the menu is silent, choosing
+        // from it is not — which is the tap that did something.
+        .kajarOnChange(of: app.tempoScale)
         .accessibilityLabel("Tempo, \(Theme.tempoLabel(app.tempoScale))")
     }
 
@@ -346,7 +350,7 @@ struct PlayView: View {
                     .background(app.bottomBarVisible ? Theme.copper : .clear, in: Capsule())
                     .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kajar)
             .accessibilityLabel(app.bottomBarVisible ? "Hide the score" : "Show the score")
             .coachTarget(.panelToggle)
             .padding(.trailing, 10)
@@ -360,7 +364,7 @@ struct PlayView: View {
                         .strokeBorder(Theme.cream.opacity(0.45), lineWidth: 1))
                     .contentShape(RoundedRectangle(cornerRadius: 8))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.kajar)
             .accessibilityLabel("Pause")
         }
         .padding(.horizontal, 24)
