@@ -13,6 +13,13 @@
 //  Backed by AudioEngineController's baseline API:
 //    startBaselineCapture() → onOnsetDebug (per strike) → finishBaselineCapture()
 //
+//  Laid out like 2/4 and 3/4 and for the same reason: full-bleed camera, chrome
+//  floating over scrims at the top and bottom. It used to be a letterboxed
+//  preview under a bar, with a big translucent card parked in the middle of it —
+//  three surfaces where the neighbouring steps have one, and a card sitting over
+//  the instrument you are being asked to strike. Whatever the card was holding
+//  fits in a single strip, and the strip leaves the gangsa visible.
+//
 
 import SwiftUI
 import QuartzCore
@@ -48,20 +55,34 @@ struct CalibrationView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            ZStack {
-                CameraPreview(camera: camera)
-                    .overlay(Color.black.opacity(0.35))
+        ZStack {
+            CameraPreview(camera: camera)
+                .ignoresSafeArea()
+                //R The same 0.22 the aligning step settles its feed with, not
+                //R the 0.35 this screen used to use: that was dimming a preview
+                //R behind a solid card, and there is no card any more.
+                .overlay(Color.black.opacity(0.22).ignoresSafeArea())
 
-                faintMasks
+            faintMasks
+                .ignoresSafeArea()
 
-                VStack {
-                    Spacer()
-                    panel
-                }
+            VStack(spacing: 0) {
+                TopBar(title: "Learn this gangsa's voice",
+                       backTitle: "Cancel",
+                       onBack: { cancel() },
+                       trailingText: "4 / 4",
+                       tint: Theme.cream, accent: Theme.copper,
+                       compact: true)
+                    .background(
+                        LinearGradient(colors: [.black.opacity(0.5), .clear],
+                                       startPoint: .top, endPoint: .bottom)
+                            .ignoresSafeArea(edges: [.top, .horizontal])
+                    )
+
+                Spacer()
+
+                bottomBar
             }
-            .clipShape(RoundedRectangle(cornerRadius: 4))
         }
         .background(Theme.ink)
         .busy(busyMessage)
@@ -83,31 +104,6 @@ struct CalibrationView: View {
 
     // MARK: - Chrome
 
-    private var header: some View {
-        HStack {
-            SecondaryButton(title: "Cancel", systemImage: "xmark") { cancel() }
-            Spacer()
-            VStack(spacing: 4) {
-                SectionLabel("Baseline · learn this gangsa's voice", color: Theme.copper)
-                Text(learned ? "voice learned" : "listening")
-                    .font(.sans(13))
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("4 / 4")
-                    .font(.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.copper)
-                Text("\(min(strikeCount, strikesNeeded)) / \(strikesNeeded) strikes")
-                    .font(.sans(13))
-                    .foregroundStyle(Theme.inkStone)
-            }
-            .frame(width: 100, alignment: .trailing)
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-    }
-
     private var faintMasks: some View {
         GeometryReader { geo in
             ForEach(app.profile.keys) { key in
@@ -120,76 +116,99 @@ struct CalibrationView: View {
         }
     }
 
-    // MARK: - Panel
+    // MARK: - The strip
 
-    private var panel: some View {
-        HStack(alignment: .center, spacing: 24) {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionLabel("What the mic hears", color: Theme.inkStone)
-                micVisualization.frame(height: 72)
-                Text(learned
-                     ? "Kotek now knows this gangsa's strike from a clap or a scream."
-                     : "Strike any key — soft, then hard. The first couple seed its voice; sounds unlike them are ignored.")
-                    .font(.sans(13))
-                    .foregroundStyle(Theme.inkStone)
-                    .fixedSize(horizontal: false, vertical: true)
-                if let lastAccepted {
-                    Label(lastAccepted ? "heard a strike" : "ignored — didn't match the others",
-                          systemImage: lastAccepted ? "checkmark.circle" : "xmark.circle")
-                        .font(.sans(12, weight: .medium))
-                        .foregroundStyle(lastAccepted ? Theme.copper : Theme.inkStone)
+    /// Everything the old card held, on one line: what the mic is hearing, how
+    /// far the capture has got, and the two controls.
+    ///
+    /// Built like the caption strips on 2/4 and 3/4 — flexible text on the left,
+    /// controls hard right — so the three setup steps read as one screen that
+    /// changes its instructions rather than three screens.
+    private var bottomBar: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    SectionLabel(learned
+                                 ? "Kotek knows this gangsa's voice"
+                                 : "Strike any key — soft, then hard",
+                                 color: Theme.copper)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    //R What the card said in a paragraph — that the first
+                    //R strikes seed the template and unlike ones are dropped —
+                    //R this says at the moment it happens, which is the only
+                    //R moment it means anything.
+                    if let lastAccepted {
+                        Label(lastAccepted ? "heard a strike" : "ignored — didn't match the others",
+                              systemImage: lastAccepted ? "checkmark.circle" : "xmark.circle")
+                            .font(.sans(12, weight: .medium))
+                            .foregroundStyle(lastAccepted ? Theme.cream : Theme.inkStone)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .transition(.opacity)
+                    }
                 }
+
+                micVisualization(height: 26)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Rectangle().fill(Theme.copper.opacity(0.2)).frame(width: 1, height: 150)
+            strikeMeter
 
-            VStack(spacing: 16) {
-                confidenceRing
-                HStack(spacing: 14) {
-                    PillButton(title: "Reset", style: .outlined, tint: Theme.inkStone) { reset() }
-                    PillButton(title: learned ? "Continue" : "Listening…",
-                               //R Only once it IS a next button. While it still
-                               //R says "Listening…" it is a status, and an arrow
-                               //R on a status promises something it cannot do.
-                               trailingSystemImage: learned ? "arrow.right" : nil,
-                               style: learned ? .filled : .outlined,
-                               tint: Theme.copper) {
-                        if learned { commit() }
-                    }
-                    .disabled(!learned || committing)
-                    .opacity(learned ? 1 : 0.5)
-                }
+            PillButton(title: "Reset", style: .outlined, tint: Theme.inkStone, compact: true) { reset() }
+
+            PillButton(title: learned ? "Continue" : "Listening…",
+                       //R Only once it IS a next button. While it still
+                       //R says "Listening…" it is a status, and an arrow
+                       //R on a status promises something it cannot do.
+                       trailingSystemImage: learned ? "arrow.right" : nil,
+                       style: learned ? .filled : .outlined,
+                       tint: Theme.copper,
+                       compact: true) {
+                if learned { commit() }
             }
-            .frame(width: 300)
+            .disabled(!learned || committing)
+            .opacity(learned ? 1 : 0.5)
         }
-        .padding(24)
-        .background(Theme.ink.opacity(0.9), in: RoundedRectangle(cornerRadius: 16))
-        .padding(20)
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 2)
+        .background(
+            LinearGradient(colors: [.clear, .black.opacity(0.6)],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: [.bottom, .horizontal])
+        )
     }
 
-    private var confidenceRing: some View {
+    /// The 150pt confidence ring, shrunk to fit the strip.
+    ///
+    /// It reads STRIKES rather than a percentage now. The percentage was always
+    /// `strikeCount / strikesNeeded` wearing a disguise, and the count is the
+    /// thing the player can act on — "two more" is an instruction, "67%" is a
+    /// number. It also replaces the counter that used to sit in the header.
+    private var strikeMeter: some View {
         ZStack {
-            Circle().stroke(Theme.copper.opacity(0.18), lineWidth: 10)
+            Circle().stroke(Theme.copper.opacity(0.22), lineWidth: 5)
             Circle()
                 .trim(from: 0, to: confidence)
-                .stroke(Theme.copper, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                .stroke(Theme.copper, style: StrokeStyle(lineWidth: 5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.snappy, value: confidence)
-            VStack(spacing: 2) {
-                Text("\(Int((confidence * 100).rounded()))%")
-                    .font(.serif(40))
-                    .foregroundStyle(Theme.cream)
-                    .contentTransition(.numericText())
-                SectionLabel("confidence", color: Theme.inkStone)
-            }
+            Text("\(min(strikeCount, strikesNeeded))/\(strikesNeeded)")
+                .font(.serif(16))
+                .foregroundStyle(Theme.cream)
+                .contentTransition(.numericText())
         }
-        .frame(width: 150, height: 150)
+        .frame(width: 52, height: 52)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(min(strikeCount, strikesNeeded)) of \(strikesNeeded) strikes learned")
     }
 
     /// A lightweight "spectrum" that pulses on each strike and decays between
     /// them — a felt sense of the mic hearing something, not a real FFT plot.
-    private var micVisualization: some View {
+    private func micVisualization(height: CGFloat) -> some View {
         TimelineView(.animation) { timeline in
             let now = timeline.date.timeIntervalSinceReferenceDate
             // micLevelTime is CACurrentMediaTime; convert both to a decay age.
@@ -199,14 +218,19 @@ struct CalibrationView: View {
                 ForEach(0..<22, id: \.self) { i in
                     let profile = Self.spectrumProfile[i % Self.spectrumProfile.count]
                     let jitter = 0.8 + 0.2 * sin(now * 6 + Double(i))
-                    let h = max(3, 88 * min(1, level * 3) * profile * jitter)
+                    //R Scaled from the frame it is given rather than from a
+                    //R hardcoded 88: the bars used to be drawn taller than the
+                    //R box that held them, which only looked right because the
+                    //R box was 72pt tall and clipping was doing the work.
+                    let h = max(3, height * min(1, level * 3) * profile * jitter)
                     RoundedRectangle(cornerRadius: 2)
                         .fill(Theme.copper.opacity(0.85))
-                        .frame(width: 6, height: h)
+                        .frame(width: 5, height: h)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: height, alignment: .bottomLeading)
         }
+        .frame(height: height)
     }
 
     /// A fixed, roughly gangsa-shaped relative envelope (bright fundamental,
@@ -234,7 +258,7 @@ struct CalibrationView: View {
         audio.onBaselineProgress = { progress in
             Task { @MainActor in
                 strikeCount = progress.accepted
-                lastAccepted = progress.wasAccepted
+                withAnimation(.snappy(duration: 0.2)) { lastAccepted = progress.wasAccepted }
             }
         }
     }

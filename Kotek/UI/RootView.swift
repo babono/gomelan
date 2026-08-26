@@ -44,7 +44,7 @@ struct RootView: View {
         // screen is already laid out and drawn underneath by the time the splash
         // starts to go. Both screens put the wordmark in the same place (see
         // `KotekWordmark`), so what actually crosses over is everything around
-        // it — the pattern, the ornaments, the button — while the wordmark
+        // it — the pattern, the button — while the wordmark
         // appears to stay still and simply finish filling.
         //
         // Only the splash animates; the landing screen is revealed rather than

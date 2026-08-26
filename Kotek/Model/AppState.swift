@@ -661,13 +661,18 @@ final class AppState {
     /// the full-bleed camera space. It is the search region for key prediction
     /// and the fallback layout's bounds — everything outside it is table, floor
     /// and the wooden frame ends.
-    /// Pushed out to the corners on purpose: the chrome floats over the feed, so
-    /// the only space this has to leave is the strip the caption sits in. The
-    /// bigger it is, the more of the frame the instrument can fill, and the more
-    /// pixels per bilah the prediction and the strike classifier both get.
-    /// The bottom stops short of the caption strip by design — the dashed edge
-    /// and the Continue button sharing a line read as a collision.
-    var framedRegion = NormalizedRect(x: 0.03, y: 0.09, w: 0.94, h: 0.745)
+    /// Pushed out to the edges on purpose: the chrome floats over the feed, so
+    /// the only space this has to leave is the header and the strip the caption
+    /// sits in. The bigger it is, the more of the frame the instrument can fill,
+    /// and the more pixels per bilah the prediction and the strike classifier
+    /// both get.
+    ///
+    /// This value is only the STARTING one. `FramingView` measures where its
+    /// header and caption actually landed and writes the window back here, so
+    /// what 3/4 searches is exactly the rectangle that was on screen on 2/4 —
+    /// the fractions here used to be the real thing, and being a guess about the
+    /// height of a header they cut through the title on a short screen.
+    var framedRegion = NormalizedRect(x: 0, y: 0.17, w: 1, h: 0.68)
 
     /// Set when arriving at 3/4 from framing (rather than a later re-align), so
     /// the masks start from the area just framed instead of a saved fit.

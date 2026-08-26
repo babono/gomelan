@@ -73,7 +73,11 @@ struct AligningView: View {
             .ignoresSafeArea()
             .coordinateSpace(name: "alignSpace")
 
-            // Chrome floats on top, inset from the notch, over translucent scrims.
+            //R Chrome floats on top, inset from the notch — but its SCRIMS are
+            //R not. A gradient that stops where the safe area does leaves the
+            //R feed lit in the two corners it was drawn to darken, which on a
+            //R landscape phone is a 59pt band down each side. The controls stay
+            //R inset; the scrims behind them run to the glass.
             VStack(spacing: 0) {
                 TopBar(title: "Fit the mask to your keys",
                        backTitle: "Rescan",
@@ -84,7 +88,7 @@ struct AligningView: View {
                     .background(
                         LinearGradient(colors: [.black.opacity(0.5), .clear],
                                        startPoint: .top, endPoint: .bottom)
-                            .ignoresSafeArea(edges: .top)
+                            .ignoresSafeArea(edges: [.top, .horizontal])
                     )
                 Spacer()
                 if showAdjust { adjustBar }
@@ -195,7 +199,7 @@ struct AligningView: View {
             }
             .disabled(detecting)
 
-            PillButton(title: "Calibrate", trailingSystemImage: "arrow.right", style: .filled, tint: Theme.copper, compact: true) {
+            PillButton(title: "Next", trailingSystemImage: "arrow.right", style: .filled, tint: Theme.copper, compact: true) {
                 confirmAlignment()
             }
         }
@@ -204,7 +208,7 @@ struct AligningView: View {
         .background(
             LinearGradient(colors: [.clear, .black.opacity(0.55)],
                            startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea(edges: .bottom)
+                .ignoresSafeArea(edges: [.bottom, .horizontal])
         )
     }
 
@@ -389,7 +393,9 @@ struct AligningView: View {
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 8)
-        .background(.black.opacity(0.5))
+        //R Horizontal only: this strip sits BETWEEN the masks and the caption
+        //R bar, so it has a bottom edge that is meant to be seen.
+        .background(Color.black.opacity(0.5).ignoresSafeArea(edges: .horizontal))
     }
 
     private func adjustGroup(_ label: String,

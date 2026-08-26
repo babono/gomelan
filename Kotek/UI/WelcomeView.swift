@@ -3,8 +3,14 @@
 //  Kotek
 //
 //  Entry screen (PRD §8), built to the Kotek design: the wordmark over the
-//  drifting pattern, ornaments flying behind it, one cream key to press, and a
-//  pelawah rising from the bottom edge.
+//  drifting pattern, one cream key to press, and a pelawah rising from the
+//  bottom edge.
+//
+//  The carved ornaments that used to drift down both margins are held out at
+//  the designer's request. `Ornaments` below is left intact and simply not
+//  placed — the arrangement, the rates and the reasons they are what they are
+//  took measurement to arrive at, and deleting them would mean deriving all of
+//  it again if the marks come back.
 //
 //  The wordmark is drawn at the geometry the splash screen uses, from the same
 //  shared numbers, because this screen is revealed underneath the splash rather
@@ -111,7 +117,7 @@ struct WelcomeView: View {
             let h = proxy.size.height
 
             ZStack {
-                Ornaments()
+                // Ornaments() — held out, see the file header.
 
                 VStack(spacing: 0) {
                     // Geometry shared with the splash screen, not restated —

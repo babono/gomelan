@@ -214,6 +214,14 @@ struct PillButton: View {
                     // SF has real weights, unlike the face this used to be, so
                     // a button label can simply BE the weight it wants.
                     .font(.sans(compact ? 14 : 19, weight: Theme.buttonWeight))
+                    // A button label never wraps. Uppercase + tracking makes
+                    // even a short word wide, and in a narrow column SwiftUI
+                    // will happily break "Listening…" across two lines and
+                    // blow out the pill's fixed height rather than let it
+                    // overflow. Whoever adds a long label sees it clipped —
+                    // which reads as "shorten this", not as a broken control.
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 if let trailingSystemImage {
                     Image(systemName: trailingSystemImage)
@@ -522,28 +530,38 @@ struct BusyOverlay: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.65).ignoresSafeArea()
-            //R A dark card on a dark camera feed disappeared into it — three
-            //R shades of near-black stacked on each other. Solid cream, so it
-            //R reads as a lit panel over the stage whatever is behind it,
-            //R including an unlit room.
+            //R Same scrim as `GuidePanel`. Everything that floats over a screen
+            //R in this app is the same two moves — this depth of black, and the
+            //R panel below — so a wait and an explainer do not read as coming
+            //R from two different apps.
+            Color.black.opacity(0.72).ignoresSafeArea()
+            //R The card was solid cream for a while: a dark card on a dark
+            //R camera feed used to disappear into it, three shades of near-black
+            //R stacked up. What that missed is that `Theme.charcoal` has been an
+            //R ALIAS OF CREAM since the palette went all-dark, so the label was
+            //R cream on cream and the message could not be read at all.
+            //R
+            //R The panel colours are the guide panel's, which solve the same
+            //R problem the right way round: `deep` is a step darker than the
+            //R ground, so it separates from a dark feed by being darker than it
+            //R rather than by being the one light thing on the screen.
             VStack(spacing: 16) {
                 ProgressView()
                     .controlSize(.large)
-                    .tint(Theme.terracotta)
+                    .tint(Theme.gold)
                     .scaleEffect(1.3)
                 Text(message)
                     .font(.sans(16, weight: .semibold))
-                    .foregroundStyle(Theme.charcoal)
+                    .foregroundStyle(Theme.cream)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 40)
             .padding(.vertical, 30)
             .frame(minWidth: 260)
-            .background(Theme.cream, in: RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20)
-                .strokeBorder(Theme.terracotta.opacity(0.5), lineWidth: 1.5))
+            .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22)
+                .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1))
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
         }
     }
