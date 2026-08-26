@@ -16,13 +16,18 @@
 //      at the edge is a lookup, and a lookup is exactly the thing you do not
 //      have time for while playing; the number belongs on the thing itself.
 //
+//  ONE PAGE AT A TIME, where a page is one colotomic cycle. Every kotekan is a
+//  single page and draws exactly as it always did; the exhibition melodies run
+//  to four, and the score turns over on the gong. See `PlayEngine.scorePage` for
+//  why paging and not shrinking, and for what it costs.
+//
 //  IT NO LONGER SCROLLS. Notes used to slide right to left across a fixed
 //  strike line, which meant rendering three loops at once so the stream never
 //  ran dry at the turn, and it read as a rhythm game — the figure never stayed
 //  still long enough to be seen as a figure. A kotekan is a short fixed shape
 //  you repeat until it is in your hands, so it is drawn as one, and the
-//  playhead does the moving. The whole pattern is on screen at all times, which
-//  is also what lets a player look ahead to the bar they are about to need.
+//  playhead does the moving. The whole page is on screen at all times, which is
+//  also what lets a player look ahead to the bar they are about to need.
 //
 //  Deliberately SMALL. The guidance you play from is the bilah lighting up on
 //  the instrument (OverlayView); this is peripheral context. It is a strip, not
@@ -73,6 +78,8 @@ struct NotesRiver: View {
         let notes = engine.cycleNotes
         let markers = engine.trackMarkers
         let playhead = engine.playhead
+        let page = engine.scorePage
+        let pageCount = engine.scorePageCount
 
         return Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
             let track = CGRect(x: sideInset, y: 0,
@@ -104,6 +111,23 @@ struct NotesRiver: View {
         .frame(maxWidth: .infinity)
         .background(Theme.inkRaised.opacity(0.8))
         .overlay(alignment: .top) { Rectangle().fill(Theme.copper.opacity(0.2)).frame(height: 1) }
+        //R Only when there is more than one, which is only ever a melody. On a
+        //R kotekan the page is the whole figure and a "1 / 1" would be an
+        //R indicator for a thing that cannot happen.
+        //R
+        //R It earns its corner on Gundul-Gundul Pacul specifically: that song is
+        //R A A B B, so the score redraws into a page IDENTICAL to the one it
+        //R just left and there is otherwise nothing on screen to say whether you
+        //R are on the first pass of the verse or the second.
+        .overlay(alignment: .topTrailing) {
+            if pageCount > 1 {
+                Text("\(page + 1) / \(pageCount)")
+                    .font(.sans(10, weight: .semibold))
+                    .foregroundStyle(Theme.cream.opacity(0.4))
+                    .padding(.trailing, 8)
+                    .padding(.top, 3)
+            }
+        }
     }
 
     // MARK: - Drawing
@@ -337,15 +361,29 @@ struct KotekanMiniScore: View {
         }
     }
 
-    /// The figure itself. Nothing observable in here, so it is drawn once and
-    /// then left alone while the line above it moves.
+    /// The figure itself.
+    ///
+    /// The only observable thing read in here is `scorePage`, and that is the
+    /// point: it changes four times in a thirty-second melody and never at all
+    /// in a kotekan, so this is still drawn once and then left alone while the
+    /// line above it moves. Reading `playhead` here instead would put a full
+    /// canvas redraw on every frame, which is what the split into two views
+    /// exists to prevent.
     private var blocks: some View {
-        Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
+        //R Read in the body for the usual Observation reason — see `Playhead`.
+        let page = engine?.scorePage ?? 0
+
+        return Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
             let range = kotekan.voicedKeyRange
             let rows = CGFloat(max(1, range.count))
             let lane = size.height / rows
-            let slots = max(1, kotekan.slotsPerCycle)
-            let slotW = size.width / CGFloat(slots)
+            //R One page, matching what the engine is sweeping. A slot is a beat,
+            //R so a page of `colotomicBeats` slots is a page of that many ms —
+            //R the two sides agree without having to be told about each other.
+            let total = max(1, kotekan.slotsPerCycle)
+            let pageSlots = min(total, PlayEngine.colotomicBeats)
+            let firstSlot = min(page * pageSlots, max(0, total - pageSlots))
+            let slotW = size.width / CGFloat(pageSlots)
             let blockH = max(3, lane - 2)
             let blockW = max(3, slotW * 0.82)
 
@@ -364,7 +402,9 @@ struct KotekanMiniScore: View {
                 layer.fill(block, with: .color(color))
             }
 
-            for slot in 0..<slots {
+            for offset in 0..<pageSlots {
+                let slot = firstSlot + offset
+                guard slot < total else { break }
                 let p = kotekan.polos[slot]
                 let s = kotekan.sangsih[slot]
 
@@ -372,12 +412,12 @@ struct KotekanMiniScore: View {
                 // Split, for the reason NotesRiver splits it: two blocks in one
                 // place means one of the halves is simply not drawn.
                 if let p, p == s {
-                    draw(p, slot: slot, color: Theme.polosVoice, half: true, rightHalf: false)
-                    draw(p, slot: slot, color: Theme.sangsihVoice, half: true, rightHalf: true)
+                    draw(p, slot: offset, color: Theme.polosVoice, half: true, rightHalf: false)
+                    draw(p, slot: offset, color: Theme.sangsihVoice, half: true, rightHalf: true)
                     continue
                 }
-                if let p { draw(p, slot: slot, color: Theme.polosVoice, half: false, rightHalf: false) }
-                if let s { draw(s, slot: slot, color: Theme.sangsihVoice, half: false, rightHalf: false) }
+                if let p { draw(p, slot: offset, color: Theme.polosVoice, half: false, rightHalf: false) }
+                if let s { draw(s, slot: offset, color: Theme.sangsihVoice, half: false, rightHalf: false) }
             }
 
         }

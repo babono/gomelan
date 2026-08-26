@@ -102,20 +102,29 @@ enum Theme {
     /// from setting solid.
     static let buttonWeight: Font.Weight = .black
     static let buttonTracking: CGFloat = 1.5
-    /// Opacity the background pattern is laid in at.
+    /// Opacity the background pattern is laid in at, on top of whatever the tile
+    /// already carries.
     ///
-    /// The design's 8%, and it means 8% now. The tile used to be a full-bleed
-    /// #FDDC8A field with the motif cut out of it as DARKER shapes, so this one
-    /// number tinted the whole ground and set the motif contrast at the same
-    /// time and could not separate them — at 8% the ground read #4C4034 rather
-    /// than #3D322C, which is what made the pattern look heavier than the
-    /// mockup. It was dropped to 4% to compensate.
+    /// It is 1 because the fade now lives in the artwork. Two earlier versions
+    /// of this number are worth keeping in view, because both were about where
+    /// the fade lived rather than how strong it should be:
     ///
-    /// The artwork is now motif-on-transparency in a cream LIGHTER than the
-    /// ground, so opacity governs the motif alone and the ground stays exactly
-    /// #3D322C. Worth knowing if the tile is ever re-exported: if a backing
-    /// creeps back in, this number stops meaning what it says.
-    static let patternOpacity: Double = 0.08
+    /// The first tile was a full-bleed #FDDC8A field with the motif cut out of
+    /// it as DARKER shapes, so this one number tinted the whole ground and set
+    /// the motif contrast at the same time and could not separate them — at 8%
+    /// the ground read #4C4034 rather than #3D322C, which is what made the
+    /// pattern look heavier than the mockup. It was dropped to 4% to compensate.
+    ///
+    /// The second was motif-on-transparency in a cream LIGHTER than the ground,
+    /// drawn at full alpha, so 8% here governed the motif alone and the ground
+    /// stayed exactly #3D322C.
+    ///
+    /// `bg-pattern-gamelan.png` is motif-on-transparency too, but pre-faded: its
+    /// cream peaks at alpha 18/255, i.e. the design's 7%. Multiplying that by
+    /// another 8% would leave the pattern invisible, so the view lays the tile
+    /// in as drawn. To make the pattern lighter or heavier now, re-export the
+    /// PNG — or set this below 1, which still scales it the way it always did.
+    static let patternOpacity: Double = 1.0
 
     // MARK: - Overlay play colours (§13.5)
 

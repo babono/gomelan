@@ -257,7 +257,7 @@ struct ChooseKotekanView: View {
     @ViewBuilder
     private func cardBody(_ k: Kotekan, canPlay: Bool, isPlaying: Bool) -> some View {
         VStack(alignment: .leading, spacing: 7) {
-            SectionLabel("Level \(k.level) · \(k.toneLabel)", color: Theme.terracotta)
+            SectionLabel(k.catalogLabel, color: Theme.terracotta)
 
             Text(k.name)
                 .font(.serif(26))

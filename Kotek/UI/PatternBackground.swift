@@ -2,12 +2,18 @@
 //  PatternBackground.swift
 //  Kotek
 //
-//  The ground every screen sits on: warm brown, with the Kotek pattern tiled
+//  The ground every screen sits on: warm brown, with the gamelan pattern tiled
 //  over it faintly — see `Theme.patternOpacity` — and drifting diagonally,
 //  forever.
 //
+//  The tile is a raster (`bg-pattern-gamelan.png`) where it used to be a vector
+//  (`bg-pattern.svg`). Nothing about the drift changes; the two differences that
+//  do matter are recorded on `tileSize` (the artwork is now drawn at 1:1, so it
+//  is no longer halved) and on `Theme.patternOpacity` (the fade is baked into
+//  the PNG's alpha, so the view lays it in at full strength).
+//
 //  Drawn in a single `Canvas` rather than a stack of `Image` views. The pattern
-//  is one tile repeated across the whole screen — at 724x360 that is a dozen or
+//  is one tile repeated across the whole screen — at 724x402 that is a dozen or
 //  so copies in landscape — and as a ForEach of Images it would be a dozen view
 //  identities to diff. One draw pass costs the same whether it paints one tile
 //  or thirty.
@@ -29,23 +35,32 @@
 import SwiftUI
 
 struct PatternBackground: View {
-    /// Tile size in points: half the artwork's own size, which is the density
-    /// the motif was drawn to read at.
+    /// Tile size in points: the artwork's own size, which is the density the
+    /// motif was drawn to read at.
     ///
     /// READ FROM THE ASSET, not typed in. This number has been wrong twice
-    /// already: the tile was re-exported 1448x720 → 2083x1036 → 1448x720, and a
-    /// hardcoded half of the wrong one renders every motif at 69% or 144% of its
-    /// intended size — which looks like a design problem rather than a stale
-    /// constant, since the aspect ratio is unchanged and nothing is distorted.
-    /// Asking the image how big it is cannot go stale.
+    /// already: the old vector tile was re-exported 1448x720 → 2083x1036 →
+    /// 1448x720, and a hardcoded fraction of the wrong one renders every motif
+    /// at 69% or 144% of its intended size — which looks like a design problem
+    /// rather than a stale constant, since the aspect ratio is unchanged and
+    /// nothing is distorted. Asking the image how big it is cannot go stale.
+    ///
+    /// No halving any more. The vector tile was drawn at 2x and displayed at
+    /// half size (1448x720 → 724x360); the gamelan raster is already drawn at
+    /// the size it is meant to be seen at, and the imageset declares it single
+    /// scale, so its intrinsic size in points *is* the tile — 724x402, near
+    /// enough the same field as before.
     static let tileSize: CGSize = {
-        guard let intrinsic = UIImage(named: "bg-pattern")?.size, intrinsic.width > 0 else {
+        guard let intrinsic = UIImage(named: assetName)?.size, intrinsic.width > 0 else {
             // Only reachable if the asset is missing, in which case there is
             // nothing to draw and the size does not matter.
-            return CGSize(width: 724, height: 360)
+            return CGSize(width: 724, height: 402)
         }
-        return CGSize(width: intrinsic.width / 2, height: intrinsic.height / 2)
+        return intrinsic
     }()
+
+    /// One name, used by both the size probe and the draw. They must not drift.
+    static let assetName = "bg-pattern-gamelan"
 
     var tile = PatternBackground.tileSize
     /// Points per second, travelling down-right.
@@ -108,7 +123,7 @@ struct PatternBackground: View {
                 y += tile.height
             }
         } symbols: {
-            Image("bg-pattern")
+            Image(PatternBackground.assetName)
                 .resizable()
                 .tag(0)
         }
@@ -128,8 +143,9 @@ extension View {
 
     /// The pattern alone, for screens whose ground is the camera feed. Laid over
     /// the preview at a lower strength so it reads as a tint rather than
-    /// competing with the instrument.
-    func kotekPatternOverlay(opacity: Double = 0.06) -> some View {
+    /// competing with the instrument — three quarters of the tile's own
+    /// strength, which is where the old 0.06-against-0.08 sat.
+    func kotekPatternOverlay(opacity: Double = 0.75) -> some View {
         overlay(PatternBackground(opacity: opacity, showsGround: false))
     }
 }

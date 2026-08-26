@@ -247,11 +247,32 @@ final class PlayEngine {
     /// nothing: an onset only fires on an actual attack, so there are no
     /// travelling phantoms for it to mis-bind.
     var scoresWrongBar = false
-    /// The figure laid out across one pattern, still.
+    /// The figure laid out across one PAGE of the score, still. See `scorePage`.
     private(set) var cycleNotes: [CycleNote] = []
-    /// Where in the pattern the music is now, 0…1. The only thing that moves.
+    /// Where in the page the music is now, 0…1. The only thing that moves.
     private(set) var playhead: Double = 0
     private(set) var trackMarkers: [TrackMarker] = []
+    /// Which page of the score is showing, and how many the pattern has.
+    ///
+    /// A page is ONE COLOTOMIC CYCLE — 32 beats, gong to gong. Everything that
+    /// was ever a kotekan here is 8, 16 or 32 slots and so is a single page,
+    /// drawn exactly as it always was. The melodies are not: Gundul-Gundul Pacul
+    /// is 128 slots, and a whole song squeezed edge to edge puts its blocks at
+    /// the 3pt floor where the shape stops being legible at all.
+    ///
+    /// Paging rather than scrolling, and rather than shrinking. Scrolling is
+    /// what this score used to do and was taken away from it on purpose (see
+    /// `NotesRiver`'s header) — a shape that never stays still is never learned.
+    /// A page holds the density steady at what Babaru already draws at, and the
+    /// turn lands on the gong, so the one moment the score redraws is a moment
+    /// you can hear coming.
+    ///
+    /// The cost is read-ahead: the last strokes of a page have nothing visible
+    /// after them. That is survivable here and would not be in a rhythm game —
+    /// the score is peripheral, and the guidance you actually play from is the
+    /// bilah lighting up under your hands.
+    private(set) var scorePage = 0
+    private(set) var scorePageCount = 1
     private(set) var currentTimeMs: Double = 0
     private(set) var currentBeatIndex: Int = 0
     private(set) var isFinished = false
@@ -410,6 +431,9 @@ final class PlayEngine {
     private var introMs: Double = 0
     private var patternMs: Double = 0
     private var patternOriginMs: Double = 0
+    /// One page of the score, in ms — `patternMs` for anything that fits in a
+    /// single colotomic cycle, a whole-number fraction of it otherwise.
+    private var pageMs: Double = 0
     private var lastLoopIndex = -1// 300ms fades (§13.5)
     
     // MARK: - Lifecycle
@@ -444,6 +468,11 @@ final class PlayEngine {
         self.loopIndex = 0
         self.bestSoFar = nil
         self.playhead = 0
+        //R Reset with it. A figure configured while the last one was on page 4
+        //R keeps that page until the first tick, and page 4 of a single-page
+        //R kotekan is off the end of the pattern — one frame of empty score
+        //R every time you swipe off a melody in the picker.
+        self.scorePage = 0
         self.currentTimeMs = 0
         loadHalves(song: song, partner: partner)
         recomputeTiming()
@@ -557,6 +586,18 @@ final class PlayEngine {
         let lastEnd = notes.map { Double($0.timeMs + $0.durationMs) }.max() ?? 0
         patternMs = max(Double(song.durationMs), lastEnd) / tempoScale + Double(loopGapBeats) * beatMs
         if patternMs <= 0 { patternMs = beatMs * 4 }
+
+        //R Pages are counted in BEATS, not in ms: both sides of the division are
+        //R tempo-scaled, so the count is the same at 0.5× as at 2× and the score
+        //R does not repaginate when somebody moves the speed dial.
+        let beats = max(1, Int((patternMs / beatMs).rounded()))
+        scorePageCount = max(1, (beats + Self.colotomicBeats - 1) / Self.colotomicBeats)
+        //R Divided from `patternMs` rather than built up from the beat length, so
+        //R the pages always sum to exactly the pattern. A pattern that is not a
+        //R whole number of colotomic cycles gets pages slightly wider than a gong
+        //R apart, which is the honest way to draw it: the gong genuinely is
+        //R walking through that figure.
+        pageMs = patternMs / Double(scorePageCount)
     }
     
     private func scaledTime(_ note: Note) -> Double { Double(note.timeMs) / tempoScale }
@@ -567,8 +608,14 @@ final class PlayEngine {
     /// rather than a separate thing.
     private func colotomicIndex(forBeat beat: Int) -> Int {
         let fromFigure = beat - introBeats
-        return ((fromFigure % 32) + 32) % 32
+        let n = Self.colotomicBeats
+        return ((fromFigure % n) + n) % n
     }
+
+    /// Beats from one gong to the next. Also the width of a score page, which is
+    /// not a coincidence — see `scorePage`. The `case 0` / `case 16` labels that
+    /// read this index are gong and kempur, positions inside this cycle.
+    static let colotomicBeats = 32
     
     // MARK: - Frame tick
     
@@ -680,7 +727,12 @@ final class PlayEngine {
 
         renderStates = states
         dueKey = phase.isUserPlaying ? nearestOpenKey(patternTime: patternTime) : nil
-        playhead = patternMs > 0 ? min(1, max(0, patternTime / patternMs)) : 0
+        scorePage = pageMs > 0
+            ? min(scorePageCount - 1, max(0, Int(patternTime / pageMs)))
+            : 0
+        playhead = pageMs > 0
+            ? min(1, max(0, (patternTime - Double(scorePage) * pageMs) / pageMs))
+            : 0
         rebuildTrack(patternTime: patternTime, beatMs: beatMs)
     }
 
@@ -1030,13 +1082,15 @@ final class PlayEngine {
     
     // MARK: - The river (§13.5)
 
-    /// Builds one frame of the score: the figure laid out across one pattern,
-    /// and the colotomic pulse that falls inside this pass.
+    /// Builds one frame of the score: the figure laid out across one PAGE, and
+    /// the colotomic pulse that falls inside it.
     ///
-    /// Nothing here moves. Positions are `time / patternMs`, fixed for as long
-    /// as the figure is, so the shape on screen is the shape you are learning —
-    /// `playhead` is the only value that changes, and NotesRiver sweeps a line
-    /// with it.
+    /// Nothing here moves. Positions are `time / pageMs`, fixed for as long as
+    /// the page is showing, so the shape on screen is the shape you are learning
+    /// — `playhead` is the only value that changes, and NotesRiver sweeps a line
+    /// with it. On everything that fits in one colotomic cycle the page IS the
+    /// pattern and this is what it always was; on a longer melody the shape is
+    /// replaced at the gong. See `scorePage`.
     ///
     /// The pulse markers ARE rebuilt every frame, and have to be: the colotomic
     /// cycle is 32 beats while a figure may be 8, 16 or 32 slots long, so a
@@ -1047,12 +1101,17 @@ final class PlayEngine {
     private func rebuildTrack(patternTime: Double, beatMs: Double) {
         guard patternMs > 0 else { trackMarkers = []; cycleNotes = []; return }
 
+        //R Everything below is measured from the ORIGIN OF THE PAGE, not of the
+        //R pattern. On a single-page figure the two are the same value.
+        let pageStartMs = Double(scorePage) * pageMs
+        let pageOriginMs = patternOriginMs + pageStartMs
+
         var marks: [TrackMarker] = []
-        let firstBeat = Int((patternOriginMs / beatMs).rounded(.down))
-        let lastBeat = Int(((patternOriginMs + patternMs) / beatMs).rounded(.up))
+        let firstBeat = Int((pageOriginMs / beatMs).rounded(.down))
+        let lastBeat = Int(((pageOriginMs + pageMs) / beatMs).rounded(.up))
         if lastBeat >= firstBeat {
             for b in firstBeat...lastBeat {
-                let x = (Double(b) * beatMs - patternOriginMs) / patternMs
+                let x = (Double(b) * beatMs - pageOriginMs) / pageMs
                 guard x >= 0, x < 1 else { continue }
                 marks.append(TrackMarker(id: b * 10 + 1, kind: .kajar, xFraction: x))
                 switch colotomicIndex(forBeat: b) {
@@ -1068,7 +1127,14 @@ final class PlayEngine {
         guard phase != .countIn else { cycleNotes = []; return }
 
         func width(_ note: Note) -> Double {
-            min(0.25, Double(note.durationMs) / tempoScale / patternMs)
+            min(0.25, Double(note.durationMs) / tempoScale / pageMs)
+        }
+
+        /// Where a note sits on this page, or nil if it belongs to another one.
+        func x(_ note: Note) -> Double? {
+            let t = scaledTime(note) - pageStartMs
+            guard t >= 0, t < pageMs else { return nil }
+            return t / pageMs
         }
 
         let yourHits = Set(notes.map(\.id))
@@ -1083,10 +1149,11 @@ final class PlayEngine {
         out.reserveCapacity(notes.count + partnerNotes.count)
 
         for i in notes.indices {
+            guard let x = x(notes[i]) else { continue }
             out.append(CycleNote(id: "y-\(notes[i].id)",
                                  keyIndex: notes[i].keyIndex,
                                  voice: .yours,
-                                 x: scaledTime(notes[i]) / patternMs,
+                                 x: x,
                                  width: width(notes[i]),
                                  outcome: outcomes[i],
                                  isCurrent: i == current,
@@ -1095,10 +1162,11 @@ final class PlayEngine {
         for i in partnerNotes.indices {
             //R The doubled ones are already drawn, split, by the loop above.
             guard !yourHits.contains(partnerNotes[i].id) else { continue }
+            guard let x = x(partnerNotes[i]) else { continue }
             out.append(CycleNote(id: "p-\(partnerNotes[i].id)",
                                  keyIndex: partnerNotes[i].keyIndex,
                                  voice: .partner,
-                                 x: scaledTime(partnerNotes[i]) / patternMs,
+                                 x: x,
                                  width: width(partnerNotes[i])))
         }
         cycleNotes = out
