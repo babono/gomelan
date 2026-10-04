@@ -100,14 +100,14 @@ targets:
         excludes:
           - Info.plist
           - logo-kotek.icon
-      - path: Kotek/logo-kotek.icon
+      - path: Kotek/Resources/logo-kotek.icon
         type: file
       - path: documentation
     settings:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: logo-kotek
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        CODE_SIGN_ENTITLEMENTS: Kotek/Kotek.entitlements
+        CODE_SIGN_ENTITLEMENTS: Kotek/App/Kotek.entitlements
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "$(DEVELOPMENT_TEAM)"
         PRODUCT_BUNDLE_IDENTIFIER: "$(PRODUCT_BUNDLE_IDENTIFIER)"
@@ -116,7 +116,7 @@ targets:
         CURRENT_PROJECT_VERSION: 6
         ENABLE_PREVIEWS: YES
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_FILE: Kotek/Info.plist
+        INFOPLIST_FILE: Kotek/App/Info.plist
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES

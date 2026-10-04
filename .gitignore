@@ -127,3 +127,10 @@ xcuserdata
 
 ###
 Config.xcconfig
+
+### Graphify ###
+graphify-out/*
+!graphify-out/graph.json
+GEMINI.md
+.gemini
+.claude
