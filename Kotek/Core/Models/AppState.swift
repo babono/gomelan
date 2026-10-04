@@ -8,21 +8,22 @@
 //  return to .aligning via the persistent "realign" affordance.
 //
 
-import SwiftUI
+import AppIntents
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
 final class AppState {
-    enum Screen: Equatable {
+    enum Screen: String, Equatable {
         case welcome
         case checkingPermissions
         case permissionsBlocked
-        case chooseInstrument    // Multi-instrument selection
-        case choosingKeyCount   // setup 1/4
-        case framing            // setup 2/4
-        case aligning           // setup 3/4
-        case calibrating        // baseline · learn the voice
+        case chooseInstrument  // Multi-instrument selection
+        case choosingKeyCount  // setup 1/4
+        case framing  // setup 2/4
+        case aligning  // setup 3/4
+        case calibrating  // baseline · learn the voice
         case baseline
         case chooseKotekan
         case countdown
@@ -211,9 +212,9 @@ final class AppState {
 
         var title: String {
             switch self {
-            case .cameraOnly:   return "Camera"
+            case .cameraOnly: return "Camera"
             case .cameraAndMic: return "Camera + mic"
-            case .heardOnly:    return "Heard only"
+            case .heardOnly: return "Heard only"
             }
         }
 
@@ -224,11 +225,14 @@ final class AppState {
         var detail: String {
             switch self {
             case .cameraOnly:
-                return "The microphone is ignored, so nothing in the room can trigger a stroke or block one. Use this in a loud hall — a mallet that hovers over a bar can still register."
+                return
+                    "The microphone is ignored, so nothing in the room can trigger a stroke or block one. Use this in a loud hall — a mallet that hovers over a bar can still register."
             case .cameraAndMic:
-                return "Either can register a stroke. The most willing of the three, and the microphone is what catches a bar struck twice in a row, which the camera cannot see."
+                return
+                    "Either can register a stroke. The most willing of the three, and the microphone is what catches a bar struck twice in a row, which the camera cannot see."
             case .heardOnly:
-                return "A stroke counts only where the camera sees one and the microphone hears the attack. Use this when strokes register that you did not play."
+                return
+                    "A stroke counts only where the camera sees one and the microphone hears the attack. Use this when strokes register that you did not play."
             }
         }
     }
@@ -308,7 +312,11 @@ final class AppState {
     }
 
     /// Which colour tape is on the mallet. Index into `MarkerColour`.
-    var markerColour: Int = Defaults.int("markerColour", MarkerColour.red.rawValue) {
+    var markerColour: Int = Defaults.int(
+        "markerColour",
+        MarkerColour.red.rawValue
+    )
+    {
         didSet { Defaults.set("markerColour", markerColour) }
     }
 
@@ -321,12 +329,17 @@ final class AppState {
     }
 
     /// How far a coloured marker's channel must lead the other two.
-    var markerSaturationFloor: Double = Defaults.double("markerSaturationFloor", 60) {
+    var markerSaturationFloor: Double = Defaults.double(
+        "markerSaturationFloor",
+        60
+    )
+    {
         didSet { Defaults.set("markerSaturationFloor", markerSaturationFloor) }
     }
 
     /// Stops below metered exposure while marker vision is on. Negative.
-    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5) {
+    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5)
+    {
         didSet { Defaults.set("markerExposureBias", markerExposureBias) }
     }
 
@@ -345,7 +358,8 @@ final class AppState {
     /// mallet is re-taped. Near zero is right for a hammer-shaped panggul, whose
     /// contact point sits under the head and therefore almost on top of the head
     /// marker when seen from above.
-    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35) {
+    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35)
+    {
         didSet { Defaults.set("markerTipExtension", markerTipExtension) }
     }
 
@@ -411,7 +425,9 @@ final class AppState {
         /// `app` keeps the original key from when it was "How Kotek works", so
         /// that anyone who had already dismissed it stays dismissed if it is
         /// ever shown unprompted again.
-        var seenKey: String { self == .app ? "hasSeenGuide" : "hasSeenGuide.\(rawValue)" }
+        var seenKey: String {
+            self == .app ? "hasSeenGuide" : "hasSeenGuide.\(rawValue)"
+        }
     }
 
     /// Which panel is up, if any. Presented by `RootView` so it can cover any
@@ -420,8 +436,10 @@ final class AppState {
     /// Survives relaunch: each panel introduces itself once, on a first run, and
     /// after that is only ever asked for. A guide that reappears is an obstacle,
     /// not an introduction.
-    private var seen: Set<String> = Set(Guide.allCases.filter { Defaults.bool($0.seenKey, false) }
-                                                      .map(\.rawValue))
+    private var seen: Set<String> = Set(
+        Guide.allCases.filter { Defaults.bool($0.seenKey, false) }
+            .map(\.rawValue)
+    )
 
     // MARK: - The introduction
 
@@ -455,7 +473,10 @@ final class AppState {
     /// The practice screen's control tour. Not a `Guide` — it is a spotlight on
     /// live controls rather than a panel of prose, and it is shown by the screen
     /// that owns those controls rather than by `RootView`.
-    private(set) var hasSeenPracticeCoach = Defaults.bool("hasSeenPracticeCoach", false)
+    private(set) var hasSeenPracticeCoach = Defaults.bool(
+        "hasSeenPracticeCoach",
+        false
+    )
 
     func markPracticeCoachSeen() {
         guard !hasSeenPracticeCoach else { return }
@@ -472,7 +493,9 @@ final class AppState {
 
     /// Show it unprompted the first time, and only the first time.
     func showGuideIfFirstRun(_ guide: Guide) {
-        guard !seen.contains(guide.rawValue), visibleGuide == nil else { return }
+        guard !seen.contains(guide.rawValue), visibleGuide == nil else {
+            return
+        }
         visibleGuide = guide
     }
 
@@ -484,7 +507,9 @@ final class AppState {
 
     init() {
         let all = ProfileStore.loadAll()
-        MalletHitClassifier.applyCropScale(mode: Defaults.int("cropScaleMode", 1))
+        MalletHitClassifier.applyCropScale(
+            mode: Defaults.int("cropScaleMode", 1)
+        )
         self.savedProfiles = all
         if let current = ProfileStore.loadSelected() {
             self.profile = current
@@ -526,11 +551,16 @@ final class AppState {
         guard !atoms.isEmpty else { return }
         var changed = false
         for (index, atom) in atoms {
-            guard let position = profile.keys.firstIndex(where: { $0.index == index }) else { continue }
+            guard
+                let position = profile.keys.firstIndex(where: {
+                    $0.index == index
+                })
+            else { continue }
             //R The count matters as much as the vector. Storing one without the
             //R other is what made a half-learned key unsaveable.
             if profile.keys[position].linearTemplate != atom.bands
-                || profile.keys[position].linearTemplateCount != atom.examples {
+                || profile.keys[position].linearTemplateCount != atom.examples
+            {
                 profile.keys[position].linearTemplate = atom.bands
                 profile.keys[position].linearTemplateCount = atom.examples
                 changed = true
@@ -596,9 +626,13 @@ final class AppState {
         //R sort key until an instrument has been played, so a format the parser
         //R in `InstrumentProfile.date(from:)` cannot read would silently drop
         //R every new instrument to the far end of the rail.
-        let newProfile = InstrumentProfile(id: newID, name: name, keyCount: 10,
-                                           createdAt: InstrumentProfile.nowISO(),
-                                           keys: InstrumentProfile.layout(count: 10))
+        let newProfile = InstrumentProfile(
+            id: newID,
+            name: name,
+            keyCount: 10,
+            createdAt: InstrumentProfile.nowISO(),
+            keys: InstrumentProfile.layout(count: 10)
+        )
 
         isAddingNewInstrument = true
         previousProfile = profile
@@ -611,7 +645,9 @@ final class AppState {
         if isAddingNewInstrument {
             //R Only restore an instrument that still exists: it can have been
             //R deleted from the list before setup was cancelled.
-            if let prev = previousProfile, savedProfiles.contains(where: { $0.id == prev.id }) {
+            if let prev = previousProfile,
+                savedProfiles.contains(where: { $0.id == prev.id })
+            {
                 profile = prev
                 ProfileStore.setSelectedID(prev.id)
             }
@@ -821,15 +857,21 @@ final class AppState {
         previousRecord = nil
         lastSetRecord = false
         guard let k = selectedKotekan,
-              result.cycles.count >= SongResult.scoringWindow,
-              let best = result.best
+            result.cycles.count >= SongResult.scoringWindow,
+            let best = result.best
         else { return }
 
         let half = chosenHalf.rawValue
-        previousRecord = profile.record(kotekanId: k.id, half: half, tempo: tempoScale)?.accuracy
+        previousRecord =
+            profile.record(kotekanId: k.id, half: half, tempo: tempoScale)?
+            .accuracy
         var updated = profile
-        lastSetRecord = updated.noteRecord(kotekanId: k.id, half: half,
-                                           tempo: tempoScale, accuracy: best.accuracy)
+        lastSetRecord = updated.noteRecord(
+            kotekanId: k.id,
+            half: half,
+            tempo: tempoScale,
+            accuracy: best.accuracy
+        )
         guard lastSetRecord else { return }
         profile = updated
         //R Written by `recordSession` a moment later, which saves the profile —
@@ -872,4 +914,32 @@ final class AppState {
 
     /// The persistent re-alignment affordance (§13.4).
     func realign() { screen = .aligning }
+}
+
+extension AppState.Screen: nonisolated AppEnum {
+    static let typeDisplayRepresentation: TypeDisplayRepresentation =
+        "Screen Option"
+
+    static let caseDisplayRepresentations:
+        [AppState.Screen: DisplayRepresentation] = [
+            .welcome: "Welcome",
+            .checkingPermissions: "Checking Permissions",
+            .permissionsBlocked: "Permissions Blocked",
+            .chooseInstrument: "Choose Instrument",
+            .choosingKeyCount: "Choosing Key Count",
+            .framing: "Framing",
+            .aligning: "Aligning",
+            .calibrating: "Calibrating",
+            .baseline: "Baseline",
+            .chooseKotekan: "Choose Kotekan",
+            .countdown: "Countdown",
+            .playing: "Playing",
+            .results: "Results",
+            .settings: "Settings",
+            .malletTest: "Mallet Test",
+            .detectionTest: "Detection Test",
+            .audioTest: "Audio Test",
+            .captureTraining: "Capture Training",
+        ]
+
 }

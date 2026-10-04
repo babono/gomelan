@@ -18,9 +18,10 @@
 //
 
 import SwiftUI
+import FactoryKit
 
 struct RootView: View {
-    @State private var app = AppState()
+    @Environment(AppState.self) private var app
     @State private var camera = CameraController()
     @State private var cue = CuePlayer()
     @State private var audio = AudioEngineController()
@@ -99,7 +100,6 @@ struct RootView: View {
         .onChange(of: isCameraScreen) { _, showsCamera in
             if !showsCamera { camera.stop() }
         }
-        .environment(app)
         // Every switch under here ticks like a kajar when it flips. Buttons get
         // the same treatment one at a time (`.buttonStyle(.kajar)`), because
         // each of them already names a style and the nearest one wins; toggles

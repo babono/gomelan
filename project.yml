@@ -87,6 +87,9 @@ packages:
   Lottie:
     url: https://github.com/airbnb/lottie-ios
     from: "4.6.1"
+  Factory:
+    url: https://github.com/hmlongco/Factory
+    from: "3.4.1"
 
 targets:
   Kotek:
@@ -95,6 +98,8 @@ targets:
     dependencies:
       - package: Lottie
         product: Lottie
+      - package: Factory
+        product: FactoryKit
     sources:
       - path: Kotek
         excludes:
