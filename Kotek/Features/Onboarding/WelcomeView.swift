@@ -57,10 +57,12 @@ struct WelcomeView: View {
     /// as a button waiting for a label that never arrives.
     private static let cornerHeight: CGFloat = 40
 
-    private func cornerButton<V: View>(_ label: String,
-                                       hint: String,
-                                       action: @escaping () -> Void,
-                                       @ViewBuilder content: () -> V) -> some View {
+    private func cornerButton<V: View>(
+        _ label: String,
+        hint: String,
+        action: @escaping () -> Void,
+        @ViewBuilder content: () -> V
+    ) -> some View {
         Button(action: action) {
             content()
                 .padding(.horizontal, 12)
@@ -68,8 +70,10 @@ struct WelcomeView: View {
                 //R The border is what makes this a control. Without one it
                 //R reads as exactly what it is made of — a printed colophon —
                 //R and nobody taps a colophon.
-                .background(Theme.cream.opacity(0.05),
-                            in: RoundedRectangle(cornerRadius: Theme.radius))
+                .background(
+                    Theme.cream.opacity(0.05),
+                    in: RoundedRectangle(cornerRadius: Theme.radius)
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.radius)
                         .strokeBorder(Theme.cream.opacity(0.2), lineWidth: 1)
@@ -92,9 +96,11 @@ struct WelcomeView: View {
     /// needed a border, which it now has. Losing the line is also what lets the
     /// mark sit on one row, which is what lets the two buttons match.
     private var collaborator: some View {
-        cornerButton("About Mekar Bhuana",
-                     hint: "Opens a short introduction",
-                     action: { app.openGuide(.mekarBhuana) }) {
+        cornerButton(
+            "About Mekar Bhuana",
+            hint: "Opens a short introduction",
+            action: { app.openGuide(.mekarBhuana) }
+        ) {
             Image("logo-mekarbhuana")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -130,7 +136,9 @@ struct WelcomeView: View {
     /// from the top. Same question mark because it is the same gesture: this is
     /// the thing to press when you do not know what you are looking at.
     private var howItWorks: some View {
-        Button { app.openOnboarding() } label: {
+        Button {
+            app.openOnboarding()
+        } label: {
             Image(systemName: "questionmark.circle")
                 .font(.symbol(19, weight: .medium))
                 .foregroundStyle(Theme.cream.opacity(0.72))
@@ -144,7 +152,6 @@ struct WelcomeView: View {
         .accessibilityLabel("How Kotek works")
         .accessibilityHint("Replays the introduction")
     }
-
 
     var body: some View {
         GeometryReader { proxy in
@@ -160,11 +167,17 @@ struct WelcomeView: View {
                     // the same numbers. See `KotekWordmark`.
                     Spacer().frame(height: KotekWordmark.topInset(in: h))
 
-                    KotekWordmark(width: KotekWordmark.width(in: proxy.size.width))
+                    KotekWordmark(
+                        width: KotekWordmark.width(in: proxy.size.width)
+                    )
 
                     Spacer().frame(height: h * 0.07)
 
-                    PillButton(title: "Get started", trailingSystemImage: "arrow.right", style: .filled) {
+                    PillButton(
+                        title: "Get started",
+                        trailingSystemImage: "arrow.right",
+                        style: .filled
+                    ) {
                         music.stop()
                         app.begin()
                     }
@@ -215,7 +228,10 @@ struct WelcomeView: View {
                 VStack {
                     Spacer()
                     Pelawah()
-                        .frame(width: min(470, proxy.size.width * 0.54), height: 142)
+                        .frame(
+                            width: min(470, proxy.size.width * 0.54),
+                            height: 142
+                        )
                         .offset(y: 16)
                 }
             }
@@ -232,9 +248,12 @@ struct WelcomeView: View {
         // play, where its level is balanced against a limiter. So the space is
         // made by lowering everything else instead, the way it would be on a
         // desk.
-        .onAppear {
-            chime.strike()
-            music.start(volume: Self.duckedMusicLevel)
+        .task {
+            await chime.strike()
+        }
+        .task {
+            await music.start(volume: Self.duckedMusicLevel)
+
         }
         // The swell, once the gong has fallen. Cancelled automatically if the
         // player presses Enter first, which is exactly right: the music is on
@@ -252,7 +271,9 @@ struct WelcomeView: View {
         // and detection needs `.measurement` in force before it gets there.
         .onDisappear {
             music.stop()
-            AudioSessionManager.configure()
+            Task { @concurrent in
+                await AudioSessionManager.configure()
+            }
         }
     }
 }
@@ -311,21 +332,89 @@ private struct Ornaments: View {
     /// symmetric arrangement reads as a border rather than as scattered marks.
     private let marks: [Mark] = [
         // Left
-        Mark(id: 0, art: 0, x: 0.08, y: 0.16, size: 58, rise: 16, risePeriod: 11, sway: 0.35, spinPeriod:  38, opacity: 0.50),
-        Mark(id: 1, art: 1, x: 0.14, y: 0.48, size: 44, rise: 12, risePeriod:  8, sway: 0.30, spinPeriod: -29, opacity: 0.38),
-        Mark(id: 2, art: 0, x: 0.06, y: 0.79, size: 66, rise: 19, risePeriod: 14, sway: 0.25, spinPeriod:  47, opacity: 0.45),
+        Mark(
+            id: 0,
+            art: 0,
+            x: 0.08,
+            y: 0.16,
+            size: 58,
+            rise: 16,
+            risePeriod: 11,
+            sway: 0.35,
+            spinPeriod: 38,
+            opacity: 0.50
+        ),
+        Mark(
+            id: 1,
+            art: 1,
+            x: 0.14,
+            y: 0.48,
+            size: 44,
+            rise: 12,
+            risePeriod: 8,
+            sway: 0.30,
+            spinPeriod: -29,
+            opacity: 0.38
+        ),
+        Mark(
+            id: 2,
+            art: 0,
+            x: 0.06,
+            y: 0.79,
+            size: 66,
+            rise: 19,
+            risePeriod: 14,
+            sway: 0.25,
+            spinPeriod: 47,
+            opacity: 0.45
+        ),
         // Right
-        Mark(id: 3, art: 1, x: 0.90, y: 0.13, size: 62, rise: 18, risePeriod: 13, sway: 0.28, spinPeriod: -34, opacity: 0.46),
-        Mark(id: 4, art: 0, x: 0.84, y: 0.45, size: 46, rise: 13, risePeriod:  9, sway: 0.32, spinPeriod:  26, opacity: 0.36),
-        Mark(id: 5, art: 1, x: 0.92, y: 0.76, size: 54, rise: 15, risePeriod: 12, sway: 0.27, spinPeriod: -41, opacity: 0.44),
+        Mark(
+            id: 3,
+            art: 1,
+            x: 0.90,
+            y: 0.13,
+            size: 62,
+            rise: 18,
+            risePeriod: 13,
+            sway: 0.28,
+            spinPeriod: -34,
+            opacity: 0.46
+        ),
+        Mark(
+            id: 4,
+            art: 0,
+            x: 0.84,
+            y: 0.45,
+            size: 46,
+            rise: 13,
+            risePeriod: 9,
+            sway: 0.32,
+            spinPeriod: 26,
+            opacity: 0.36
+        ),
+        Mark(
+            id: 5,
+            art: 1,
+            x: 0.92,
+            y: 0.76,
+            size: 54,
+            rise: 15,
+            risePeriod: 12,
+            sway: 0.27,
+            spinPeriod: -41,
+            opacity: 0.44
+        ),
     ]
 
     var body: some View {
         GeometryReader { geo in
             ForEach(marks) { mark in
                 DriftingMark(mark: mark, inverted: mark.id.isMultiple(of: 2))
-                    .position(x: mark.x * geo.size.width,
-                              y: mark.y * geo.size.height)
+                    .position(
+                        x: mark.x * geo.size.width,
+                        y: mark.y * geo.size.height
+                    )
             }
         }
         .allowsHitTesting(false)
@@ -357,17 +446,28 @@ private struct DriftingMark: View {
             .resizable()
             .frame(width: mark.size, height: mark.size)
             .opacity(mark.opacity)
-            .rotationEffect(.degrees(spun ? (mark.spinPeriod < 0 ? -360 : 360) : 0))
-            .animation(.linear(duration: abs(mark.spinPeriod))
-                        .repeatForever(autoreverses: false), value: spun)
+            .rotationEffect(
+                .degrees(spun ? (mark.spinPeriod < 0 ? -360 : 360) : 0)
+            )
+            .animation(
+                .linear(duration: abs(mark.spinPeriod))
+                    .repeatForever(autoreverses: false),
+                value: spun
+            )
             .offset(y: (risen ? mark.rise : -mark.rise) * direction)
             //R Half the period: one leg of an autoreversing animation is half a
             //R round trip, and `risePeriod` has always meant the round trip.
-            .animation(.easeInOut(duration: mark.risePeriod / 2)
-                        .repeatForever(autoreverses: true), value: risen)
+            .animation(
+                .easeInOut(duration: mark.risePeriod / 2)
+                    .repeatForever(autoreverses: true),
+                value: risen
+            )
             .offset(x: (swayed ? swayBy : -swayBy) * direction)
-            .animation(.easeInOut(duration: mark.risePeriod * 1.6 / 2)
-                        .repeatForever(autoreverses: true), value: swayed)
+            .animation(
+                .easeInOut(duration: mark.risePeriod * 1.6 / 2)
+                    .repeatForever(autoreverses: true),
+                value: swayed
+            )
             .onAppear {
                 spun = true
                 risen = true
@@ -463,14 +563,21 @@ private struct BilahRow: View {
 
             Canvas { context, size in
                 let gap = size.width * 0.015
-                let barWidth = (size.width - gap * CGFloat(count - 1)) / CGFloat(count)
+                let barWidth =
+                    (size.width - gap * CGFloat(count - 1)) / CGFloat(count)
 
                 for i in 0..<count {
-                    let state = animated ? state(bar: i, at: t)
-                                         : BarState(glow: i == 3 ? 1 : 0, dip: 0)
+                    let state =
+                        animated
+                        ? state(bar: i, at: t)
+                        : BarState(glow: i == 3 ? 1 : 0, dip: 0)
                     let lit = state.glow
-                    let rect = CGRect(x: (barWidth + gap) * CGFloat(i), y: state.dip,
-                                      width: barWidth, height: size.height)
+                    let rect = CGRect(
+                        x: (barWidth + gap) * CGFloat(i),
+                        y: state.dip,
+                        width: barWidth,
+                        height: size.height
+                    )
                     let shape = Path(roundedRect: rect, cornerRadius: 5)
 
                     // Bronze at rest, cream when struck.
@@ -478,17 +585,30 @@ private struct BilahRow: View {
                     context.fill(shape, with: .color(face))
 
                     // The shaded foot of the bar.
-                    let footRect = CGRect(x: rect.minX, y: rect.maxY - rect.height * 0.26,
-                                          width: rect.width, height: rect.height * 0.26)
+                    let footRect = CGRect(
+                        x: rect.minX,
+                        y: rect.maxY - rect.height * 0.26,
+                        width: rect.width,
+                        height: rect.height * 0.26
+                    )
                     context.fill(
                         Path(footRect),
-                        with: .color(blend(Color(hex: 0xA98A58), Color(hex: 0xD6BC85), lit)))
+                        with: .color(
+                            blend(
+                                Color(hex: 0xA98A58),
+                                Color(hex: 0xD6BC85),
+                                lit
+                            )
+                        )
+                    )
 
                     // A struck bar lifts very slightly out of the frame.
                     if lit > 0.01 {
-                        context.stroke(shape,
-                                       with: .color(Theme.cream.opacity(lit * 0.5)),
-                                       lineWidth: 1.5)
+                        context.stroke(
+                            shape,
+                            with: .color(Theme.cream.opacity(lit * 0.5)),
+                            lineWidth: 1.5
+                        )
                     }
                 }
             }
@@ -507,9 +627,11 @@ private struct BilahRow: View {
         for back in 0...lookback {
             let n = currentStroke - back
             guard n >= 0, struckBar(stroke: n) == bar else { continue }
-            let age = t - Double(n) * stroke    // most recent hit wins
-            return BarState(glow: max(0, 1 - age / decay),
-                            dip: maxDip * CGFloat(exp(-age / dipDecay)))
+            let age = t - Double(n) * stroke  // most recent hit wins
+            return BarState(
+                glow: max(0, 1 - age / decay),
+                dip: maxDip * CGFloat(exp(-age / dipDecay))
+            )
         }
         return BarState(glow: 0, dip: 0)
     }
@@ -531,9 +653,9 @@ private struct BilahRow: View {
     /// splitmix64 — a cheap, well-mixed integer hash. Deterministic, so the
     /// same stroke always lands on the same bar however often it is redrawn.
     private static func hash(_ x: Int) -> UInt64 {
-        var h = UInt64(bitPattern: Int64(x)) &+ 0x9E3779B97F4A7C15
-        h = (h ^ (h >> 30)) &* 0xBF58476D1CE4E5B9
-        h = (h ^ (h >> 27)) &* 0x94D049BB133111EB
+        var h = UInt64(bitPattern: Int64(x)) &+ 0x9E37_79B9_7F4A_7C15
+        h = (h ^ (h >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        h = (h ^ (h >> 27)) &* 0x94D0_49BB_1331_11EB
         return h ^ (h >> 31)
     }
 

@@ -49,17 +49,28 @@ struct GuideView: View {
         switch guide {
         case .app:
             GuidePanel(title: "Your gangsa", onClose: onClose) {
-                GuideColumns { AppGuideInstrument() } right: { AppGuideGrade() }
+                GuideColumns {
+                    AppGuideInstrument()
+                } right: {
+                    AppGuideGrade()
+                }
             }
         case .kotekan:
             GuidePanel(title: "Kotekan", onClose: onClose) {
-                GuideColumns { KotekanGuideWeave() } right: { KotekanGuideLegend() }
+                GuideColumns {
+                    KotekanGuideWeave()
+                } right: {
+                    KotekanGuideLegend()
+                }
             }
         case .mekarBhuana:
             //R Does not scroll: it pages. See `GuideSlides`.
-            GuidePanel(title: "Mekar Bhuana",
-                       titleImage: "logo-mekarbhuana",
-                       onClose: onClose, scrolls: false) {
+            GuidePanel(
+                title: "Mekar Bhuana",
+                titleImage: "logo-mekarbhuana",
+                onClose: onClose,
+                scrolls: false
+            ) {
                 GuideSlides(slides: MekarBhuanaDeck.slides)
             }
         }
@@ -103,7 +114,12 @@ struct GuidePanel<Content: View>: View {
             // stray touch while reading does not dismiss it.
             Color.black.opacity(0.72)
                 .ignoresSafeArea()
-                .onTapGesture { KajarTick.strike(); onClose() }
+                .onTapGesture {
+                    Task { @concurrent in
+                        await KajarTick.strike()
+                    }
+                    onClose()
+                }
 
             panel
                 .padding(.horizontal, 28)
@@ -166,8 +182,13 @@ struct GuidePanel<Content: View>: View {
 
             Spacer(minLength: 16)
 
-            PillButton(title: "Got it", style: .filled, compact: true, action: onClose)
-                .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 8 }
+            PillButton(
+                title: "Got it",
+                style: .filled,
+                compact: true,
+                action: onClose
+            )
+            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 8 }
         }
         .padding(.horizontal, 22)
         .padding(.top, 14)
@@ -231,7 +252,6 @@ struct GuideLead: View {
     }
 }
 
-
 // MARK: - "Your gangsa"
 
 /// What the instrument on the other side of the camera is, and why it is the
@@ -244,14 +264,20 @@ struct GuideLead: View {
 private struct AppGuideInstrument: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            GuideBlock("The instrument",
-                       "Bronze bilah over bamboo resonators, struck with a panggul and damped with the other hand. Bronze rings for seconds, so damping matters as much as striking.")
+            GuideBlock(
+                "The instrument",
+                "Bronze bilah over bamboo resonators, struck with a panggul and damped with the other hand. Bronze rings for seconds, so damping matters as much as striking."
+            )
 
-            GuideBlock("Only the gangsa",
-                       "Kotek reads one instrument. Reyong, jegogan, kendang and the rest of the gamelan are not supported yet.")
+            GuideBlock(
+                "Only the gangsa",
+                "Kotek reads one instrument. Reyong, jegogan, kendang and the rest of the gamelan are not supported yet."
+            )
 
-            GuideBlock("Yours, specifically",
-                       "No two gamelan are tuned alike, so the app learns your instrument once — where its keys are, how a strike sounds — and keeps it. Each card here is one.")
+            GuideBlock(
+                "Yours, specifically",
+                "No two gamelan are tuned alike, so the app learns your instrument once — where its keys are, how a strike sounds — and keeps it. Each card here is one."
+            )
         }
     }
 }
@@ -264,7 +290,9 @@ private struct AppGuideGrade: View {
             //R covers both halves and can no longer name this one.
             SectionLabel("Its grade", color: Theme.gold)
 
-            GuideLead("Notes that land — right key, near enough the beat — build the grade of the gangsa you played them on. It only ever goes up.")
+            GuideLead(
+                "Notes that land — right key, near enough the beat — build the grade of the gangsa you played them on. It only ever goes up."
+            )
 
             VStack(spacing: 0) {
                 //R Reversed: highest first. A ladder is read top-down, and the
@@ -273,12 +301,17 @@ private struct AppGuideGrade: View {
                 ForEach(Mastery.Rank.allCases.reversed(), id: \.self) { rank in
                     row(rank)
                     if rank != Mastery.Rank.allCases.first {
-                        Rectangle().fill(Theme.cream.opacity(0.07)).frame(height: 1)
+                        Rectangle().fill(Theme.cream.opacity(0.07)).frame(
+                            height: 1
+                        )
                     }
                 }
             }
             .padding(.vertical, 3)
-            .background(Theme.ground.opacity(0.5), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .background(
+                Theme.ground.opacity(0.5),
+                in: RoundedRectangle(cornerRadius: Theme.radius)
+            )
         }
     }
 
@@ -301,9 +334,12 @@ private struct AppGuideGrade: View {
 
             Spacer(minLength: 6)
 
-            Text(rank.threshold == 0 ? "from note one" : "\(rank.threshold.formatted())")
-                .font(.sans(11, weight: .medium))
-                .foregroundStyle(Theme.cream.opacity(0.62))
+            Text(
+                rank.threshold == 0
+                    ? "from note one" : "\(rank.threshold.formatted())"
+            )
+            .font(.sans(11, weight: .medium))
+            .foregroundStyle(Theme.cream.opacity(0.62))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -316,14 +352,20 @@ private struct AppGuideGrade: View {
 private struct KotekanGuideWeave: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            GuideBlock("One melody, two players",
-                       "A kotekan is a line too fast to play alone, so it is split. Neither part is the tune. The tune is what you hear when both are going.")
+            GuideBlock(
+                "One melody, two players",
+                "A kotekan is a line too fast to play alone, so it is split. Neither part is the tune. The tune is what you hear when both are going."
+            )
 
-            GuideBlock("Polos",
-                       "The straight half. It lands on the beat with the kajar and holds the frame steady. This is the one to learn first.")
+            GuideBlock(
+                "Polos",
+                "The straight half. It lands on the beat with the kajar and holds the frame steady. This is the one to learn first."
+            )
 
-            GuideBlock("Sangsih",
-                       "The answering half. It falls in the gaps polos leaves, off the beat — harder, and the reason the pair sounds twice as fast as either.")
+            GuideBlock(
+                "Sangsih",
+                "The answering half. It falls in the gaps polos leaves, off the beat — harder, and the reason the pair sounds twice as fast as either."
+            )
         }
     }
 }
@@ -333,19 +375,28 @@ private struct KotekanGuideLegend: View {
         VStack(alignment: .leading, spacing: 10) {
             SectionLabel("Reading a card", color: Theme.gold)
 
-            GuideLead("Each card draws its figure across one gong cycle: time runs left to right, and the keys go low to high up the side. Swipe to hear the next.")
+            GuideLead(
+                "Each card draws its figure across one gong cycle: time runs left to right, and the keys go low to high up the side. Swipe to hear the next."
+            )
 
             VStack(spacing: 0) {
                 row(swatch: .single(Theme.polosVoice), "Polos", "on the beat")
                 divider
-                row(swatch: .single(Theme.sangsihVoice), "Sangsih", "between the beats")
+                row(
+                    swatch: .single(Theme.sangsihVoice),
+                    "Sangsih",
+                    "between the beats"
+                )
                 divider
                 row(swatch: .split, "Both together", "the shared anchor tone")
                 divider
                 row(swatch: .line, "The sweep", "where the cycle is now")
             }
             .padding(.vertical, 3)
-            .background(Theme.ground.opacity(0.5), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .background(
+                Theme.ground.opacity(0.5),
+                in: RoundedRectangle(cornerRadius: Theme.radius)
+            )
         }
     }
 
@@ -359,7 +410,9 @@ private struct KotekanGuideLegend: View {
         case line
     }
 
-    private func row(swatch: Swatch, _ title: String, _ gloss: String) -> some View {
+    private func row(swatch: Swatch, _ title: String, _ gloss: String)
+        -> some View
+    {
         HStack(spacing: 10) {
             Group {
                 switch swatch {
@@ -464,7 +517,11 @@ struct GuideSlides: View {
             //R where a picture is going to go.
             text(slide)
                 .frame(maxWidth: 520, alignment: .topLeading)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .topLeading
+                )
         } else {
             HStack(alignment: .top, spacing: 24) {
                 art(slide.art).frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -474,7 +531,11 @@ struct GuideSlides: View {
                 //R long is then centred in a frame smaller than itself — which
                 //R clips the title off the top AND the link off the bottom.
                 text(slide)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .topLeading
+                    )
             }
         }
     }
@@ -499,7 +560,9 @@ struct GuideSlides: View {
             //R takes whatever it is offered and the picture is painted into it,
             //R so artwork can be any shape and the layout never hears about it.
             Color.clear
-                .overlay(Image(name).resizable().aspectRatio(contentMode: .fill))
+                .overlay(
+                    Image(name).resizable().aspectRatio(contentMode: .fill)
+                )
                 .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
                 .overlay(
@@ -518,7 +581,10 @@ struct GuideSlides: View {
                 Spacer(minLength: 0)
             }
             .padding(18)
-            .background(Theme.ground.opacity(0.5), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .background(
+                Theme.ground.opacity(0.5),
+                in: RoundedRectangle(cornerRadius: Theme.radius)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.radius)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
@@ -553,10 +619,15 @@ struct GuideSlides: View {
     private func linkButton(_ link: URL) -> some View {
         Link(destination: link) {
             HStack(spacing: 5) {
-                Text((link.host() ?? "Open").replacingOccurrences(of: "www.", with: ""))
-                    .font(.sans(13))
-                    .italic()
-                    .underline()
+                Text(
+                    (link.host() ?? "Open").replacingOccurrences(
+                        of: "www.",
+                        with: ""
+                    )
+                )
+                .font(.sans(13))
+                .italic()
+                .underline()
                 Image(systemName: "arrow.up.right")
                     .font(.symbol(11, weight: .semibold))
             }
@@ -572,9 +643,14 @@ struct GuideSlides: View {
     private var dots: some View {
         HStack(spacing: 7) {
             ForEach(slides.indices, id: \.self) { i in
-                Button { withAnimation(.snappy(duration: 0.25)) { index = i } } label: {
+                Button {
+                    withAnimation(.snappy(duration: 0.25)) { index = i }
+                } label: {
                     Circle()
-                        .fill(i == index ? Theme.buttonFill : Theme.cream.opacity(0.22))
+                        .fill(
+                            i == index
+                                ? Theme.buttonFill : Theme.cream.opacity(0.22)
+                        )
                         .frame(width: 7, height: 7)
                         //R The dot is drawn at 7pt and hit at 30. A row of
                         //R seven-point targets is a row of near-misses.
@@ -593,18 +669,30 @@ struct GuideSlides: View {
 
 enum MekarBhuanaDeck {
     static let slides: [GuideSlide] = [
-        GuideSlide(art: .photo("photo-mekarbhuana"),
-                   title: "To blossom around the world",
-                   text: "That is what Mekar Bhuana means, and it is the hope behind it: that Bali's oldest music and dance become known again, at home and beyond it."),
-        GuideSlide(art: .photo("photo-founder"),
-                   title: "The centre",
-                   text: "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Vaughan Hatch founded it in 2000 around an antique Semara Pagulingan he restored, having found how few classical ensembles were ever recorded. Putu Evie Suyadnyani, a Legong dancer, brought the dance in 2004."),
-        GuideSlide(art: .photo("photo-collection"),
-                   title: "Collection",
-                   text: "Twenty-seven gamelan sets: twenty-two in Bali, five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an Angklung set from Lombok restored in 2019."),
-        GuideSlide(art: .photo("photo-centre"),
-                   title: "Visiting",
-                   text: "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. The centre is a family home, so there are no walk-ins — book by email two weeks ahead.",
-                   link: URL(string: "https://balimusicanddance.com")),
+        GuideSlide(
+            art: .photo("photo-mekarbhuana"),
+            title: "To blossom around the world",
+            text:
+                "That is what Mekar Bhuana means, and it is the hope behind it: that Bali's oldest music and dance become known again, at home and beyond it."
+        ),
+        GuideSlide(
+            art: .photo("photo-founder"),
+            title: "The centre",
+            text:
+                "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Vaughan Hatch founded it in 2000 around an antique Semara Pagulingan he restored, having found how few classical ensembles were ever recorded. Putu Evie Suyadnyani, a Legong dancer, brought the dance in 2004."
+        ),
+        GuideSlide(
+            art: .photo("photo-collection"),
+            title: "Collection",
+            text:
+                "Twenty-seven gamelan sets: twenty-two in Bali, five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an Angklung set from Lombok restored in 2019."
+        ),
+        GuideSlide(
+            art: .photo("photo-centre"),
+            title: "Visiting",
+            text:
+                "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. The centre is a family home, so there are no walk-ins — book by email two weeks ahead.",
+            link: URL(string: "https://balimusicanddance.com")
+        ),
     ]
 }

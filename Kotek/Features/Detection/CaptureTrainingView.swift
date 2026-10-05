@@ -97,7 +97,9 @@ struct CaptureTrainingView: View {
                     .frame(width: rect.width, height: rect.height)
                     .contentShape(Rectangle())
                     .onTapGesture {
-                        KajarTick.strike()
+                        Task { @concurrent in
+                            await KajarTick.strike()
+                        }
                         target = (target == key.index) ? nil : key.index
                     }
                     .position(x: rect.midX, y: rect.midY)

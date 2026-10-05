@@ -55,7 +55,13 @@ final class AudioEngineController {
 
     /// Called on the main queue for every onset, with the fingerprint that the
     /// calibration flow should store, plus a display-only pitch estimate.
-    var onCalibrationStrike: ((_ fingerprint: [Float], _ fundamentalHz: Double, _ hostTime: Double) -> Void)?
+    var onCalibrationStrike:
+        (
+            (
+                _ fingerprint: [Float], _ fundamentalHz: Double,
+                _ hostTime: Double
+            ) -> Void
+        )?
 
     /// Progress while learning the strike-sound baseline. `accepted` is how many
     /// consistent strikes are in the template so far; `wasAccepted` says whether
@@ -181,14 +187,18 @@ final class AudioEngineController {
         // the way it used to be — and `inputNode` on a playback-only session is
         // how detection would silently stop working. Idempotent, so paying for
         // it on every start is cheaper than reasoning about who got here first.
-        AudioSessionManager.configure()
+
+        Task { @concurrent in
+            await AudioSessionManager.configure()
+        }
 
         let input = engine.inputNode
         let format = input.inputFormat(forBus: 0)
         let sampleRate = format.sampleRate > 0 ? format.sampleRate : 44100
 
         // Prefer the settings the Python builder recorded; fall back to defaults.
-        var newConfig = CalibrationFile.loadFromBundle()?.dspConfig(sampleRate: sampleRate)
+        var newConfig =
+            CalibrationFile.loadFromBundle()?.dspConfig(sampleRate: sampleRate)
             ?? DSPConfig()
         newConfig.sampleRate = sampleRate
 
@@ -196,9 +206,11 @@ final class AudioEngineController {
             configure(with: newConfig, keys: profile.keys)
         }
 
-        input.installTap(onBus: 0,
-                         bufferSize: AVAudioFrameCount(1024),
-                         format: format) { [weak self] buffer, when in
+        input.installTap(
+            onBus: 0,
+            bufferSize: AVAudioFrameCount(1024),
+            format: format
+        ) { [weak self] buffer, when in
             self?.queue.async { self?.handle(buffer, when: when) }
         }
 
@@ -237,7 +249,9 @@ final class AudioEngineController {
         let input = engine.inputNode
         let format = input.inputFormat(forBus: 0)
         guard format.sampleRate > 0 else {
-            print("[AudioEngine] configuration changed but no input format; ear is down")
+            print(
+                "[AudioEngine] configuration changed but no input format; ear is down"
+            )
             return
         }
 
@@ -246,9 +260,11 @@ final class AudioEngineController {
         // key opinions and the dictionary this session has learned. Recovering
         // audio flow must not cost the tuning that makes detection work.
         input.removeTap(onBus: 0)
-        input.installTap(onBus: 0,
-                         bufferSize: AVAudioFrameCount(1024),
-                         format: format) { [weak self] buffer, when in
+        input.installTap(
+            onBus: 0,
+            bufferSize: AVAudioFrameCount(1024),
+            format: format
+        ) { [weak self] buffer, when in
             self?.queue.async { self?.handle(buffer, when: when) }
         }
         engine.prepare()
@@ -258,7 +274,9 @@ final class AudioEngineController {
             resetDetector()
             print("[AudioEngine] recovered after a configuration change")
         } catch {
-            print("[AudioEngine] could not restart after a configuration change: \(error)")
+            print(
+                "[AudioEngine] could not restart after a configuration change: \(error)"
+            )
         }
     }
 
@@ -299,8 +317,10 @@ final class AudioEngineController {
     /// positive across all five reference recordings.
     ///
     /// Mirrors `strongest_onset` in gamelan_dsp.py.
-    func captureStrongestStrike(duration: TimeInterval,
-                                completion: @escaping (CapturedStrike?) -> Void) {
+    func captureStrongestStrike(
+        duration: TimeInterval,
+        completion: @escaping (CapturedStrike?) -> Void
+    ) {
         queue.async { [weak self] in
             guard let self else { return }
             // Start clean, then wait out the warm-up before the window opens.
@@ -326,7 +346,10 @@ final class AudioEngineController {
     }
 
     /// Worst-case similarity between calibrated keys. Want < 0.5.
-    func separability(completion: @escaping ((worst: Double, mean: Double, pair: (Int, Int))?) -> Void) {
+    func separability(
+        completion:
+            @escaping ((worst: Double, mean: Double, pair: (Int, Int))?) -> Void
+    ) {
         queue.async { [weak self] in
             let result = self?.classifier?.separability()
             DispatchQueue.main.async { completion(result) }
@@ -441,7 +464,13 @@ final class AudioEngineController {
         guard let flux, let detector else { return }
 
         while nextWindowStart + config.onsetWindow <= ring.totalWritten {
-            guard ring.read(from: nextWindowStart, count: config.onsetWindow, into: &windowScratch) else {
+            guard
+                ring.read(
+                    from: nextWindowStart,
+                    count: config.onsetWindow,
+                    into: &windowScratch
+                )
+            else {
                 // Fell behind the ring — skip ahead rather than emit nonsense.
                 nextWindowStart = ring.oldestAvailable
                 continue
@@ -461,7 +490,7 @@ final class AudioEngineController {
         for onset in pending {
             let required = onset.sampleIndex + config.fingerprintLatencySamples
             if ring.totalWritten < required {
-                stillPending.append(onset)   // not enough of the note has sounded yet
+                stillPending.append(onset)  // not enough of the note has sounded yet
                 continue
             }
             emit(onset, fingerprinter: fingerprinter)
@@ -473,26 +502,43 @@ final class AudioEngineController {
     private func amplitude(atSample index: Int) -> Float {
         let span = Int(config.amplitudeMeasureSeconds * config.sampleRate)
         var scratch = [Float]()
-        guard ring.read(from: index, count: span, into: &scratch) else { return 0 }
+        guard ring.read(from: index, count: span, into: &scratch) else {
+            return 0
+        }
         var peak: Float = 0
         for value in scratch { peak = max(peak, abs(value)) }
         return peak
     }
 
-    private func emit(_ onset: OnsetDetector.Onset, fingerprinter: Fingerprinter) {
+    private func emit(
+        _ onset: OnsetDetector.Onset,
+        fingerprinter: Fingerprinter
+    ) {
         let hostTime = hostSeconds(forSample: onset.sampleIndex)
         let peak = amplitude(atSample: onset.sampleIndex)
 
         // Too quiet to be a mallet strike. Silent by design — this fires on room
         // noise many times a second and is not something to report (except to the
         // audio test screen, which wants to see the noise floor vs the gate).
-        let gate = max(config.minStrikeAmplitude,
-                       config.minAmplitudeRelative * strikeAmplitudePeak)
+        let gate = max(
+            config.minStrikeAmplitude,
+            config.minAmplitudeRelative * strikeAmplitudePeak
+        )
         guard peak >= gate else {
-            reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: false, fingerprinted: false, baselineSimilarity: nil)
+            reportOnsetDebug(
+                hostTime: hostTime,
+                amplitude: peak,
+                gate: gate,
+                passedGate: false,
+                fingerprinted: false,
+                baselineSimilarity: nil
+            )
             return
         }
-        strikeAmplitudePeak = max(strikeAmplitudePeak * amplitudePeakDecay, peak)
+        strikeAmplitudePeak = max(
+            strikeAmplitudePeak * amplitudePeakDecay,
+            peak
+        )
 
         // Record the onset time so the vision path can snap its (frame-grained)
         // strike timing onto this (sub-ms) onset when the two line up.
@@ -500,7 +546,9 @@ final class AudioEngineController {
 
         // The strike trigger. Detection identifies the key from vision now, so
         // this is all a normal strike needs — no per-key audio classification.
-        DispatchQueue.main.async { [weak self] in self?.onStrikeDetected?(hostTime) }
+        DispatchQueue.main.async { [weak self] in
+            self?.onStrikeDetected?(hostTime)
+        }
 
         // The second opinion. Costs one extra 4096-point FFT per strike — tens
         // of microseconds, at most twenty strikes a second — plus an NNLS solve
@@ -508,21 +556,44 @@ final class AudioEngineController {
         // the DSP queue rather than lazily on lookup, both to keep the work off
         // the main actor and because `previous` only means anything if strikes
         // are decomposed in the order they were played.
-        if keyOpinionsEnabled, let bands = fingerprinter.linearBands(onsetSample: onset.sampleIndex, ring: ring) {
+        if keyOpinionsEnabled,
+            let bands = fingerprinter.linearBands(
+                onsetSample: onset.sampleIndex,
+                ring: ring
+            )
+        {
             let decomposition = decomposer?.decompose(linearBands: bands)
-            recordOpinion(StrikeOpinion(hostTime: hostTime,
-                                        decomposition: decomposition,
-                                        bands: bands))
+            recordOpinion(
+                StrikeOpinion(
+                    hostTime: hostTime,
+                    decomposition: decomposition,
+                    bands: bands
+                )
+            )
         }
 
         // The fingerprint is needed for calibration, the audio test's readout, and
         // the gangsa-strike baseline (learning it or scoring against it). Skip the
         // 4096-pt FFT entirely in normal play when none of those are active.
-        guard capture != nil || onCalibrationStrike != nil || onOnsetDebug != nil
-                || baselineAccumulator != nil || strikeBaseline != nil else { return }
+        guard
+            capture != nil || onCalibrationStrike != nil || onOnsetDebug != nil
+                || baselineAccumulator != nil || strikeBaseline != nil
+        else { return }
 
-        guard let vector = fingerprinter.fingerprint(onsetSample: onset.sampleIndex, ring: ring) else {
-            reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: false, baselineSimilarity: nil)
+        guard
+            let vector = fingerprinter.fingerprint(
+                onsetSample: onset.sampleIndex,
+                ring: ring
+            )
+        else {
+            reportOnsetDebug(
+                hostTime: hostTime,
+                amplitude: peak,
+                gate: gate,
+                passedGate: true,
+                fingerprinted: false,
+                baselineSimilarity: nil
+            )
             return
         }
 
@@ -536,37 +607,64 @@ final class AudioEngineController {
                 lastBaselineOnsetTime = hostTime
                 var wasAccepted = true
                 var sim: Double?
-                if acc.count >= baselineSeedCount, let avg = KeyClassifier.averageFingerprints(acc) {
+                if acc.count >= baselineSeedCount,
+                    let avg = KeyClassifier.averageFingerprints(acc)
+                {
                     let s = dot(avg, vector)
                     sim = Double(s)
                     wasAccepted = s >= baselineLearnConsistency
                 }
-                if wasAccepted { acc.append(vector); baselineAccumulator = acc }
+                if wasAccepted {
+                    acc.append(vector)
+                    baselineAccumulator = acc
+                }
                 let acceptedCount = acc.count
                 DispatchQueue.main.async { [weak self] in
-                    self?.onBaselineProgress?(BaselineProgress(accepted: acceptedCount,
-                                                               wasAccepted: wasAccepted,
-                                                               similarity: sim))
+                    self?.onBaselineProgress?(
+                        BaselineProgress(
+                            accepted: acceptedCount,
+                            wasAccepted: wasAccepted,
+                            similarity: sim
+                        )
+                    )
                 }
             }
         }
         let similarity = strikeBaseline.map { Double(dot($0, vector)) }
-        reportOnsetDebug(hostTime: hostTime, amplitude: peak, gate: gate, passedGate: true, fingerprinted: true, baselineSimilarity: similarity)
+        reportOnsetDebug(
+            hostTime: hostTime,
+            amplitude: peak,
+            gate: gate,
+            passedGate: true,
+            fingerprinted: true,
+            baselineSimilarity: similarity
+        )
 
         // Confirmed gangsa strike → the play trigger.
         if let similarity, similarity >= Double(baselineThreshold) {
-            DispatchQueue.main.async { [weak self] in self?.onConfirmedStrike?(hostTime) }
+            DispatchQueue.main.async { [weak self] in
+                self?.onConfirmedStrike?(hostTime)
+            }
         }
 
         // A capture window collects candidates rather than reporting the first.
         if capture != nil {
-            let hz = fingerprinter.estimateFundamental(onsetSample: onset.sampleIndex, ring: ring)
-            let partials = fingerprinter.topPeaks(onsetSample: onset.sampleIndex, ring: ring, count: 4)
-            let strike = CapturedStrike(fingerprint: vector,
-                                        fundamentalHz: hz,
-                                        hostTime: hostTime,
-                                        amplitude: peak,
-                                        topPartials: partials)
+            let hz = fingerprinter.estimateFundamental(
+                onsetSample: onset.sampleIndex,
+                ring: ring
+            )
+            let partials = fingerprinter.topPeaks(
+                onsetSample: onset.sampleIndex,
+                ring: ring,
+                count: 4
+            )
+            let strike = CapturedStrike(
+                fingerprint: vector,
+                fundamentalHz: hz,
+                hostTime: hostTime,
+                amplitude: peak,
+                topPartials: partials
+            )
             capture?.candidateCount += 1
             if strike.amplitude > (capture?.best?.amplitude ?? -1) {
                 capture?.best = strike
@@ -575,7 +673,10 @@ final class AudioEngineController {
         }
 
         if onCalibrationStrike != nil {
-            let hz = fingerprinter.estimateFundamental(onsetSample: onset.sampleIndex, ring: ring)
+            let hz = fingerprinter.estimateFundamental(
+                onsetSample: onset.sampleIndex,
+                ring: ring
+            )
             DispatchQueue.main.async { [weak self] in
                 self?.onCalibrationStrike?(vector, hz, hostTime)
             }
@@ -584,7 +685,9 @@ final class AudioEngineController {
 
     /// Absolute sample index → CACurrentMediaTime seconds.
     private func hostSeconds(forSample index: Int) -> Double {
-        guard let anchor = anchorHostSeconds else { return CACurrentMediaTime() }
+        guard let anchor = anchorHostSeconds else {
+            return CACurrentMediaTime()
+        }
         return anchor + Double(index - anchorSampleIndex) / config.sampleRate
     }
 
@@ -609,13 +712,23 @@ final class AudioEngineController {
         }
     }
 
-    private func reportOnsetDebug(hostTime: Double, amplitude: Float, gate: Float,
-                                  passedGate: Bool, fingerprinted: Bool,
-                                  baselineSimilarity: Double?) {
+    private func reportOnsetDebug(
+        hostTime: Double,
+        amplitude: Float,
+        gate: Float,
+        passedGate: Bool,
+        fingerprinted: Bool,
+        baselineSimilarity: Double?
+    ) {
         guard onOnsetDebug != nil else { return }
-        let debug = OnsetDebug(hostTime: hostTime, amplitude: amplitude, gate: gate,
-                               passedGate: passedGate, fingerprinted: fingerprinted,
-                               baselineSimilarity: baselineSimilarity)
+        let debug = OnsetDebug(
+            hostTime: hostTime,
+            amplitude: amplitude,
+            gate: gate,
+            passedGate: passedGate,
+            fingerprinted: fingerprinted,
+            baselineSimilarity: baselineSimilarity
+        )
         DispatchQueue.main.async { [weak self] in self?.onOnsetDebug?(debug) }
     }
 
@@ -647,9 +760,12 @@ final class AudioEngineController {
     ///
     /// This is a RECOVERY path, called only when vision declined to name a key.
     /// It is never consulted to second-guess a confident visual decision.
-    func keyOpinion(at hostTime: Double, within tolerance: Double = 0.12) -> KeyActivation? {
+    func keyOpinion(at hostTime: Double, within tolerance: Double = 0.12)
+        -> KeyActivation?
+    {
         opinionsLock.lock()
-        let match = recentOpinions
+        let match =
+            recentOpinions
             .filter { abs($0.hostTime - hostTime) <= tolerance }
             .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
         opinionsLock.unlock()
@@ -657,8 +773,9 @@ final class AudioEngineController {
         // `isTrusted` was decided on the DSP queue when the strike was decomposed,
         // so nothing owned by that queue is read from here.
         guard let decomposition = match?.decomposition,
-              decomposition.isTrusted,
-              let best = decomposition.best else { return nil }
+            decomposition.isTrusted,
+            let best = decomposition.best
+        else { return nil }
         return best
     }
 
@@ -667,10 +784,13 @@ final class AudioEngineController {
     /// `keyOpinion` deliberately withholds anything the residual bar has not
     /// cleared, which is right for play and useless for debugging — the whole
     /// point of the test screen is to watch the ear while it is still learning.
-    func debugOpinion(at hostTime: Double, within tolerance: Double = 0.12) -> Decomposition? {
+    func debugOpinion(at hostTime: Double, within tolerance: Double = 0.12)
+        -> Decomposition?
+    {
         opinionsLock.lock()
         defer { opinionsLock.unlock() }
-        return recentOpinions
+        return
+            recentOpinions
             .filter { abs($0.hostTime - hostTime) <= tolerance }
             .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }?
             .decomposition
@@ -681,9 +801,14 @@ final class AudioEngineController {
     /// This is the whole calibration story. There is no strike-each-key-in-turn
     /// step; the eye labels the training data for the ear, every session, on the
     /// instrument actually in front of the player.
-    func learnKey(_ keyIndex: Int, at hostTime: Double, within tolerance: Double = 0.12) {
+    func learnKey(
+        _ keyIndex: Int,
+        at hostTime: Double,
+        within tolerance: Double = 0.12
+    ) {
         opinionsLock.lock()
-        let match = recentOpinions
+        let match =
+            recentOpinions
             .filter { abs($0.hostTime - hostTime) <= tolerance }
             .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
         opinionsLock.unlock()
@@ -691,29 +816,41 @@ final class AudioEngineController {
         guard let opinion = match else { return }
         let residual = opinion.decomposition?.residual
         queue.async { [weak self] in
-            self?.decomposer?.learn(keyIndex: keyIndex, linearBands: opinion.bands)
+            self?.decomposer?.learn(
+                keyIndex: keyIndex,
+                linearBands: opinion.bands
+            )
             // This strike is known-real and known-correct, so its residual is a
             // sample of what "normal" looks like on this instrument in this room.
-            if let residual { self?.decomposer?.noteConfirmedResidual(residual) }
+            if let residual {
+                self?.decomposer?.noteConfirmedResidual(residual)
+            }
         }
     }
 
     /// Record what the camera decided, so the eye/ear agreement rate accumulates
     /// even while audio has no vote. Cheap, and the only thing that could ever
     /// justify giving it one.
-    func noteVisionDecision(_ keyIndex: Int, confidence: Double, at hostTime: Double,
-                            within tolerance: Double = 0.12) {
+    func noteVisionDecision(
+        _ keyIndex: Int,
+        confidence: Double,
+        at hostTime: Double,
+        within tolerance: Double = 0.12
+    ) {
         opinionsLock.lock()
-        let match = recentOpinions
+        let match =
+            recentOpinions
             .filter { abs($0.hostTime - hostTime) <= tolerance }
             .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
         opinionsLock.unlock()
 
         let decomposition = match?.decomposition
         queue.async { [weak self] in
-            self?.decomposer?.noteVisionDecision(keyIndex: keyIndex,
-                                                 confidence: confidence,
-                                                 against: decomposition)
+            self?.decomposer?.noteVisionDecision(
+                keyIndex: keyIndex,
+                confidence: confidence,
+                against: decomposition
+            )
         }
     }
 
@@ -723,7 +860,8 @@ final class AudioEngineController {
     }
 
     /// Eye/ear agreement so far this session, for the diagnostics screen.
-    func agreementStats(completion: @escaping (KeyDecomposer.Agreement) -> Void) {
+    func agreementStats(completion: @escaping (KeyDecomposer.Agreement) -> Void)
+    {
         queue.async { [weak self] in
             let stats = self?.decomposer?.agreement ?? KeyDecomposer.Agreement()
             DispatchQueue.main.async { completion(stats) }
@@ -836,10 +974,12 @@ final class AudioEngineController {
     /// The onset time closest to `hostTime` within `tolerance` seconds, or nil.
     /// The vision path uses this to sharpen its strike timing without ever
     /// depending on it — nil just means "keep the visual time".
-    func nearestOnset(to hostTime: Double, within tolerance: Double) -> Double? {
+    func nearestOnset(to hostTime: Double, within tolerance: Double) -> Double?
+    {
         recentOnsetsLock.lock()
         defer { recentOnsetsLock.unlock() }
-        return recentOnsets
+        return
+            recentOnsets
             .filter { abs($0 - hostTime) <= tolerance }
             .min { abs($0 - hostTime) < abs($1 - hostTime) }
     }

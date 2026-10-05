@@ -82,9 +82,11 @@ struct KotekWordmark: View {
             // `logo-kotek`.
             image("wordmark-kotek", width: width, aspect: Self.aspectRatio)
 
-            image("logo-sanskrit",
-                  width: width * Self.sanskritScale,
-                  aspect: Self.sanskritAspectRatio)
+            image(
+                "logo-sanskrit",
+                width: width * Self.sanskritScale,
+                aspect: Self.sanskritAspectRatio
+            )
         }
         // One accessibility element: VoiceOver reading two undescribed images
         // in a row is worse than reading the name once.
@@ -96,7 +98,9 @@ struct KotekWordmark: View {
     /// constrains — a resizable image in a width-only frame is free to take the
     /// height it likes, and the two marks would size independently of each
     /// other.
-    private func image(_ name: String, width: CGFloat, aspect: CGFloat) -> some View {
+    private func image(_ name: String, width: CGFloat, aspect: CGFloat)
+        -> some View
+    {
         Image(name)
             .resizable()
             .aspectRatio(contentMode: .fit)
@@ -153,7 +157,9 @@ struct KajarToggleStyle: ToggleStyle {
             .toggleStyle(.switch)
             // On the VALUE, not on the touch: a switch can also be flipped by a
             // drag across it, and that should sound the same as tapping it.
-            .onChange(of: configuration.isOn) { KajarTick.strike() }
+            .onChange(of: configuration.isOn) {
+                KajarTick.strike()
+            }
     }
 }
 
@@ -173,7 +179,9 @@ extension View {
     /// Deliberately NOT used on the sliders. A slider changes continuously, and
     /// a kajar per step is a machine gun.
     func kajarOnChange<V: Equatable>(of value: V) -> some View {
-        onChange(of: value) { KajarTick.strike() }
+        onChange(of: value) {
+            KajarTick.strike()
+        }
     }
 }
 
@@ -268,7 +276,10 @@ struct PillButton: View {
             // behind, which on the camera screens is the instrument itself.
             RoundedRectangle(cornerRadius: Theme.radius)
                 .fill(Theme.cream.opacity(0.08))
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.radius))
+                .background(
+                    .ultraThinMaterial,
+                    in: RoundedRectangle(cornerRadius: Theme.radius)
+                )
         case .secondary:
             RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.inkRaised)
         }
@@ -284,8 +295,15 @@ struct PrimaryButton: View {
     let action: () -> Void
 
     var body: some View {
-        PillButton(title: title, systemImage: systemImage, style: .filled,
-                   tint: tint, uppercase: false, fullWidth: true, action: action)
+        PillButton(
+            title: title,
+            systemImage: systemImage,
+            style: .filled,
+            tint: tint,
+            uppercase: false,
+            fullWidth: true,
+            action: action
+        )
     }
 }
 
@@ -313,10 +331,14 @@ struct SecondaryButton: View {
             // HIG's 44pt minimum, which is exactly the kind of near-miss that
             // never gets noticed. Stated explicitly instead.
             .frame(minHeight: 44)
-            .background(Theme.cream.opacity(0.08),
-                        in: RoundedRectangle(cornerRadius: Theme.radius))
-            .overlay(RoundedRectangle(cornerRadius: Theme.radius)
-                .strokeBorder(Theme.gold.opacity(0.45), lineWidth: 1))
+            .background(
+                Theme.cream.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: Theme.radius)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radius)
+                    .strokeBorder(Theme.gold.opacity(0.45), lineWidth: 1)
+            )
             .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
         .buttonStyle(.kajar)
@@ -475,7 +497,11 @@ struct CountStepper: View {
         .animation(.snappy(duration: 0.2), value: value)
     }
 
-    private func circle(system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    private func circle(
+        system: String,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: system)
                 .font(.symbol(24, weight: .semibold))
@@ -487,7 +513,11 @@ struct CountStepper: View {
                 )
                 .overlay(
                     Circle()
-                        .strokeBorder(enabled ? tint.opacity(0.75) : lineColor.opacity(0.2), lineWidth: 2)
+                        .strokeBorder(
+                            enabled
+                                ? tint.opacity(0.75) : lineColor.opacity(0.2),
+                            lineWidth: 2
+                        )
                 )
                 .contentShape(Circle())
         }
@@ -509,7 +539,9 @@ struct StatBar: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(track)
                 Capsule().fill(color)
-                    .frame(width: max(6, geo.size.width * min(1, max(0, fraction))))
+                    .frame(
+                        width: max(6, geo.size.width * min(1, max(0, fraction)))
+                    )
             }
         }
         .frame(height: 7)
@@ -560,8 +592,10 @@ struct BusyOverlay: View {
             .padding(.vertical, 30)
             .frame(minWidth: 260)
             .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
+            )
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
         }
     }
@@ -596,7 +630,10 @@ struct ConfirmDialog: View {
             // panel swallows its own taps.
             Color.black.opacity(0.72)
                 .ignoresSafeArea()
-                .onTapGesture { KajarTick.strike(); onCancel() }
+                .onTapGesture {
+                    KajarTick.strike()
+                    onCancel()
+                }
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(title)
@@ -615,7 +652,12 @@ struct ConfirmDialog: View {
 
                 HStack(spacing: 12) {
                     Spacer(minLength: 0)
-                    PillButton(title: "Cancel", style: .outlined, tint: Theme.cream, compact: true) {
+                    PillButton(
+                        title: "Cancel",
+                        style: .outlined,
+                        tint: Theme.cream,
+                        compact: true
+                    ) {
                         onCancel()
                     }
                     //R The destructive button is outlined in its own colour
@@ -631,12 +673,21 @@ struct ConfirmDialog: View {
                             .lineLimit(1)
                             .padding(.horizontal, 18)
                             .frame(height: 38)
-                            .overlay(RoundedRectangle(cornerRadius: Theme.radius)
-                                .strokeBorder(confirmTint.opacity(0.6), lineWidth: 1.5))
-                            .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.radius)
+                                    .strokeBorder(
+                                        confirmTint.opacity(0.6),
+                                        lineWidth: 1.5
+                                    )
+                            )
+                            .clipShape(
+                                RoundedRectangle(cornerRadius: Theme.radius)
+                            )
                             // Drawn at 38, targeted at 44 — see `PillButton`.
                             .frame(minHeight: 44)
-                            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+                            .contentShape(
+                                RoundedRectangle(cornerRadius: Theme.radius)
+                            )
                     }
                     .buttonStyle(.kajar)
                 }
@@ -645,8 +696,10 @@ struct ConfirmDialog: View {
             .padding(24)
             .frame(maxWidth: 520)
             .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
+            )
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
             .padding(.horizontal, 28)
         }
@@ -658,24 +711,28 @@ extension View {
     ///
     /// Dismisses itself before running `action`, so the caller's handler is free
     /// to change screen without the dialog animating out over the next one.
-    func confirm(_ isPresented: Binding<Bool>,
-                 title: String,
-                 message: String,
-                 confirmTitle: String,
-                 confirmTint: Color = Theme.miss,
-                 action: @escaping () -> Void) -> some View {
+    func confirm(
+        _ isPresented: Binding<Bool>,
+        title: String,
+        message: String,
+        confirmTitle: String,
+        confirmTint: Color = Theme.miss,
+        action: @escaping () -> Void
+    ) -> some View {
         overlay {
             if isPresented.wrappedValue {
-                ConfirmDialog(title: title,
-                              message: message,
-                              confirmTitle: confirmTitle,
-                              confirmTint: confirmTint,
-                              onConfirm: {
-                                  isPresented.wrappedValue = false
-                                  action()
-                              },
-                              onCancel: { isPresented.wrappedValue = false })
-                    .transition(.opacity)
+                ConfirmDialog(
+                    title: title,
+                    message: message,
+                    confirmTitle: confirmTitle,
+                    confirmTint: confirmTint,
+                    onConfirm: {
+                        isPresented.wrappedValue = false
+                        action()
+                    },
+                    onCancel: { isPresented.wrappedValue = false }
+                )
+                .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.15), value: isPresented.wrappedValue)
@@ -708,7 +765,12 @@ struct RealignButton: View {
                 .foregroundStyle(Theme.terracotta)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
-                .overlay(Capsule().strokeBorder(Theme.terracotta.opacity(0.5), lineWidth: 1))
+                .overlay(
+                    Capsule().strokeBorder(
+                        Theme.terracotta.opacity(0.5),
+                        lineWidth: 1
+                    )
+                )
                 // Drawn small on purpose — it is a persistent affordance, not a
                 // call to action — but still tappable to the HIG minimum.
                 .frame(minHeight: 44)
@@ -728,10 +790,16 @@ struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        UIActivityViewController(
+            activityItems: items,
+            applicationActivities: nil
+        )
     }
 
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+    func updateUIViewController(
+        _ controller: UIActivityViewController,
+        context: Context
+    ) {}
 }
 
 /// So a URL can drive `.sheet(item:)` directly. The path is already unique,
@@ -739,7 +807,6 @@ struct ShareSheet: UIViewControllerRepresentable {
 extension URL: @retroactive Identifiable {
     public var id: String { absoluteString }
 }
-
 
 extension Comparable {
     /// `x.clamped(to: a, b)` — reads better inline than nesting min and max, and

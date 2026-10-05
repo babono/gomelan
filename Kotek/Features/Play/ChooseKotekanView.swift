@@ -214,7 +214,9 @@ struct ChooseKotekanView: View {
     }
 
     private func tap(_ slot: Int) {
-        KajarTick.strike()
+        Task { @concurrent in
+            await KajarTick.strike()
+        }
         if slot == focusedSlot {
             let k = kotekans[wrap(slot)]
             if app.kotekan(k, playableOn: app.profile) { start(k) }

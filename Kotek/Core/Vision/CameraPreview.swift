@@ -79,13 +79,14 @@ struct CameraPreview: UIViewRepresentable {
         func updateOrientation() {
             guard let connection = previewLayer.connection else { return }
             if let windowScene = window?.windowScene {
-                let orientation = windowScene.interfaceOrientation
+                let orientation = windowScene.effectiveGeometry.interfaceOrientation
                 let targetAngle: Double = switch orientation {
                 case .portrait: 90
                 case .portraitUpsideDown: 270
                 case .landscapeLeft: 180
                 case .landscapeRight: 0
-                @unknown default: 90
+                case .unknown: 90
+                default: 90
                 }
 
                 if connection.isVideoRotationAngleSupported(targetAngle) {

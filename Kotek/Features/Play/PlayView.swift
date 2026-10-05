@@ -22,8 +22,8 @@
 //      interrupts, and the score is only shown when you end the session.
 //
 
-import SwiftUI
 import QuartzCore
+import SwiftUI
 
 struct PlayView: View {
     @Environment(AppState.self) private var app
@@ -106,20 +106,24 @@ struct PlayView: View {
                             halfSwitch.coachTarget(.half)
                             tempoPicker.coachTarget(.tempo)
                             Spacer()
-                            VoiceMixer(yourHalf: app.chosenHalf,
-                                       yourVoiceAudible: $app.yourVoiceAudible,
-                                       partnerAudible: $app.partnerAudible)
-                                .coachTarget(.voices)
+                            VoiceMixer(
+                                yourHalf: app.chosenHalf,
+                                yourVoiceAudible: $app.yourVoiceAudible,
+                                partnerAudible: $app.partnerAudible
+                            )
+                            .coachTarget(.voices)
                         }
                         .padding(.horizontal, 24)
                         .padding(.vertical, 9)
                         .frame(maxWidth: .infinity)
                         .background(Theme.inkRaised.opacity(0.8))
 
-                        NotesRiver(engine: engine,
-                                   keyRange: keyRange,
-                                   keyCount: app.profile.keys.count,
-                                   yourHalf: app.chosenHalf)
+                        NotesRiver(
+                            engine: engine,
+                            keyRange: keyRange,
+                            keyCount: app.profile.keys.count,
+                            yourHalf: app.chosenHalf
+                        )
                     }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
@@ -143,10 +147,12 @@ struct PlayView: View {
             //R space offset from the one the spotlight is drawn in.
             GeometryReader { proxy in
                 if let coachStep {
-                    PracticeCoachOverlay(step: coachStep,
-                                         target: anchors[coachStep].map { proxy[$0] },
-                                         onNext: advanceCoach,
-                                         onSkip: finishCoach)
+                    PracticeCoachOverlay(
+                        step: coachStep,
+                        target: anchors[coachStep].map { proxy[$0] },
+                        onNext: advanceCoach,
+                        onSkip: finishCoach
+                    )
                 }
             }
             .ignoresSafeArea()
@@ -190,8 +196,12 @@ struct PlayView: View {
             engine.setTempoScale(new)
             engine.sessionSubtitle = sessionSubtitle
         }
-        .onChange(of: app.yourVoiceAudible) { _, new in engine.yourVoiceAudible = new }
-        .onChange(of: app.partnerAudible) { _, new in engine.partnerAudible = new }
+        .onChange(of: app.yourVoiceAudible) { _, new in
+            engine.yourVoiceAudible = new
+        }
+        .onChange(of: app.partnerAudible) { _, new in
+            engine.partnerAudible = new
+        }
     }
 
     // MARK: - Chrome
@@ -210,14 +220,17 @@ struct PlayView: View {
     /// stay a leaf that only ever reads the engine.
     private var record: Double? {
         guard let k = app.selectedKotekan else { return nil }
-        return app.profile.record(kotekanId: k.id,
-                                  half: app.chosenHalf.rawValue,
-                                  tempo: app.tempoScale)?.accuracy
+        return app.profile.record(
+            kotekanId: k.id,
+            half: app.chosenHalf.rawValue,
+            tempo: app.tempoScale
+        )?.accuracy
     }
 
     private var sessionSubtitle: String {
         let name = app.selectedKotekan?.name ?? ""
-        return "\(name) · \(app.chosenHalf.title) · \(Theme.tempoLabel(app.tempoScale))"
+        return
+            "\(name) · \(app.chosenHalf.title) · \(Theme.tempoLabel(app.tempoScale))"
     }
 
     /// Change sides without stopping. The gong keeps going, the count keeps
@@ -232,7 +245,9 @@ struct PlayView: View {
         HStack(spacing: 0) {
             ForEach([KotekanHalf.polos, .sangsih]) { half in
                 let selected = app.chosenHalf == half
-                Button { app.setHalf(half) } label: {
+                Button {
+                    app.setHalf(half)
+                } label: {
                     Text(half.title)
                         .font(.sans(12, weight: .semibold))
                         .textCase(.uppercase)
@@ -240,14 +255,21 @@ struct PlayView: View {
                         .foregroundStyle(selected ? Theme.ink : Theme.copper)
                         .padding(.vertical, 7)
                         .padding(.horizontal, 14)
-                        .background(selected ? Theme.copper : .clear, in: Capsule())
+                        .background(
+                            selected ? Theme.copper : .clear,
+                            in: Capsule()
+                        )
                 }
                 .buttonStyle(.kajar)
-                .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityAddTraits(
+                    selected ? [.isButton, .isSelected] : .isButton
+                )
             }
         }
         .padding(2)
-        .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1))
+        .overlay(
+            Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1)
+        )
     }
 
     /// Stopped, but not over — and the ONLY way out of a session.
@@ -264,10 +286,18 @@ struct PlayView: View {
                 Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
                     PillButton(title: "Resume", style: .filled) { resume() }
-                    PillButton(title: "Show me around", style: .outlined, tint: Theme.copper) {
+                    PillButton(
+                        title: "Show me around",
+                        style: .outlined,
+                        tint: Theme.copper
+                    ) {
                         startCoach(startsSession: false)
                     }
-                    PillButton(title: "End practice", style: .outlined, tint: Theme.copper) {
+                    PillButton(
+                        title: "End practice",
+                        style: .outlined,
+                        tint: Theme.copper
+                    ) {
                         //R Straight out. Going through `resume()` first would
                         //R boot the mic and let a beat of music through purely
                         //R to stop them again a frame later.
@@ -290,11 +320,19 @@ struct PlayView: View {
     /// Changing it never stops the music: the engine rebases its clock so the
     /// beat you are on survives the change. See `PlayEngine.setTempoScale`.
     private var tempoPicker: some View {
-        @Bindable var app = app
-        return Menu {
-            Picker("Tempo", selection: $app.tempoScale) {
-                ForEach(Theme.tempoScales, id: \.self) { scale in
-                    Text(Theme.tempoLabel(scale)).tag(scale)
+        Menu {
+            ForEach(Theme.tempoScales, id: \.self) { scale in
+                Button {
+                    app.tempoScale = scale
+                } label: {
+                    if app.tempoScale == scale {
+                        HStack {
+                            Image(systemName: "checkmark")
+                            Text(Theme.tempoLabel(scale)).tag(scale)
+                        }
+                    } else {
+                        Text(Theme.tempoLabel(scale)).tag(scale)
+                    }
                 }
             }
         } label: {
@@ -311,9 +349,12 @@ struct PlayView: View {
             .padding(.vertical, 7)
             .padding(.horizontal, 12)
             .frame(minHeight: 34)
-            .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1))
+            .overlay(
+                Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1)
+            )
             .contentShape(Capsule())
         }
+        .compositingGroup()
         .menuOrder(.fixed)
         // A `Menu` gives no press to hook and its rows are not our buttons, so
         // the tick follows the selection. Opening the menu is silent, choosing
@@ -342,26 +383,50 @@ struct PlayView: View {
             // you actually play from is the bilah lighting up on the instrument
             // in front of you, and the panel covers the part of the frame the
             // gangsa is most likely to be in.
-            Button { app.bottomBarVisible.toggle() } label: {
-                Image(systemName: app.bottomBarVisible ? "rectangle.bottomthird.inset.filled" : "rectangle")
-                    .font(.sans(15, weight: .medium))
-                    .foregroundStyle(app.bottomBarVisible ? Theme.ink : Theme.copper)
-                    .frame(width: 40, height: 34)
-                    .background(app.bottomBarVisible ? Theme.copper : .clear, in: Capsule())
-                    .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.6), lineWidth: 1.5))
+            Button {
+                app.bottomBarVisible.toggle()
+            } label: {
+                Image(
+                    systemName: app.bottomBarVisible
+                        ? "rectangle.bottomthird.inset.filled" : "rectangle"
+                )
+                .font(.sans(15, weight: .medium))
+                .foregroundStyle(
+                    app.bottomBarVisible ? Theme.ink : Theme.copper
+                )
+                .frame(width: 40, height: 34)
+                .background(
+                    app.bottomBarVisible ? Theme.copper : .clear,
+                    in: Capsule()
+                )
+                .overlay(
+                    Capsule().strokeBorder(
+                        Theme.copper.opacity(0.6),
+                        lineWidth: 1.5
+                    )
+                )
             }
             .buttonStyle(.kajar)
-            .accessibilityLabel(app.bottomBarVisible ? "Hide the score" : "Show the score")
+            .accessibilityLabel(
+                app.bottomBarVisible ? "Hide the score" : "Show the score"
+            )
             .coachTarget(.panelToggle)
             .padding(.trailing, 10)
 
-            Button { pause() } label: {
+            Button {
+                pause()
+            } label: {
                 Image(systemName: "pause.fill")
                     .font(.symbol(14, weight: .semibold))
                     .foregroundStyle(Theme.cream)
                     .frame(width: 40, height: 34)
-                    .overlay(RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Theme.cream.opacity(0.45), lineWidth: 1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(
+                                Theme.cream.opacity(0.45),
+                                lineWidth: 1
+                            )
+                    )
                     .contentShape(RoundedRectangle(cornerRadius: 8))
             }
             .buttonStyle(.kajar)
@@ -376,7 +441,8 @@ struct PlayView: View {
 
     /// The lanes the river draws — both halves of the figure.
     private var keyRange: ClosedRange<Int> {
-        app.selectedKotekan?.voicedKeyRange ?? 0...max(0, app.profile.keys.count - 1)
+        app.selectedKotekan?.voicedKeyRange
+            ?? 0...max(0, app.profile.keys.count - 1)
     }
 
     /// The bilah YOUR half strikes — the only ones vision needs to classify.
@@ -392,7 +458,11 @@ struct PlayView: View {
         // the demo screen turns them off on the way in.
         camera.wantsFrames = true
         camera.start()
-        if app.fixedMount { camera.lockFocusAndExposure() } else { camera.enableContinuousAutoFocus() }
+        if app.fixedMount {
+            camera.lockFocusAndExposure()
+        } else {
+            camera.enableContinuousAutoFocus()
+        }
 
         engine.cue = cue
         engine.leniency = app.judgementLeniency
@@ -404,7 +474,11 @@ struct PlayView: View {
         engine.onComplete = { result in
             Task { @MainActor in
                 teardown()
-                if let result { app.finish(result: result) } else { app.backToKotekan() }
+                if let result {
+                    app.finish(result: result)
+                } else {
+                    app.backToKotekan()
+                }
             }
         }
 
@@ -413,13 +487,19 @@ struct PlayView: View {
         engine.partnerAudible = app.partnerAudible
         engine.yourVoiceAudible = app.yourVoiceAudible
         if let song = app.selectedSong {
-            engine.configure(song: song, partner: app.partnerSong,
-                             profile: app.profile, tempoScale: app.tempoScale)
+            engine.configure(
+                song: song,
+                partner: app.partnerSong,
+                profile: app.profile,
+                tempoScale: app.tempoScale
+            )
         }
 
-        let fusion = StrikeFusion(frames: camera.frameBuffer,
-                                  keys: app.profile.keys,
-                                  viewSize: overlaySize)
+        let fusion = StrikeFusion(
+            frames: camera.frameBuffer,
+            keys: app.profile.keys,
+            viewSize: overlaySize
+        )
         self.fusion = fusion
         // Only the bilah this figure uses are worth classifying — three or four
         // instead of ten, which is most of the vision cost gone.
@@ -428,14 +508,19 @@ struct PlayView: View {
             await fusion.setActiveKeys(active)
             // Whatever was tuned in the detection screen governs play too —
             // otherwise that screen measures a detector nobody practises with.
-            await fusion.setMinHitProbability(Detection.namingThreshold(from: app.visionThreshold))
+            await fusion.setMinHitProbability(
+                Detection.namingThreshold(from: app.visionThreshold)
+            )
         }
 
         visionDetector.reset()
         //R The slider on Test Detection governs the session too. It did not:
         //R this detector carried its own hardcoded bars, so the one control
         //R anyone tunes moved a number the play screen never read.
-        visionDetector.apply(threshold: app.visionThreshold, relativeDip: app.visionRelativeDip)
+        visionDetector.apply(
+            threshold: app.visionThreshold,
+            relativeDip: app.visionRelativeDip
+        )
         try? audio.start(profile: app.profile)
         //R Start with an empty ring and no pending onsets. Whatever the mic
         //R picked up before the count-in — the room, the app's own cues coming
@@ -452,30 +537,45 @@ struct PlayView: View {
         // Wire audio onset detection to immediately resolve key via vision:
         audio.onStrikeDetected = { hostTime in
             Task { @MainActor in
-                guard startCue == nil, !paused, !engine.isFinished else { return }
-                if let decision = await fusion.resolveVisionFirst(hostTime: hostTime) {
-                    applyStrike(key: decision.keyIndex, hostTime: hostTime, confidence: decision.hitProbability)
+                guard startCue == nil, !paused, !engine.isFinished else {
+                    return
+                }
+                if let decision = await fusion.resolveVisionFirst(
+                    hostTime: hostTime
+                ) {
+                    applyStrike(
+                        key: decision.keyIndex,
+                        hostTime: hostTime,
+                        confidence: decision.hitProbability
+                    )
                     // Tally what the ear would have said, whether or not it is
                     // allowed a vote. Audio disagreeing with a confident sighting
                     // is the most informative event in the whole pipeline, and
                     // without this it happens silently and is lost.
-                    audio.noteVisionDecision(decision.keyIndex,
-                                             confidence: decision.hitProbability,
-                                             at: hostTime)
+                    audio.noteVisionDecision(
+                        decision.keyIndex,
+                        confidence: decision.hitProbability,
+                        at: hostTime
+                    )
                     // The eye labels the ear's training data. Only clear sightings
                     // teach — a marginal crop would poison the atom it feeds.
                     if decision.hitProbability >= visionTeachingConfidence {
                         audio.learnKey(decision.keyIndex, at: hostTime)
                     }
-                } else if app.audioTriggersStrikes, let heard = audio.keyOpinion(at: hostTime) {
+                } else if app.audioTriggersStrikes,
+                    let heard = audio.keyOpinion(at: hostTime)
+                {
                     audio.noteRecovery()
                     // Vision saw a strike happen but could not say where: the
                     // mallet was occluded, or a hand covered the bar at impact.
                     // Without this the hit is simply dropped and scored as a miss.
                     // Confidence is reported as the ear's share, so the overlay
                     // shows it for what it is — a recovered strike, not a sighting.
-                    applyStrike(key: heard.keyIndex, hostTime: hostTime,
-                                confidence: Double(heard.share))
+                    applyStrike(
+                        key: heard.keyIndex,
+                        hostTime: hostTime,
+                        confidence: Double(heard.share)
+                    )
                 }
             }
         }
@@ -498,7 +598,10 @@ struct PlayView: View {
 
     // MARK: - The control tour
 
-    private func startCoach(startsSession: Bool, from first: CoachStep = .session) {
+    private func startCoach(
+        startsSession: Bool,
+        from first: CoachStep = .session
+    ) {
         coachStartsSession = startsSession
         panelWasVisible = app.bottomBarVisible
         withAnimation(.easeInOut(duration: 0.2)) {
@@ -563,7 +666,8 @@ struct PlayView: View {
         displayLink.onFrame = { now in
             engine.tick(now: now)
 
-            let next: StartCue? = engine.msUntilFirstNote == nil
+            let next: StartCue? =
+                engine.msUntilFirstNote == nil
                 ? nil
                 : engine.countdownNumber.map(StartCue.count) ?? .getReady
 
@@ -590,23 +694,33 @@ struct PlayView: View {
             // stays high while the mallet lingers, so a rising-edge detector
             // fires once, latches, and then only ever adds phantoms.
             if !app.audioTriggersStrikes,
-               startCue == nil, !paused, !engine.isFinished,
-               let (scores, hostTime) = await fusion?.latestScores() {
-                let fired = visionDetector.process(scores: scores,
-                                                   expecting: engine.dueKey,
-                                                   now: hostTime)
-                if let key = fired.max(by: { (scores[$0] ?? 0) < (scores[$1] ?? 0) }) {
+                startCue == nil, !paused, !engine.isFinished,
+                let (scores, hostTime) = await fusion?.latestScores()
+            {
+                let fired = visionDetector.process(
+                    scores: scores,
+                    expecting: engine.dueKey,
+                    now: hostTime
+                )
+                if let key = fired.max(by: {
+                    (scores[$0] ?? 0) < (scores[$1] ?? 0)
+                }) {
                     //R The ear does two jobs here and they are separable. It
                     //R sharpens the TIME — vision fires as the mallet arrives
                     //R over the bar, the attack is the moment that counts — and
                     //R in `heardOnly` it also holds the VETO: a sighting nothing
                     //R was heard for is a mallet moving, not a stroke, and the
                     //R model is not good enough to tell those apart on its own.
-                    let onset = audio.nearestOnset(to: hostTime,
-                                                   within: Detection.corroborationWindow)
+                    let onset = audio.nearestOnset(
+                        to: hostTime,
+                        within: Detection.corroborationWindow
+                    )
                     if app.requireStrikeSound, onset == nil { continue }
-                    applyStrike(key: key, hostTime: onset ?? hostTime,
-                                confidence: scores[key] ?? 1)
+                    applyStrike(
+                        key: key,
+                        hostTime: onset ?? hostTime,
+                        confidence: scores[key] ?? 1
+                    )
                 }
             }
             try? await Task.sleep(for: .milliseconds(25))
@@ -617,7 +731,11 @@ struct PlayView: View {
         lastKey = key
         lastConfidence = confidence
         unclearAt = nil
-        engine.registerStrike(keyIndex: key, hostTime: hostTime, confidence: confidence)
+        engine.registerStrike(
+            keyIndex: key,
+            hostTime: hostTime,
+            confidence: confidence
+        )
     }
 
     private func pause() {
@@ -703,8 +821,11 @@ private struct SessionCounters: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(engine.phase == .countIn ? "Count-in" : "Cycle \(engine.loopIndex + 1)")
-                .foregroundStyle(Theme.inkStone)
+            Text(
+                engine.phase == .countIn
+                    ? "Count-in" : "Cycle \(engine.loopIndex + 1)"
+            )
+            .foregroundStyle(Theme.inkStone)
 
             if engine.landedNotes > 0 {
                 HStack(spacing: 4) {
@@ -745,7 +866,10 @@ private struct SessionCounters: View {
 
     private var accessibilityLabel: String {
         var parts: [String] = []
-        parts.append(engine.bestSoFar.map { "best so far \(percent($0))" } ?? "no score yet")
+        parts.append(
+            engine.bestSoFar.map { "best so far \(percent($0))" }
+                ?? "no score yet"
+        )
         if let record { parts.append("record \(percent(record))") }
         if beatingRecord { parts.append("beating the record") }
         return parts.joined(separator: ", ")
