@@ -17,7 +17,7 @@ struct NavigateScreenIntents: AppIntent {
     
     @Parameter(
         title: "Screen", requestValueDialog: "Which Screen?"
-    ) var navigationOptions: AppState.Screen
+    ) var navigationOptions: Route
     
     static var parameterSummary: some ParameterSummary {
         Summary("Navigate to \(\.$navigationOptions)")

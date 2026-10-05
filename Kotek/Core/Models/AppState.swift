@@ -15,28 +15,7 @@ import SwiftUI
 @MainActor
 @Observable
 final class AppState {
-    enum Screen: String, Equatable {
-        case welcome
-        case checkingPermissions
-        case permissionsBlocked
-        case chooseInstrument  // Multi-instrument selection
-        case choosingKeyCount  // setup 1/4
-        case framing  // setup 2/4
-        case aligning  // setup 3/4
-        case calibrating  // baseline · learn the voice
-        case baseline
-        case chooseKotekan
-        case countdown
-        case playing
-        case results
-        case settings
-        case malletTest
-        case detectionTest
-        case audioTest
-        case captureTraining
-    }
-
-    var screen: Screen = .welcome
+    var screen: Route = .welcome
     var profile: InstrumentProfile
     var savedProfiles: [InstrumentProfile] = []
 
@@ -914,32 +893,4 @@ final class AppState {
 
     /// The persistent re-alignment affordance (§13.4).
     func realign() { screen = .aligning }
-}
-
-extension AppState.Screen: nonisolated AppEnum {
-    static let typeDisplayRepresentation: TypeDisplayRepresentation =
-        "Screen Option"
-
-    static let caseDisplayRepresentations:
-        [AppState.Screen: DisplayRepresentation] = [
-            .welcome: "Welcome",
-            .checkingPermissions: "Checking Permissions",
-            .permissionsBlocked: "Permissions Blocked",
-            .chooseInstrument: "Choose Instrument",
-            .choosingKeyCount: "Choosing Key Count",
-            .framing: "Framing",
-            .aligning: "Aligning",
-            .calibrating: "Calibrating",
-            .baseline: "Baseline",
-            .chooseKotekan: "Choose Kotekan",
-            .countdown: "Countdown",
-            .playing: "Playing",
-            .results: "Results",
-            .settings: "Settings",
-            .malletTest: "Mallet Test",
-            .detectionTest: "Detection Test",
-            .audioTest: "Audio Test",
-            .captureTraining: "Capture Training",
-        ]
-
 }
