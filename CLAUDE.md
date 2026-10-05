@@ -48,8 +48,12 @@ at the *end* of the upload.
 
 - **MVVM Pattern**: Clean separation of concerns with SwiftUI + Observation (`@Observable`):
   - **Model (`Kotek/Core/Models/`)**: Pure domain models (`Song`, `Kotekan`, `InstrumentProfile`, `Judgement`), global state machine (`AppState`), and persistence (`ProfileStore`). Independent of any UI framework.
-  - **View (`Kotek/Features/*/`, `Kotek/App/RootView.swift`)**: Declarative SwiftUI views responsible solely for presentation, layout, visual feedback, and user interactions. Views stay thin and bind to observable state or view models.
-  - **ViewModel / Controller / Engine (`Kotek/Core/Vision/`, `Kotek/Core/Audio/`, `Kotek/Features/Play/PlayEngine.swift`, feature ViewModels)**: Dedicated logic coordinators managing mutable state, hardware capture/audio lifecycle, and business rules, insulating Views from complex domain and signal logic.
+  - **View (`Kotek/Features/*/`, `Kotek/App/RootView.swift`)**: Declarative SwiftUI views responsible solely for presentation, layout, visual feedback, and user interactions. Views stay thin and bind directly to observable models (`@Environment(AppState.self)`) or feature ViewModels.
+  - **ViewModel (`Kotek/Features/*/`)**: Feature-scoped presentation state coordinators (e.g. `PlayEngine.swift` acting as the ViewModel/engine for `PlayView`). Co-located with their features—never in `Core/`. Per Ponytail, trivial views bind directly to `@Observable` models; ViewModels are created only when complex presentation state, high-frequency frame drivers (CADisplayLink), or multi-service orchestration requires one.
+  - **Services (`Kotek/Core/Audio/`, `Kotek/Core/Vision/`)**: Headless hardware, audio, and vision infrastructure services (`CameraController`, `AudioEngineController`, `AudioSessionManager`, `CuePlayer`, `StrikeFusion`). Manage capture sessions, mic taps, FFT/DSP pipelines, CoreML inference, and multi-modal fusion off the UI thread; injected from `RootView`.
+- **Scope & Placement (Core vs. Features)**:
+  - **`Core/` is strictly for shared types**: Classes, structs, enums, domain models, headless services, and UI styling in `Kotek/Core/` must be genuinely shared across multiple screens or features.
+  - **Single-view types belong in `Features/`**: If a class, struct, enum, ViewModel, or helper is used by only one view or feature (e.g. `KeyRenderState`, `CycleNote`, `Floater`, `CoachStep` in `Features/Play/`), keep it strictly within that feature module. Never pollute `Core/` with single-use types or premature abstractions.
 - **DRY Principle (Don't Repeat Yourself)**:
   - Single source of truth for app state (`AppState`), camera session lifecycle (`RootView` / `CameraController`), and audio routing (`AudioSessionManager`).
   - Shared design tokens, styles, and controls live in `Kotek/Core/UI/` (`Theme.swift`, `Components.swift`, `PatternBackground.swift`) to eliminate visual and behavioral redundancy.
@@ -63,6 +67,7 @@ at the *end* of the upload.
 - **Ponytail Philosophy (Pragmatic Senior Dev / YAGNI)**:
   - Build the minimum that works cleanly. Before adding code: does it need to exist at all? Does the standard library or SwiftUI native feature do it? Can it be one line?
   - No unrequested abstractions, no ceremonial protocols with only one implementation, no boilerplate ViewModels for trivial views.
+  - Single-use classes, structs, enums, and ViewModels stay co-located with their view in `Features/`; do not promote them to `Core/` until a second feature actually requires them.
   - Mark intentional simplifications with a `// ponytail:` comment.
 
 ## Architecture
@@ -78,8 +83,8 @@ The codebase is organized into four main directories:
 ```
 Kotek/
 ├── App/          # Application entry point, window management, and root container
-├── Core/         # Shared domain models, audio DSP/playback, vision pipeline, and UI styling
-├── Features/     # Feature-oriented UI modules (Views, feature logic, and local engines)
+├── Core/         # Shared domain models, audio DSP/playback, vision pipeline, and UI styling (strictly shared types)
+├── Features/     # Feature-oriented UI modules (Views, feature logic, local engines, and single-view types)
 └── Resources/    # Static assets: images, audio samples, fonts, and lottie animations
 ```
 

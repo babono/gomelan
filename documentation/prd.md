@@ -567,7 +567,7 @@ try session.setActive(true)
 
 ### 13.3 Module structure
 
-The project is organized into four main layers following MVVM, DRY, and SOLID principles:
+The project is organized into four main layers following MVVM, DRY, and SOLID principles. `Kotek/Core/` is reserved strictly for shared domain models, headless hardware/audio/vision services, and common UI tokens. If a class, struct, enum, ViewModel, or helper is used by only one view or feature, it belongs in that feature module (`Kotek/Features/<Feature>/`), never in `Core/`.
 
 ```
 Kotek/
@@ -652,9 +652,13 @@ Kotek/
 ### 13.4 Architectural principles & standards
 
 - **MVVM Pattern**:
-  - **Models (`Kotek/Core/Models/`)**: Independent state representations, domain entities (`Song`, `Kotekan`, `InstrumentProfile`), and serialization without UI dependencies.
-  - **Views (`Kotek/Features/*/`, `Kotek/App/RootView.swift`)**: Declarative SwiftUI views handling layout, rendering, and direct user gestures. Views stay thin and bind to observable state or dedicated ViewModels.
-  - **ViewModels / Engines / Controllers (`Kotek/Core/Vision/`, `Kotek/Core/Audio/`, `PlayEngine.swift`, feature ViewModels)**: Coordinators managing mutable state, hardware capture/audio lifecycle, and business logic, isolating Views from complex domain computations.
+  - **Models (`Kotek/Core/Models/`)**: Independent state representations, domain entities (`Song`, `Kotekan`, `InstrumentProfile`, `Judgement`), global observable state machine (`AppState`), and serialization/persistence (`ProfileStore`) without UI dependencies.
+  - **Views (`Kotek/Features/*/`, `Kotek/App/RootView.swift`)**: Declarative SwiftUI views handling layout, rendering, and direct user gestures. Views stay thin and bind directly to observable models (`@Environment(AppState.self)`) or feature ViewModels.
+  - **ViewModels (`Kotek/Features/*/`)**: Feature-scoped presentation state coordinators (e.g., `PlayEngine.swift` acting as the ViewModel/local engine for `PlayView`). ViewModels live inside their feature modules—never in `Core/`—and transform domain data and service outputs into render-ready view states. Per the **Ponytail philosophy**, ViewModels are YAGNI for simple screens; views bind directly to `@Observable` models (`AppState`) unless complex local UI state, high-frequency frame loops (CADisplayLink), or multi-service orchestration demands one.
+  - **Services (`Kotek/Core/Audio/`, `Kotek/Core/Vision/`)**: Headless hardware, audio, and vision infrastructure services (`CameraController`, `AudioEngineController`, `AudioSessionManager`, `CuePlayer`, `StrikeFusion`). They manage hardware capture sessions, mic taps, audio buffers, FFT/DSP pipelines, CoreML inference, and multi-modal fusion off the UI thread. Services are UI-agnostic, owned/initialized at the root level (`RootView`), and injected into views or feature engines.
+- **Scope & Placement (Core vs. Features)**:
+  - **`Core/` is strictly for shared types**: Classes, structs, enums, domain models, headless services, and UI styling in `Kotek/Core/` must be genuinely shared across multiple screens or features.
+  - **Single-view types belong in `Features/`**: If a class, struct, enum, ViewModel, or helper is used by only one view or feature (e.g., `KeyRenderState`, `CycleNote`, `Floater`, `CoachStep` in `Features/Play/`), keep it strictly within that feature module. Never pollute `Core/` with single-use types or premature abstractions.
 - **DRY Principle**:
   - Single source of truth for global state (`AppState`) and hardware sessions (`CameraController`, `AudioEngineController`).
   - Shared design tokens, styles, and controls in `Kotek/Core/UI/` (`Theme.swift`, `Components.swift`, `PatternBackground.swift`).
@@ -667,6 +671,7 @@ Kotek/
   - **Dependency Inversion**: Feature views depend on injected dependencies (`camera`, `audio`, `cue`, `@Environment(AppState.self)`) passed from `RootView`.
 - **Ponytail Philosophy (YAGNI)**:
   - Build the minimum that works cleanly without unrequested abstractions or ceremonial boilerplate. Mark deliberate simplifications with `// ponytail: ...`.
+  - Single-use classes, structs, enums, and ViewModels stay co-located with their view in `Features/`; do not promote them to `Core/` until a second feature actually requires them.
 
 ### 13.5 State machine
 
