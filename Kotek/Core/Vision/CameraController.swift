@@ -14,7 +14,7 @@ import AVFoundation
 import Observation
 
 @Observable
-final class CameraController: NSObject {
+nonisolated final class CameraController: NSObject, Sendable {
     enum Status: Equatable {
         case idle
         case configuring
@@ -44,18 +44,16 @@ final class CameraController: NSObject {
     ///
     /// Created lazily rather than eagerly: on a first launch, before camera
     /// permission exists, there is no session worth attaching to yet.
-    @ObservationIgnored lazy var previewLayer: AVCaptureVideoPreviewLayer = {
-        let layer = AVCaptureVideoPreviewLayer()
-        layer.videoGravity = .resizeAspectFill
-        layer.session = session
-        return layer
-    }()
+    @ObservationIgnored var previewLayer: AVCaptureVideoPreviewLayer =
+        AVCaptureVideoPreviewLayer()
 
     /// Short rolling history of frames, keyed by host time, for vision fusion
     /// (StrikeFusion looks up the frame nearest an audio strike).
     @ObservationIgnored let frameBuffer = FrameBuffer()
 
-    @ObservationIgnored private let sessionQueue = DispatchQueue(label: "me.babono.kotek.camera.session")
+    @ObservationIgnored private let sessionQueue = DispatchQueue(
+        label: "me.babono.kotek.camera.session"
+    )
 
     /// Frame delivery, on its OWN queue — never `sessionQueue`.
     ///
@@ -65,8 +63,10 @@ final class CameraController: NSObject {
     /// session's queue meant configuring the session — including attaching a
     /// new preview layer, which is what a screen change does — had to wait
     /// behind that. Measured at 9040ms before `PlayView` had even appeared.
-    @ObservationIgnored private let videoQueue = DispatchQueue(label: "me.babono.kotek.camera.video",
-                                                              qos: .userInitiated)
+    @ObservationIgnored private let videoQueue = DispatchQueue(
+        label: "me.babono.kotek.camera.video",
+        qos: .userInitiated
+    )
 
     /// Whether delivered frames are rendered into `frameBuffer`.
     ///
@@ -137,6 +137,11 @@ final class CameraController: NSObject {
                 continuation.resume()
             }
         }
+        await MainActor.run {
+            guard previewLayer.session !== session else { return }
+            previewLayer.videoGravity = .resizeAspectFill
+            previewLayer.session = session
+        }
         // Build and attach the preview layer HERE, while the session is
         // configured but not yet running. Attaching to a running session is the
         // expensive case — nine seconds of it — and this is the one moment the
@@ -178,14 +183,18 @@ final class CameraController: NSObject {
         guard let device else { return }
         do {
             try device.lockForConfiguration()
-            if device.isFocusModeSupported(.locked) { device.focusMode = .locked }
+            if device.isFocusModeSupported(.locked) {
+                device.focusMode = .locked
+            }
             //R Exposure is marker mode's to own while it is on. Both this and
             //R `enableContinuousAutoFocus` are called from screen setup, AFTER
             //R the toggle has already configured the device — so without the
             //R guard, entering the detection screen in marker mode handed the
             //R exposure straight back to autoexposure and the marker stopped
             //R being the only bright thing in the frame.
-            if !markerVisionActive, device.isExposureModeSupported(.locked) { device.exposureMode = .locked }
+            if !markerVisionActive, device.isExposureModeSupported(.locked) {
+                device.exposureMode = .locked
+            }
             device.unlockForConfiguration()
         } catch {
             // Non-fatal: some devices won't allow locking; overlay still works.
@@ -203,11 +212,17 @@ final class CameraController: NSObject {
             guard let self, let device = self.device else { return }
             do {
                 try device.lockForConfiguration()
-                if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
-                if !self.markerVisionActive, device.isExposureModeSupported(.continuousAutoExposure) {
+                if device.isFocusModeSupported(.continuousAutoFocus) {
+                    device.focusMode = .continuousAutoFocus
+                }
+                if !self.markerVisionActive,
+                    device.isExposureModeSupported(.continuousAutoExposure)
+                {
                     device.exposureMode = .continuousAutoExposure
                 }
-                if device.isSmoothAutoFocusSupported { device.isSmoothAutoFocusEnabled = true }
+                if device.isSmoothAutoFocusSupported {
+                    device.isSmoothAutoFocusEnabled = true
+                }
                 device.unlockForConfiguration()
             } catch {
                 // Non-fatal: leave whatever mode the device is already in.
@@ -241,7 +256,11 @@ final class CameraController: NSObject {
     /// crosses a bar fast enough to smear badly at 1/30 s, and a smeared marker
     /// has a centroid halfway through its own travel — so the exposure is capped
     /// short even when the bias alone would not have required it.
-    func setMarkerVision(_ on: Bool, exposureBias: Double = -2.5, torchLevel: Float = 0.8) {
+    func setMarkerVision(
+        _ on: Bool,
+        exposureBias: Double = -2.5,
+        torchLevel: Float = 0.8
+    ) {
         sessionQueue.async { [weak self] in
             guard let self, let device = self.device else { return }
             self.markerVisionActive = on
@@ -251,37 +270,71 @@ final class CameraController: NSObject {
 
                 if on {
                     if device.hasTorch, device.isTorchAvailable {
-                        try? device.setTorchModeOn(level: min(torchLevel, AVCaptureDevice.maxAvailableTorchLevel))
+                        try? device.setTorchModeOn(
+                            level: min(
+                                torchLevel,
+                                AVCaptureDevice.maxAvailableTorchLevel
+                            )
+                        )
                     }
                     // White balance locked too: the tracker separates the marker
                     // from a gilded frame by how COLOURLESS it is, and a white
                     // balance that drifts moves that boundary underneath it.
-                    if device.isWhiteBalanceModeSupported(.locked) { device.whiteBalanceMode = .locked }
+                    if device.isWhiteBalanceModeSupported(.locked) {
+                        device.whiteBalanceMode = .locked
+                    }
 
-                    guard device.isExposureModeSupported(.custom) else { return }
+                    guard device.isExposureModeSupported(.custom) else {
+                        return
+                    }
                     let format = device.activeFormat
                     // Total light currently being gathered, in ISO-seconds — the
                     // one quantity that survives trading duration against gain.
-                    let metered = CMTimeGetSeconds(device.exposureDuration) * Double(device.iso)
+                    let metered =
+                        CMTimeGetSeconds(device.exposureDuration)
+                        * Double(device.iso)
                     let target = metered * pow(2.0, exposureBias)
 
-                    let minDuration = max(CMTimeGetSeconds(format.minExposureDuration), 1.0 / 8000.0)
-                    let maxDuration = min(CMTimeGetSeconds(format.maxExposureDuration), 1.0 / 250.0)
-                    let minISO = Double(format.minISO), maxISO = Double(format.maxISO)
+                    let minDuration = max(
+                        CMTimeGetSeconds(format.minExposureDuration),
+                        1.0 / 8000.0
+                    )
+                    let maxDuration = min(
+                        CMTimeGetSeconds(format.maxExposureDuration),
+                        1.0 / 250.0
+                    )
+                    let minISO = Double(format.minISO)
+                    let maxISO = Double(format.maxISO)
 
                     // Spend the budget on gain before duration: a short exposure
                     // is what kills the smear, so it is the part not to give back.
-                    var duration = min(max(target / minISO, minDuration), maxDuration)
+                    var duration = min(
+                        max(target / minISO, minDuration),
+                        maxDuration
+                    )
                     var iso = target / duration
-                    if iso < minISO { iso = minISO; duration = min(max(target / iso, minDuration), maxDuration) }
+                    if iso < minISO {
+                        iso = minISO
+                        duration = min(
+                            max(target / iso, minDuration),
+                            maxDuration
+                        )
+                    }
                     if iso > maxISO { iso = maxISO }
 
-                    device.setExposureModeCustom(duration: CMTimeMakeWithSeconds(duration, preferredTimescale: 1_000_000),
-                                                 iso: Float(iso),
-                                                 completionHandler: nil)
+                    device.setExposureModeCustom(
+                        duration: CMTimeMakeWithSeconds(
+                            duration,
+                            preferredTimescale: 1_000_000
+                        ),
+                        iso: Float(iso),
+                        completionHandler: nil
+                    )
                 } else {
                     if device.hasTorch { device.torchMode = .off }
-                    if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                    if device.isWhiteBalanceModeSupported(
+                        .continuousAutoWhiteBalance
+                    ) {
                         device.whiteBalanceMode = .continuousAutoWhiteBalance
                     }
                     if device.isExposureModeSupported(.continuousAutoExposure) {
@@ -311,7 +364,8 @@ final class CameraController: NSObject {
         lastRotationAngle = angle
         sessionQueue.async { [weak self] in
             guard let connection = self?.videoOutput?.connection(with: .video),
-                  connection.isVideoRotationAngleSupported(angle) else { return }
+                connection.isVideoRotationAngleSupported(angle)
+            else { return }
             connection.videoRotationAngle = angle
         }
     }
@@ -323,7 +377,13 @@ final class CameraController: NSObject {
         session.beginConfiguration()
         session.sessionPreset = .high
 
-        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+        guard
+            let device = AVCaptureDevice.default(
+                .builtInWideAngleCamera,
+                for: .video,
+                position: .back
+            )
+        else {
             session.commitConfiguration()
             setStatus(.failed("No back camera available"))
             return
@@ -341,9 +401,15 @@ final class CameraController: NSObject {
 
         // Start in continuous autofocus/exposure. Framing later opts into a lock.
         if (try? device.lockForConfiguration()) != nil {
-            if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
-            if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
-            if device.isSmoothAutoFocusSupported { device.isSmoothAutoFocusEnabled = true }
+            if device.isFocusModeSupported(.continuousAutoFocus) {
+                device.focusMode = .continuousAutoFocus
+            }
+            if device.isExposureModeSupported(.continuousAutoExposure) {
+                device.exposureMode = .continuousAutoExposure
+            }
+            if device.isSmoothAutoFocusSupported {
+                device.isSmoothAutoFocusEnabled = true
+            }
             device.unlockForConfiguration()
         }
 
@@ -355,7 +421,8 @@ final class CameraController: NSObject {
         //R sat in the ring buffer. The classifier squashes its crop to 360×360
         //R anyway, so ask AVFoundation for a smaller buffer instead.
         videoOutput.videoSettings = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferPixelFormatTypeKey as String:
+                kCVPixelFormatType_32BGRA,
             kCVPixelBufferWidthKey as String: 960,
             kCVPixelBufferHeightKey as String: 540,
         ]
@@ -377,15 +444,20 @@ final class CameraController: NSObject {
 // MARK: - Frame Processing
 
 extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
         // Cheapest possible bail-out: rendering a frame nobody will read is the
         // most expensive thing this app does per unit of value.
         guard wantsFrames,
-              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+            let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+        else { return }
         // Presentation timestamps ride the same host clock as the audio strike's
         // hostTime, so fusion can align the two without extra bookkeeping.
-        let hostTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
+        let hostTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            .seconds
         frameBuffer.ingest(pixelBuffer: pixelBuffer, hostTime: hostTime)
     }
 }
-

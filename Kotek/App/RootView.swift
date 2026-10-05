@@ -22,7 +22,7 @@ import FactoryKit
 
 struct RootView: View {
     @Environment(AppState.self) private var app
-    @State private var camera = CameraController()
+    @State private var camera: CameraController = Container.shared.cameraService()
     @State private var cue = CuePlayer()
     @State private var audio = AudioEngineController()
     @State private var preloader = Preloader()
@@ -137,7 +137,7 @@ struct RootView: View {
         case .framing:
             FramingView(camera: camera)
         case .aligning:
-            AligningView(camera: camera)
+            AligningView()
         case .calibrating:
             CalibrationView(camera: camera, audio: audio)
         case .chooseKotekan:

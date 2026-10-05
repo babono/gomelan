@@ -8,5 +8,13 @@
 import FactoryKit
 
 extension Container {
+    @MainActor
+    var router: Factory<AppState> {
+        self { AppState() }.singleton
+    }
 
+    // MARK: Services / Controller Init
+    nonisolated var cameraService: Factory<CameraController> {
+        self { CameraController() }.singleton
+    }
 }

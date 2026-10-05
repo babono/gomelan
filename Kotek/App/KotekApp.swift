@@ -26,7 +26,7 @@ struct KotekApp: App {
         // path goes through.
         AudioSessionManager.configureForPlayback()
         
-        let appState = AppState()
+        let appState = Container.shared.router()
         _app = State(initialValue: appState)
         
         // App Intents
