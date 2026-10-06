@@ -514,6 +514,9 @@ final class AppState {
             self.profile = ResourceLoader.defaultProfile()
         }
         self.screen = .welcome
+        #if DEBUG
+        applyScreenshotScene()
+        #endif
 
         //R Pushes every local instrument on launch, not only the ones saved
         //R from here on: gangsa set up before this build, or while offline,

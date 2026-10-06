@@ -1,0 +1,168 @@
+<!doctype html>
+<!--
+  App Store highlight frames. One template, four frames: open with ?frame=1…4.
+  Rendered to 2868 × 1320 (the 6.9" iPhone landscape slot) by render.sh.
+
+  Colours, type and pattern are the app's own (Kotek/UI/Theme.swift): the warm
+  brown ground, Dream Orphans for titles only, blue polos / purple sangsih, and
+  the rank colours. Edit the copy in FRAMES below.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Dream Orphans"; src: url("../../Kotek/Resources/font/Dream Orphans.otf"); }
+  @font-face { font-family: "Dream Orphans"; font-weight: 700; src: url("../../Kotek/Resources/font/Dream Orphans Bd.otf"); }
+
+  :root {
+    --ground: #3D322C; --deep: #2A211C; --cream: #F0DDA8; --gold: #C9A063;
+    --button: #FDDC8A; --stone: rgba(240, 221, 168, .66);
+    --polos: #5FA8D3; --sangsih: #A97CD1;
+    --paria: #9A8F86; --sudra: #7FB069; --waisya: #5FA8D3; --ksatria: #A97CD1; --brahmana: #E8B44A;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 2868px; height: 1320px; overflow: hidden; background: var(--ground); }
+  body {
+    position: relative;
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+    color: var(--cream);
+  }
+
+  /* The app's motif, tiled the way PatternBackground tiles it, but quieter —
+     here it sits behind a phone that already has it inside. */
+  .pattern {
+    position: absolute; inset: 0;
+    background: url("../../Kotek/Resources/Assets.xcassets/bg-pattern.imageset/bg-pattern.svg") 0 0 / 1448px 720px repeat;
+    opacity: .035;
+  }
+  .glow {
+    position: absolute; width: 2000px; height: 2000px; right: -300px; top: -340px;
+    background: radial-gradient(closest-side, rgba(253, 220, 138, .16), rgba(253, 220, 138, 0));
+  }
+
+  .copy {
+    position: absolute; left: 150px; top: 0; bottom: 0; width: 790px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .eyebrow {
+    font-size: 34px; font-weight: 700; letter-spacing: .32em;
+    color: var(--gold); text-transform: uppercase; margin-bottom: 36px;
+  }
+  h1 {
+    font-family: "Dream Orphans", serif; font-weight: 400;
+    font-size: 150px; line-height: .98; letter-spacing: -.005em;
+    /* The landing title's cream-to-gold fill. */
+    background: linear-gradient(180deg, #F6E9C4 0%, var(--button) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 44px;
+  }
+  p { font-size: 46px; line-height: 1.38; color: var(--stone); }
+  p b { color: var(--cream); font-weight: 600; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 18px 18px; margin-top: 52px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 18px;
+    padding: 18px 28px; border-radius: 20px;
+    background: rgba(42, 33, 28, .72); border: 2px solid rgba(201, 160, 99, .28);
+    font-size: 34px; color: var(--cream); font-weight: 600;
+  }
+  .chip i { width: 44px; height: 28px; border-radius: 6px; display: block; }
+  .chip span { color: var(--stone); font-weight: 400; }
+  .ladder { display: flex; gap: 14px; margin-top: 56px; align-items: flex-end; }
+  .rung { text-align: center; font-size: 26px; font-weight: 700; letter-spacing: .14em; }
+  .rung i { display: block; width: 128px; border-radius: 8px; margin-bottom: 14px; }
+
+  /* A landscape iPhone, drawn rather than photographed: a dark slab with the
+     screenshot set into it at the display's own corner radius. */
+  .device {
+    position: absolute; right: 110px; top: 50%; transform: translateY(-50%);
+    width: 1730px; padding: 25px; border-radius: 118px;
+    background: linear-gradient(145deg, #1d1714, #0b0807);
+    box-shadow:
+      0 0 0 3px rgba(201, 160, 99, .35),
+      0 60px 140px rgba(0, 0, 0, .55),
+      0 18px 40px rgba(0, 0, 0, .35);
+  }
+  .device img { display: block; width: 100%; border-radius: 94px; }
+  /* The Dynamic Island, on the left edge: the phone is turned landscape-left. */
+  .device::after {
+    content: ""; position: absolute; left: 46px; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 168px; border-radius: 20px; background: #000;
+  }
+
+  /* iPad 13" (2752 × 2064, 4:3). Too tall for side-by-side, so the copy goes
+     on top — headline on one line — and the phone sits underneath, larger. */
+  html.ipad, html.ipad body { width: 2752px; height: 2064px; }
+  .ipad .copy {
+    left: 200px; right: 200px; top: 170px; bottom: auto; width: auto;
+    display: block;
+  }
+  .ipad h1 { font-size: 190px; margin-bottom: 36px; }
+  .ipad p { font-size: 52px; max-width: 2000px; }
+  .ipad .chips, .ipad .ladder { margin-top: 44px; }
+  .ipad .device {
+    right: auto; left: 50%; top: auto; bottom: 140px; transform: translateX(-50%);
+    width: 2400px;
+  }
+  .ipad .glow { right: -100px; top: 300px; width: 2600px; height: 2600px; }
+</style>
+</head>
+<body>
+  <div class="pattern"></div>
+  <div class="glow"></div>
+  <div class="copy" id="copy"></div>
+  <div class="device"><img id="shot" alt=""></div>
+
+<script>
+const S = "../screenshots/iphone-6.9/";
+const FRAMES = {
+  1: {
+    eyebrow: "Kotekan",
+    title: "Two halves.<br>One melody.",
+    body: "Learn <b>polos</b> and <b>sangsih</b>, the interlocking parts at the heart of Balinese gamelan.",
+    extra: `<div class="chips">
+      <div class="chip"><i style="background:var(--polos)"></i>Polos <span>on the beat</span></div>
+      <div class="chip"><i style="background:var(--sangsih)"></i>Sangsih <span>in between</span></div>
+    </div>`,
+    shot: S + "04-choose-kotekan.jpg",
+  },
+  2: {
+    eyebrow: "Practice",
+    title: "Follow<br>the light",
+    body: "Set your iPhone above the bilah. It sees which key you strike, hears when, and <b>lights the next note</b>.",
+    // A real practice-screen capture replaces the illustration when it exists:
+    // drop it in as marketing/practice.jpg and re-render.
+    shot: "practice.jpg", fallback: S + "03-tracking.jpg",
+  },
+  3: {
+    eyebrow: "Progress",
+    title: "Tighter every<br>cycle",
+    body: "Every gong cycle is scored for timing. Your <b>best run is kept</b>, so there is always one to beat.",
+    shot: S + "05-results.jpg",
+  },
+  4: {
+    eyebrow: "Mastery",
+    title: "Grow with<br>your gangsa",
+    body: "Every note you land raises its rank — from finding the keys to <b>the weave is yours</b>.",
+    extra: `<div class="ladder">
+      ${[["Paria","paria",14],["Sudra","sudra",22],["Waisya","waisya",30],["Ksatria","ksatria",38],["Brahmana","brahmana",46]]
+        .map(([n,c,h]) => `<div class="rung" style="color:var(--${c})"><i style="height:${h}px;background:var(--${c})"></i>${n}</div>`).join("")}
+    </div>`,
+    shot: S + "06-your-gangsa.jpg",
+  },
+};
+
+const params = new URLSearchParams(location.search);
+if (params.get("size") === "ipad") document.documentElement.classList.add("ipad");
+const f = FRAMES[params.get("frame") || 1];
+// One line on iPad. Swapped in the copy rather than hidden in CSS, because a
+// hidden <br> takes the word space with it.
+if (params.get("size") === "ipad") f.title = f.title.replace(/<br>/g, " ");
+document.getElementById("copy").innerHTML =
+  `<div class="eyebrow">${f.eyebrow}</div><h1>${f.title}</h1><p>${f.body}</p>${f.extra || ""}`;
+const img = document.getElementById("shot");
+if (f.fallback) img.onerror = () => { img.onerror = null; img.src = f.fallback; };
+img.src = f.shot;
+</script>
+</body>
+</html>

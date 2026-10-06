@@ -133,7 +133,6 @@ targets:
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"
@@ -146,4 +145,9 @@ targets:
         SWIFT_EMIT_LOC_STRINGS: YES
         SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
         SWIFT_VERSION: 5.0
-        TARGETED_DEVICE_FAMILY: "1,2"
+        # iPhone only. The app is a phone on a stand over the instrument, laid
+        # out for a landscape phone; on iPad it came up in portrait with that
+        # layout stretched across a mostly empty screen — and declaring iPad
+        # makes App Store Connect require 13" iPad screenshots of it. iPads
+        # can still run it in iPhone compatibility mode.
+        TARGETED_DEVICE_FAMILY: "1"
