@@ -9,7 +9,9 @@
 //
 
 import AppIntents
+import FactoryKit
 import Observation
+import OSLog
 import SwiftUI
 
 @MainActor
@@ -20,7 +22,10 @@ final class AppState {
     var savedProfiles: [InstrumentProfile] = []
 
     // The kotekan session carried through selection → play.
-    let kotekans: [Kotekan] = Kotekan.bundled
+    /// The bundled catalogue until Supabase answers, then whatever it holds —
+    /// see `refreshCatalogue`. Starting from the bundled copy is what keeps the
+    /// picker full offline and on a first launch before the network is up.
+    private(set) var kotekans: [Kotekan] = Kotekan.bundled
     var selectedKotekan: Kotekan?
     /// Which half you are taking. Live: it is a toggle on the practice screen
     /// now, not a screen of its own, so it can change mid-session.
@@ -484,6 +489,11 @@ final class AppState {
         Defaults.set(guide.seenKey, true)
     }
 
+    /// Supabase, written behind `ProfileStore`. Never awaited by anything the
+    /// player is waiting on — see `RemoteStore`.
+    @ObservationIgnored private let remote = Container.shared.remote()
+    @ObservationIgnored private let log = Logger(subsystem: "Kotek", category: "remote")
+
     init() {
         let all = ProfileStore.loadAll()
         MalletHitClassifier.applyCropScale(
@@ -504,11 +514,56 @@ final class AppState {
             self.profile = ResourceLoader.defaultProfile()
         }
         self.screen = .welcome
+
+        //R Pushes every local instrument on launch, not only the ones saved
+        //R from here on: gangsa set up before this build, or while offline,
+        //R would otherwise never reach the database at all.
+        let pending = all
+        Task {
+            await refreshCatalogue()
+            for p in pending { await push(p) }
+        }
+    }
+
+    // MARK: - Remote
+
+    /// Swap in the database's catalogue, if it has one.
+    ///
+    /// An empty answer is ignored rather than taken at its word: it means the
+    /// built-ins were never seeded, and an empty picker is worse than a
+    /// bundled one.
+    func refreshCatalogue() async {
+        do {
+            let fetched = Kotekan.catalogue(from: try await remote.catalogue())
+            guard !fetched.isEmpty else { return }
+            kotekans = fetched
+            //R The figure in hand may have been swapped for its database copy.
+            //R Keep the selection pointing at the one the picker now shows.
+            if let id = selectedKotekan?.id {
+                selectedKotekan = fetched.first { $0.id == id } ?? selectedKotekan
+            }
+        } catch {
+            log.error("catalogue fetch failed, keeping bundled: \(error.localizedDescription)")
+        }
+    }
+
+    // ponytail: a failed write is logged and dropped, not queued. The launch
+    // push re-sends every instrument, so only practice sessions played offline
+    // are actually lost.
+    private func push(_ p: InstrumentProfile) async {
+        do { try await remote.saveInstrument(p) } catch {
+            log.error("instrument sync failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func pushInBackground(_ p: InstrumentProfile) {
+        Task { await push(p) }
     }
 
     func saveProfile() {
         ProfileStore.save(profile)
         savedProfiles = ProfileStore.loadAll()
+        pushInBackground(profile)
     }
 
     /// Save a specific instrument, which may not be the active one — renaming a
@@ -519,6 +574,7 @@ final class AppState {
         //R right when it IS the active instrument and wrong otherwise.
         ProfileStore.setSelectedID(profile.id)
         savedProfiles = ProfileStore.loadAll()
+        pushInBackground(p)
     }
 
     /// Fold the audio dictionary a session learned back into the instrument.
@@ -559,6 +615,7 @@ final class AppState {
             ProfileStore.save(snapshot)
             return ProfileStore.loadAll()
         }.value
+        pushInBackground(snapshot)
     }
 
     /// Kotekan this instrument has enough keys for.
@@ -654,6 +711,11 @@ final class AppState {
     func deleteInstrument(_ profileID: String) {
         ProfileStore.delete(profileID)
         savedProfiles = ProfileStore.loadAll()
+        Task { [remote, log] in
+            do { try await remote.deleteInstrument(id: profileID) } catch {
+                log.error("instrument delete failed: \(error.localizedDescription)")
+            }
+        }
 
         if previousProfile?.id == profileID { previousProfile = nil }
         guard profile.id == profileID else { return }
@@ -700,9 +762,10 @@ final class AppState {
     /// `addNewInstrument` — it IS the new-gangsa step. Naming it here, next to
     /// the one other fact the app cannot infer, saves the player a trip to
     /// Settings to fix "Gangsa #4" once they already have four of them.
-    func keyCountChosen(_ count: Int, name: String) {
+    func keyCountChosen(_ count: Int, name: String, type: GangsaType) {
         var updated = profile
         updated.resize(to: count)
+        updated.gangsaType = type
         //R An empty field keeps the generated name rather than writing a blank:
         //R a nameless card is unpickable on the rail, and a cleared field is far
         //R more likely to be an unfinished edit than an intention. Same guard as
@@ -823,6 +886,16 @@ final class AppState {
         recordSession(landed: result.landedNotes)
         lastResult = result
         screen = .results
+
+        let session = PracticeSession(result: result, kotekan: selectedKotekan,
+                                      half: chosenHalf, tempoScale: tempoScale,
+                                      leniency: judgementLeniency)
+        let instrument = profile
+        Task { [remote, log] in
+            do { try await remote.recordSession(session, on: instrument) } catch {
+                log.error("session sync failed: \(error.localizedDescription)")
+            }
+        }
     }
 
     /// File the session's best window as this figure's record, if it is one.
