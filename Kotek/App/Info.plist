@@ -14,6 +14,15 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing.</string>
 
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Kotek connects to the gangsa's strike sensors, so it can feel exactly which bar you hit and when.</string>
+
+	<!-- Filled from Config.xcconfig at build time. Read by RemoteStore. -->
+	<key>SupabaseURL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>SupabasePublishableKey</key>
+	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
+
 	<!-- Answers the export-compliance question at upload instead of on every
 	     build. True only in the sense that HTTPS is used; no encryption is
 	     implemented here. -->

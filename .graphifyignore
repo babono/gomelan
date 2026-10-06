@@ -1,0 +1,10 @@
+# .graphifyignore
+graphify-out/
+Pods/
+Carthage/
+build/
+DerivedData/
+*.xcodeproj/
+*.xcassets/
+*.mp3
+*.wav

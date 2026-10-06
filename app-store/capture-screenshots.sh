@@ -2,7 +2,7 @@
 # Retakes the App Store screenshots on the 6.9" iPhone simulator — the one
 # size App Store Connect requires; it scales these down for every smaller phone.
 #
-# Uses the DEBUG-only `-screenshot <scene>` hook (Kotek/Model/ScreenshotScenes.swift)
+# Uses the DEBUG-only `-screenshot <scene>` hook (Kotek/Core/Models/ScreenshotScenes.swift)
 # to open each screen with sample data behind it. The practice screen is not
 # here: the simulator has no camera, so that one is taken on a phone.
 #

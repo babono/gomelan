@@ -90,7 +90,7 @@ first. Put it second in the order.
 
 Retake the simulator set any time with `app-store/capture-screenshots.sh`. It
 opens each screen with sample data through the DEBUG-only `-screenshot` hook in
-`Kotek/Model/ScreenshotScenes.swift`, which is compiled out of release builds.
+`Kotek/Core/Models/ScreenshotScenes.swift`, which is compiled out of release builds.
 
 App preview video (optional, up to 30 s, landscape 1920 × 886 for 6.9"): the
 single most persuasive asset for an app like this is 15 seconds of a real
