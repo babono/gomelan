@@ -68,6 +68,7 @@ nonisolated extension RemoteKotekan {
     }
 
     /// The other direction, for saving a figure from the Create Kotek flow.
+    @MainActor
     init(_ k: Kotekan, source: KotekanSource, instrumentID: String?) {
         self.init(id: k.id, name: k.name, description: k.blurb,
                   level: k.kind == .melody ? nil : k.level,
@@ -77,7 +78,7 @@ nonisolated extension RemoteKotekan {
     }
 }
 
-nonisolated extension Kotekan {
+extension Kotekan {
     init(remote r: RemoteKotekan) {
         // The schema has no tone label or kind. A built-in takes its label from
         // the bundled copy of itself; a NULL level is what marks a melody, which

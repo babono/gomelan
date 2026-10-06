@@ -37,7 +37,7 @@ import Accelerate
 /// The count is half the atom. Without it, partial progress cannot be written
 /// down, and a dictionary that can only be saved once it is finished is a
 /// dictionary that mostly never gets saved.
-nonisolated struct LearnedAtom: Equatable {
+nonisolated struct LearnedAtom: Equatable, Sendable {
     var bands: [Float]
     var examples: Int
 }
@@ -76,7 +76,7 @@ final class KeyDecomposer {
     /// is trusted for recovery. One example is a single dynamic and possibly a
     /// mis-seen one; by four the template has averaged across the hard and soft
     /// hits that actually occur in a figure.
-    static let strikesToTrustAtom = 4
+    nonisolated static let strikesToTrustAtom = 4
 
     /// A key's share must clear this to be reported at all. Below it the energy
     /// is more likely decay tail than a fresh attack.

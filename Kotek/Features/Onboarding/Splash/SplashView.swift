@@ -15,10 +15,12 @@ struct SplashView: View {
     /// Who built it, along the foot.
     private var builtAt: some View {
         (
-            Text("Built at  ").foregroundStyle(Theme.cream.opacity(0.5))
-            + Text(Image(systemName: "apple.logo")).foregroundStyle(Theme.cream.opacity(0.82))
-            + Text("  Apple Developer Academy Bali  ").foregroundStyle(Theme.cream.opacity(0.82))
-            + Text("for the gamelan community.").foregroundStyle(Theme.cream.opacity(0.5))
+            HStack(spacing: 4) {
+                Text("Built at  ").foregroundStyle(Theme.cream.opacity(0.5))
+                Text(Image(systemName: "apple.logo")).foregroundStyle(Theme.cream.opacity(0.82))
+                Text("  Apple Developer Academy Bali  ").foregroundStyle(Theme.cream.opacity(0.82))
+                Text("for the gamelan community.").foregroundStyle(Theme.cream.opacity(0.5))
+            }
         )
         .font(.sans(12))
         .lineLimit(1)

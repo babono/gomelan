@@ -25,7 +25,7 @@ final class SettingsViewModel {
     var jumpTarget: SettingsSection?
     private var jumpToken = 0
 
-    static let scrollSpace = "settingsScroll"
+    nonisolated static let scrollSpace = "settingsScroll"
     static func chipID(_ id: SettingsSection) -> String { "chip-" + id.rawValue }
     static let activeThreshold: CGFloat = 40
 

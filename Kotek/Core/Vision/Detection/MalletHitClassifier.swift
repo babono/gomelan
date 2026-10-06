@@ -60,7 +60,11 @@ nonisolated final class MalletHitClassifier {
     /// back to audio-only, so vision simply adds nothing rather than crashing.
     init?() {
         do {
-            let modelURL = MalletDetector.urlOfModelInThisBundle
+            guard let modelURL = Bundle(for: MalletHitClassifier.self).url(forResource: "MalletDetector", withExtension: "mlmodelc") ?? Bundle.main.url(forResource: "MalletDetector", withExtension: "mlmodelc") else {
+                Self.loaded = false
+                Self.lastFailure = "load: model not found in bundle"
+                return nil
+            }
             let core = try MLModel(contentsOf: modelURL, configuration: MLModelConfiguration())
             self.model = try VNCoreMLModel(for: core)
             Self.loaded = true

@@ -40,7 +40,7 @@ import ImageIO
 import UniformTypeIdentifiers
 import Foundation
 
-nonisolated final class TrainingCapture {
+nonisolated final class TrainingCapture: @unchecked Sendable {
 
     /// What the tapped/struck key is an example of. Everything else in the frame
     /// is a negative regardless.

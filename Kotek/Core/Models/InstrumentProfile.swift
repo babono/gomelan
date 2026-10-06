@@ -10,7 +10,7 @@
 import Foundation
 
 /// One calibrated key: where it is in frame, and how it sounds.
-struct InstrumentKey: Codable, Identifiable, Equatable {
+nonisolated struct InstrumentKey: Codable, Identifiable, Equatable, Sendable {
     var index: Int
     var rect: NormalizedRect
     /// Optional free-corner quad set during aligning (top-left, top-right,
@@ -83,7 +83,7 @@ struct InstrumentKey: Codable, Identifiable, Equatable {
 /// with `.convertToSnakeCase`, which rewrites DICTIONARY keys as well as
 /// property names, and it would quietly mangle a composite key like
 /// "ubitannyendok-polos@1.0" on the way to disk.
-struct PatternRecord: Codable, Equatable, Identifiable {
+nonisolated struct PatternRecord: Codable, Equatable, Identifiable, Sendable {
     var kotekanId: String
     /// `KotekanHalf.rawValue` — stored as a string so the model layer does not
     /// have to import the figure vocabulary to decode a profile.
@@ -99,7 +99,7 @@ struct PatternRecord: Codable, Equatable, Identifiable {
 /// Which gangsa this is. The two are the same instrument an octave apart —
 /// kantilan above pemade — so nothing in detection or play depends on it; it
 /// names the card and the `gangsa_type` column.
-enum GangsaType: String, Codable, CaseIterable, Identifiable {
+nonisolated enum GangsaType: String, Codable, CaseIterable, Identifiable, Sendable {
     case pemade
     case kantilan
 
@@ -109,7 +109,7 @@ enum GangsaType: String, Codable, CaseIterable, Identifiable {
 
 /// A calibrated instrument. v1 ships exactly one (our gangsa), but the shape is
 /// per-instrument by design (PRD §2, §7).
-struct InstrumentProfile: Codable, Identifiable, Equatable {
+nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable {
     var id: String
     var name: String
     var keyCount: Int
