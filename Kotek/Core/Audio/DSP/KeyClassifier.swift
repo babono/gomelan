@@ -97,10 +97,7 @@ final class KeyClassifier {
     }
 
     private func dot(_ a: [Float], _ b: [Float]) -> Float {
-        guard a.count == b.count else { return 0 }
-        var result: Float = 0
-        vDSP_dotpr(a, 1, b, 1, &result, vDSP_Length(a.count))
-        return result
+        DSPVector.dot(a, b)
     }
 
     // MARK: - Calibration support

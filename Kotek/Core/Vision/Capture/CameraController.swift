@@ -14,7 +14,7 @@ import AVFoundation
 import Observation
 
 @Observable
-nonisolated final class CameraController: NSObject, Sendable {
+nonisolated final class CameraController: NSObject, @unchecked Sendable {
     enum Status: Equatable {
         case idle
         case configuring

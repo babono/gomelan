@@ -52,9 +52,9 @@ final class SplashChime {
     /// Published so the title music can duck underneath for exactly this long
     /// and swell afterwards, rather than both guessing at a number and drifting
     /// apart the first time either is adjusted.
-    static let ringDuration: TimeInterval = 2.0
-    static let fadeDuration: TimeInterval = 0.8
-    static var totalDuration: TimeInterval { SplashChime.ringDuration + SplashChime.fadeDuration }
+    nonisolated static let ringDuration: TimeInterval = 2.0
+    nonisolated static let fadeDuration: TimeInterval = 0.8
+    nonisolated static var totalDuration: TimeInterval { SplashChime.ringDuration + SplashChime.fadeDuration }
 
     // MARK: - Striking
 

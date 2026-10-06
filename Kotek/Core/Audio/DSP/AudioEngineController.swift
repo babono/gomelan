@@ -239,7 +239,7 @@ final class AudioEngineController {
             object: engine,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in self?.recoverFromConfigurationChange() }
+            self?.recoverFromConfigurationChange()
         }
     }
 
@@ -954,10 +954,7 @@ final class AudioEngineController {
 
     /// Cosine similarity of two L2-normalised fingerprints.
     private func dot(_ a: [Float], _ b: [Float]) -> Float {
-        guard a.count == b.count else { return 0 }
-        var sum: Float = 0
-        for i in 0..<a.count { sum += a[i] * b[i] }
-        return sum
+        DSPVector.dot(a, b)
     }
 
     private func recordOnset(_ hostTime: Double) {
