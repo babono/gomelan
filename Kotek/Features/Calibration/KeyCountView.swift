@@ -29,6 +29,7 @@ struct KeyCountView: View {
     /// Held locally and committed on Next — nothing is written to disk until
     /// the whole step is done.
     @State private var name: String = ""
+    @State private var type: GangsaType = .pemade
     @FocusState private var nameFocused: Bool
     private let range = 1...14
 
@@ -48,6 +49,7 @@ struct KeyCountView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     nameField
+                    typeSwitch
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.trailing, 32)
@@ -69,7 +71,7 @@ struct KeyCountView: View {
                         // directly rather than trusting an onSubmit that never
                         // fired.
                         nameFocused = false
-                        app.keyCountChosen(count, name: name)
+                        app.keyCountChosen(count, name: name, type: type)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -88,7 +90,35 @@ struct KeyCountView: View {
             // placeholder: it is a real, usable answer, and it shows the naming
             // pattern to anyone who would rather not think about it.
             name = app.profile.name
+            type = app.profile.type
         }
+    }
+
+    /// Pemade or kantilan — the same instrument an octave apart, so this only
+    /// names the gangsa. Asked here because it is the one other fact about the
+    /// instrument the camera cannot see.
+    private var typeSwitch: some View {
+        HStack(spacing: 0) {
+            ForEach(GangsaType.allCases) { option in
+                let selected = type == option
+                Button { type = option } label: {
+                    Text(option.title)
+                        .font(.sans(13, weight: .semibold))
+                        .textCase(.uppercase)
+                        .tracking(1.4)
+                        .foregroundStyle(selected ? Theme.ink : Theme.charcoal)
+                        .padding(.vertical, 9)
+                        .padding(.horizontal, 18)
+                        .background(selected ? Theme.buttonFill : .clear,
+                                    in: RoundedRectangle(cornerRadius: Theme.radius - 2))
+                }
+                .buttonStyle(.kajar)
+                .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+            }
+        }
+        .padding(2)
+        .overlay(RoundedRectangle(cornerRadius: Theme.radius)
+            .strokeBorder(Theme.charcoal.opacity(0.15), lineWidth: 1))
     }
 
     private var nameField: some View {
