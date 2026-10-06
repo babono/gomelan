@@ -8,7 +8,6 @@
 //
 
 import Foundation
-import SwiftUI
 
 /// Judgement windows from §5.1. Starting values, tune during playtesting.
 enum JudgementResult: String, Equatable {
@@ -34,16 +33,6 @@ enum JudgementResult: String, Equatable {
         case .lateEarly: return "Late"
         case .miss: return "Miss"
         case .wrongKey: return "Wrong key"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .perfect: return Theme.hit
-        case .good: return Theme.hit.opacity(0.8)
-        case .lateEarly: return Theme.upcoming
-        case .miss: return Theme.miss
-        case .wrongKey: return Theme.wrong
         }
     }
 

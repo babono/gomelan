@@ -302,3 +302,31 @@ extension Color {
         self.init(.sRGB, red: r, green: g, blue: b, opacity: alpha)
     }
 }
+
+// MARK: - Model UI Color Extensions
+
+extension Mastery.Rank {
+    /// Grey, green, blue, purple, gold. See `Theme.rankParia` and friends.
+    var color: Color {
+        switch self {
+        case .paria: return Theme.rankParia
+        case .sudra: return Theme.rankSudra
+        case .waisya: return Theme.rankWaisya
+        case .ksatria: return Theme.rankKsatria
+        case .brahmana: return Theme.rankBrahmana
+        }
+    }
+}
+
+extension JudgementResult {
+    var color: Color {
+        switch self {
+        case .perfect: return Theme.hit
+        case .good: return Theme.hit.opacity(0.8)
+        case .lateEarly: return Theme.upcoming
+        case .miss: return Theme.miss
+        case .wrongKey: return Theme.wrong
+        }
+    }
+}
+

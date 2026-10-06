@@ -13,7 +13,7 @@
 
 import Foundation
 
-nonisolated enum Defaults {
+nonisolated struct Defaults {
     static func double(_ key: String, _ fallback: Double) -> Double {
         UserDefaults.standard.object(forKey: key) as? Double ?? fallback
     }

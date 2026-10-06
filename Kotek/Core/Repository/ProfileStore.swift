@@ -14,7 +14,7 @@ import Foundation
 /// baseline in it a profile is no longer a trivial file, and this target
 /// defaults to MainActor, which would otherwise put every write on the same
 /// thread as the UI.
-nonisolated enum ProfileStore {
+nonisolated struct ProfileStore {
     private static var listUrl: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("instruments_store.json")

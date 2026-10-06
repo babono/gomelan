@@ -22,7 +22,7 @@ nonisolated struct InstrumentRemoteRepository: Sendable {
         guard let id = UUID(uuidString: p.id) else { return }
         let uid = try await remote.userID()
 
-        let row = InstrumentRow(
+        let row = await InstrumentRow(
             id: id,
             userID: uid,
             name: p.name,

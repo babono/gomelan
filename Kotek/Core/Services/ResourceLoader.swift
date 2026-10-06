@@ -13,7 +13,7 @@
 
 import Foundation
 
-enum ResourceLoader {
+struct ResourceLoader {
     private static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
