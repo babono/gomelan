@@ -6,6 +6,7 @@
 //
 
 import CoreGraphics
+import FactoryKit
 import Foundation
 import Observation
 import QuartzCore
@@ -32,7 +33,7 @@ final class AligningViewModel {
     /// Non-nil while the fit is being committed — see `confirmAlignment`.
     var busyMessage: String?
 
-    init(app: AppState, camera: CameraController) {
+    init(app: AppState, camera: CameraController = Container.shared.cameraService()) {
         self.app = app
         self.camera = camera
     }

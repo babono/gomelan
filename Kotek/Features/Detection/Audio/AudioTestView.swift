@@ -11,11 +11,17 @@
 //  above it)? Tap the gangsa and watch the bars; the noise floor shows between.
 //
 
+import FactoryKit
 import SwiftUI
 
 struct AudioTestView: View {
     @Environment(AppState.self) private var app
     let audio: AudioEngineController
+
+    @MainActor
+    init(audio: AudioEngineController = Container.shared.audioService()) {
+        self.audio = audio
+    }
 
     struct OnsetEvent: Identifiable {
         let id = UUID()

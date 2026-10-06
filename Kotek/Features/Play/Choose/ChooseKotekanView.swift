@@ -6,27 +6,25 @@
 //  to the count-in — this is the last decision before playing.
 //
 
+import FactoryKit
 import SwiftUI
 
 struct ChooseKotekanView: View {
     @Environment(AppState.self) private var app
-    let cue: CuePlayer
 
     var body: some View {
-        ChooseKotekanContentView(app: app, cue: cue)
+        ChooseKotekanContentView(app: app)
     }
 }
 
 private struct ChooseKotekanContentView: View {
     let app: AppState
-    let cue: CuePlayer
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel: ChooseKotekanViewModel
 
-    init(app: AppState, cue: CuePlayer) {
+    init(app: AppState, cue: CuePlayer = Container.shared.cueService()) {
         self.app = app
-        self.cue = cue
         _viewModel = State(wrappedValue: ChooseKotekanViewModel(app: app, cue: cue))
     }
 

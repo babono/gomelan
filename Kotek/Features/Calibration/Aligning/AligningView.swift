@@ -12,25 +12,18 @@ import SwiftUI
 
 struct AligningView: View {
     @Environment(AppState.self) private var app
-    let camera: CameraController
-
-    init(camera: CameraController = Container.shared.cameraService()) {
-        self.camera = camera
-    }
 
     var body: some View {
-        AligningContentView(app: app, camera: camera)
+        AligningContentView(app: app)
     }
 }
 
 private struct AligningContentView: View {
     let app: AppState
-    let camera: CameraController
     @State private var viewModel: AligningViewModel
 
-    init(app: AppState, camera: CameraController) {
+    init(app: AppState, camera: CameraController = Container.shared.cameraService()) {
         self.app = app
-        self.camera = camera
         _viewModel = State(wrappedValue: AligningViewModel(app: app, camera: camera))
     }
 

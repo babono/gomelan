@@ -7,31 +7,29 @@
 //  step 3/4 is where the masks are fitted exactly.
 //
 
+import FactoryKit
 import SwiftUI
 
 struct FramingView: View {
     @Environment(AppState.self) private var app
-    let camera: CameraController
 
     var body: some View {
-        FramingContentView(app: app, camera: camera)
+        FramingContentView(app: app)
     }
 }
 
 private struct FramingContentView: View {
     let app: AppState
-    let camera: CameraController
     @State private var viewModel: FramingViewModel
 
-    init(app: AppState, camera: CameraController) {
+    init(app: AppState, camera: CameraController = Container.shared.cameraService()) {
         self.app = app
-        self.camera = camera
         _viewModel = State(wrappedValue: FramingViewModel(app: app, camera: camera))
     }
 
     var body: some View {
         ZStack {
-            CameraPreview(camera: camera)
+            CameraPreview(camera: viewModel.camera)
                 .ignoresSafeArea()
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
                     viewModel.bleed = $0

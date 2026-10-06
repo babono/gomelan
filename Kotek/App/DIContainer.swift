@@ -43,4 +43,16 @@ extension Container {
     nonisolated var cameraService: Factory<CameraController> {
         self { CameraController() }.singleton
     }
+
+    nonisolated var audioService: Factory<AudioEngineController> {
+        self { MainActor.assumeIsolated { AudioEngineController() } }.singleton
+    }
+
+    nonisolated var cueService: Factory<CuePlayer> {
+        self { MainActor.assumeIsolated { CuePlayer() } }.singleton
+    }
+
+    nonisolated var preloaderService: Factory<Preloader> {
+        self { MainActor.assumeIsolated { Preloader() } }.singleton
+    }
 }

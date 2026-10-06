@@ -5,6 +5,7 @@
 //  Created by Dimas Nugraha on 06/10/26.
 //
 
+import FactoryKit
 import Foundation
 import Observation
 
@@ -37,7 +38,11 @@ final class StrikeBaselineViewModel {
         return strikeCount == nil ? "Start listening" : "Re-record"
     }
 
-    init(app: AppState, camera: CameraController, audio: AudioEngineController) {
+    init(
+        app: AppState,
+        camera: CameraController = Container.shared.cameraService(),
+        audio: AudioEngineController = Container.shared.audioService()
+    ) {
         self.app = app
         self.camera = camera
         self.audio = audio

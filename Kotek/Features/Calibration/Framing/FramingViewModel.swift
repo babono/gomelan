@@ -6,6 +6,7 @@
 //
 
 import CoreGraphics
+import FactoryKit
 import Foundation
 import Observation
 import QuartzCore
@@ -29,7 +30,7 @@ final class FramingViewModel {
     /// Clearance between the dashed edge and the chrome it sits between.
     private static let chromeGap: CGFloat = 8
 
-    init(app: AppState, camera: CameraController) {
+    init(app: AppState, camera: CameraController = Container.shared.cameraService()) {
         self.app = app
         self.camera = camera
     }

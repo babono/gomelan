@@ -6,11 +6,16 @@
 //  camera to see the gangsa, the mic to hear which key was struck.
 //
 
+import FactoryKit
 import SwiftUI
 
 struct PermissionsView: View {
     @Environment(AppState.self) private var app
     let camera: CameraController
+
+    init(camera: CameraController = Container.shared.cameraService()) {
+        self.camera = camera
+    }
 
     var body: some View {
         VStack(spacing: 20) {

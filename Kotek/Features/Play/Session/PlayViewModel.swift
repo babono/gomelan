@@ -6,6 +6,7 @@
 //
 
 import CoreGraphics
+import FactoryKit
 import Foundation
 import Observation
 import QuartzCore
@@ -40,9 +41,9 @@ final class PlayViewModel {
 
     init(
         app: AppState,
-        camera: CameraController,
-        audio: AudioEngineController,
-        cue: CuePlayer
+        camera: CameraController = Container.shared.cameraService(),
+        audio: AudioEngineController = Container.shared.audioService(),
+        cue: CuePlayer = Container.shared.cueService()
     ) {
         self.app = app
         self.camera = camera

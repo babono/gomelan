@@ -10,34 +10,33 @@
 //  strike gate used during play.
 //
 
+import FactoryKit
 import SwiftUI
 
 struct StrikeBaselineView: View {
     @Environment(AppState.self) private var app
-    let camera: CameraController
-    let audio: AudioEngineController
 
     var body: some View {
-        StrikeBaselineContentView(app: app, camera: camera, audio: audio)
+        StrikeBaselineContentView(app: app)
     }
 }
 
 private struct StrikeBaselineContentView: View {
     let app: AppState
-    let camera: CameraController
-    let audio: AudioEngineController
     @State private var viewModel: StrikeBaselineViewModel
 
-    init(app: AppState, camera: CameraController, audio: AudioEngineController) {
+    init(
+        app: AppState,
+        camera: CameraController = Container.shared.cameraService(),
+        audio: AudioEngineController = Container.shared.audioService()
+    ) {
         self.app = app
-        self.camera = camera
-        self.audio = audio
         _viewModel = State(wrappedValue: StrikeBaselineViewModel(app: app, camera: camera, audio: audio))
     }
 
     var body: some View {
         ZStack {
-            CameraPreview(camera: camera)
+            CameraPreview(camera: viewModel.camera)
                 .ignoresSafeArea()
 
             KeyOutlinesOverlay(

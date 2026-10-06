@@ -11,12 +11,17 @@
 //  Per-frame classification is fine here — this is a diagnostic, not the hot path.
 //
 
-import SwiftUI
+import FactoryKit
 import QuartzCore
+import SwiftUI
 
 struct MalletTestView: View {
     @Environment(AppState.self) private var app
     var camera: CameraController
+
+    init(camera: CameraController = Container.shared.cameraService()) {
+        self.camera = camera
+    }
 
     @State private var classifier: MalletHitClassifier?
     @State private var scores: [Int: Double] = [:]

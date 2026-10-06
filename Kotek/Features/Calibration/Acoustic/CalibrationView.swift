@@ -14,34 +14,33 @@
 //    startBaselineCapture() → onOnsetDebug (per strike) → finishBaselineCapture()
 //
 
+import FactoryKit
 import SwiftUI
 
 struct CalibrationView: View {
     @Environment(AppState.self) private var app
-    let camera: CameraController
-    let audio: AudioEngineController
 
     var body: some View {
-        CalibrationContentView(app: app, camera: camera, audio: audio)
+        CalibrationContentView(app: app)
     }
 }
 
 private struct CalibrationContentView: View {
     let app: AppState
-    let camera: CameraController
-    let audio: AudioEngineController
     @State private var viewModel: CalibrationViewModel
 
-    init(app: AppState, camera: CameraController, audio: AudioEngineController) {
+    init(
+        app: AppState,
+        camera: CameraController = Container.shared.cameraService(),
+        audio: AudioEngineController = Container.shared.audioService()
+    ) {
         self.app = app
-        self.camera = camera
-        self.audio = audio
         _viewModel = State(wrappedValue: CalibrationViewModel(app: app, camera: camera, audio: audio))
     }
 
     var body: some View {
         ZStack {
-            CameraPreview(camera: camera)
+            CameraPreview(camera: viewModel.camera)
                 .ignoresSafeArea()
                 .overlay(Color.black.opacity(0.22).ignoresSafeArea())
 

@@ -22,17 +22,14 @@ import FactoryKit
 
 struct RootView: View {
     @Environment(AppState.self) private var app
-    @State private var camera: CameraController = Container.shared.cameraService()
-    @State private var cue = CuePlayer()
-    @State private var audio = AudioEngineController()
-    @State private var preloader = Preloader()
+    @State private var preloader = Container.shared.preloaderService()
 
     var body: some View {
         ZStack {
             // Skipped where a camera preview fills the screen anyway — painting
             // a pattern that is about to be completely covered is wasted work on
             // exactly the screens with the least headroom to spare.
-            if !isCameraScreen {
+            if !app.screen.isCameraScreen {
                 PatternBackground()
             } else {
                 Theme.ground.ignoresSafeArea()
@@ -77,7 +74,7 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.3), value: app.showingOnboarding)
         .animation(.easeInOut(duration: 0.55), value: preloader.isFinished)
         .task {
-            await preloader.warm(camera: camera)
+            await preloader.warm(camera: Container.shared.cameraService())
             // Raised BEFORE the splash finishes fading, deliberately: the
             // introduction is laid out and drawn underneath it, and the splash
             // reveals it. Waiting for the fade to end instead would show the
@@ -97,8 +94,10 @@ struct RootView: View {
         //
         // Camera-to-camera moves (aligning → baseline, countdown → playing) do
         // not flip this, so the session is never stopped and restarted mid-flow.
-        .onChange(of: isCameraScreen) { _, showsCamera in
-            if !showsCamera { camera.stop() }
+        .onChange(of: app.screen.isCameraScreen) { _, showsCamera in
+            if !showsCamera {
+                Container.shared.cameraService().stop()
+            }
         }
         // Every switch under here ticks like a kajar when it flips. Buttons get
         // the same treatment one at a time (`.buttonStyle(.kajar)`), because
@@ -109,25 +108,13 @@ struct RootView: View {
         .statusBarHidden(true)
     }
 
-    /// Screens whose ground is the live camera feed rather than the pattern.
-    private var isCameraScreen: Bool {
-        switch app.screen {
-        case .framing, .aligning, .calibrating, .baseline,
-             .countdown, .playing, .malletTest, .detectionTest, .audioTest,
-             .captureTraining:
-            return true
-        default:
-            return false
-        }
-    }
-
     @ViewBuilder
     private var content: some View {
         switch app.screen {
         case .welcome:
             WelcomeView()
         case .checkingPermissions:
-            PermissionsView(camera: camera)
+            PermissionsView()
         case .permissionsBlocked:
             PermissionsBlockedView()
         case .chooseInstrument:
@@ -135,29 +122,29 @@ struct RootView: View {
         case .choosingKeyCount:
             KeyCountView()
         case .framing:
-            FramingView(camera: camera)
+            FramingView()
         case .aligning:
-            AligningView(camera: camera)
+            AligningView()
         case .calibrating:
-            CalibrationView(camera: camera, audio: audio)
+            CalibrationView()
         case .chooseKotekan:
-            ChooseKotekanView(cue: cue)
+            ChooseKotekanView()
         case .countdown, .playing:
-            PlayView(camera: camera, audio: audio, cue: cue)
+            PlayView()
         case .results:
             ResultsView()
         case .settings:
             SettingsView()
         case .baseline:
-            StrikeBaselineView(camera: camera, audio: audio)
+            StrikeBaselineView()
         case .malletTest:
-            MalletTestView(camera: camera)
+            MalletTestView()
         case .detectionTest:
-            DetectionTestView(camera: camera, audio: audio)
+            DetectionTestView()
         case .audioTest:
-            AudioTestView(audio: audio)
+            AudioTestView()
         case .captureTraining:
-            CaptureTrainingView(camera: camera, audio: audio)
+            CaptureTrainingView()
         }
     }
 }

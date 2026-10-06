@@ -15,13 +15,23 @@
 //  the frame instead.
 //
 
-import SwiftUI
+import FactoryKit
 import QuartzCore
+import SwiftUI
 
 struct CaptureTrainingView: View {
     @Environment(AppState.self) private var app
     let camera: CameraController
     let audio: AudioEngineController
+
+    @MainActor
+    init(
+        camera: CameraController = Container.shared.cameraService(),
+        audio: AudioEngineController = Container.shared.audioService()
+    ) {
+        self.camera = camera
+        self.audio = audio
+    }
 
     @State private var capture = TrainingCapture()
     @State private var overlaySize: CGSize = .zero

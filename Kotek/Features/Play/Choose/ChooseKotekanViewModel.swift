@@ -5,6 +5,7 @@
 //  Created by Dimas Nugraha on 06/10/26.
 //
 
+import FactoryKit
 import Foundation
 import Observation
 import SwiftUI
@@ -25,7 +26,7 @@ final class ChooseKotekanViewModel {
     static let gap: CGFloat = 22
     static var step: CGFloat { KotekanCardView.cardWidth + gap }
 
-    init(app: AppState, cue: CuePlayer) {
+    init(app: AppState, cue: CuePlayer = Container.shared.cueService()) {
         self.app = app
         self.cue = cue
     }

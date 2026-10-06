@@ -10,27 +10,24 @@
 //  detection on.
 //
 
+import FactoryKit
 import QuartzCore
 import SwiftUI
 import Vision
 
 struct DetectionTestView: View {
     @Environment(AppState.self) private var app
-    let camera: CameraController
-    let audio: AudioEngineController
-
     @State private var viewModel: DetectionTestViewModel
 
-    init(camera: CameraController, audio: AudioEngineController) {
-        self.camera = camera
-        self.audio = audio
-        _viewModel = State(wrappedValue: DetectionTestViewModel(camera: camera, audio: audio))
+    @MainActor
+    init(viewModel: DetectionTestViewModel? = nil) {
+        _viewModel = State(wrappedValue: viewModel ?? DetectionTestViewModel())
     }
 
     var body: some View {
         @Bindable var app = app
         return ZStack {
-            CameraPreview(camera: camera, forwardsRotation: true)
+            CameraPreview(camera: viewModel.camera, forwardsRotation: true)
                 .ignoresSafeArea()
 
             DetectionKeyOverlay(
@@ -98,7 +95,7 @@ struct DetectionTestView: View {
                 Spacer()
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(audio.isRunning ? Theme.hit : Theme.miss)
+                        .fill(viewModel.audio.isRunning ? Theme.hit : Theme.miss)
                         .frame(width: 10, height: 10)
                     Text("vision + audio")
                         .font(.system(size: 12, weight: .bold, design: .rounded))

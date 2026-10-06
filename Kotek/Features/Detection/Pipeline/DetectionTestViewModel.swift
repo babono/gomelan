@@ -7,6 +7,7 @@
 //  audio onset corroboration, and live dictionary learning.
 //
 
+import FactoryKit
 import SwiftUI
 import Vision
 
@@ -45,7 +46,10 @@ final class DetectionTestViewModel {
     private var detector = VisionStrikeDetector()
     private let visionTeachingConfidence: Double = 0.75
 
-    init(camera: CameraController, audio: AudioEngineController) {
+    init(
+        camera: CameraController = Container.shared.cameraService(),
+        audio: AudioEngineController = Container.shared.audioService()
+    ) {
         self.camera = camera
         self.audio = audio
     }

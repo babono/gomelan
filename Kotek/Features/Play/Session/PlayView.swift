@@ -7,39 +7,31 @@
 //  both halves against the gong cycle; the header counts the passes.
 //
 
+import FactoryKit
 import QuartzCore
 import SwiftUI
 
 struct PlayView: View {
     @Environment(AppState.self) private var app
-    let camera: CameraController
-    let audio: AudioEngineController
-    let cue: CuePlayer
 
     var body: some View {
-        PlayContentView(app: app, camera: camera, audio: audio, cue: cue)
+        PlayContentView(app: app)
     }
 }
 
 private struct PlayContentView: View {
     let app: AppState
-    let camera: CameraController
-    let audio: AudioEngineController
-    let cue: CuePlayer
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var viewModel: PlayViewModel
 
     init(
         app: AppState,
-        camera: CameraController,
-        audio: AudioEngineController,
-        cue: CuePlayer
+        camera: CameraController = Container.shared.cameraService(),
+        audio: AudioEngineController = Container.shared.audioService(),
+        cue: CuePlayer = Container.shared.cueService()
     ) {
         self.app = app
-        self.camera = camera
-        self.audio = audio
-        self.cue = cue
         _viewModel = State(
             wrappedValue: PlayViewModel(app: app, camera: camera, audio: audio, cue: cue)
         )
@@ -51,7 +43,7 @@ private struct PlayContentView: View {
 
         return ZStack {
             // 1. Camera preview edge-to-edge
-            CameraPreview(camera: camera, forwardsRotation: true)
+            CameraPreview(camera: vm.camera, forwardsRotation: true)
                 .ignoresSafeArea()
 
             // 2. Key rect guidance overlay edge-to-edge

@@ -27,7 +27,17 @@ enum Route: String, Hashable {
     case audioTest
     case captureTraining
 
-    
+    /// Screens whose ground is the live camera feed rather than the pattern.
+    var isCameraScreen: Bool {
+        switch self {
+        case .framing, .aligning, .calibrating, .baseline,
+             .countdown, .playing, .malletTest, .detectionTest, .audioTest,
+             .captureTraining:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 nonisolated extension Route: AppEnum {
