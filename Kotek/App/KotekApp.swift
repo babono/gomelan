@@ -6,10 +6,13 @@
 //
 
 import SwiftUI
+import FactoryKit
+import AppIntents
 
 @main
 struct KotekApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @State private var app: AppState
 
     init() {
         // The audio session is the fiddliest piece of the project. The app opens
@@ -22,11 +25,18 @@ struct KotekApp: App {
         // `AudioEngineController.start`, which is the one door every listening
         // path goes through.
         AudioSessionManager.configureForPlayback()
+        
+        let appState = AppState()
+        _app = State(initialValue: appState)
+        
+        // App Intents
+        AppDependencyManager.shared.add(dependency: appState)
     }
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(app)
         }
     }
 }
