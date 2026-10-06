@@ -26,6 +26,7 @@ enum Route: String, Hashable {
     case detectionTest
     case audioTest
     case captureTraining
+    case sensorTest
 
     
 }
@@ -53,6 +54,7 @@ nonisolated extension Route: AppEnum {
         .detectionTest: "Detection Test",
         .audioTest: "Audio Test",
         .captureTraining: "Capture Training",
+        .sensorTest: "Sensor Test",
     ]
     
 }

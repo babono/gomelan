@@ -192,6 +192,7 @@ struct SettingsView: View {
                                 SecondaryButton(title: "Test Detection", systemImage: "dot.radiowaves.left.and.right") { app.openDetectionTest() }
                                 SecondaryButton(title: "Test Audio", systemImage: "waveform.circle") { app.openAudioTest() }
                                 SecondaryButton(title: "Capture Training Data", systemImage: "camera.viewfinder") { app.openCaptureTraining() }
+                                SecondaryButton(title: "Test Sensors", systemImage: "sensor.tag.radiowaves.forward") { app.openSensorTest() }
                             }
                         }
 

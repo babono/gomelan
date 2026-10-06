@@ -158,6 +158,8 @@ struct RootView: View {
             AudioTestView(audio: audio)
         case .captureTraining:
             CaptureTrainingView(camera: camera, audio: audio)
+        case .sensorTest:
+            SensorPlayView(cue: cue)
         }
     }
 }

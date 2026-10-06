@@ -963,6 +963,8 @@ final class AppState {
     func closeDetectionTest() { screen = .settings }
     func openAudioTest() { screen = .audioTest }
     func closeAudioTest() { screen = .settings }
+    func openSensorTest() { screen = .sensorTest }
+    func closeSensorTest() { screen = .settings }
 
     /// The persistent re-alignment affordance (§13.4).
     func realign() { screen = .aligning }
