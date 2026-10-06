@@ -137,7 +137,7 @@ struct RootView: View {
         case .framing:
             FramingView(camera: camera)
         case .aligning:
-            AligningView()
+            AligningView(camera: camera)
         case .calibrating:
             CalibrationView(camera: camera, audio: audio)
         case .chooseKotekan:

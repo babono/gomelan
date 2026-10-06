@@ -6,15 +6,14 @@
 //
 
 import CoreGraphics
-import FactoryKit
 import Foundation
-import SwiftUI
+import Observation
+import QuartzCore
 
 @Observable
 @MainActor
 final class AligningViewModel {
-    var app: AppState { Container.shared.router() }
-
+    private let app: AppState
     let camera: CameraController
 
     var keys: [InstrumentKey] = []
@@ -33,8 +32,9 @@ final class AligningViewModel {
     /// Non-nil while the fit is being committed — see `confirmAlignment`.
     var busyMessage: String?
 
-    init(cameraService: CameraController = Container.shared.cameraService()) {
-        self.camera = cameraService
+    init(app: AppState, camera: CameraController) {
+        self.app = app
+        self.camera = camera
     }
 
     /// Initializes keys and runs auto-fit if arriving from framing or first run.
@@ -261,14 +261,6 @@ final class AligningViewModel {
             //R screen bare for a frame before it goes.
             app.alignmentConfirmed()
         }
-    }
-
-    /// Binding to directly access and mutate a key's axis-aligned rect.
-    func rectBinding(_ index: Int) -> Binding<NormalizedRect> {
-        Binding(
-            get: { self.keys[index].rect },
-            set: { self.keys[index].rect = $0 }
-        )
     }
 
     // MARK: - Row-level fit controls
