@@ -3,3 +3,9 @@
 
 DEVELOPMENT_TEAM = YOUR_TEAM_ID
 PRODUCT_BUNDLE_IDENTIFIER = com.yourcompany.kotek
+
+// Supabase → Project Settings → API. The publishable key is meant to ship in
+// the client — RLS, not secrecy, protects the rows. Keep the `$()`: it splits
+// the `//`, which xcconfig would otherwise read as the start of a comment.
+SUPABASE_URL = https:/$()/bnksqdotiesilgsrdeyk.supabase.co
+SUPABASE_PUBLISHABLE_KEY = sb_publishable_r2wvC6nlWynprsQ-5mn1Rg_mbHdb4E2

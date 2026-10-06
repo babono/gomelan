@@ -90,6 +90,11 @@ packages:
   Factory:
     url: https://github.com/hmlongco/Factory
     from: "3.4.1"
+  # Instruments, kotekan and practice sessions sync to Supabase. See
+  # `Core/Remote/RemoteStore.swift` for what goes up and what stays on the phone.
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: "2.0.0"
 
 targets:
   Kotek:
@@ -100,6 +105,8 @@ targets:
         product: Lottie
       - package: Factory
         product: FactoryKit
+      - package: Supabase
+        product: Supabase
     sources:
       - path: Kotek
         excludes:

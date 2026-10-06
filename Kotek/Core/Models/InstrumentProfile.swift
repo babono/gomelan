@@ -145,12 +145,26 @@ struct PatternRecord: Codable, Equatable, Identifiable {
     var id: String { "\(kotekanId)·\(half)@\(tempo)" }
 }
 
+/// Which gangsa this is. The two are the same instrument an octave apart —
+/// kantilan above pemade — so nothing in detection or play depends on it; it
+/// names the card and the `gangsa_type` column.
+enum GangsaType: String, Codable, CaseIterable, Identifiable {
+    case pemade
+    case kantilan
+
+    var id: String { rawValue }
+    var title: String { self == .pemade ? "Pemade" : "Kantilan" }
+}
+
 /// A calibrated instrument. v1 ships exactly one (our gangsa), but the shape is
 /// per-instrument by design (PRD §2, §7).
 struct InstrumentProfile: Codable, Identifiable, Equatable {
     var id: String
     var name: String
     var keyCount: Int
+    /// Optional for the decoding reason given on `sessionCount` below. Read
+    /// through `type`, which falls back to pemade.
+    var gangsaType: GangsaType? = nil
     var createdAt: String
     var keys: [InstrumentKey]
     /// Generic gangsa-strike baseline template (L2-normalised float vector).
@@ -183,6 +197,8 @@ struct InstrumentProfile: Codable, Identifiable, Equatable {
     var calibratedKeyCount: Int { keys.filter(\.isCalibrated).count }
 
     var isFullyCalibrated: Bool { !keys.isEmpty && calibratedKeyCount == keys.count }
+
+    var type: GangsaType { gangsaType ?? .pemade }
 
     var sessionsPlayed: Int { sessionCount ?? 0 }
     var notesLanded: Int { accurateNotes ?? 0 }
