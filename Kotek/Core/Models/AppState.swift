@@ -489,9 +489,10 @@ final class AppState {
         Defaults.set(guide.seenKey, true)
     }
 
-    /// Supabase, written behind `ProfileStore`. Never awaited by anything the
-    /// player is waiting on — see `RemoteStore`.
-    @ObservationIgnored private let remote = Container.shared.remote()
+    /// Supabase remote persistence, written behind `ProfileStore`.
+    @ObservationIgnored private let instrumentRemote = Container.shared.instrumentRemoteRepository()
+    @ObservationIgnored private let kotekanRepo = Container.shared.kotekanRepository()
+    @ObservationIgnored private let sessionRepo = Container.shared.practiceSessionRepository()
     @ObservationIgnored private let log = Logger(subsystem: "Kotek", category: "remote")
 
     init() {
@@ -534,7 +535,7 @@ final class AppState {
     /// bundled one.
     func refreshCatalogue() async {
         do {
-            let fetched = Kotekan.catalogue(from: try await remote.catalogue())
+            let fetched = Kotekan.catalogue(from: try await kotekanRepo.catalogue())
             guard !fetched.isEmpty else { return }
             kotekans = fetched
             //R The figure in hand may have been swapped for its database copy.
@@ -551,7 +552,7 @@ final class AppState {
     // push re-sends every instrument, so only practice sessions played offline
     // are actually lost.
     private func push(_ p: InstrumentProfile) async {
-        do { try await remote.saveInstrument(p) } catch {
+        do { try await instrumentRemote.saveInstrument(p) } catch {
             log.error("instrument sync failed: \(error.localizedDescription)")
         }
     }
@@ -711,8 +712,8 @@ final class AppState {
     func deleteInstrument(_ profileID: String) {
         ProfileStore.delete(profileID)
         savedProfiles = ProfileStore.loadAll()
-        Task { [remote, log] in
-            do { try await remote.deleteInstrument(id: profileID) } catch {
+        Task { [instrumentRemote, log] in
+            do { try await instrumentRemote.deleteInstrument(id: profileID) } catch {
                 log.error("instrument delete failed: \(error.localizedDescription)")
             }
         }
@@ -891,8 +892,8 @@ final class AppState {
                                       half: chosenHalf, tempoScale: tempoScale,
                                       leniency: judgementLeniency)
         let instrument = profile
-        Task { [remote, log] in
-            do { try await remote.recordSession(session, on: instrument) } catch {
+        Task { [sessionRepo, log] in
+            do { try await sessionRepo.recordSession(session, on: instrument) } catch {
                 log.error("session sync failed: \(error.localizedDescription)")
             }
         }

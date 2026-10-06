@@ -16,11 +16,30 @@ extension Container {
     }
     
     // MARK: Repositories init
-    nonisolated var remote: Factory<RemoteStore> {
-        self { RemoteStore() }.singleton
+
+    nonisolated var supabaseRepository: Factory<SupabaseRepository> {
+        self { SupabaseRepository() }.singleton
+    }
+
+    nonisolated var instrumentRemoteRepository: Factory<InstrumentRemoteRepository> {
+        self { InstrumentRemoteRepository(remote: self.supabaseRepository()) }.singleton
+    }
+
+    nonisolated var kotekanRepository: Factory<KotekanRepository> {
+        self { KotekanRepository(remote: self.supabaseRepository()) }.singleton
+    }
+
+    nonisolated var practiceSessionRepository: Factory<PracticeSessionRepository> {
+        self {
+            PracticeSessionRepository(
+                remote: self.supabaseRepository(),
+                instrumentRepository: self.instrumentRemoteRepository()
+            )
+        }.singleton
     }
 
     // MARK: Services / Controller Init  
+
     nonisolated var cameraService: Factory<CameraController> {
         self { CameraController() }.singleton
     }
