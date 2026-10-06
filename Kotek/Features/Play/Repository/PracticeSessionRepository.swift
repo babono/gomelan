@@ -21,8 +21,7 @@ nonisolated struct PracticeSessionRepository: Sendable {
     }
 
     /// File a finished session. The instrument goes up first, in the same call,
-    /// because the insert policy checks the player owns it — a session that
-    /// raced ahead of its instrument's first sync would be refused.
+    /// because the insert policy checks the player owns it.
     func recordSession(_ s: PracticeSession, on instrument: InstrumentProfile) async throws {
         try await instrumentRepository.saveInstrument(instrument)
         let uid = try await remote.userID()

@@ -20,9 +20,6 @@ nonisolated struct KotekanRepository: Sendable {
     /// The built-in catalogue plus this user's own figures, as plain grids.
     /// `Kotekan(remote:)` turns them into figures on the main actor, where the
     /// model lives.
-    ///
-    /// Built-ins are readable without a session, so a failed sign-in still
-    /// gets the catalogue — it just comes back without the player's own.
     func catalogue() async throws -> [RemoteKotekan] {
         do {
             _ = try await remote.userID()
@@ -60,8 +57,6 @@ nonisolated struct KotekanRepository: Sendable {
         )
         try await remote.upsert(row, in: "kotekan")
 
-        //R Replaced, not upserted: a slot that became a rest has to lose its row,
-        //R and upsert can only ever add or change one.
         try await remote.delete(from: "kotekan_hits", matching: "kotekan_id", equals: k.id)
         let hits = [("polos", k.polos), ("sangsih", k.sangsih)].flatMap { type, grid in
             grid.enumerated().compactMap { slot, key in

@@ -44,7 +44,7 @@ nonisolated struct RemoteKotekan: Sendable {
     }
 }
 
-extension RemoteKotekan {
+nonisolated extension RemoteKotekan {
     /// Rebuild the two grids from the hit rows.
     ///
     /// Gong, kempur and kajar hits are read past for now: the play engine lays
@@ -77,11 +77,11 @@ extension RemoteKotekan {
     }
 }
 
-extension Kotekan {
+nonisolated extension Kotekan {
     init(remote r: RemoteKotekan) {
-        //R The schema has no tone label or kind. A built-in takes its label from
-        //R the bundled copy of itself; a NULL level is what marks a melody, which
-        //R keeps "Level 0" off its card exactly as `KotekanKind` intends.
+        // The schema has no tone label or kind. A built-in takes its label from
+        // the bundled copy of itself; a NULL level is what marks a melody, which
+        // keeps "Level 0" off its card exactly as `KotekanKind` intends.
         let bundled = Kotekan.bundled.first { $0.id == r.id }
         self.init(id: r.id,
                   name: r.name,

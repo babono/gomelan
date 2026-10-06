@@ -20,83 +20,6 @@
 import SwiftUI
 import QuartzCore
 
-enum SessionPhase: Equatable {
-    case countIn    // gong only, one colotomic cycle
-    case userTurn   // the figure is going round; you play
-
-    var isUserPlaying: Bool { self == .userTurn }
-}
-
-/// What the overlay should draw for a single key this frame.
-struct KeyRenderState: Equatable {
-    var fill: Double = 0        // the NEAREST stroke's progress, 0…1 — the bar that fills from the bottom
-    var strikeNow: Bool = false // solid highlight pulse
-    /// You got that one. The instrument says exactly one thing about a stroke
-    /// you have played — green, or nothing at all.
-    ///
-    /// It used to grade in colour: green, gold, amber, and a fourth for a wrong
-    /// bar. Four shades of feedback flashing past on a bilah you are looking at
-    /// while your hands are moving is not information, it is a decision to make
-    /// mid-stroke. Whether you were perfect or merely good belongs on the score
-    /// afterwards, where you can read it. Here the only useful answer is
-    /// whether to move on.
-    var hit: Bool = false
-    var damp: Bool = false      // dashed damp hint on the previous key (§5.5)
-    /// Every upcoming stroke on this bilah that is inside the cue window,
-    /// nearest first — one ring each, nested.
-    ///
-    /// A list rather than a single value because kotekan repeat a bar: on
-    /// Ubitan Nyendok key 7 is struck three times in eight slots, so inside a
-    /// four-beat window that bilah usually has TWO strokes coming. Collapsing
-    /// them to the nearest threw away the more useful half of the information —
-    /// "this bar, then this bar again" is the thing a player needs to see
-    /// coming, and it is exactly what a single ring cannot say.
-    var approaches: [Double] = []
-}
-
-/// Which of the two interlocking halves a note belongs to.
-enum NoteVoice: Equatable {
-    case yours      // the half you are learning
-    case partner    // the half the app plays beside you
-}
-
-/// One stroke of the figure, placed on the CYCLE rather than on a moving
-/// stream (§13.5). `x` is where in the pattern it falls, 0…1, and it never
-/// moves — the playhead does.
-///
-/// The river used to scroll: notes slid right to left across a strike line, and
-/// three loops' worth of them had to be rendered at once so the stream never
-/// ran dry at the turn. It read as a rhythm game rather than as a figure. A
-/// kotekan is a fixed, memorisable shape that repeats, and showing it as one
-/// still shape you sweep through is both closer to what it is and far easier to
-/// learn from — the pattern stays put long enough to be read.
-struct CycleNote: Identifiable, Equatable {
-    let id: String
-    let keyIndex: Int
-    let voice: NoteVoice
-    let x: Double               // 0…1 through the pattern
-    let width: Double           // the stroke's own duration, same units
-    /// Set once your note has been judged this pass; cleared at the turn.
-    var outcome: JudgementResult? = nil
-    /// The stroke due right now — what the bilah overlay is lighting.
-    var isCurrent: Bool = false
-    /// Both halves strike this key on this slot.
-    ///
-    /// Not an edge case: the telu family is BUILT on a shared anchor tone, and
-    /// on Ubitan Nyendok it is half of what polos plays. Drawn as one block per
-    /// voice, the partner painted straight over it and polos looked like a
-    /// two-stroke figure — in the preview whose entire job is to show what the
-    /// figure is. One block, split down the middle, one number.
-    var isUnison: Bool = false
-}
-
-struct TrackMarker: Identifiable, Equatable {
-    enum Kind: Equatable { case gong, kempur, kajar, beat }
-    let id: Int
-    let kind: Kind
-    let xFraction: Double
-}
-
 /// One completed pass, accumulated while it runs.
 private struct CycleTally {
     var startMs: Double = 0
@@ -108,76 +31,11 @@ private struct CycleTally {
 
 @Observable
 final class PlayEngine {
-    
+    typealias Floater = Kotek.Floater
+    typealias FloaterLabel = Kotek.FloaterLabel
+
     // Rendering outputs
     private(set) var renderStates: [Int: KeyRenderState] = [:]
-
-    /// A stroke's verdict, said once on the bilah and gone.
-    ///
-    /// Exists because a MISS leaves no mark on the instrument at all. `record`
-    /// flashes only on a hit — a deliberate choice, so a wrong bar is never lit
-    /// up — with the consequence that a note you missed and a note the app never
-    /// saw look exactly alike from the stand. Both simply stop being drawn. That
-    /// is the "notes vanish without going green" report, and no amount of
-    /// tuning would have shown it, because the two cases were rendered
-    /// identically.
-    ///
-    /// `unmatched` is the one that earns this feature. A strike that binds to no
-    /// note is discarded in silence by `registerPlayStrike`, so until now it
-    /// left no trace anywhere: not on the instrument, not in the score, not in
-    /// the tally. It is also exactly the event worth catching.
-    struct Floater: Identifiable, Equatable {
-        let id: Int
-        let keyIndex: Int
-        let label: FloaterLabel
-        /// Host time, matched against `renderNow`.
-        let bornAt: Double
-    }
-
-    enum FloaterLabel: Int, CaseIterable, Sendable {
-        case perfect, goodEarly, goodLate, late, miss, wrongKey, unmatched
-
-        var text: String {
-            switch self {
-            case .perfect:   return "PERFECT"
-            case .goodEarly: return "GOOD · early"
-            case .goodLate:  return "GOOD · late"
-            case .late:      return "LATE"
-            case .miss:      return "MISS"
-            case .wrongKey:  return "WRONG BAR"
-            case .unmatched: return "NO NOTE DUE"
-            }
-        }
-
-        /// Canvas symbol identity, in an Int range no bilah can reach.
-        ///
-        /// THE OFFSET IS LOAD-BEARING. The overlay's `symbols:` builder holds two
-        /// ForEach — one over the keys, one over these — and SwiftUI flattens
-        /// them into a single view list whose IDs must be unique. `InstrumentKey.id`
-        /// is the key index, so 0…9; identifying these by `rawValue` gave 0…6 in
-        /// the same list and SwiftUI trapped outright — "child view IDs must be
-        /// unique" — the instant a session started.
-        ///
-        /// An Int offset rather than a string namespace because this is resolved
-        /// inside the per-frame draw loop, and the file's whole reason for using
-        /// symbols is to keep allocation out of it.
-        var symbolID: Int { 1_000 + rawValue }
-
-        /// Bucketed rather than showing the millisecond error, so every label is
-        /// one of seven and can be pre-rendered as a Canvas symbol. Resolving
-        /// live text per frame is the thing this overlay was rebuilt to stop
-        /// doing — see the file header — and "early or late" is the half of the
-        /// number anyone can act on anyway.
-        static func from(_ result: JudgementResult, timingErrorMs: Double) -> FloaterLabel {
-            switch result {
-            case .perfect:   return .perfect
-            case .good:      return timingErrorMs > 0 ? .goodEarly : .goodLate
-            case .lateEarly: return .late
-            case .miss:      return .miss
-            case .wrongKey:  return .wrongKey
-            }
-        }
-    }
 
     private(set) var floaters: [Floater] = []
     private var floaterSeq = 0
