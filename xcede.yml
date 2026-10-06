@@ -1,0 +1,22 @@
+scheme: Kotek
+
+# device, sim or mac:
+platform: sim
+
+# not required for Mac apps:
+device: "iPhone 17 Pro"
+
+# Faster builds: xcede uses Xcode to build your project via Applescript.
+# If you don't like this idea you can leave it out and xcede will
+# use  xcodebuild instead. That's quite a lot slower, but it works just
+# as well.
+buildwithxcode: true
+
+# There are many more options, including profiles (groups of settings) -
+# which make it much easier to switch between different devices and
+# simulators for example. Also options for file naming, location and
+# format (toml, json). See `xcede help`.
+#
+# Note that these options are available on the command line too, like
+# `xcede --scheme MyApp`, but a config file works better for our
+# purposes.
