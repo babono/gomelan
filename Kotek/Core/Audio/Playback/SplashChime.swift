@@ -87,6 +87,14 @@ final class SplashChime {
 
         // No fade in. This is a struck instrument — the attack IS the
         // sound, and easing into it would turn a stroke into a swell.
+        await playMusic(player: player)
+        
+        self.player = player
+        scheduleFade(after: ringFor, over: fade)
+    }
+    
+    @concurrent
+    nonisolated private func playMusic(player: AVAudioPlayer) async {
         guard player.play() else {
             let session = AVAudioSession.sharedInstance()
             print("""
@@ -97,8 +105,6 @@ final class SplashChime {
                   """)
             return
         }
-        self.player = player
-        scheduleFade(after: ringFor, over: fade)
     }
 
     @concurrent
