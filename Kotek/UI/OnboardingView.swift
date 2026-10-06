@@ -40,7 +40,13 @@ import Lottie
 struct OnboardingView: View {
     var onFinish: () -> Void
 
+    #if DEBUG
+    // `-onboardingPage N` opens on a later slide, for App Store screenshots —
+    // see `ScreenshotScenes.swift`.
+    @State private var index = UserDefaults.standard.integer(forKey: "onboardingPage")
+    #else
     @State private var index = 0
+    #endif
 
     private static let slideCount = 3
 

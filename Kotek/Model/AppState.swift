@@ -500,6 +500,9 @@ final class AppState {
             self.profile = ResourceLoader.defaultProfile()
         }
         self.screen = .welcome
+        #if DEBUG
+        applyScreenshotScene()
+        #endif
     }
 
     func saveProfile() {
