@@ -7,7 +7,7 @@
 
 import Foundation
 
-nonisolated struct PracticeSession: Sendable {
+nonisolated struct PracticeSession {
     var kotekanID: String?
     var half: String
     var bpm: Int
@@ -71,15 +71,15 @@ extension PracticeSession {
         self.init(
             kotekanID: kotekan?.id,
             half: half.rawValue,
-            //R The figure's own tempo, per grid slot — the same number the seed
-            //R stores in `kotekan.bpm`. What was actually played is this times
-            //R `tempoScale`, which is stored beside it rather than folded in.
+            // R The figure's own tempo, per grid slot — the same number the seed
+            // R stores in `kotekan.bpm`. What was actually played is this times
+            // R `tempoScale`, which is stored beside it rather than folded in.
             bpm: kotekan.map { Int((60000.0 / Double($0.strokeMs)).rounded()) } ?? 0,
             tempoScale: tempoScale,
             leniency: leniency,
             cycleCount: result.cycles.count,
-            //R The headline number — the best window, as the results screen
-            //R shows it — and NULL rather than 0 when no pass completed.
+            // R The headline number — the best window, as the results screen
+            // R shows it — and NULL rather than 0 when no pass completed.
             accuracy: result.best?.accuracy,
             onTimeCount: judged.filter(\.onBeat).count,
             wrongKeyCount: judged.filter { $0 == .wrongKey }.count,

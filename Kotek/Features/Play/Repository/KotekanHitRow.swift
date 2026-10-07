@@ -5,7 +5,7 @@
 
 import Foundation
 
-nonisolated struct KotekanHitRow: Codable, Sendable {
+nonisolated struct KotekanHitRow: Codable {
     var kotekanID: String
     /// `hit_type`: polos | sangsih | gong | kempur | kajar.
     var type: String

@@ -13,13 +13,14 @@
 import Foundation
 
 struct DSPConfig: Equatable {
-
     // MARK: STFT for onset detection
+
     var sampleRate: Double = 44100
     var onsetWindow: Int = 1024
     var onsetHop: Int = 256
 
     // MARK: Onset peak picking
+
     /// Ignore rumble / handling noise below this.
     var fluxFloorHz: Double = 150
     /// Window for the adaptive threshold.
@@ -33,6 +34,7 @@ struct DSPConfig: Equatable {
     var minGapSeconds: Double = 0.040
 
     // MARK: Amplitude gate
+
     //
     // Flux thresholds cannot separate mallet strikes from room noise and
     // handling — swept thresh_mult 1.6-5.0 x thresh_floor 0.04-0.30 in Python
@@ -59,6 +61,7 @@ struct DSPConfig: Equatable {
     var amplitudeMeasureSeconds: Double = 0.060
 
     // MARK: Fingerprint
+
     /// ~93ms at 44.1k — long enough to resolve the inharmonic partials.
     var fpWindow: Int = 4096
     /// Skip the mallet click, keep the tone.
@@ -86,6 +89,7 @@ struct DSPConfig: Equatable {
     var fpNoiseLeadSeconds: Double = 0.010
 
     // MARK: Matching
+
     /// The best template must beat the runner-up by this, else "unclear".
     /// Saying nothing beats telling a student they played a wrong note when they
     /// didn't. Raised from 0.02 after a real miss: a deng heard as dang won by
@@ -94,19 +98,28 @@ struct DSPConfig: Equatable {
 
     // MARK: Derived
 
-    var minGapFrames: Int { Int(minGapSeconds * sampleRate / Double(onsetHop)) }
+    var minGapFrames: Int {
+        Int(minGapSeconds * sampleRate / Double(onsetHop))
+    }
 
     /// Odd, so the median window has a true centre.
     var medianLengthFrames: Int {
         max(3, Int(medianLengthSeconds * sampleRate / Double(onsetHop)) | 1)
     }
 
-    var fpDelaySamples: Int { Int(fpDelaySeconds * sampleRate) }
-    var fpNoiseLeadSamples: Int { Int(fpNoiseLeadSeconds * sampleRate) }
+    var fpDelaySamples: Int {
+        Int(fpDelaySeconds * sampleRate)
+    }
+
+    var fpNoiseLeadSamples: Int {
+        Int(fpNoiseLeadSeconds * sampleRate)
+    }
 
     /// How much audio must exist after an onset before it can be fingerprinted.
     /// Onsets fire almost immediately but the fingerprint needs the note to have
     /// sounded — don't fight this with a shorter window, it is why strikes are
     /// reported ~100ms after they happen.
-    var fingerprintLatencySamples: Int { fpDelaySamples + fpWindow }
+    var fingerprintLatencySamples: Int {
+        fpDelaySamples + fpWindow
+    }
 }

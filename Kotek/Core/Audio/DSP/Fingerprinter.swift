@@ -19,7 +19,6 @@
 import Accelerate
 
 final class Fingerprinter {
-
     private let config: DSPConfig
     private let fft: FFTProcessor
 
@@ -31,14 +30,16 @@ final class Fingerprinter {
     private var magnitude: [Float] = []
     private var noiseMagnitude: [Float] = []
 
-    var vectorLength: Int { config.fpBands }
+    var vectorLength: Int {
+        config.fpBands
+    }
 
     init(config: DSPConfig, fft: FFTProcessor) {
         self.config = config
         self.fft = fft
-        self.segment = [Float](repeating: 0, count: config.fpWindow)
-        self.noiseSegment = [Float](repeating: 0, count: config.fpWindow)
-        self.bands = Fingerprinter.buildBands(config: config, fft: fft)
+        segment = [Float](repeating: 0, count: config.fpWindow)
+        noiseSegment = [Float](repeating: 0, count: config.fpWindow)
+        bands = Fingerprinter.buildBands(config: config, fft: fft)
     }
 
     /// Log-spaced band edges, ~66 cents each. Bands are defined in HERTZ, not in
@@ -49,15 +50,17 @@ final class Fingerprinter {
         let n = config.fpBands
         var edges = [Double](repeating: 0, count: n + 1)
         let ratio = log(config.fpHiHz / config.fpLoHz) / Double(n)
-        for i in 0...n { edges[i] = config.fpLoHz * exp(ratio * Double(i)) }
+        for i in 0 ... n {
+            edges[i] = config.fpLoHz * exp(ratio * Double(i))
+        }
 
         var result: [[Int]] = []
         result.reserveCapacity(n)
-        for b in 0..<n {
+        for b in 0 ..< n {
             var bins: [Int] = []
-            for bin in 0..<fft.binCount {
+            for bin in 0 ..< fft.binCount {
                 let hz = fft.frequency(ofBin: bin, sampleRate: config.sampleRate)
-                if hz >= edges[b] && hz < edges[b + 1] { bins.append(bin) }
+                if hz >= edges[b], hz < edges[b + 1] { bins.append(bin) }
             }
             if bins.isEmpty {
                 // Band narrower than one FFT bin — take the nearest. At 200Hz a
@@ -66,9 +69,11 @@ final class Fingerprinter {
                 let centre = (edges[b] + edges[b + 1]) / 2
                 var nearest = 0
                 var bestDistance = Double.greatestFiniteMagnitude
-                for bin in 0..<fft.binCount {
+                for bin in 0 ..< fft.binCount {
                     let d = abs(fft.frequency(ofBin: bin, sampleRate: config.sampleRate) - centre)
-                    if d < bestDistance { bestDistance = d; nearest = bin }
+                    if d < bestDistance { bestDistance = d
+                        nearest = bin
+                    }
                 }
                 bins = [nearest]
             }
@@ -93,7 +98,8 @@ final class Fingerprinter {
             let noiseEnd = onsetSample - config.fpNoiseLeadSamples
             let noiseStart = noiseEnd - config.fpWindow
             if noiseStart >= 0,
-               ring.read(from: noiseStart, count: config.fpWindow, into: &noiseSegment) {
+               ring.read(from: noiseStart, count: config.fpWindow, into: &noiseSegment)
+            {
                 fft.magnitudeSpectrum(noiseSegment, into: &noiseMagnitude)
                 for i in magnitude.indices {
                     magnitude[i] = max(magnitude[i] - config.fpNoiseSub * noiseMagnitude[i], 0)
@@ -104,7 +110,9 @@ final class Fingerprinter {
         var vector = [Float](repeating: 0, count: config.fpBands)
         for (b, bins) in bands.enumerated() {
             var sum: Float = 0
-            for bin in bins { sum += magnitude[bin] }
+            for bin in bins {
+                sum += magnitude[bin]
+            }
             vector[b] = sum
         }
 
@@ -153,7 +161,9 @@ final class Fingerprinter {
         var total: Float = 0
         for (b, bins) in bands.enumerated() {
             var sum: Float = 0
-            for bin in bins { sum += magnitude[bin] }
+            for bin in bins {
+                sum += magnitude[bin]
+            }
             vector[b] = sum
             total += sum
         }
@@ -170,11 +180,13 @@ final class Fingerprinter {
     /// For display and calibration feedback only — never for matching.
     func topPeaks(onsetSample: Int, ring: SampleRing, count wanted: Int = 4) -> [(hz: Double, strength: Double)] {
         let peaks = spectrumPeaks(onsetSample: onsetSample, ring: ring)
-        guard let strongest = peaks.map({ $0.mag }).max(), strongest > 0 else { return [] }
+        guard let strongest = peaks.map(\.mag).max(), strongest > 0 else { return [] }
 
         return peaks.sorted { $0.mag > $1.mag }.prefix(wanted).map {
-            (hz: fft.frequency(ofBin: $0.bin, sampleRate: config.sampleRate),
-             strength: Double($0.mag / strongest))
+            (
+                hz: fft.frequency(ofBin: $0.bin, sampleRate: config.sampleRate),
+                strength: Double($0.mag / strongest)
+            )
         }
     }
 
@@ -189,7 +201,7 @@ final class Fingerprinter {
     /// lowest peak whose strength clears a fraction of the strongest.
     func estimateFundamental(onsetSample: Int, ring: SampleRing) -> Double {
         let peaks = spectrumPeaks(onsetSample: onsetSample, ring: ring)
-        guard let strongest = peaks.map({ $0.mag }).max(), strongest > 0 else { return 0 }
+        guard let strongest = peaks.map(\.mag).max(), strongest > 0 else { return 0 }
 
         let floor = strongest * fundamentalStrengthFraction
         guard let lowest = peaks.filter({ $0.mag >= floor }).min(by: { $0.bin < $1.bin }) else {
@@ -210,8 +222,9 @@ final class Fingerprinter {
         guard loBin < hiBin else { return [] }
 
         var peaks: [(bin: Int, mag: Float)] = []
-        for bin in loBin...hiBin where magnitude[bin] >= magnitude[bin - 1]
-                                    && magnitude[bin] >= magnitude[bin + 1] {
+        for bin in loBin ... hiBin where magnitude[bin] >= magnitude[bin - 1]
+            && magnitude[bin] >= magnitude[bin + 1]
+        {
             peaks.append((bin: bin, mag: magnitude[bin]))
         }
         return peaks

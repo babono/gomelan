@@ -29,7 +29,7 @@ struct CountdownOverlay: View {
                     .font(.serif(44, weight: .regular))
                     .foregroundStyle(Theme.cream)
                     .transition(.opacity)
-            case .count(let value):
+            case let .count(value):
                 Text("\(value)")
                     .font(.serif(160, weight: .regular))
                     .foregroundStyle(Theme.cream)

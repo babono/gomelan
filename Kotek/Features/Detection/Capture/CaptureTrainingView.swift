@@ -78,19 +78,21 @@ struct CaptureTrainingView: View {
                 let neighbour = target.map { abs($0 - key.index) == 1 } ?? false
 
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(isTarget ? Theme.terracotta
+                    .stroke(
+                        isTarget ? Theme.terracotta
                             : (neighbour ? Theme.copper.opacity(0.9) : .white.opacity(0.35)),
-                            lineWidth: isTarget ? 4 : (neighbour ? 2.5 : 1.5))
+                        lineWidth: isTarget ? 4 : (neighbour ? 2.5 : 1.5)
+                    )
                     .background(
                         RoundedRectangle(cornerRadius: 6)
                             .fill(isTarget ? Theme.terracotta.opacity(0.22) : .clear)
                     )
                     .overlay(alignment: .top) {
                         Text(isTarget ? "\(key.index) · \(intent.title.uppercased())"
-                             : (neighbour ? "\(key.index) · NEIGHBOUR" : "\(key.index)"))
+                            : (neighbour ? "\(key.index) · NEIGHBOUR" : "\(key.index)"))
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .foregroundStyle(isTarget ? Theme.terracotta
-                                             : (neighbour ? Theme.copper : .white.opacity(0.6)))
+                                : (neighbour ? Theme.copper : .white.opacity(0.6)))
                             .padding(.horizontal, 5).padding(.vertical, 2)
                             .background(.black.opacity(0.65), in: Capsule())
                             .offset(y: -16)
@@ -184,8 +186,10 @@ struct CaptureTrainingView: View {
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(intent == option ? Theme.ink : .white)
                             .padding(.horizontal, 14).padding(.vertical, 9)
-                            .background(intent == option ? Theme.copper : .black.opacity(0.55),
-                                        in: Capsule())
+                            .background(
+                                intent == option ? Theme.copper : .black.opacity(0.55),
+                                in: Capsule()
+                            )
                     }
                     .buttonStyle(.kajar)
                 }
@@ -198,8 +202,10 @@ struct CaptureTrainingView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 18).padding(.vertical, 10)
-                    .background(canCapture ? Theme.terracotta : Color.gray.opacity(0.5),
-                                in: Capsule())
+                    .background(
+                        canCapture ? Theme.terracotta : Color.gray.opacity(0.5),
+                        in: Capsule()
+                    )
                 }
                 .buttonStyle(.kajar)
                 .disabled(!canCapture)
@@ -227,7 +233,9 @@ struct CaptureTrainingView: View {
         }
     }
 
-    private var canCapture: Bool { intent == .idle || target != nil }
+    private var canCapture: Bool {
+        intent == .idle || target != nil
+    }
 
     private var totalLabel: String {
         let all = counts.values.reduce(0, +)
@@ -238,8 +246,8 @@ struct CaptureTrainingView: View {
     private var hint: String {
         if intent == .strike {
             return target == nil
-            ? "Tap the key you're about to strike"
-            : "Strike it — each sound captures automatically"
+                ? "Tap the key you're about to strike"
+                : "Strike it — each sound captures automatically"
         }
         if intent == .idle { return "Nothing in shot · tap Capture" }
         return target == nil ? "Tap the key to demonstrate on" : "Hold the pose · tap Capture"
@@ -254,12 +262,14 @@ struct CaptureTrainingView: View {
     }
 
     private func commit(_ frame: FrameBuffer.Frame) {
-        capture.capture(frame: frame.image,
-                        frameSize: frame.size,
-                        keys: app.profile.keys,
-                        viewSize: overlaySize,
-                        target: intent == .idle ? nil : target,
-                        intent: intent)
+        capture.capture(
+            frame: frame.image,
+            frameSize: frame.size,
+            keys: app.profile.keys,
+            viewSize: overlaySize,
+            target: intent == .idle ? nil : target,
+            intent: intent
+        )
         flashAt = CACurrentMediaTime()
     }
 

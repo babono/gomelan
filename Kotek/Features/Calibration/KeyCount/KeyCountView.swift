@@ -19,7 +19,7 @@ struct KeyCountView: View {
     @State private var name: String = ""
     @State private var type: GangsaType = .pemade
     @FocusState private var nameFocused: Bool
-    private let range = 1...14
+    private let range = 1 ... 14
 
     var body: some View {
         VStack(spacing: 0) {

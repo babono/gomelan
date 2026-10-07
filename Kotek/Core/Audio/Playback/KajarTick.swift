@@ -39,7 +39,9 @@ final class KajarTick {
     static let shared = KajarTick()
 
     /// Strike the tick. The call every control makes.
-    static func strike() { shared.strike() }
+    static func strike() {
+        shared.strike()
+    }
 
     // MARK: - Tuning
 
@@ -85,8 +87,8 @@ final class KajarTick {
             return
         }
 
-        let level = self.level
-        let count = self.voiceCount
+        let level = level
+        let count = voiceCount
 
         // Perform prepareToPlay() off the main thread to avoid AVAudioSession_iOS.mm warning
         let preparedVoices = await buildVoices(data: wav, level: level, count: count)
@@ -96,9 +98,9 @@ final class KajarTick {
     }
 
     @concurrent
-    nonisolated private static func buildVoices(data: Data, level: Float, count: Int) async -> sending [AVAudioPlayer] {
+    private nonisolated static func buildVoices(data: Data, level: Float, count: Int) async -> sending [AVAudioPlayer] {
         var result: [AVAudioPlayer] = []
-        for _ in 0..<count {
+        for _ in 0 ..< count {
             guard let player = try? AVAudioPlayer(data: data) else { continue }
             player.volume = level
             player.prepareToPlay()
@@ -139,7 +141,7 @@ final class KajarTick {
         // is a lookup — and `trimLeadingSilence` is why frame 0 below is the
         // strike rather than 23 ms of room tone ahead of it.
         guard let source = SampleLibrary.shared.buffer("kajar"),
-            let channel = source.floatChannelData
+              let channel = source.floatChannelData
         else { return nil }
 
         let sampleRate = source.format.sampleRate
@@ -151,14 +153,18 @@ final class KajarTick {
         // Normalise: the recording peaks at 0.52, and starting from full scale
         // is what leaves `level` somewhere to work from.
         var peak: Float = 0
-        for value in tick { peak = max(peak, abs(value)) }
+        for value in tick {
+            peak = max(peak, abs(value))
+        }
         guard peak > 0 else { return nil }
         let scale = 0.97 / peak
-        for i in 0..<count { tick[i] *= scale }
+        for i in 0 ..< count {
+            tick[i] *= scale
+        }
 
         let fade = min(count, Int(sampleRate * fadeDuration))
         if fade > 1 {
-            for i in (count - fade)..<count {
+            for i in (count - fade) ..< count {
                 tick[i] *= Float(count - i) / Float(fade)
             }
         }

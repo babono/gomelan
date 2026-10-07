@@ -154,9 +154,11 @@ struct MalletTestView: View {
         var next: [Int: Double] = [:]
         var nextCrops: [Int: CGImage] = [:]
         for key in app.profile.keys {
-            let cropRect = CropMapper.bufferRect(overlay: key.rect,
-                                                 bufferSize: frame.size,
-                                                 viewSize: overlaySize)
+            let cropRect = CropMapper.bufferRect(
+                overlay: key.rect,
+                bufferSize: frame.size,
+                viewSize: overlaySize
+            )
             guard let crop = MalletHitClassifier.crop(frame.image, to: cropRect) else { continue }
             nextCrops[key.index] = crop
             next[key.index] = classifier.hitProbability(crop: crop)

@@ -25,7 +25,6 @@ import CoreGraphics
 import QuartzCore
 
 actor StrikeFusion {
-
     struct Decision {
         let keyIndex: Int
         let hitProbability: Double
@@ -55,17 +54,23 @@ actor StrikeFusion {
         // The warmed model, not a fresh load — see MalletHitClassifier.shared().
         // This initialiser runs on the way into a play session, which is the
         // worst possible moment to be compiling a Core ML model.
-        self.classifier = MalletHitClassifier.shared()
+        classifier = MalletHitClassifier.shared()
         self.keys = keys
         self.viewSize = viewSize
     }
 
-    func setViewSize(_ size: CGSize) { viewSize = size }
+    func setViewSize(_ size: CGSize) {
+        viewSize = size
+    }
 
     /// Restrict scoring to the bilah this figure actually uses.
-    func setActiveKeys(_ indices: Set<Int>) { activeKeys = indices }
+    func setActiveKeys(_ indices: Set<Int>) {
+        activeKeys = indices
+    }
 
-    func setMinHitProbability(_ value: Double) { minHitProbability = value }
+    func setMinHitProbability(_ value: Double) {
+        minHitProbability = value
+    }
 
     /// Hit probability for every key in the most recent buffered frame, tagged
     /// with that frame's host time. Drives the self-triggering play loop. Returns
@@ -95,9 +100,11 @@ actor StrikeFusion {
         guard let classifier else { return [:] }
         var scores: [Int: Double] = [:]
         for key in keys where activeKeys.isEmpty || activeKeys.contains(key.index) {
-            let cropRect = CropMapper.bufferRect(overlay: key.rect,
-                                                 bufferSize: frame.size,
-                                                 viewSize: viewSize)
+            let cropRect = CropMapper.bufferRect(
+                overlay: key.rect,
+                bufferSize: frame.size,
+                viewSize: viewSize
+            )
             scores[key.index] = classifier.hitProbability(in: frame.image, cropRect: cropRect)
         }
         return scores
@@ -119,8 +126,10 @@ actor StrikeFusion {
     /// vision is unavailable, no frame is buffered, the view isn't laid out yet,
     /// or no crop clears the threshold. Runs inline: it only fires on the rare
     /// unclear strike, and the model is small enough not to stall a frame.
-    func resolve(candidates: [(keyIndex: Int, similarity: Double)],
-                 hostTime: Double) -> Decision? {
+    func resolve(
+        candidates: [(keyIndex: Int, similarity: Double)],
+        hostTime: Double
+    ) -> Decision? {
         guard let classifier,
               !candidates.isEmpty,
               viewSize.width > 0, viewSize.height > 0,
@@ -129,9 +138,11 @@ actor StrikeFusion {
         var scores: [Int: Double] = [:]
         for candidate in candidates {
             guard let key = keys.first(where: { $0.index == candidate.keyIndex }) else { continue }
-            let cropRect = CropMapper.bufferRect(overlay: key.rect,
-                                                 bufferSize: frame.size,
-                                                 viewSize: viewSize)
+            let cropRect = CropMapper.bufferRect(
+                overlay: key.rect,
+                bufferSize: frame.size,
+                viewSize: viewSize
+            )
             scores[candidate.keyIndex] = classifier.hitProbability(in: frame.image, cropRect: cropRect)
         }
         return Self.decide(visionScores: scores, threshold: minHitProbability)

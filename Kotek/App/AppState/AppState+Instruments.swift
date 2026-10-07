@@ -47,7 +47,7 @@ extension AppState {
         savedProfiles = ProfileStore.loadAll()
         if isAddingNewInstrument {
             if let prev = previousProfile,
-                savedProfiles.contains(where: { $0.id == prev.id })
+               savedProfiles.contains(where: { $0.id == prev.id })
             {
                 profile = prev
                 ProfileStore.setSelectedID(prev.id)

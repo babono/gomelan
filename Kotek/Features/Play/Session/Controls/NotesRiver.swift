@@ -59,7 +59,10 @@ struct NotesRiver: View {
     private let pulseRowHeight: CGFloat = 12
     private let sideInset: CGFloat = 10
 
-    private var rows: Int { max(1, keyRange.count) }
+    private var rows: Int {
+        max(1, keyRange.count)
+    }
+
     /// Taller lanes than the scrolling version could afford — a number has to
     /// fit inside a block now, and an 8pt block cannot hold one.
     ///
@@ -67,14 +70,22 @@ struct NotesRiver: View {
     /// whose subject is the instrument in front of you, and every point it takes
     /// is a point of camera. 17 still leaves a 14pt block, which holds a bilah
     /// number at the size below with room to spare.
-    private var laneHeight: CGFloat { min(17, max(12, 84 / CGFloat(rows))) }
-    private var pitchBandHeight: CGFloat { CGFloat(rows) * laneHeight }
-    private var trackHeight: CGFloat { pitchBandHeight + pulseRowHeight }
+    private var laneHeight: CGFloat {
+        min(17, max(12, 84 / CGFloat(rows)))
+    }
+
+    private var pitchBandHeight: CGFloat {
+        CGFloat(rows) * laneHeight
+    }
+
+    private var trackHeight: CGFloat {
+        pitchBandHeight + pulseRowHeight
+    }
 
     var body: some View {
-        //R Read in the body, NOT inside the draw closure: Observation registers
-        //R the dependency while the body runs, so a read that only happens at
-        //R draw time would never invalidate the view and the strip would stall.
+        // R Read in the body, NOT inside the draw closure: Observation registers
+        // R the dependency while the body runs, so a read that only happens at
+        // R draw time would never invalidate the view and the strip would stall.
         let notes = engine.cycleNotes
         let markers = engine.trackMarkers
         let playhead = engine.playhead
@@ -82,14 +93,19 @@ struct NotesRiver: View {
         let pageCount = engine.scorePageCount
 
         return Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
-            let track = CGRect(x: sideInset, y: 0,
-                               width: max(1, size.width - sideInset * 2),
-                               height: pitchBandHeight)
-            //R Resolved up front, not inside the note loop: passing a closure
-            //R that reads `ctx` into a call that takes `&ctx` is an overlapping
-            //R access and will not compile.
+            let track = CGRect(
+                x: sideInset,
+                y: 0,
+                width: max(1, size.width - sideInset * 2),
+                height: pitchBandHeight
+            )
+            // R Resolved up front, not inside the note loop: passing a closure
+            // R that reads `ctx` into a call that takes `&ctx` is an overlapping
+            // R access and will not compile.
             var labels: [Int: GraphicsContext.ResolvedSymbol] = [:]
-            for key in keyRange { labels[key] = ctx.resolveSymbol(id: key) }
+            for key in keyRange {
+                labels[key] = ctx.resolveSymbol(id: key)
+            }
 
             draw(markers: markers, in: &ctx, track: track)
             draw(notes: notes, in: &ctx, track: track, labels: labels)
@@ -111,14 +127,14 @@ struct NotesRiver: View {
         .frame(maxWidth: .infinity)
         .background(Theme.inkRaised.opacity(0.8))
         .overlay(alignment: .top) { Rectangle().fill(Theme.copper.opacity(0.2)).frame(height: 1) }
-        //R Only when there is more than one, which is only ever a melody. On a
-        //R kotekan the page is the whole figure and a "1 / 1" would be an
-        //R indicator for a thing that cannot happen.
-        //R
-        //R It earns its corner on Gundul-Gundul Pacul specifically: that song is
-        //R A A B B, so the score redraws into a page IDENTICAL to the one it
-        //R just left and there is otherwise nothing on screen to say whether you
-        //R are on the first pass of the verse or the second.
+        // R Only when there is more than one, which is only ever a melody. On a
+        // R kotekan the page is the whole figure and a "1 / 1" would be an
+        // R indicator for a thing that cannot happen.
+        // R
+        // R It earns its corner on Gundul-Gundul Pacul specifically: that song is
+        // R A A B B, so the score redraws into a page IDENTICAL to the one it
+        // R just left and there is otherwise nothing on screen to say whether you
+        // R are on the first pass of the verse or the second.
         .overlay(alignment: .topTrailing) {
             if pageCount > 1 {
                 Text("\(page + 1) / \(pageCount)")
@@ -139,19 +155,25 @@ struct NotesRiver: View {
 
             // The colotomic frame, ruled up through the notes.
             if let rule = ruleColor(marker.kind) {
-                ctx.fill(Path(CGRect(x: x - 0.5, y: 0, width: 1, height: pitchBandHeight)),
-                         with: .color(rule))
+                ctx.fill(
+                    Path(CGRect(x: x - 0.5, y: 0, width: 1, height: pitchBandHeight)),
+                    with: .color(rule)
+                )
             }
 
             // The pulse itself: size and colour, never text.
             let dot: (CGFloat, Color, Bool) = switch marker.kind {
-            case .gong:   (9, Theme.gong, true)
+            case .gong: (9, Theme.gong, true)
             case .kempur: (8, Theme.kempur, false)
-            case .kajar:  (5, Theme.kajar, false)
-            case .beat:   (3, Theme.cream.opacity(0.3), true)
+            case .kajar: (5, Theme.kajar, false)
+            case .beat: (3, Theme.cream.opacity(0.3), true)
             }
-            let circle = Path(ellipseIn: CGRect(x: x - dot.0 / 2, y: pulseY - dot.0 / 2,
-                                                width: dot.0, height: dot.0))
+            let circle = Path(ellipseIn: CGRect(
+                x: x - dot.0 / 2,
+                y: pulseY - dot.0 / 2,
+                width: dot.0,
+                height: dot.0
+            ))
             if dot.2 {
                 ctx.fill(circle, with: .color(dot.1))
             } else {
@@ -160,16 +182,24 @@ struct NotesRiver: View {
         }
     }
 
-    private func draw(notes: [CycleNote], in ctx: inout GraphicsContext, track: CGRect,
-                      labels: [Int: GraphicsContext.ResolvedSymbol]) {
+    private func draw(
+        notes: [CycleNote],
+        in ctx: inout GraphicsContext,
+        track: CGRect,
+        labels: [Int: GraphicsContext.ResolvedSymbol]
+    ) {
         let blockHeight = laneHeight - 3
         for note in notes {
             let x = track.minX + note.x * track.width
             // Wide enough to hold a digit even on a figure whose strokes are
             // short: the number is the point of the block.
             let width = max(blockHeight, note.width * track.width)
-            let rect = CGRect(x: x, y: y(for: note.keyIndex) + (laneHeight - blockHeight) / 2,
-                              width: width, height: blockHeight)
+            let rect = CGRect(
+                x: x,
+                y: y(for: note.keyIndex) + (laneHeight - blockHeight) / 2,
+                width: width,
+                height: blockHeight
+            )
             let block = Path(roundedRect: rect, cornerRadius: 3)
             let color = color(of: note)
 
@@ -178,13 +208,21 @@ struct NotesRiver: View {
                 // than stacked: the block keeps its full height, so it still
                 // holds a number and still sits in one lane.
                 var left = ctx
-                left.clip(to: Path(CGRect(x: rect.minX, y: rect.minY,
-                                          width: rect.width / 2, height: rect.height)))
+                left.clip(to: Path(CGRect(
+                    x: rect.minX,
+                    y: rect.minY,
+                    width: rect.width / 2,
+                    height: rect.height
+                )))
                 left.fill(block, with: .color(voiceColor(yourHalf).opacity(0.95)))
 
                 var right = ctx
-                right.clip(to: Path(CGRect(x: rect.midX, y: rect.minY,
-                                           width: rect.width / 2, height: rect.height)))
+                right.clip(to: Path(CGRect(
+                    x: rect.midX,
+                    y: rect.minY,
+                    width: rect.width / 2,
+                    height: rect.height
+                )))
                 right.fill(block, with: .color(voiceColor(yourHalf.other).opacity(0.95)))
             } else if note.voice == .yours || bothHalves {
                 ctx.fill(block, with: .color(color.opacity(0.95)))
@@ -215,14 +253,22 @@ struct NotesRiver: View {
         let x = track.minX + playhead * track.width
         let trail = min(x - track.minX, track.width * 0.12)
         if trail > 1 {
-            ctx.fill(Path(CGRect(x: x - trail, y: 0, width: trail, height: trackHeight)),
-                     with: .linearGradient(Gradient(colors: [Theme.cream.opacity(0),
-                                                             Theme.cream.opacity(0.10)]),
-                                           startPoint: CGPoint(x: x - trail, y: 0),
-                                           endPoint: CGPoint(x: x, y: 0)))
+            ctx.fill(
+                Path(CGRect(x: x - trail, y: 0, width: trail, height: trackHeight)),
+                with: .linearGradient(
+                    Gradient(colors: [
+                        Theme.cream.opacity(0),
+                        Theme.cream.opacity(0.10)
+                    ]),
+                    startPoint: CGPoint(x: x - trail, y: 0),
+                    endPoint: CGPoint(x: x, y: 0)
+                )
+            )
         }
-        ctx.fill(Path(CGRect(x: x - 1, y: 0, width: 2, height: trackHeight)),
-                 with: .color(Theme.cream.opacity(0.9)))
+        ctx.fill(
+            Path(CGRect(x: x - 1, y: 0, width: 2, height: trackHeight)),
+            with: .color(Theme.cream.opacity(0.9))
+        )
     }
 
     // MARK: - Geometry and colour
@@ -239,11 +285,11 @@ struct NotesRiver: View {
     /// yours has been judged, it carries the verdict until the cycle turns.
     private func color(of note: CycleNote) -> Color {
         if let outcome = note.outcome {
-            //R Green for any hit, the miss colour for anything else — the same
-            //R two answers the instrument gives. Grading a stroke in colour
-            //R (green, gold, amber) meant three shades to tell apart on 14pt
-            //R blocks going past at four a second, to learn something the
-            //R accuracy figure says plainly at the end.
+            // R Green for any hit, the miss colour for anything else — the same
+            // R two answers the instrument gives. Grading a stroke in colour
+            // R (green, gold, amber) meant three shades to tell apart on 14pt
+            // R blocks going past at four a second, to learn something the
+            // R accuracy figure says plainly at the end.
             switch outcome {
             case .perfect, .good, .lateEarly: return Theme.hit
             case .wrongKey, .miss: return Theme.miss
@@ -259,10 +305,10 @@ struct NotesRiver: View {
     /// Vertical rule for the colotomic frame; nil for a plain beat.
     private func ruleColor(_ kind: TrackMarker.Kind) -> Color? {
         switch kind {
-        case .gong: return Theme.gong.opacity(0.26)
-        case .kempur: return Theme.kempur.opacity(0.14)
-        case .kajar: return nil
-        case .beat: return nil
+        case .gong: Theme.gong.opacity(0.26)
+        case .kempur: Theme.kempur.opacity(0.14)
+        case .kajar: nil
+        case .beat: nil
         }
     }
 }

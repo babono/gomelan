@@ -5,7 +5,7 @@
 
 import Foundation
 
-nonisolated struct KotekanRow: Codable, Sendable {
+nonisolated struct KotekanRow: Codable {
     var id: String
     var userID: UUID?
     var instrumentID: UUID?

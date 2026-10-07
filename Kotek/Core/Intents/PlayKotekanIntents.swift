@@ -17,10 +17,10 @@ struct KotekanEntity: AppEntity {
     let toneLabel: String
 
     init(_ k: Kotekan) {
-        self.id = k.id
-        self.name = k.name
-        self.level = k.level
-        self.toneLabel = k.toneLabel
+        id = k.id
+        name = k.name
+        level = k.level
+        toneLabel = k.toneLabel
     }
 
     var displayRepresentation: DisplayRepresentation {
@@ -36,7 +36,6 @@ struct KotekanQuery: EntityStringQuery {
         await Kotekan.bundled.filter { identifiers.contains($0.id) }.map(
             KotekanEntity.init
         )
-
     }
 
     func entities(matching string: String) async throws
@@ -60,7 +59,7 @@ struct PlayKotekanIntents: AppIntent {
 
     @Parameter(title: "Play Kotekan", requestValueDialog: "Which Kotekan?")
     var kotekan: KotekanEntity
-    
+
     static var parameterSummary: some ParameterSummary {
         Summary("Practice \(\.$kotekan)")
     }

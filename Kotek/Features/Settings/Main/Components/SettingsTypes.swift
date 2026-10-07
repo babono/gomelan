@@ -14,19 +14,21 @@ import Foundation
 enum SettingsSection: String, CaseIterable, Identifiable {
     case instrument, debug, tempo, audio, judging, camera, detection
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     /// The card heading. `.instrument` has none here: it is headed with the
     /// gangsa's name, which only the view can supply.
     var title: String {
         switch self {
         case .instrument: ""
-        case .debug:      "Debug"
-        case .tempo:      "Practice tempo"
-        case .audio:      "Audio cues"
-        case .judging:    "Judging"
-        case .camera:     "Camera"
-        case .detection:  "Detection"
+        case .debug: "Debug"
+        case .tempo: "Practice tempo"
+        case .audio: "Audio cues"
+        case .judging: "Judging"
+        case .camera: "Camera"
+        case .detection: "Detection"
         }
     }
 
@@ -36,7 +38,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .tempo: "Tempo"
         case .audio: "Audio"
-        default:     title
+        default: title
         }
     }
 }

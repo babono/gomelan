@@ -22,7 +22,7 @@ struct GuideSlide: Identifiable {
     var title: String
     var text: String
     /// Somewhere to go next. Only ever the LAST slide.
-    var link: URL? = nil
+    var link: URL?
 }
 
 /// A panel that pages instead of scrolling.
@@ -73,7 +73,7 @@ struct GuideSlides: View {
         case .none:
             EmptyView()
 
-        case .photo(let name):
+        case let .photo(name):
             Color.clear
                 .overlay(
                     Image(name).resizable().aspectRatio(contentMode: .fill)
@@ -86,7 +86,7 @@ struct GuideSlides: View {
                 )
                 .accessibilityHidden(true)
 
-        case .figure(let kotekan):
+        case let .figure(kotekan):
             VStack {
                 Spacer(minLength: 0)
                 KotekanMiniScore(kotekan: kotekan).frame(height: 92)
@@ -155,26 +155,26 @@ enum MekarBhuanaDeck {
             art: .photo("photo-mekarbhuana"),
             title: "To blossom around the world",
             text:
-                "That is what Mekar Bhuana means, and it is the hope behind it: that Bali's oldest music and dance become known again, at home and beyond it."
+            "That is what Mekar Bhuana means, and it is the hope behind it: that Bali's oldest music and dance become known again, at home and beyond it."
         ),
         GuideSlide(
             art: .photo("photo-founder"),
             title: "The centre",
             text:
-                "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Vaughan Hatch founded it in 2000 around an antique Semara Pagulingan he restored, having found how few classical ensembles were ever recorded. Putu Evie Suyadnyani, a Legong dancer, brought the dance in 2004."
+            "A family-run centre in Denpasar that documents, reconstructs and repatriates endangered classical gamelan. Vaughan Hatch founded it in 2000 around an antique Semara Pagulingan he restored, having found how few classical ensembles were ever recorded. Putu Evie Suyadnyani, a Legong dancer, brought the dance in 2004."
         ),
         GuideSlide(
             art: .photo("photo-collection"),
             title: "Collection",
             text:
-                "Twenty-seven gamelan sets: twenty-two in Bali, five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an Angklung set from Lombok restored in 2019."
+            "Twenty-seven gamelan sets: twenty-two in Bali, five at Mekar Bhuana Aotearoa in New Zealand. Among them a Semara Patangian in the old key order that exists nowhere else outside Bali, and Semara Kirang, an Angklung set from Lombok restored in 2019."
         ),
         GuideSlide(
             art: .photo("photo-centre"),
             title: "Visiting",
             text:
-                "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. The centre is a family home, so there are no walk-ins — book by email two weeks ahead.",
+            "Lessons, workshops and cultural immersion, led by English-speaking experts including a native-speaking ethnomusicologist. The centre is a family home, so there are no walk-ins — book by email two weeks ahead.",
             link: URL(string: "https://balimusicanddance.com")
-        ),
+        )
     ]
 }

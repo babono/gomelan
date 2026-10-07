@@ -15,7 +15,7 @@ import SwiftUI
 struct GuidePanel<Content: View>: View {
     let title: String
     /// An asset to draw in place of the title.
-    var titleImage: String? = nil
+    var titleImage: String?
     var onClose: () -> Void
     /// Whether the body scrolls. True for the columns; false for anything that manages its own height.
     var scrolls: Bool = true

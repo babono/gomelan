@@ -88,11 +88,11 @@ private struct BilahRow: View {
                 let barWidth =
                     (size.width - gap * CGFloat(count - 1)) / CGFloat(count)
 
-                for i in 0..<count {
+                for i in 0 ..< count {
                     let state =
                         animated
-                        ? state(bar: i, at: t)
-                        : BarState(glow: i == 3 ? 1 : 0, dip: 0)
+                            ? state(bar: i, at: t)
+                            : BarState(glow: i == 3 ? 1 : 0, dip: 0)
                     let lit = state.glow
                     let rect = CGRect(
                         x: (barWidth + gap) * CGFloat(i),
@@ -146,10 +146,10 @@ private struct BilahRow: View {
     /// Both derived from the age of the most recent strike on this bar.
     private func state(bar: Int, at t: Double) -> BarState {
         let currentStroke = Int(floor(t / stroke))
-        for back in 0...lookback {
+        for back in 0 ... lookback {
             let n = currentStroke - back
             guard n >= 0, struckBar(stroke: n) == bar else { continue }
-            let age = t - Double(n) * stroke  // most recent hit wins
+            let age = t - Double(n) * stroke // most recent hit wins
             return BarState(
                 glow: max(0, 1 - age / decay),
                 dip: maxDip * CGFloat(exp(-age / dipDecay))

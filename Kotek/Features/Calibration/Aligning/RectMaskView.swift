@@ -75,7 +75,7 @@ struct RectMaskView: View {
                     moveStartRect = rect
                 }
                 guard let start = moveStartRect, viewSize.width > 0,
-                    viewSize.height > 0
+                      viewSize.height > 0
                 else { return }
                 let dx = value.translation.width / viewSize.width
                 let dy = value.translation.height / viewSize.height
@@ -88,14 +88,12 @@ struct RectMaskView: View {
 
     private func edgeHandle(_ edge: Edge, w: CGFloat, h: CGFloat) -> some View {
         let isHorizontal = (edge == .top || edge == .bottom)
-        let handlePos: CGPoint = {
-            switch edge {
-            case .top: return CGPoint(x: w / 2, y: 0)
-            case .right: return CGPoint(x: w, y: h / 2)
-            case .bottom: return CGPoint(x: w / 2, y: h)
-            case .left: return CGPoint(x: 0, y: h / 2)
-            }
-        }()
+        let handlePos = switch edge {
+        case .top: CGPoint(x: w / 2, y: 0)
+        case .right: CGPoint(x: w, y: h / 2)
+        case .bottom: CGPoint(x: w / 2, y: h)
+        case .left: CGPoint(x: 0, y: h / 2)
+        }
 
         return Capsule()
             .fill(Theme.terracotta)
@@ -103,7 +101,7 @@ struct RectMaskView: View {
                 Capsule().strokeBorder(Theme.cream.opacity(0.8), lineWidth: 1.5)
             )
             .frame(width: isHorizontal ? 24 : 8, height: isHorizontal ? 8 : 24)
-            .frame(width: 44, height: 44)  // Generous touch target
+            .frame(width: 44, height: 44) // Generous touch target
             .contentShape(Rectangle())
             .position(handlePos)
             .highPriorityGesture(edgeGesture(edge))
@@ -118,7 +116,7 @@ struct RectMaskView: View {
                     resizeStartRect = rect
                 }
                 guard let s = resizeStartRect, viewSize.width > 0,
-                    viewSize.height > 0
+                      viewSize.height > 0
                 else { return }
                 let dx = value.translation.width / viewSize.width
                 let dy = value.translation.height / viewSize.height

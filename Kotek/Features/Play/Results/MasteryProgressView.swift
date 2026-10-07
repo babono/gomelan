@@ -23,9 +23,17 @@ struct MasteryProgressView: View {
     @State private var shownNotes: Int = 0
     @State private var arrived = false
 
-    private var startMastery: Mastery { Mastery(notesLanded: before ?? profile.notesLanded) }
-    private var endMastery: Mastery { profile.mastery }
-    private var promoted: Bool { endMastery.rank != startMastery.rank }
+    private var startMastery: Mastery {
+        Mastery(notesLanded: before ?? profile.notesLanded)
+    }
+
+    private var endMastery: Mastery {
+        profile.mastery
+    }
+
+    private var promoted: Bool {
+        endMastery.rank != startMastery.rank
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {

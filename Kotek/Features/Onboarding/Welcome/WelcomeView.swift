@@ -96,11 +96,11 @@ struct WelcomeView: View {
 
     // MARK: - Corner Affordances
 
-    private func cornerButton<V: View>(
+    private func cornerButton(
         _ label: String,
         hint: String,
         action: @escaping () -> Void,
-        @ViewBuilder content: () -> V
+        @ViewBuilder content: () -> some View
     ) -> some View {
         Button(action: action) {
             content()

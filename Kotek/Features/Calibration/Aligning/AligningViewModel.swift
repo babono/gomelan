@@ -47,11 +47,11 @@ final class AligningViewModel {
             fromFraming = app.seedMasksFromFraming
             keys =
                 fromFraming
-                ? InstrumentProfile.layout(
-                    count: app.profile.keyCount,
-                    in: app.framedRegion
-                )
-                : app.profile.keys
+                    ? InstrumentProfile.layout(
+                        count: app.profile.keyCount,
+                        in: app.framedRegion
+                    )
+                    : app.profile.keys
             app.seedMasksFromFraming = false
         }
 
@@ -144,13 +144,13 @@ final class AligningViewModel {
             return
         }
 
-        for i in 0..<n {
+        for i in 0 ..< n {
             keys[i].rect = placed[i]
         }
         status =
             n == keys.count
-            ? "Snapped all \(keys.count) keys — nudge any that are off"
-            : "Snapped \(n) of \(keys.count) — fit the rest with the controls"
+                ? "Snapped all \(keys.count) keys — nudge any that are off"
+                : "Snapped \(n) of \(keys.count) — fit the rest with the controls"
     }
 
     /// The newest camera frame, waiting for one if the session has only just
@@ -162,7 +162,7 @@ final class AligningViewModel {
         let deadline = CACurrentMediaTime() + timeout
         while CACurrentMediaTime() < deadline {
             if overlaySize.width > 0,
-                let frame = camera.frameBuffer.nearest(to: CACurrentMediaTime())
+               let frame = camera.frameBuffer.nearest(to: CACurrentMediaTime())
             {
                 return frame
             }
@@ -219,7 +219,7 @@ final class AligningViewModel {
         var kept: [NormalizedRect] = []
         for c in mapped {
             if let last = kept.last,
-                abs(last.cgRect.midX - c.cgRect.midX) < max(c.w, last.w) * 0.6
+               abs(last.cgRect.midX - c.cgRect.midX) < max(c.w, last.w) * 0.6
             {
                 if (c.w * c.h) > (last.w * last.h) { kept[kept.count - 1] = c }
                 continue
@@ -234,8 +234,8 @@ final class AligningViewModel {
     /// wooden frame and rope edges. A trained detector is trusted on shape.
     func isBarLike(_ r: NormalizedRect) -> Bool {
         guard r.w > 0.01, r.h > 0.01,
-            r.x > -0.1, r.y > -0.1,
-            r.x + r.w < 1.1, r.y + r.h < 1.1
+              r.x > -0.1, r.y > -0.1,
+              r.x + r.w < 1.1, r.y + r.h < 1.1
         else { return false }
         if KeyDetector.usesTrainedDetector { return true }
         guard r.h > r.w else { return false }
@@ -257,17 +257,17 @@ final class AligningViewModel {
         Task {
             await app.saveProfileAsync()
             await camera.lockFocusAndExposureAsync()
-            //R Deliberately NOT cleared before navigating: the baseline screen
-            //R has its own warm-up, and dropping the scrim here would show this
-            //R screen bare for a frame before it goes.
+            // R Deliberately NOT cleared before navigating: the baseline screen
+            // R has its own warm-up, and dropping the scrim here would show this
+            // R screen bare for a frame before it goes.
             app.alignmentConfirmed()
         }
     }
 
     // MARK: - Row-level fit controls
 
-    /// Adjust every mask together — the fast path: Reset to an even row, set the
-    /// width/height/spacing to match the bars, then fine-tune individuals by drag.
+    // Adjust every mask together — the fast path: Reset to an even row, set the
+    // width/height/spacing to match the bars, then fine-tune individuals by drag.
 
     /// Resize all masks around their own centres.
     func adjustWidth(_ delta: Double) {
@@ -301,6 +301,8 @@ final class AligningViewModel {
 
     /// Move the whole row up (−) or down (+).
     func nudgeRow(_ delta: Double) {
-        for i in keys.indices { keys[i].rect.y += delta }
+        for i in keys.indices {
+            keys[i].rect.y += delta
+        }
     }
 }

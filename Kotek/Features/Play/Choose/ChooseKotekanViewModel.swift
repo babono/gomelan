@@ -24,15 +24,22 @@ final class ChooseKotekanViewModel {
     var muted = false
 
     static let gap: CGFloat = 22
-    static var step: CGFloat { KotekanCardView.cardWidth + gap }
+    static var step: CGFloat {
+        KotekanCardView.cardWidth + gap
+    }
 
     init(app: AppState, cue: CuePlayer = Container.shared.cueService()) {
         self.app = app
         self.cue = cue
     }
 
-    var kotekans: [Kotekan] { app.kotekans }
-    var focusedSlot: Int { Int(position.rounded()) }
+    var kotekans: [Kotekan] {
+        app.kotekans
+    }
+
+    var focusedSlot: Int {
+        Int(position.rounded())
+    }
 
     var current: Kotekan? {
         kotekans.isEmpty ? nil : kotekans[wrap(focusedSlot)]

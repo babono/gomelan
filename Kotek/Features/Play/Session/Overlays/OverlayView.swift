@@ -35,12 +35,12 @@ struct OverlayView: View {
     let engine: PlayEngine
 
     var body: some View {
-        //R Read in the body, NOT inside the draw closure: Observation registers
-        //R the dependency while the body runs, so a read that only happens at
-        //R draw time would never invalidate the view and the cue would freeze.
+        // R Read in the body, NOT inside the draw closure: Observation registers
+        // R the dependency while the body runs, so a read that only happens at
+        // R draw time would never invalidate the view and the cue would freeze.
         let states = engine.renderStates
-        //R Read here for the same reason as `states`: Observation only registers
-        //R what the body touches, and `renderNow` is what ages the verdicts.
+        // R Read here for the same reason as `states`: Observation only registers
+        // R what the body touches, and `renderNow` is what ages the verdicts.
         let floaters = engine.floaters
         let now = engine.renderNow
         let duration = engine.floaterDuration
@@ -59,12 +59,12 @@ struct OverlayView: View {
                     .foregroundStyle(Theme.copper.opacity(0.85))
                     .tag(key.index)
             }
-            //R Seven symbols, resolved once. The whole point of bucketing the
-            //R timing into words instead of printing milliseconds.
-            //R
-            //R Identified by `symbolID`, NOT `rawValue` — this ForEach shares a
-            //R view list with the one above, whose IDs are key indices. See
-            //R `FloaterLabel.symbolID`.
+            // R Seven symbols, resolved once. The whole point of bucketing the
+            // R timing into words instead of printing milliseconds.
+            // R
+            // R Identified by `symbolID`, NOT `rawValue` — this ForEach shares a
+            // R view list with the one above, whose IDs are key indices. See
+            // R `FloaterLabel.symbolID`.
             ForEach(PlayEngine.FloaterLabel.allCases, id: \.symbolID) { label in
                 Text(label.text)
                     .font(.sans(14, weight: .heavy))
@@ -78,33 +78,38 @@ struct OverlayView: View {
 
     private func colour(for label: PlayEngine.FloaterLabel) -> Color {
         switch label {
-        case .perfect:              return Theme.hit
-        case .goodEarly, .goodLate: return Theme.hit.opacity(0.85)
-        case .late:                 return Theme.upcoming
-        case .miss:                 return Theme.miss
-        case .wrongKey:             return Theme.wrong
-        //R Deliberately not a judgement colour. Nothing was scored, and painting
-        //R it red would say the player got something wrong when what happened is
-        //R that the app had nothing for them.
-        case .unmatched:            return Theme.stone
+        case .perfect: Theme.hit
+        case .goodEarly, .goodLate: Theme.hit.opacity(0.85)
+        case .late: Theme.upcoming
+        case .miss: Theme.miss
+        case .wrongKey: Theme.wrong
+        // R Deliberately not a judgement colour. Nothing was scored, and painting
+        // R it red would say the player got something wrong when what happened is
+        // R that the app had nothing for them.
+        case .unmatched: Theme.stone
         }
     }
 
     /// One verdict, rising off its bilah and fading.
-    private func drawCall(_ floater: PlayEngine.Floater, now: Double, duration: Double,
-                          in ctx: inout GraphicsContext, size: CGSize) {
+    private func drawCall(
+        _ floater: PlayEngine.Floater,
+        now: Double,
+        duration: Double,
+        in ctx: inout GraphicsContext,
+        size: CGSize
+    ) {
         let age = now - floater.bornAt
         guard age >= 0, age < duration,
               let key = keys.first(where: { $0.index == floater.keyIndex }),
               let symbol = ctx.resolveSymbol(id: floater.label.symbolID) else { return }
 
         let t = age / duration
-        //R Rises fast and settles, rather than drifting at a constant rate: the
-        //R movement is what catches the eye, so it belongs at the start where it
-        //R is doing that job, not at the end where it is just leaving.
+        // R Rises fast and settles, rather than drifting at a constant rate: the
+        // R movement is what catches the eye, so it belongs at the start where it
+        // R is doing that job, not at the end where it is just leaving.
         let rise = 26 * (1 - pow(1 - t, 3))
-        //R Held at full opacity for the first third. A verdict that starts
-        //R fading immediately is unreadable at the one moment it matters.
+        // R Held at full opacity for the first third. A verdict that starts
+        // R fading immediately is unreadable at the one moment it matters.
         let fade = t < 0.33 ? 1.0 : max(0, 1 - (t - 0.33) / 0.67)
 
         let rect = key.rect.rect(in: size)
@@ -113,8 +118,12 @@ struct OverlayView: View {
         ctx.opacity = 1
     }
 
-    private func draw(_ key: InstrumentKey, state: KeyRenderState,
-                      in ctx: inout GraphicsContext, size: CGSize) {
+    private func draw(
+        _ key: InstrumentKey,
+        state: KeyRenderState,
+        in ctx: inout GraphicsContext,
+        size: CGSize
+    ) {
         let rect = key.rect.rect(in: size)
         let radius = Theme.keyCornerRadius
         let shape = Path(roundedRect: rect, cornerRadius: radius)
@@ -134,10 +143,12 @@ struct OverlayView: View {
             let fill = min(1, max(0, state.fill))
             var layer = ctx
             layer.clip(to: shape)
-            let filled = CGRect(x: rect.minX,
-                                y: rect.maxY - rect.height * fill,
-                                width: rect.width,
-                                height: rect.height * fill)
+            let filled = CGRect(
+                x: rect.minX,
+                y: rect.maxY - rect.height * fill,
+                width: rect.width,
+                height: rect.height * fill
+            )
             layer.fill(Path(filled), with: .color(Theme.copper.opacity(0.22 + 0.18 * fill)))
         }
 
@@ -153,17 +164,21 @@ struct OverlayView: View {
         for progress in state.approaches {
             let fill = min(1, max(0, progress))
             let pad = (1 - fill) * 20
-            let ring = Path(roundedRect: rect.insetBy(dx: -pad, dy: -pad),
-                            cornerRadius: radius + pad * 0.5)
+            let ring = Path(
+                roundedRect: rect.insetBy(dx: -pad, dy: -pad),
+                cornerRadius: radius + pad * 0.5
+            )
             // Squared, so it comes in almost invisible and only gathers weight
             // in the last stretch. At a linear ramp — or worse, a constant one —
             // a bilah a second away shouts as loudly as the one landing, which
             // is how a lookahead turns into noise. Line weight follows, so the
             // near ring is heavier as well as brighter.
             let presence = fill * fill
-            ctx.stroke(ring,
-                       with: .color(Theme.copper.opacity(0.10 + 0.90 * presence)),
-                       lineWidth: 1 + 1.4 * fill)
+            ctx.stroke(
+                ring,
+                with: .color(Theme.copper.opacity(0.10 + 0.90 * presence)),
+                lineWidth: 1 + 1.4 * fill
+            )
         }
 
         // 3. NOW. A cream border plus a wash inside it — bright enough to catch
@@ -181,9 +196,11 @@ struct OverlayView: View {
 
         // 5. Damp hint on the key you should be silencing (§5.5).
         if state.damp {
-            ctx.stroke(shape, with: .color(Theme.copper),
-                       style: StrokeStyle(lineWidth: 3, dash: [8, 6]))
+            ctx.stroke(
+                shape,
+                with: .color(Theme.copper),
+                style: StrokeStyle(lineWidth: 3, dash: [8, 6])
+            )
         }
     }
-
 }

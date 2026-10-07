@@ -25,7 +25,7 @@ struct JudgingSectionView: View {
             }
             .frame(maxWidth: 360)
 
-            Slider(value: $app.judgementLeniency, in: 1.0...1.3, step: 0.05)
+            Slider(value: $app.judgementLeniency, in: 1.0 ... 1.3, step: 0.05)
                 .tint(Theme.terracotta).frame(maxWidth: 360)
 
             Text(

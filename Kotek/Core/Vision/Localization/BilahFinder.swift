@@ -50,7 +50,6 @@
 import CoreGraphics
 
 enum BilahFinder {
-
     static func find(in image: CGImage, count: Int) -> [NormalizedRect] {
         guard count > 0 else { return [] }
         let W = 320, H = 120
@@ -82,15 +81,19 @@ enum BilahFinder {
         let limit = Int(winner.comb.pitch * 0.46)
         var spans: [(Int, Int)] = []
         for centre in winner.comb.centres {
-            //R One rigid pitch cannot fit a row seen in perspective — the fit
-            //R drifted a few pixels by the far end. Let each tooth settle on its
-            //R own bar first, bounded well inside half a pitch so it can never
-            //R walk onto its neighbour.
+            // R One rigid pitch cannot fit a row seen in perspective — the fit
+            // R drifted a few pixels by the far end. Let each tooth settle on its
+            // R own bar first, bounded well inside half a pitch so it can never
+            // R walk onto its neighbour.
             let c = refine(centre, in: profile, within: winner.comb.pitch * 0.3)
             let floorLevel = max(0.30, profile[c] * 0.45)
             var a = c, b = c
-            while a > 0, c - a < limit, profile[a - 1] >= floorLevel { a -= 1 }
-            while b < W - 1, b - c < limit, profile[b + 1] >= floorLevel { b += 1 }
+            while a > 0, c - a < limit, profile[a - 1] >= floorLevel {
+                a -= 1
+            }
+            while b < W - 1, b - c < limit, profile[b + 1] >= floorLevel {
+                b += 1
+            }
             spans.append((a, b))
         }
         guard spans.count == count else { return [] }
@@ -103,10 +106,12 @@ enum BilahFinder {
             let x = Double(span.0) / Double(W)
             let w = Double(span.1 - span.0 + 1) / Double(W)
             let pad = w * 0.06
-            return NormalizedRect(x: max(0, x - pad),
-                                  y: band.y,
-                                  w: min(1 - max(0, x - pad), w + 2 * pad),
-                                  h: band.h)
+            return NormalizedRect(
+                x: max(0, x - pad),
+                y: band.y,
+                w: min(1 - max(0, x - pad), w + 2 * pad),
+                h: band.h
+            )
         }
     }
 
@@ -119,19 +124,24 @@ enum BilahFinder {
 
     private static func sample(_ image: CGImage, width W: Int, height H: Int) -> Maps? {
         var pixels = [UInt8](repeating: 0, count: W * H * 4)
-        guard let ctx = CGContext(data: &pixels, width: W, height: H,
-                                  bitsPerComponent: 8, bytesPerRow: W * 4,
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
-        //R CGContext draws bottom-up; flip so row 0 is the top of the picture and
-        //R the y we hand back needs no second inversion.
+        guard let ctx = CGContext(
+            data: &pixels,
+            width: W,
+            height: H,
+            bitsPerComponent: 8,
+            bytesPerRow: W * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        // R CGContext draws bottom-up; flip so row 0 is the top of the picture and
+        // R the y we hand back needs no second inversion.
         ctx.translateBy(x: 0, y: CGFloat(H))
         ctx.scaleBy(x: 1, y: -1)
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: W, height: H))
 
         var luma = [Double](repeating: 0, count: W * H)
         var gold = [Double](repeating: 0, count: W * H)
-        for i in 0..<(W * H) {
+        for i in 0 ..< (W * H) {
             let r = Double(pixels[i * 4]) / 255
             let g = Double(pixels[i * 4 + 1]) / 255
             let b = Double(pixels[i * 4 + 2]) / 255
@@ -156,8 +166,8 @@ enum BilahFinder {
         let yellow = (g - b) / max(0.02, r - b)
 
         return smoothstep(0.25, 0.45, saturation)
-             * smoothstep(0.46, 0.58, yellow)
-             * (0.4 + 0.6 * smoothstep(0.15, 0.50, maxC))
+            * smoothstep(0.46, 0.58, yellow)
+            * (0.4 + 0.6 * smoothstep(0.15, 0.50, maxC))
     }
 
     // MARK: - Profiles
@@ -167,24 +177,34 @@ enum BilahFinder {
     private static func columnProfile(_ map: [Double], width W: Int, height H: Int) -> [Double] {
         let lo = H * 22 / 100, hi = H * 78 / 100
         var out = [Double](repeating: 0, count: W)
-        for x in 0..<W {
+        for x in 0 ..< W {
             var s = 0.0
-            for y in lo..<hi { s += map[y * W + x] }
+            for y in lo ..< hi {
+                s += map[y * W + x]
+            }
             out[x] = s / Double(hi - lo)
         }
         return out
     }
 
-    private static func rowProfile(_ map: [Double], over spans: [(Int, Int)],
-                                   width W: Int, height H: Int) -> [Double] {
+    private static func rowProfile(
+        _ map: [Double],
+        over spans: [(Int, Int)],
+        width W: Int,
+        height H: Int
+    ) -> [Double] {
         var out = [Double](repeating: 0, count: H)
         var n = 0
-        for (a, b) in spans where a <= b { n += (b - a + 1) }
+        for (a, b) in spans where a <= b {
+            n += (b - a + 1)
+        }
         guard n > 0 else { return out }
-        for y in 0..<H {
+        for y in 0 ..< H {
             var s = 0.0
             for (a, b) in spans where a <= b {
-                for x in a...b { s += map[y * W + x] }
+                for x in a ... b {
+                    s += map[y * W + x]
+                }
             }
             out[y] = s / Double(n)
         }
@@ -232,7 +252,10 @@ enum BilahFinder {
 
         var pitchSteps: [Double] = []
         var p = nominal * 0.72
-        while p <= nominal * 1.25 { pitchSteps.append(p); p += nominal * 0.01 }
+        while p <= nominal * 1.25 {
+            pitchSteps.append(p)
+            p += nominal * 0.01
+        }
 
         for pitch in pitchSteps {
             let span = pitch * Double(count - 1)
@@ -240,7 +263,7 @@ enum BilahFinder {
             var start = 0.0
             while start + span <= Double(W - 1) {
                 var score = 0.0
-                for i in 0..<count {
+                for i in 0 ..< count {
                     let x = start + pitch * Double(i)
                     score += sample(profile, at: x)
                     // The gap either side of a bar is as much a part of the
@@ -251,9 +274,11 @@ enum BilahFinder {
                 }
                 if score > bestScore {
                     bestScore = score
-                    best = Comb(pitch: pitch,
-                                centres: (0..<count).map { start + pitch * Double($0) },
-                                score: score / Double(count))
+                    best = Comb(
+                        pitch: pitch,
+                        centres: (0 ..< count).map { start + pitch * Double($0) },
+                        score: score / Double(count)
+                    )
                 }
                 start += 0.5
             }
@@ -272,10 +297,14 @@ enum BilahFinder {
 
         var best = min(max(Int(centre.rounded()), 0), profile.count - 1)
         var bestScore = -Double.infinity
-        for x in max(0, lo)...min(profile.count - 1, hi) {
+        for x in max(0, lo) ... min(profile.count - 1, hi) {
             var s = 0.0
-            for d in -2...2 { s += sample(profile, at: Double(x + d)) }
-            if s > bestScore { bestScore = s; best = x }
+            for d in -2 ... 2 {
+                s += sample(profile, at: Double(x + d))
+            }
+            if s > bestScore { bestScore = s
+                best = x
+            }
         }
         return best
     }
@@ -309,16 +338,20 @@ enum BilahFinder {
     /// through the measured tops and another through the bottoms, outliers
     /// discarded and refitted, and every bar takes its extent from the fit. Real
     /// tilt and real graduation survive; per-bar noise does not.
-    private static func verticalBands(_ spans: [(Int, Int)], in map: [Double],
-                                      width W: Int, height H: Int) -> [(y: Double, h: Double)] {
+    private static func verticalBands(
+        _ spans: [(Int, Int)],
+        in map: [Double],
+        width W: Int,
+        height H: Int
+    ) -> [(y: Double, h: Double)] {
         let own = spans.map { verticalBand(rowProfile(map, over: [$0], width: W, height: H), height: H) }
         guard own.count >= 4 else { return own }
 
-        //R Fitting top and bottom independently let the two lines diverge, and a
-        //R noisy end bar dragged them into a 2:1 taper no gangsa has. Centre and
-        //R height are fitted separately instead, and the height is held within a
-        //R little of the row's median: the tilt is real and worth following, a
-        //R doubling in length is a measurement error.
+        // R Fitting top and bottom independently let the two lines diverge, and a
+        // R noisy end bar dragged them into a 2:1 taper no gangsa has. Centre and
+        // R height are fitted separately instead, and the height is held within a
+        // R little of the row's median: the tilt is real and worth following, a
+        // R doubling in length is a measurement error.
         let centre = robustLine(own.map { $0.y + $0.h / 2 })
         let height = robustLine(own.map(\.h))
         let median = own.map(\.h).sorted()[own.count / 2]
@@ -399,7 +432,10 @@ enum BilahFinder {
         var out = a
         for i in a.indices {
             var s = 0.0, n = 0
-            for j in max(0, i - half)...min(a.count - 1, i + half) { s += a[j]; n += 1 }
+            for j in max(0, i - half) ... min(a.count - 1, i + half) {
+                s += a[j]
+                n += 1
+            }
             out[i] = s / Double(n)
         }
         return out

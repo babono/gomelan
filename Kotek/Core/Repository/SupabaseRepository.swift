@@ -9,11 +9,11 @@
 import Foundation
 import Supabase
 
-nonisolated struct SupabaseRepository: Sendable {
+nonisolated struct SupabaseRepository {
     let client: SupabaseClient
 
     init() {
-        self.client = Self.defaultClient()
+        client = Self.defaultClient()
     }
 
     init(client: SupabaseClient) {
@@ -27,7 +27,9 @@ nonisolated struct SupabaseRepository: Sendable {
               let key = info["SupabasePublishableKey"] as? String,
               !key.isEmpty, !key.hasPrefix("YOUR_")
         else {
-            fatalError("Supabase is not configured: set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in Config.xcconfig (see Config.xcconfig.template).")
+            fatalError(
+                "Supabase is not configured: set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in Config.xcconfig (see Config.xcconfig.template)."
+            )
         }
         return SupabaseClient(
             supabaseURL: url,
@@ -49,11 +51,11 @@ nonisolated struct SupabaseRepository: Sendable {
 
     // MARK: - Create
 
-    func create<T: Encodable & Sendable>(_ value: T, in table: String) async throws {
+    func create(_ value: some Encodable & Sendable, in table: String) async throws {
         try await client.from(table).insert(value).execute()
     }
 
-    func create<T: Encodable & Sendable>(_ values: [T], in table: String) async throws {
+    func create(_ values: [some Encodable & Sendable], in table: String) async throws {
         guard !values.isEmpty else { return }
         try await client.from(table).insert(values).execute()
     }
@@ -84,8 +86,8 @@ nonisolated struct SupabaseRepository: Sendable {
 
     // MARK: - Update
 
-    func update<T: Encodable & Sendable>(
-        _ value: T,
+    func update(
+        _ value: some Encodable & Sendable,
         in table: String,
         matching column: String,
         equals filterValue: some PostgrestFilterValue
@@ -119,11 +121,11 @@ nonisolated struct SupabaseRepository: Sendable {
 
     // MARK: - Upsert
 
-    func upsert<T: Encodable & Sendable>(_ value: T, in table: String) async throws {
+    func upsert(_ value: some Encodable & Sendable, in table: String) async throws {
         try await client.from(table).upsert(value).execute()
     }
 
-    func upsert<T: Encodable & Sendable>(_ values: [T], in table: String) async throws {
+    func upsert(_ values: [some Encodable & Sendable], in table: String) async throws {
         guard !values.isEmpty else { return }
         try await client.from(table).upsert(values).execute()
     }

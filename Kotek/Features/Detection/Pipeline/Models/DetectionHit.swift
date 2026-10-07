@@ -39,5 +39,7 @@ struct DetectionHit: Identifiable, Equatable {
         self.heardTrusted = heardTrusted
     }
 
-    var agrees: Bool? { heardKey.map { $0 == key } }
+    var agrees: Bool? {
+        heardKey.map { $0 == key }
+    }
 }

@@ -40,15 +40,16 @@ import QuartzCore
 /// 5 cm above the bar it is about to strike projects to the same x as the
 /// contact point. So identity collapses from "which rect contains the tip" to
 /// "which vertical band contains its x" — one dimension instead of two.
-nonisolated enum MarkerPOV: Int, CaseIterable, Sendable {
+nonisolated enum MarkerPOV: Int, CaseIterable {
     case top
     case front
 
-    var name: String { self == .top ? "top" : "front" }
+    var name: String {
+        self == .top ? "top" : "front"
+    }
 }
 
 actor MarkerFusion {
-
     struct Event {
         let keyIndex: Int
         let hostTime: Double
@@ -118,12 +119,25 @@ actor MarkerFusion {
         self.viewSize = viewSize
     }
 
-    func setViewSize(_ size: CGSize) { viewSize = size }
+    func setViewSize(_ size: CGSize) {
+        viewSize = size
+    }
 
-    func setBrightnessThreshold(_ value: Int) { tracker.brightnessThreshold = value }
-    func setColour(_ value: MarkerColour) { tracker.colour = value }
-    func setSaturationFloor(_ value: Int) { tracker.saturationFloor = value }
-    func setROITop(_ value: Double) { tracker.roiTop = value }
+    func setBrightnessThreshold(_ value: Int) {
+        tracker.brightnessThreshold = value
+    }
+
+    func setColour(_ value: MarkerColour) {
+        tracker.colour = value
+    }
+
+    func setSaturationFloor(_ value: Int) {
+        tracker.saturationFloor = value
+    }
+
+    func setROITop(_ value: Double) {
+        tracker.roiTop = value
+    }
 
     /// Front view reads the strike from translation, so apparent size stops
     /// being the channel that carries it and becomes mostly noise. Not zero —
@@ -150,15 +164,24 @@ actor MarkerFusion {
     /// bands, so the closed form buys nothing but a way to be subtly wrong.
     func bandEdges() -> [Double] {
         let n = max(1, keys.count)
-        return (0...n).map { i in
+        return (0 ... n).map { i in
             let u = Double(i) / Double(n)
             let warped = u + bandSkew * u * (1 - u)
             return bandLeft + (bandRight - bandLeft) * warped
         }
     }
-    func setMinApproachSpeed(_ value: Double) { strikes.minApproachSpeed = value }
-    func setTipExtension(_ value: Double) { tracker.tipExtension = value }
-    func setSaturationCeiling(_ value: Int) { tracker.saturationCeiling = value }
+
+    func setMinApproachSpeed(_ value: Double) {
+        strikes.minApproachSpeed = value
+    }
+
+    func setTipExtension(_ value: Double) {
+        tracker.tipExtension = value
+    }
+
+    func setSaturationCeiling(_ value: Int) {
+        tracker.saturationCeiling = value
+    }
 
     func reset() {
         strikes.reset()
@@ -180,28 +203,37 @@ actor MarkerFusion {
             // trajectory would stitch together the moments either side of an
             // occlusion into one implausible movement.
             lastTip = nil
-            return Frame(hostTime: frame.hostTime, tip: nil,
-                         maxBrightness: scan.maxBrightness,
-                         spreadAtMaxBrightness: scan.spreadAtMaxBrightness,
-                         brightnessPassed: scan.brightnessPassed, colourRejected: scan.colourRejected)
+            return Frame(
+                hostTime: frame.hostTime,
+                tip: nil,
+                maxBrightness: scan.maxBrightness,
+                spreadAtMaxBrightness: scan.spreadAtMaxBrightness,
+                brightnessPassed: scan.brightnessPassed,
+                colourRejected: scan.colourRejected
+            )
         }
 
         let overlayTip = overlayPoint(sighting.tip, bufferSize: frame.size)
         lastTip = overlayTip
-        var out = Frame(hostTime: frame.hostTime,
-                        tip: overlayTip,
-                        blobs: sighting.blobs.map { overlayRect($0.bounds, bufferSize: frame.size) },
-                        litFraction: sighting.litFraction,
-                        maxBrightness: scan.maxBrightness,
-                        spreadAtMaxBrightness: scan.spreadAtMaxBrightness,
-                        brightnessPassed: scan.brightnessPassed, colourRejected: scan.colourRejected)
+        var out = Frame(
+            hostTime: frame.hostTime,
+            tip: overlayTip,
+            blobs: sighting.blobs.map { overlayRect($0.bounds, bufferSize: frame.size) },
+            litFraction: sighting.litFraction,
+            maxBrightness: scan.maxBrightness,
+            spreadAtMaxBrightness: scan.spreadAtMaxBrightness,
+            brightnessPassed: scan.brightnessPassed,
+            colourRejected: scan.colourRejected
+        )
 
         if let turn = strikes.process(tip: sighting.tip, scale: sighting.scale, at: frame.hostTime) {
             let point = overlayPoint(turn.point, bufferSize: frame.size)
             if let key = keyContaining(point) {
-                out.event = Event(keyIndex: key,
-                                  hostTime: turn.hostTime,
-                                  confidence: sighting.blobs.count >= 2 ? 1.0 : 0.7)
+                out.event = Event(
+                    keyIndex: key,
+                    hostTime: turn.hostTime,
+                    confidence: sighting.blobs.count >= 2 ? 1.0 : 0.7
+                )
             }
             // A turnaround off the keys is a real gesture — lifting the mallet,
             // reaching across — and is deliberately dropped rather than snapped
@@ -220,12 +252,14 @@ actor MarkerFusion {
     private func keyContaining(_ p: CGPoint) -> Int? {
         switch pov {
         case .top:
-            for key in keys where key.rect.cgRect.contains(p) { return key.index }
+            for key in keys where key.rect.cgRect.contains(p) {
+                return key.index
+            }
             return nil
         case .front:
             let edges = bandEdges()
             guard keys.count > 0, edges.count == keys.count + 1 else { return nil }
-            for i in 0..<keys.count where p.x >= edges[i] && p.x < edges[i + 1] {
+            for i in 0 ..< keys.count where p.x >= edges[i] && p.x < edges[i + 1] {
                 return keys[bandFlip ? keys.count - 1 - i : i].index
             }
             return nil
@@ -261,7 +295,7 @@ actor MarkerFusion {
         case .front:
             let edges = bandEdges()
             guard keys.count > 0, edges.count == keys.count + 1,
-                  let slot = (0..<keys.count).first(where: {
+                  let slot = (0 ..< keys.count).first(where: {
                       keys[bandFlip ? keys.count - 1 - $0 : $0].index == keyIndex
                   }) else { return .allow }
             return (tip.x >= edges[slot] - margin && tip.x < edges[slot + 1] + margin)
@@ -276,7 +310,8 @@ actor MarkerFusion {
     private func overlayRect(_ r: CGRect, bufferSize: CGSize) -> CGRect {
         let mapped = CropMapper.overlayRect(
             bufferNormalized: NormalizedRect(x: r.minX, y: r.minY, w: r.width, h: r.height),
-            bufferSize: bufferSize, viewSize: viewSize)
+            bufferSize: bufferSize, viewSize: viewSize
+        )
         return mapped.cgRect
     }
 }

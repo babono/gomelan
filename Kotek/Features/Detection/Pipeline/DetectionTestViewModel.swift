@@ -267,11 +267,11 @@ final class DetectionTestViewModel {
             return true
         case .noScan:
             lastGate = "no marker scan yet"
-        case .stale(let age):
+        case let .stale(age):
             lastGate = String(format: "scan %.0f ms stale", age * 1000)
         case .noMallet:
             lastGate = "no mallet in frame"
-        case .elsewhere(let other):
+        case let .elsewhere(other):
             lastGate = other.map { "mallet was over k\($0)" } ?? "mallet off the keys"
         }
         gateVetoed += 1

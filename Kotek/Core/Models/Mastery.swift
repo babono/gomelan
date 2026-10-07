@@ -34,8 +34,8 @@ import Foundation
 /// outcaste framing, and it is the only name here that carries a slur in its
 /// history. Renaming it touches this enum and nothing else; the thresholds,
 /// colours and every call site key off the case, not the string.
-nonisolated struct Mastery: Equatable, Sendable {
-    enum Rank: Int, CaseIterable, Sendable {
+nonisolated struct Mastery: Equatable {
+    enum Rank: Int, CaseIterable {
         case paria, sudra, waisya, ksatria, brahmana
 
         /// Notes at which this rung begins.
@@ -51,21 +51,21 @@ nonisolated struct Mastery: Equatable, Sendable {
         /// early; Brahmana is a few dozen of them.
         var threshold: Int {
             switch self {
-            case .paria: return 0
-            case .sudra: return 1_000
-            case .waisya: return 5_000
-            case .ksatria: return 15_000
-            case .brahmana: return 40_000
+            case .paria: 0
+            case .sudra: 1000
+            case .waisya: 5000
+            case .ksatria: 15000
+            case .brahmana: 40000
             }
         }
 
         var title: String {
             switch self {
-            case .paria: return "Paria"
-            case .sudra: return "Sudra"
-            case .waisya: return "Waisya"
-            case .ksatria: return "Ksatria"
-            case .brahmana: return "Brahmana"
+            case .paria: "Paria"
+            case .sudra: "Sudra"
+            case .waisya: "Waisya"
+            case .ksatria: "Ksatria"
+            case .brahmana: "Brahmana"
             }
         }
 
@@ -82,11 +82,11 @@ nonisolated struct Mastery: Equatable, Sendable {
         /// deliberately about different things. Keep it that way.
         var gloss: String {
             switch self {
-            case .paria: return "finding the keys"
-            case .sudra: return "the figure in the hands"
-            case .waisya: return "holding your half"
-            case .ksatria: return "interlocking at tempo"
-            case .brahmana: return "the weave is yours"
+            case .paria: "finding the keys"
+            case .sudra: "the figure in the hands"
+            case .waisya: "holding your half"
+            case .ksatria: "interlocking at tempo"
+            case .brahmana: "the weave is yours"
             }
         }
     }
@@ -100,7 +100,9 @@ nonisolated struct Mastery: Equatable, Sendable {
         rank = Rank.allCases.last { n >= $0.threshold } ?? .paria
     }
 
-    var next: Rank? { Rank(rawValue: rank.rawValue + 1) }
+    var next: Rank? {
+        Rank(rawValue: rank.rawValue + 1)
+    }
 
     /// 0…1 through the current rung. The top rung reads full: there is nothing
     /// left to fill towards, and a bar that never completes is a treadmill.

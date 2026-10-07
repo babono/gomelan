@@ -14,7 +14,7 @@ import Foundation
 /// baseline in it a profile is no longer a trivial file, and this target
 /// defaults to MainActor, which would otherwise put every write on the same
 /// thread as the UI.
-nonisolated struct ProfileStore {
+nonisolated enum ProfileStore {
     private static var listUrl: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("instruments_store.json")
@@ -32,22 +32,24 @@ nonisolated struct ProfileStore {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
 
-        //R An EMPTY store is an answer, not a miss. This used to fall through to
-        //R the legacy branch whenever the list came back empty, so deleting your
-        //R last instrument re-migrated the old single-profile file and the
-        //R deleted instrument reappeared out of nowhere.
+        // R An EMPTY store is an answer, not a miss. This used to fall through to
+        // R the legacy branch whenever the list came back empty, so deleting your
+        // R last instrument re-migrated the old single-profile file and the
+        // R deleted instrument reappeared out of nowhere.
         if let data = try? Data(contentsOf: listUrl),
-           let profiles = try? decoder.decode([InstrumentProfile].self, from: data) {
+           let profiles = try? decoder.decode([InstrumentProfile].self, from: data)
+        {
             return byRecency(profiles)
         }
 
         // Migrate a legacy single-profile file, once.
         if let legacyData = try? Data(contentsOf: legacyUrl),
-           let single = try? decoder.decode(InstrumentProfile.self, from: legacyData) {
+           let single = try? decoder.decode(InstrumentProfile.self, from: legacyData)
+        {
             let migrated = byRecency([single])
             saveAll(migrated)
-            //R Migration is one-way. Leaving the old file behind is what let it
-            //R come back a second time.
+            // R Migration is one-way. Leaving the old file behind is what let it
+            // R come back a second time.
             try? FileManager.default.removeItem(at: legacyUrl)
             return migrated
         }

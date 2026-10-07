@@ -24,8 +24,10 @@ struct ProgressPill: View {
             let clamped = min(1, max(0, progress))
             // Never narrower than its own height: below that a capsule collapses
             // into a lens shape and the bar looks broken at rest rather empty.
-            let fillWidth = max(size.height - inset * 2,
-                                (size.width - inset * 2) * clamped)
+            let fillWidth = max(
+                size.height - inset * 2,
+                (size.width - inset * 2) * clamped
+            )
 
             ZStack(alignment: .leading) {
                 Capsule().fill(Theme.buttonFill)
@@ -50,7 +52,9 @@ struct ProgressPill: View {
             .offset(x: inset)
     }
 
-    private var readout: some View { Readout(value: progress) }
+    private var readout: some View {
+        Readout(value: progress)
+    }
 }
 
 /// The percentage itself, counting rather than jumping.

@@ -15,7 +15,7 @@ struct PageDots: View {
 
     var body: some View {
         HStack(spacing: 7) {
-            ForEach(0..<count, id: \.self) { i in
+            ForEach(0 ..< count, id: \.self) { i in
                 Button {
                     withAnimation(.snappy(duration: 0.25)) { index = i }
                 } label: {

@@ -46,7 +46,9 @@ struct GuideBlock: View {
 /// The prose under a column heading.
 struct GuideLead: View {
     let text: String
-    init(_ text: String) { self.text = text }
+    init(_ text: String) {
+        self.text = text
+    }
 
     var body: some View {
         Text(text)

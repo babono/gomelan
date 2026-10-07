@@ -83,7 +83,7 @@ struct KotekanGuideLegend: View {
         HStack(spacing: 10) {
             Group {
                 switch swatch {
-                case .single(let color):
+                case let .single(color):
                     RoundedRectangle(cornerRadius: 2).fill(color)
                 case .split:
                     HStack(spacing: 0) {

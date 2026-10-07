@@ -65,7 +65,7 @@ private struct ChooseKotekanContentView: View {
             let last = Int((viewModel.position + 2).rounded(.up))
 
             ZStack {
-                ForEach(first...last, id: \.self) { slot in
+                ForEach(first ... last, id: \.self) { slot in
                     let offset = Double(slot) - viewModel.position
                     let k = viewModel.kotekans[viewModel.wrap(slot)]
                     KotekanCardView(

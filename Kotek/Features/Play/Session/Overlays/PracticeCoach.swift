@@ -28,43 +28,49 @@ enum CoachStep: Int, CaseIterable, Identifiable {
     case tempo
     case voices
 
-    var id: Int { rawValue }
+    var id: Int {
+        rawValue
+    }
 
     /// Whether the bottom panel has to be up for this step to have anything to
     /// point at.
-    var needsPanel: Bool { self >= .half }
+    var needsPanel: Bool {
+        self >= .half
+    }
 
     var title: String {
         switch self {
-        case .session:     return "Where you are"
-        case .score:       return "How it is going"
-        case .panelToggle: return "The panel"
-        case .half:        return "Which half"
-        case .tempo:       return "Speed"
-        case .voices:      return "The voices"
+        case .session: "Where you are"
+        case .score: "How it is going"
+        case .panelToggle: "The panel"
+        case .half: "Which half"
+        case .tempo: "Speed"
+        case .voices: "The voices"
         }
     }
 
     var detail: String {
         switch self {
         case .session:
-            return "The figure you are playing, and how many times it has come round. There is no total to reach — it loops until you end it from the pause button."
+            "The figure you are playing, and how many times it has come round. There is no total to reach — it loops until you end it from the pause button."
         case .score:
-            return "Notes that landed, then your best eight cycles in a row against the record for this figure. Both only ever climb, so a bad pass costs you nothing."
+            "Notes that landed, then your best eight cycles in a row against the record for this figure. Both only ever climb, so a bad pass costs you nothing."
         case .panelToggle:
-            return "Brings up the score and the controls. Down by default, so the gangsa has the whole screen."
+            "Brings up the score and the controls. Down by default, so the gangsa has the whole screen."
         case .half:
-            return "Polos lands on the beat, sangsih answers between. Swap whenever you like — the gong keeps going, and each side keeps its own score."
+            "Polos lands on the beat, sangsih answers between. Swap whenever you like — the gong keeps going, and each side keeps its own score."
         case .tempo:
-            return "Half speed up to one and a half. It changes without stopping the music, so you can slow a figure down the moment it gets away from you."
+            "Half speed up to one and a half. It changes without stopping the music, so you can slow a figure down the moment it gets away from you."
         case .voices:
-            return "Your half plays so you can copy it; mute it once the figure is in your hands. Turn the other one on and you are playing a kotekan."
+            "Your half plays so you can copy it; mute it once the figure is in your hands. Turn the other one on and you are playing a kotekan."
         }
     }
 }
 
 extension CoachStep: Comparable {
-    static func < (a: CoachStep, b: CoachStep) -> Bool { a.rawValue < b.rawValue }
+    static func < (a: CoachStep, b: CoachStep) -> Bool {
+        a.rawValue < b.rawValue
+    }
 }
 
 // MARK: - Marking the targets
@@ -79,8 +85,10 @@ extension CoachStep: Comparable {
 struct CoachAnchors: PreferenceKey {
     static let defaultValue: [CoachStep: Anchor<CGRect>] = [:]
 
-    static func reduce(value: inout [CoachStep: Anchor<CGRect>],
-                       nextValue: () -> [CoachStep: Anchor<CGRect>]) {
+    static func reduce(
+        value: inout [CoachStep: Anchor<CGRect>],
+        nextValue: () -> [CoachStep: Anchor<CGRect>]
+    ) {
         value.merge(nextValue()) { _, new in new }
     }
 }
@@ -113,7 +121,9 @@ struct PracticeCoachOverlay: View {
     var onSkip: () -> Void
 
     private let padding: CGFloat = 8
-    private var isLast: Bool { step == CoachStep.allCases.last }
+    private var isLast: Bool {
+        step == CoachStep.allCases.last
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -122,10 +132,12 @@ struct PracticeCoachOverlay: View {
                 if let hole { ring(hole) }
                 caption(in: geo.size)
             }
-            //R Nothing underneath is reachable while the tour is up. Half of
-            //R these controls change what the next step is pointing at.
+            // R Nothing underneath is reachable while the tour is up. Half of
+            // R these controls change what the next step is pointing at.
             .contentShape(Rectangle())
-            .onTapGesture { KajarTick.strike(); onNext() }
+            .onTapGesture { KajarTick.strike()
+                onNext()
+            }
             .animation(.easeInOut(duration: 0.24), value: target)
         }
         .transition(.opacity)
@@ -184,9 +196,13 @@ struct PracticeCoachOverlay: View {
                         .buttonStyle(.kajar)
                 }
                 Spacer()
-                PillButton(title: isLast ? "Start" : "Next",
-                           trailingSystemImage: "arrow.right",
-                           style: .filled, compact: true, action: onNext)
+                PillButton(
+                    title: isLast ? "Start" : "Next",
+                    trailingSystemImage: "arrow.right",
+                    style: .filled,
+                    compact: true,
+                    action: onNext
+                )
             }
             .padding(.top, 2)
         }
@@ -210,7 +226,9 @@ struct PracticeCoachOverlay: View {
         }
         let below = hole.maxY + 14
         let y = below + height < size.height ? below : hole.minY - 14 - height
-        return CGPoint(x: (hole.midX - width / 2).clamped(to: 24, size.width - width - 24),
-                       y: y.clamped(to: 24, size.height - height - 24))
+        return CGPoint(
+            x: (hole.midX - width / 2).clamped(to: 24, size.width - width - 24),
+            y: y.clamped(to: 24, size.height - height - 24)
+        )
     }
 }

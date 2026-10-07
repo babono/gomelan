@@ -8,7 +8,7 @@ import Foundation
 /// Only the columns the app owns. `sensor_id`, `sensor_threshold` and
 /// `sample_path` are left out of the payload entirely, so an upsert from here
 /// never overwrites what the sensor setup writes into them.
-nonisolated struct InstrumentKeyRow: Encodable, Sendable {
+nonisolated struct InstrumentKeyRow: Encodable {
     var instrumentID: UUID
     var keyIndex: Int
     var baseHz: Float?
@@ -25,9 +25,9 @@ nonisolated struct InstrumentKeyRow: Encodable, Sendable {
         case baseHz = "base_hz"
     }
 
-    //R Written by hand to send an explicit null. Synthesized encoding OMITS a
-    //R nil, and PostgREST refuses a bulk upsert whose rows disagree on keys —
-    //R so one uncalibrated key would sink the whole instrument's write.
+    /// R Written by hand to send an explicit null. Synthesized encoding OMITS a
+    /// R nil, and PostgREST refuses a bulk upsert whose rows disagree on keys —
+    /// R so one uncalibrated key would sink the whole instrument's write.
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(instrumentID, forKey: .instrumentID)

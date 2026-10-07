@@ -49,11 +49,12 @@ nonisolated enum Detection {
     /// it, so vision only has to name the bilah — it does not also have to
     /// decide whether anything happened, which is the harder half and the one
     /// the self-trigger bar is set for.
-    static func namingThreshold(from trigger: Double) -> Double { trigger * 0.9 }
+    static func namingThreshold(from trigger: Double) -> Double {
+        trigger * 0.9
+    }
 }
 
 final class VisionStrikeDetector {
-
     /// Rising-edge threshold for a key nothing is due on.
     var enter = 0.55
     /// Rising-edge threshold for the key the engine says is due. Lower, because
@@ -85,12 +86,12 @@ final class VisionStrikeDetector {
     func apply(threshold: Double, relativeDip: Double? = nil) {
         if let relativeDip { self.relativeDip = relativeDip }
         enter = threshold
-        //R Seven tenths, the ratio the play screen was already using between
-        //R its two hardcoded bars. The expected key is easier to trigger; see
-        //R the note about expectation above.
+        // R Seven tenths, the ratio the play screen was already using between
+        // R its two hardcoded bars. The expected key is easier to trigger; see
+        // R the note about expectation above.
         enterExpected = threshold * 0.7
-        //R Re-arm well below the trigger so one strike cannot fire twice. The
-        //R relative dip is what actually clears between repeated strokes.
+        // R Re-arm well below the trigger so one strike cannot fire twice. The
+        // R relative dip is what actually clears between repeated strokes.
         exit = threshold * 0.6
     }
 

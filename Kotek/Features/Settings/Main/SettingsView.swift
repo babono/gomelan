@@ -95,10 +95,9 @@ private struct SettingsContentView: View {
         }
     }
 
-    @ViewBuilder
-    private func section<Content: View>(
+    private func section(
         _ id: SettingsSection,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: () -> some View
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionLabel(viewModel.heading(for: id))

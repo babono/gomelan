@@ -8,7 +8,7 @@
 
 import Foundation
 
-nonisolated struct RemoteKotekan: Sendable {
+nonisolated struct RemoteKotekan {
     var id: String
     var name: String
     var description: String?
@@ -61,20 +61,33 @@ nonisolated extension RemoteKotekan {
             default: continue
             }
         }
-        self.init(id: row.id, name: row.name, description: row.description,
-                  level: row.level, bpm: row.bpm, source: row.source,
-                  instrumentID: row.instrumentID?.uuidString,
-                  polos: polos, sangsih: sangsih)
+        self.init(
+            id: row.id,
+            name: row.name,
+            description: row.description,
+            level: row.level,
+            bpm: row.bpm,
+            source: row.source,
+            instrumentID: row.instrumentID?.uuidString,
+            polos: polos,
+            sangsih: sangsih
+        )
     }
 
     /// The other direction, for saving a figure from the Create Kotek flow.
     @MainActor
     init(_ k: Kotekan, source: KotekanSource, instrumentID: String?) {
-        self.init(id: k.id, name: k.name, description: k.blurb,
-                  level: k.kind == .melody ? nil : k.level,
-                  bpm: Int((60000.0 / Double(k.strokeMs)).rounded()),
-                  source: source, instrumentID: instrumentID,
-                  polos: k.polos, sangsih: k.sangsih)
+        self.init(
+            id: k.id,
+            name: k.name,
+            description: k.blurb,
+            level: k.kind == .melody ? nil : k.level,
+            bpm: Int((60000.0 / Double(k.strokeMs)).rounded()),
+            source: source,
+            instrumentID: instrumentID,
+            polos: k.polos,
+            sangsih: k.sangsih
+        )
     }
 }
 
@@ -84,15 +97,17 @@ extension Kotekan {
         // the bundled copy of itself; a NULL level is what marks a melody, which
         // keeps "Level 0" off its card exactly as `KotekanKind` intends.
         let bundled = Kotekan.bundled.first { $0.id == r.id }
-        self.init(id: r.id,
-                  name: r.name,
-                  level: r.level ?? 0,
-                  kind: r.level == nil ? .melody : .figure,
-                  toneLabel: bundled?.toneLabel ?? (r.source == .automatic ? "Recorded" : "Your kotekan"),
-                  blurb: r.description ?? "",
-                  polos: r.polos,
-                  sangsih: r.sangsih,
-                  strokeMs: Int((60000.0 / Double(r.bpm)).rounded()))
+        self.init(
+            id: r.id,
+            name: r.name,
+            level: r.level ?? 0,
+            kind: r.level == nil ? .melody : .figure,
+            toneLabel: bundled?.toneLabel ?? (r.source == .automatic ? "Recorded" : "Your kotekan"),
+            blurb: r.description ?? "",
+            polos: r.polos,
+            sangsih: r.sangsih,
+            strokeMs: Int((60000.0 / Double(r.bpm)).rounded())
+        )
     }
 
     /// Database figures in rail order: built-ins where `bundled` puts them —

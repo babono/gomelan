@@ -111,7 +111,7 @@ final class Preloader {
 
     private static let stops: [Stop] = [
         Stop(mark: 0.11, dwell: .seconds(1)),
-        Stop(mark: 0.67, dwell: .seconds(2)),
+        Stop(mark: 0.67, dwell: .seconds(2))
     ]
 
     /// The band the bar is allowed to report inside, right now. The lower bound
@@ -126,9 +126,9 @@ final class Preloader {
 
         var weight: Double {
             switch self {
-            case .samples: return 0.35  // 13 files, decode + two scans each
-            case .model: return 0.35  // Core ML compile + Vision wrapper
-            case .camera: return 0.30  // capture graph configuration
+            case .samples: 0.35 // 13 files, decode + two scans each
+            case .model: 0.35 // Core ML compile + Vision wrapper
+            case .camera: 0.30 // capture graph configuration
             }
         }
     }
@@ -154,10 +154,10 @@ final class Preloader {
         // start together, and the only thing the pacer governs is how far
         // `publish` is willing to go. See `stops`.
         let pacer = Task { [self] in
-            //R Seeded with the FIRST stop rather than 0, because the bar's
-            //R opening move is to that stop — floor and ceiling are equal for
-            //R the first dwell, which is what pins it at 11% while the work
-            //R behind it may already have finished.
+            // R Seeded with the FIRST stop rather than 0, because the bar's
+            // R opening move is to that stop — floor and ceiling are equal for
+            // R the first dwell, which is what pins it at 11% while the work
+            // R behind it may already have finished.
             var left = Self.stops[0].mark
 
             for stop in Self.stops {

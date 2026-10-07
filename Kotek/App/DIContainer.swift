@@ -14,7 +14,7 @@ extension Container {
     var router: Factory<AppState> {
         self { AppState() }.singleton
     }
-    
+
     // MARK: Repositories init
 
     nonisolated var supabaseRepository: Factory<SupabaseRepository> {
@@ -38,7 +38,7 @@ extension Container {
         }.singleton
     }
 
-    // MARK: Services / Controller Init  
+    // MARK: Services / Controller Init
 
     nonisolated var cameraService: Factory<CameraController> {
         self { CameraController() }.singleton

@@ -15,14 +15,13 @@
 //  a small pool, and holding onto its buffers would starve it and drop frames.
 //
 
+import CoreGraphics
 import CoreImage
 import CoreVideo
-import CoreGraphics
 
 /// Written on the capture queue, read from the fusion actor — the NSLock is the
 /// synchronisation, hence the unchecked conformance.
-nonisolated final class FrameBuffer: @unchecked Sendable {
-
+final nonisolated class FrameBuffer: @unchecked Sendable {
     struct Frame {
         let image: CGImage
         /// CACurrentMediaTime-clock seconds — same clock the audio strike carries.

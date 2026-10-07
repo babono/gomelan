@@ -142,9 +142,19 @@ struct DetectionTestView: View {
     /// Every value `applyMarkerSettings` pushes into the fusion actor, in one
     /// Equatable bundle so a single `.onChange` can watch the lot.
     private var markerSettingsSignature: [Double] {
-        [app.markerBrightness, Double(app.markerColour), app.markerSaturationFloor,
-         app.markerSaturation, app.markerMinSpeed, app.markerTipExtension,
-         app.markerROITop, Double(app.markerPOV), app.markerBandLeft,
-         app.markerBandRight, app.markerBandSkew, app.markerBandFlip ? 1 : 0]
+        [
+            app.markerBrightness,
+            Double(app.markerColour),
+            app.markerSaturationFloor,
+            app.markerSaturation,
+            app.markerMinSpeed,
+            app.markerTipExtension,
+            app.markerROITop,
+            Double(app.markerPOV),
+            app.markerBandLeft,
+            app.markerBandRight,
+            app.markerBandSkew,
+            app.markerBandFlip ? 1 : 0
+        ]
     }
 }

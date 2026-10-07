@@ -52,14 +52,14 @@ private struct AligningContentView: View {
 
                 // Render selected key on top so its stroke and handles are never obscured
                 if let selected = vm.selectedIndex,
-                    vm.keys.indices.contains(selected)
+                   vm.keys.indices.contains(selected)
                 {
                     keyMask(for: selected, in: geo.size, vm: $vm)
                 }
 
                 // Magnifier — only while resizing, at the corner being pulled.
                 if let focus = vm.dragFocus,
-                    let frame = vm.camera.frameBuffer.nearest(to: CACurrentMediaTime())
+                   let frame = vm.camera.frameBuffer.nearest(to: CACurrentMediaTime())
                 {
                     MagnifierLoupeView(
                         focus: focus,

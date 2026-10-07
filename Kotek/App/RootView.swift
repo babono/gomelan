@@ -17,8 +17,8 @@
 //  transition instead of restarting — and screens cannot forget to include it.
 //
 
-import SwiftUI
 import FactoryKit
+import SwiftUI
 
 struct RootView: View {
     @Environment(AppState.self) private var app

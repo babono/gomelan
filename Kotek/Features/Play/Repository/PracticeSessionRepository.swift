@@ -8,7 +8,7 @@
 
 import Foundation
 
-nonisolated struct PracticeSessionRepository: Sendable {
+nonisolated struct PracticeSessionRepository {
     private let remote: SupabaseRepository
     private let instrumentRepository: InstrumentRemoteRepository
 
@@ -28,7 +28,7 @@ nonisolated struct PracticeSessionRepository: Sendable {
 
         var validKotekanID: String? = nil
         if let kid = s.kotekanID {
-            let matches: [KotekanRow] = (try? await remote.read(from: "kotekan", matching: "id", equals: kid)) ?? []
+            let matches: [KotekanRow] = await (try? remote.read(from: "kotekan", matching: "id", equals: kid)) ?? []
             if !matches.isEmpty {
                 validKotekanID = kid
             }

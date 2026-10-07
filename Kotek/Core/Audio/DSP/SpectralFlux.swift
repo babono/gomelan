@@ -13,7 +13,6 @@
 import Accelerate
 
 final class SpectralFlux {
-
     private let config: DSPConfig
     private let fft: FFTProcessor
     private let firstBin: Int
@@ -41,26 +40,30 @@ final class SpectralFlux {
     private var warmupRemaining = 0
     private var warmupFrames: Int
 
-    var isWarmedUp: Bool { warmupRemaining <= 0 }
+    var isWarmedUp: Bool {
+        warmupRemaining <= 0
+    }
 
     init(config: DSPConfig, fft: FFTProcessor) {
         self.config = config
         self.fft = fft
         // Drop rumble below fluxFloorHz: handling noise, table thumps, air
         // conditioning. Never a gangsa partial, and a rich source of false onsets.
-        self.firstBin = max(0, Int(ceil(config.fluxFloorHz * Double(fft.size) / config.sampleRate)))
-        self.logSpectrum = [Float](repeating: 0, count: fft.binCount)
-        self.previousLog = [Float](repeating: 0, count: fft.binCount)
+        firstBin = max(0, Int(ceil(config.fluxFloorHz * Double(fft.size) / config.sampleRate)))
+        logSpectrum = [Float](repeating: 0, count: fft.binCount)
+        previousLog = [Float](repeating: 0, count: fft.binCount)
         // ~250ms of room before anything counts.
-        self.warmupFrames = max(8, Int(0.25 * config.sampleRate / Double(config.onsetHop)))
-        self.warmupRemaining = warmupFrames
+        warmupFrames = max(8, Int(0.25 * config.sampleRate / Double(config.onsetHop)))
+        warmupRemaining = warmupFrames
     }
 
     func reset() {
         hasPrevious = false
         runningPeak = 0
         warmupRemaining = warmupFrames
-        for i in previousLog.indices { previousLog[i] = 0 }
+        for i in previousLog.indices {
+            previousLog[i] = 0
+        }
     }
 
     /// Feed one window of `onsetWindow` samples. Returns raw (unnormalised) flux.
@@ -86,7 +89,7 @@ final class SpectralFlux {
 
         var flux: Float = 0
         if hasPrevious {
-            for bin in firstBin..<logSpectrum.count {
+            for bin in firstBin ..< logSpectrum.count {
                 let diff = logSpectrum[bin] - previousLog[bin]
                 if diff > 0 { flux += diff }
             }

@@ -9,7 +9,7 @@
 import Foundation
 import OSLog
 
-nonisolated struct KotekanRepository: Sendable {
+nonisolated struct KotekanRepository {
     private let remote: SupabaseRepository
     private let log = Logger(subsystem: "Kotek", category: "kotekan-repo")
 

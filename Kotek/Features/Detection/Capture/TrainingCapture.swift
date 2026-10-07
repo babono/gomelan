@@ -36,12 +36,11 @@
 //
 
 import CoreGraphics
+import Foundation
 import ImageIO
 import UniformTypeIdentifiers
-import Foundation
 
-nonisolated final class TrainingCapture: @unchecked Sendable {
-
+final nonisolated class TrainingCapture: @unchecked Sendable {
     /// What the tapped/struck key is an example of. Everything else in the frame
     /// is a negative regardless.
     enum Intent: String, CaseIterable {
@@ -55,14 +54,16 @@ nonisolated final class TrainingCapture: @unchecked Sendable {
         /// Nothing happening anywhere. No target key needed.
         case idle
 
-        var label: String { self == .strike ? "hit" : "not-hit" }
+        var label: String {
+            self == .strike ? "hit" : "not-hit"
+        }
 
         var title: String {
             switch self {
-            case .strike: return "Strike"
-            case .hover: return "Hover"
-            case .damp: return "Damp"
-            case .idle: return "Empty"
+            case .strike: "Strike"
+            case .hover: "Hover"
+            case .damp: "Damp"
+            case .idle: "Empty"
             }
         }
     }
@@ -80,12 +81,15 @@ nonisolated final class TrainingCapture: @unchecked Sendable {
         for label in ["hit", "not-hit"] {
             try? FileManager.default.createDirectory(
                 at: root.appendingPathComponent(label, isDirectory: true),
-                withIntermediateDirectories: true)
+                withIntermediateDirectories: true
+            )
         }
         refreshCounts()
     }
 
-    var rootURL: URL { root }
+    var rootURL: URL {
+        root
+    }
 
     /// Crop every key out of one frame and file it.
     ///
@@ -93,21 +97,25 @@ nonisolated final class TrainingCapture: @unchecked Sendable {
     /// adjacent to the target are filed as `neighbour` rather than `empty`,
     /// because the mallet is genuinely in their crop — that is the distinction
     /// the model needs and the one a staged photo shoot never captures.
-    func capture(frame: CGImage,
-                 frameSize: CGSize,
-                 keys: [InstrumentKey],
-                 viewSize: CGSize,
-                 target: Int?,
-                 intent: Intent) {
+    func capture(
+        frame: CGImage,
+        frameSize: CGSize,
+        keys: [InstrumentKey],
+        viewSize: CGSize,
+        target: Int?,
+        intent: Intent
+    ) {
         guard viewSize.width > 0, viewSize.height > 0 else { return }
         let stamp = Int(Date().timeIntervalSince1970 * 1000)
 
         // Crop on the calling side is cheap; only encoding and disk go async.
         var jobs: [(prefix: String, label: String, key: Int, aspect: Double, image: CGImage)] = []
         for key in keys {
-            let rect = CropMapper.bufferRect(overlay: key.rect,
-                                             bufferSize: frameSize,
-                                             viewSize: viewSize)
+            let rect = CropMapper.bufferRect(
+                overlay: key.rect,
+                bufferSize: frameSize,
+                viewSize: viewSize
+            )
             guard let crop = MalletHitClassifier.crop(frame, to: rect) else { continue }
 
             let isTarget = key.index == target
@@ -144,39 +152,47 @@ nonisolated final class TrainingCapture: @unchecked Sendable {
         queue.async { [weak self] in
             guard let self else { return }
             for job in jobs {
-                let name = String(format: "%@_k%02d_a%.2f_%d.png",
-                                  job.prefix, job.key, job.aspect, stamp)
-                let url = self.root
+                let name = String(
+                    format: "%@_k%02d_a%.2f_%d.png",
+                    job.prefix,
+                    job.key,
+                    job.aspect,
+                    stamp
+                )
+                let url = root
                     .appendingPathComponent(job.label, isDirectory: true)
                     .appendingPathComponent(name)
                 if Self.writePNG(job.image, to: url) {
-                    self.lock.lock()
-                    self.counts[job.prefix, default: 0] += 1
-                    self.lock.unlock()
+                    lock.lock()
+                    counts[job.prefix, default: 0] += 1
+                    lock.unlock()
                 }
             }
         }
     }
 
     func snapshotCounts() -> [String: Int] {
-        lock.lock(); defer { lock.unlock() }
+        lock.lock()
+        defer { lock.unlock() }
         return counts
     }
 
-    var total: Int { snapshotCounts().values.reduce(0, +) }
+    var total: Int {
+        snapshotCounts().values.reduce(0, +)
+    }
 
     /// Delete everything captured so far.
     func clear() {
         queue.async { [weak self] in
             guard let self else { return }
             for label in ["hit", "not-hit"] {
-                let dir = self.root.appendingPathComponent(label, isDirectory: true)
+                let dir = root.appendingPathComponent(label, isDirectory: true)
                 try? FileManager.default.removeItem(at: dir)
                 try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             }
-            self.lock.lock()
-            self.counts.removeAll()
-            self.lock.unlock()
+            lock.lock()
+            counts.removeAll()
+            lock.unlock()
         }
     }
 
@@ -191,7 +207,9 @@ nonisolated final class TrainingCapture: @unchecked Sendable {
                 found[prefix, default: 0] += 1
             }
         }
-        lock.lock(); counts = found; lock.unlock()
+        lock.lock()
+        counts = found
+        lock.unlock()
     }
 
     /// Zip the whole tree and hand back a URL fit for a share sheet.
@@ -206,9 +224,11 @@ nonisolated final class TrainingCapture: @unchecked Sendable {
             guard let self else { return DispatchQueue.main.async { completion(nil) } }
             var error: NSError?
             var result: URL?
-            NSFileCoordinator().coordinate(readingItemAt: self.root,
-                                           options: [.forUploading],
-                                           error: &error) { zipped in
+            NSFileCoordinator().coordinate(
+                readingItemAt: root,
+                options: [.forUploading],
+                error: &error
+            ) { zipped in
                 // The coordinator's file is only valid inside this block, so it
                 // has to be copied somewhere that outlives it.
                 let destination = FileManager.default.temporaryDirectory
@@ -228,7 +248,8 @@ nonisolated final class TrainingCapture: @unchecked Sendable {
 
     private static func writePNG(_ image: CGImage, to url: URL) -> Bool {
         guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL, UTType.png.identifier as CFString, 1, nil) else { return false }
+            url as CFURL, UTType.png.identifier as CFString, 1, nil
+        ) else { return false }
         CGImageDestinationAddImage(destination, image, nil)
         return CGImageDestinationFinalize(destination)
     }

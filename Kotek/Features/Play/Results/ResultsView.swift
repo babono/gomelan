@@ -92,11 +92,13 @@ struct ResultsView: View {
             Text("Not enough to score")
                 .font(.serif(34))
                 .foregroundStyle(Theme.charcoal)
-            Text("The figure has to come round at least once. Give it a full pass of the gong cycle and the score has something to measure.")
-                .font(.sans(15))
-                .foregroundStyle(Theme.stone)
-                .lineSpacing(3)
-                .frame(maxWidth: 460, alignment: .leading)
+            Text(
+                "The figure has to come round at least once. Give it a full pass of the gong cycle and the score has something to measure."
+            )
+            .font(.sans(15))
+            .foregroundStyle(Theme.stone)
+            .lineSpacing(3)
+            .frame(maxWidth: 460, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

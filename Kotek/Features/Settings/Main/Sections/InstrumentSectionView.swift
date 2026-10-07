@@ -11,7 +11,9 @@ struct InstrumentSectionView: View {
     @Bindable var viewModel: SettingsViewModel
     @FocusState private var nameFocused: Bool
 
-    private var app: AppState { viewModel.app }
+    private var app: AppState {
+        viewModel.app
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -45,9 +47,11 @@ struct InstrumentSectionView: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("\(app.profile.keyCount) keys · \(app.profile.calibratedKeyCount) tuned · \(app.profile.hasLearnedBaseline ? "voice learned" : "no voice yet")")
-                    .font(.sans(14))
-                    .foregroundStyle(Theme.cream.opacity(0.62))
+                Text(
+                    "\(app.profile.keyCount) keys · \(app.profile.calibratedKeyCount) tuned · \(app.profile.hasLearnedBaseline ? "voice learned" : "no voice yet")"
+                )
+                .font(.sans(14))
+                .foregroundStyle(Theme.cream.opacity(0.62))
 
                 Text(gradeLine)
                     .font(.sans(14))

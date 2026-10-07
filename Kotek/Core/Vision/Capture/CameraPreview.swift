@@ -20,8 +20,8 @@
 //  identically to what's on screen.
 //
 
-import SwiftUI
 import AVFoundation
+import SwiftUI
 
 struct CameraPreview: UIViewRepresentable {
     /// The controller, not just its session: the shared layer lives on it.
@@ -56,7 +56,9 @@ struct CameraPreview: UIViewRepresentable {
         }
 
         @available(*, unavailable)
-        required init?(coder: NSCoder) { fatalError("not used from a nib") }
+        required init?(coder: NSCoder) {
+            fatalError("not used from a nib")
+        }
 
         func adoptLayerIfNeeded() {
             guard previewLayer.superlayer !== layer else { return }

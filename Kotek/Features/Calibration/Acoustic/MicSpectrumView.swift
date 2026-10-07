@@ -28,7 +28,7 @@ struct MicSpectrumView: View {
             let age = max(0, CACurrentMediaTime() - micLevelTime)
             let level = Double(micLevel) * exp(-age / 0.45)
             HStack(alignment: .bottom, spacing: 4) {
-                ForEach(0..<22, id: \.self) { i in
+                ForEach(0 ..< 22, id: \.self) { i in
                     let profile = Self.spectrumProfile[i % Self.spectrumProfile.count]
                     let jitter = 0.8 + 0.2 * sin(now * 6 + Double(i))
                     let h = max(3, height * min(1, level * 3) * profile * jitter)

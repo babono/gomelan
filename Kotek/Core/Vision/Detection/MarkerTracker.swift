@@ -51,16 +51,16 @@ import Foundation
 /// coloured", and almost nothing else in a room is both at once — diffuse
 /// coloured objects are coloured but dim, and the bright confusers (paper,
 /// specular highlights, painted white) are bright but neutral.
-nonisolated enum MarkerColour: Int, CaseIterable, Sendable {
+nonisolated enum MarkerColour: Int, CaseIterable {
     case white
     case red
     case green
 
     var name: String {
         switch self {
-        case .white: return "white"
-        case .red:   return "red"
-        case .green: return "green"
+        case .white: "white"
+        case .red: "red"
+        case .green: "green"
         }
     }
 
@@ -71,9 +71,9 @@ nonisolated enum MarkerColour: Int, CaseIterable, Sendable {
     /// colour before any processing at all.
     var note: String {
         switch self {
-        case .white: return "bright but neutral — competes with paper, napkins, painted white"
-        case .red:   return "good, except against the red-and-gold of a gangsa frame"
-        case .green: return "best on a gangsa: nothing on the instrument is green"
+        case .white: "bright but neutral — competes with paper, napkins, painted white"
+        case .red: "good, except against the red-and-gold of a gangsa frame"
+        case .green: "best on a gangsa: nothing on the instrument is green"
         }
     }
 }
@@ -83,8 +83,7 @@ nonisolated enum MarkerColour: Int, CaseIterable, Sendable {
 /// Nonisolated so the fusion actor can run it off the main thread, for the same
 /// reason `MalletHitClassifier` is: this target defaults to MainActor isolation
 /// and a per-frame image scan on the display link's thread is a stutter.
-nonisolated final class MarkerTracker {
-
+final nonisolated class MarkerTracker {
     /// One connected run of lit pixels. Coordinates are in ANALYSIS pixel space
     /// until `Sighting` normalises them.
     struct Blob {
@@ -216,28 +215,37 @@ nonisolated final class MarkerTracker {
         ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
 
         // MARK: threshold + one-pass connected-component labelling
+
         //
         // Union-find rather than a flood fill: a flood fill recurses per blob and
         // its cost depends on blob SHAPE, which under a loose threshold (exactly
         // when you are tuning, and lit regions sprawl) is the worst case. This
         // pass is the same price whatever the frame contains.
-        for i in labels.indices { labels[i] = 0 }
+        for i in labels.indices {
+            labels[i] = 0
+        }
         var parent: [Int32] = [0]
         var litCount = 0
         var maxBrightness = 0, spreadAtMaxBrightness = 0, brightnessPassed = 0, colourRejected = 0
 
         func root(_ x: Int32) -> Int32 {
             var r = x
-            while parent[Int(r)] != r { r = parent[Int(r)] }
+            while parent[Int(r)] != r {
+                r = parent[Int(r)]
+            }
             var c = x
-            while parent[Int(c)] != c { let next = parent[Int(c)]; parent[Int(c)] = r; c = next }
+            while parent[Int(c)] != c {
+                let next = parent[Int(c)]
+                parent[Int(c)] = r
+                c = next
+            }
             return r
         }
 
         let firstRow = min(max(0, Int(roiTop * Double(h))), h - 1)
-        for y in firstRow..<h {
+        for y in firstRow ..< h {
             let row = y * w
-            for x in 0..<w {
+            for x in 0 ..< w {
                 let idx = row + x
                 let p = buffer + idx * 4
                 let r = Int(p[0]), g = Int(p[1]), b = Int(p[2])
@@ -253,11 +261,10 @@ nonisolated final class MarkerTracker {
                 // divide per pixel and buys nothing here: there are three
                 // marker colours, not a continuum, and "is red clearly ahead of
                 // the other two" is exactly the question.
-                let accepted: Bool
-                switch colour {
-                case .white: accepted = hi - lo <= saturationCeiling
-                case .red:   accepted = r == hi && r - max(g, b) >= saturationFloor
-                case .green: accepted = g == hi && g - max(r, b) >= saturationFloor
+                let accepted: Bool = switch colour {
+                case .white: hi - lo <= saturationCeiling
+                case .red: r == hi && r - max(g, b) >= saturationFloor
+                case .green: g == hi && g - max(r, b) >= saturationFloor
                 }
                 guard accepted else {
                     colourRejected += 1
@@ -267,10 +274,10 @@ nonisolated final class MarkerTracker {
 
                 let left = x > 0 ? labels[idx - 1] : 0
                 let up = y > 0 ? labels[idx - w] : 0
-                if left == 0 && up == 0 {
+                if left == 0, up == 0 {
                     parent.append(Int32(parent.count))
                     labels[idx] = Int32(parent.count - 1)
-                } else if left != 0 && up != 0 {
+                } else if left != 0, up != 0 {
                     labels[idx] = min(left, up)
                     let a = root(left), bb = root(up)
                     if a != bb { parent[Int(max(a, bb))] = min(a, bb) }
@@ -280,13 +287,18 @@ nonisolated final class MarkerTracker {
             }
         }
         func result(_ sighting: Sighting?) -> Scan {
-            Scan(sighting: sighting, maxBrightness: maxBrightness,
-                 spreadAtMaxBrightness: spreadAtMaxBrightness,
-                 brightnessPassed: brightnessPassed, colourRejected: colourRejected)
+            Scan(
+                sighting: sighting,
+                maxBrightness: maxBrightness,
+                spreadAtMaxBrightness: spreadAtMaxBrightness,
+                brightnessPassed: brightnessPassed,
+                colourRejected: colourRejected
+            )
         }
         guard parent.count > 1 else { return result(nil) }
 
         // MARK: accumulate each component
+
         let n = parent.count
         var area = [Int](repeating: 0, count: n)
         var sumX = [Int](repeating: 0, count: n)
@@ -296,14 +308,15 @@ nonisolated final class MarkerTracker {
         var minY = [Int](repeating: .max, count: n)
         var maxY = [Int](repeating: .min, count: n)
 
-        for y in firstRow..<h {
+        for y in firstRow ..< h {
             let row = y * w
-            for x in 0..<w {
+            for x in 0 ..< w {
                 let label = labels[row + x]
                 guard label != 0 else { continue }
                 let k = Int(root(label))
                 area[k] += 1
-                sumX[k] += x; sumY[k] += y
+                sumX[k] += x
+                sumY[k] += y
                 if x < minX[k] { minX[k] = x }
                 if x > maxX[k] { maxX[k] = x }
                 if y < minY[k] { minY[k] = y }
@@ -312,20 +325,27 @@ nonisolated final class MarkerTracker {
         }
 
         var blobs: [Blob] = []
-        for k in 1..<n where area[k] >= minBlobArea {
+        for k in 1 ..< n where area[k] >= minBlobArea {
             blobs.append(Blob(
                 area: area[k],
-                centroid: CGPoint(x: Double(sumX[k]) / Double(area[k]),
-                                  y: Double(sumY[k]) / Double(area[k])),
-                bounds: CGRect(x: Double(minX[k]), y: Double(minY[k]),
-                               width: Double(maxX[k] - minX[k] + 1),
-                               height: Double(maxY[k] - minY[k] + 1))))
+                centroid: CGPoint(
+                    x: Double(sumX[k]) / Double(area[k]),
+                    y: Double(sumY[k]) / Double(area[k])
+                ),
+                bounds: CGRect(
+                    x: Double(minX[k]),
+                    y: Double(minY[k]),
+                    width: Double(maxX[k] - minX[k] + 1),
+                    height: Double(maxY[k] - minY[k] + 1)
+                )
+            ))
         }
         guard !blobs.isEmpty else { return result(nil) }
         blobs.sort { $0.area > $1.area }
         blobs = Array(blobs.prefix(2))
 
         // MARK: head, shaft, tip
+
         //
         // The larger band is the head — which is a taping instruction as much as
         // a heuristic, and the reason to wrap the head generously and keep the
@@ -338,22 +358,34 @@ nonisolated final class MarkerTracker {
             let shaft = blobs[1]
             let dx = head.centroid.x - shaft.centroid.x
             let dy = head.centroid.y - shaft.centroid.y
-            tip = CGPoint(x: head.centroid.x + dx * tipExtension,
-                          y: head.centroid.y + dy * tipExtension)
+            tip = CGPoint(
+                x: head.centroid.x + dx * tipExtension,
+                y: head.centroid.y + dy * tipExtension
+            )
         }
 
-        func norm(_ p: CGPoint) -> CGPoint { CGPoint(x: p.x / Double(w), y: p.y / Double(h)) }
+        func norm(_ p: CGPoint) -> CGPoint {
+            CGPoint(x: p.x / Double(w), y: p.y / Double(h))
+        }
         let normalisedBlobs = blobs.map {
-            Blob(area: $0.area,
-                 centroid: norm($0.centroid),
-                 bounds: CGRect(x: $0.bounds.minX / Double(w), y: $0.bounds.minY / Double(h),
-                                width: $0.bounds.width / Double(w), height: $0.bounds.height / Double(h)))
+            Blob(
+                area: $0.area,
+                centroid: norm($0.centroid),
+                bounds: CGRect(
+                    x: $0.bounds.minX / Double(w),
+                    y: $0.bounds.minY / Double(h),
+                    width: $0.bounds.width / Double(w),
+                    height: $0.bounds.height / Double(h)
+                )
+            )
         }
 
-        return result(Sighting(blobs: normalisedBlobs,
-                               tip: norm(tip),
-                               scale: (Double(head.area).squareRoot()) / Double(w),
-                               litFraction: Double(litCount) / Double(max(1, w * (h - firstRow)))))
+        return result(Sighting(
+            blobs: normalisedBlobs,
+            tip: norm(tip),
+            scale: (Double(head.area).squareRoot()) / Double(w),
+            litFraction: Double(litCount) / Double(max(1, w * (h - firstRow)))
+        ))
     }
 
     /// One allocation for the life of the tracker. The frame size does not
@@ -365,21 +397,26 @@ nonisolated final class MarkerTracker {
         let bytes = w * h * 4
         let fresh = UnsafeMutablePointer<UInt8>.allocate(capacity: bytes)
         fresh.initialize(repeating: 0, count: bytes)
-        guard let ctx = CGContext(data: fresh, width: w, height: h,
-                                  bitsPerComponent: 8, bytesPerRow: w * 4,
-                                  space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+        guard let ctx = CGContext(
+            data: fresh,
+            width: w,
+            height: h,
+            bitsPerComponent: 8,
+            bytesPerRow: w * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
             fresh.deallocate()
             return nil
         }
-        //R NO flip here, and it is worth knowing why, because adding one looks
-        //R obviously right. A bitmap context's user space has its origin at the
-        //R bottom left, so the instinct is that a drawn image lands upside down
-        //R relative to how these rows are indexed. It does not: row 0 of the
-        //R backing buffer IS the image's top row, and `draw` already accounts
-        //R for it. Measured, not assumed — a flip here mirrors every y, which
-        //R puts each strike on the bilah opposite the one that was struck, and
-        //R that is a symptom easy to blame on the alignment step instead.
+        // R NO flip here, and it is worth knowing why, because adding one looks
+        // R obviously right. A bitmap context's user space has its origin at the
+        // R bottom left, so the instinct is that a drawn image lands upside down
+        // R relative to how these rows are indexed. It does not: row 0 of the
+        // R backing buffer IS the image's top row, and `draw` already accounts
+        // R for it. Measured, not assumed — a flip here mirrors every y, which
+        // R puts each strike on the bilah opposite the one that was struck, and
+        // R that is a symptom easy to blame on the alignment step instead.
         pixels = fresh
         context = ctx
         analysisHeight = h
@@ -392,8 +429,7 @@ nonisolated final class MarkerTracker {
 
 /// Fires when the tracked tip stops descending and comes back — which is the
 /// impact, not the arrival over the bar.
-nonisolated final class MarkerStrikeDetector {
-
+final nonisolated class MarkerStrikeDetector {
     struct Turnaround {
         /// Where the tip was at the moment it reversed, buffer-normalised.
         let point: CGPoint
@@ -439,7 +475,12 @@ nonisolated final class MarkerStrikeDetector {
     /// side of the gap describe two different gestures.
     var maxSampleGap: Double = 0.2
 
-    private struct Sample { var x: Double; var y: Double; var z: Double; var t: Double }
+    private struct Sample { var x: Double
+        var y: Double
+        var z: Double
+        var t: Double
+    }
+
     private var samples: [Sample] = []
     private var lastFireTime: Double = -1
 
@@ -477,14 +518,17 @@ nonisolated final class MarkerStrikeDetector {
         // the "vs onset" readout would otherwise show as the marker path's
         // permanent handicap.
         var pivotIndex = 0
-        for i in 1..<samples.count where depth[i] > depth[pivotIndex] { pivotIndex = i }
+        for i in 1 ..< samples.count where depth[i] > depth[pivotIndex] {
+            pivotIndex = i
+        }
         let pivot = samples[pivotIndex]
 
         guard lastFireTime < 0 || pivot.t - lastFireTime >= minRearmSeconds else { return nil }
         lastFireTime = pivot.t
-        return Turnaround(point: CGPoint(x: pivot.x, y: pivot.y),
-                          hostTime: pivot.t,
-                          approachSpeed: closing)
+        return Turnaround(
+            point: CGPoint(x: pivot.x, y: pivot.y),
+            hostTime: pivot.t,
+            approachSpeed: closing
+        )
     }
-
 }

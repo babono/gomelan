@@ -5,7 +5,7 @@
 
 import Foundation
 
-enum KotekanSource: String, Codable, Sendable {
+enum KotekanSource: String, Codable {
     case builtin
     case manual
     case automatic

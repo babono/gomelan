@@ -20,7 +20,6 @@
 import Foundation
 
 nonisolated enum PCMWav {
-
     /// Mono 16-bit PCM in a minimal RIFF container. Samples outside -1…1 are
     /// clamped rather than wrapped — a wrap is a full-scale discontinuity, and
     /// on a struck sound that reads as a crack rather than as loudness.
@@ -29,7 +28,9 @@ nonisolated enum PCMWav {
         let dataBytes = samples.count * bytesPerSample
         var data = Data(capacity: 44 + dataBytes)
 
-        func append(_ string: String) { data.append(contentsOf: string.utf8) }
+        func append(_ string: String) {
+            data.append(contentsOf: string.utf8)
+        }
         func append32(_ value: Int) {
             var v = UInt32(truncatingIfNeeded: value).littleEndian
             withUnsafeBytes(of: &v) { data.append(contentsOf: $0) }
@@ -43,13 +44,13 @@ nonisolated enum PCMWav {
         append32(36 + dataBytes)
         append("WAVE")
         append("fmt ")
-        append32(16)                                   // PCM header size
-        append16(1)                                    // PCM, uncompressed
-        append16(1)                                    // mono
+        append32(16) // PCM header size
+        append16(1) // PCM, uncompressed
+        append16(1) // mono
         append32(sampleRate)
-        append32(sampleRate * bytesPerSample)          // byte rate
-        append16(bytesPerSample)                       // block align
-        append16(16)                                   // bits per sample
+        append32(sampleRate * bytesPerSample) // byte rate
+        append16(bytesPerSample) // block align
+        append16(16) // bits per sample
         append("data")
         append32(dataBytes)
 

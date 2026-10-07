@@ -10,7 +10,7 @@
 import Foundation
 
 /// One calibrated key: where it is in frame, and how it sounds.
-nonisolated struct InstrumentKey: Codable, Identifiable, Equatable, Sendable {
+nonisolated struct InstrumentKey: Codable, Identifiable, Equatable {
     var index: Int
     var rect: NormalizedRect
     /// Optional free-corner quad set during aligning (top-left, top-right,
@@ -63,13 +63,19 @@ nonisolated struct InstrumentKey: Codable, Identifiable, Equatable, Sendable {
     /// to be written at all.
     var learnedAtom: LearnedAtom? {
         guard let linearTemplate, !linearTemplate.isEmpty else { return nil }
-        return LearnedAtom(bands: linearTemplate,
-                           examples: linearTemplateCount ?? KeyDecomposer.strikesToTrustAtom)
+        return LearnedAtom(
+            bands: linearTemplate,
+            examples: linearTemplateCount ?? KeyDecomposer.strikesToTrustAtom
+        )
     }
 
-    var id: Int { index }
+    var id: Int {
+        index
+    }
 
-    var isCalibrated: Bool { !(fingerprint?.isEmpty ?? true) }
+    var isCalibrated: Bool {
+        !(fingerprint?.isEmpty ?? true)
+    }
 }
 
 /// The best a figure has ever been played on this gangsa.
@@ -83,7 +89,7 @@ nonisolated struct InstrumentKey: Codable, Identifiable, Equatable, Sendable {
 /// with `.convertToSnakeCase`, which rewrites DICTIONARY keys as well as
 /// property names, and it would quietly mangle a composite key like
 /// "ubitannyendok-polos@1.0" on the way to disk.
-nonisolated struct PatternRecord: Codable, Equatable, Identifiable, Sendable {
+nonisolated struct PatternRecord: Codable, Equatable, Identifiable {
     var kotekanId: String
     /// `KotekanHalf.rawValue` — stored as a string so the model layer does not
     /// have to import the figure vocabulary to decode a profile.
@@ -93,23 +99,30 @@ nonisolated struct PatternRecord: Codable, Equatable, Identifiable, Sendable {
     var accuracy: Double
     var setAt: String
 
-    var id: String { "\(kotekanId)·\(half)@\(tempo)" }
+    var id: String {
+        "\(kotekanId)·\(half)@\(tempo)"
+    }
 }
 
 /// Which gangsa this is. The two are the same instrument an octave apart —
 /// kantilan above pemade — so nothing in detection or play depends on it; it
 /// names the card and the `gangsa_type` column.
-nonisolated enum GangsaType: String, Codable, CaseIterable, Identifiable, Sendable {
+nonisolated enum GangsaType: String, Codable, CaseIterable, Identifiable {
     case pemade
     case kantilan
 
-    var id: String { rawValue }
-    var title: String { self == .pemade ? "Pemade" : "Kantilan" }
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        self == .pemade ? "Pemade" : "Kantilan"
+    }
 }
 
 /// A calibrated instrument. v1 ships exactly one (our gangsa), but the shape is
 /// per-instrument by design (PRD §2, §7).
-nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable {
+nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
     var id: String
     var name: String
     var keyCount: Int
@@ -142,22 +155,39 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable
     var records: [PatternRecord]? = nil
 
     /// Whether this instrument has a learned strike-sound baseline.
-    var hasLearnedBaseline: Bool { !(strikeBaseline?.isEmpty ?? true) }
+    var hasLearnedBaseline: Bool {
+        !(strikeBaseline?.isEmpty ?? true)
+    }
 
     /// How many of the keys have a usable template.
-    var calibratedKeyCount: Int { keys.filter(\.isCalibrated).count }
+    var calibratedKeyCount: Int {
+        keys.filter(\.isCalibrated).count
+    }
 
-    var isFullyCalibrated: Bool { !keys.isEmpty && calibratedKeyCount == keys.count }
+    var isFullyCalibrated: Bool {
+        !keys.isEmpty && calibratedKeyCount == keys.count
+    }
 
-    var type: GangsaType { gangsaType ?? .pemade }
+    var type: GangsaType {
+        gangsaType ?? .pemade
+    }
 
-    var sessionsPlayed: Int { sessionCount ?? 0 }
-    var notesLanded: Int { accurateNotes ?? 0 }
+    var sessionsPlayed: Int {
+        sessionCount ?? 0
+    }
+
+    var notesLanded: Int {
+        accurateNotes ?? 0
+    }
 
     /// This instrument's grade — see `Mastery`.
-    var mastery: Mastery { Mastery(notesLanded: notesLanded) }
+    var mastery: Mastery {
+        Mastery(notesLanded: notesLanded)
+    }
 
-    var hasBeenPlayed: Bool { lastUsedAt != nil || sessionsPlayed > 0 }
+    var hasBeenPlayed: Bool {
+        lastUsedAt != nil || sessionsPlayed > 0
+    }
 
     /// The record for exactly this figure, half and speed.
     func record(kotekanId: String, half: String, tempo: Double) -> PatternRecord? {
@@ -175,11 +205,20 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable
     /// — which is not the same as there being no record, so callers check
     /// `record(...)` first if they need to tell a first time from a near miss.
     @discardableResult
-    mutating func noteRecord(kotekanId: String, half: String, tempo: Double,
-                             accuracy: Double) -> Bool {
+    mutating func noteRecord(
+        kotekanId: String,
+        half: String,
+        tempo: Double,
+        accuracy: Double
+    ) -> Bool {
         var all = records ?? []
-        let fresh = PatternRecord(kotekanId: kotekanId, half: half, tempo: tempo,
-                                  accuracy: accuracy, setAt: InstrumentProfile.nowISO())
+        let fresh = PatternRecord(
+            kotekanId: kotekanId,
+            half: half,
+            tempo: tempo,
+            accuracy: accuracy,
+            setAt: InstrumentProfile.nowISO()
+        )
         if let idx = all.firstIndex(where: {
             $0.kotekanId == kotekanId && $0.half == half && $0.tempo == tempo
         }) {
@@ -192,7 +231,9 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable
         return true
     }
 
-    var lastPlayedDate: Date? { InstrumentProfile.date(from: lastUsedAt) }
+    var lastPlayedDate: Date? {
+        InstrumentProfile.date(from: lastUsedAt)
+    }
 
     /// The sort key for the rail: last played, falling back to when the
     /// instrument was created.
@@ -214,7 +255,9 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable
         return try? Date(iso, strategy: .iso8601)
     }
 
-    static func nowISO() -> String { Date().formatted(.iso8601) }
+    static func nowISO() -> String {
+        Date().formatted(.iso8601)
+    }
 
     /// Resize the profile to `count` keys, laying them out evenly across the
     /// frame as a starting point for manual alignment.
@@ -225,7 +268,7 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable
     mutating func resize(to count: Int) {
         let generated = InstrumentProfile.layout(count: count)
         var next: [InstrumentKey] = []
-        for i in 0..<count {
+        for i in 0 ..< count {
             if i < keys.count {
                 next.append(keys[i])
             } else {
@@ -252,15 +295,17 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable
         guard count > 0 else { return [] }
         let pitch = region.w / Double(count)
 
-        return (0..<count).map { i in
+        return (0 ..< count).map { i in
             let t = count > 1 ? Double(i) / Double(count - 1) : 0.5
             let width = pitch * (0.82 - 0.16 * t)
             return InstrumentKey(
                 index: i,
-                rect: NormalizedRect(x: region.x + Double(i) * pitch + (pitch - width) / 2,
-                                     y: region.y + region.h * 0.16,
-                                     w: width,
-                                     h: region.h * 0.68),
+                rect: NormalizedRect(
+                    x: region.x + Double(i) * pitch + (pitch - width) / 2,
+                    y: region.y + region.h * 0.16,
+                    w: width,
+                    h: region.h * 0.68
+                ),
                 fundamentalHz: 0,
                 harmonics: [],
                 decayMs: 1500,
@@ -271,4 +316,3 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable, Sendable
         }
     }
 }
-

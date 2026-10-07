@@ -73,7 +73,7 @@ final class PlayViewModel {
 
     var keyRange: ClosedRange<Int> {
         app.selectedKotekan?.voicedKeyRange
-            ?? 0...max(0, app.profile.keys.count - 1)
+            ?? 0 ... max(0, app.profile.keys.count - 1)
     }
 
     var playedKeys: Set<Int> {
@@ -170,7 +170,7 @@ final class PlayViewModel {
                         self.audio.learnKey(decision.keyIndex, at: hostTime)
                     }
                 } else if self.app.audioTriggersStrikes,
-                    let heard = self.audio.keyOpinion(at: hostTime)
+                          let heard = self.audio.keyOpinion(at: hostTime)
                 {
                     self.audio.noteRecovery()
                     self.applyStrike(
@@ -196,7 +196,7 @@ final class PlayViewModel {
 
         audio.learnedAtoms { [weak self] templates in
             guard let self, !templates.isEmpty else { return }
-            self.app.storeLinearTemplates(templates)
+            app.storeLinearTemplates(templates)
         }
         audio.setKeyOpinionsEnabled(false)
         audio.stop()
@@ -248,16 +248,16 @@ final class PlayViewModel {
     private func startDisplayLink() {
         displayLink.onFrame = { [weak self] now in
             guard let self else { return }
-            self.engine.tick(now: now)
+            engine.tick(now: now)
 
             let next: StartCue? =
-                self.engine.msUntilFirstNote == nil
-                ? nil
-                : self.engine.countdownNumber.map(StartCue.count) ?? .getReady
+                engine.msUntilFirstNote == nil
+                    ? nil
+                    : engine.countdownNumber.map(StartCue.count) ?? .getReady
 
-            guard next != self.startCue else { return }
-            self.startCue = next
-            if next == nil { self.app.countdownFinished() }
+            guard next != startCue else { return }
+            startCue = next
+            if next == nil { app.countdownFinished() }
         }
         displayLink.start()
     }
@@ -267,8 +267,8 @@ final class PlayViewModel {
     func runVisionDetection() async {
         while !Task.isCancelled {
             if !app.audioTriggersStrikes,
-                startCue == nil, !paused, !engine.isFinished,
-                let (scores, hostTime) = await fusion?.latestScores()
+               startCue == nil, !paused, !engine.isFinished,
+               let (scores, hostTime) = await fusion?.latestScores()
             {
                 let fired = visionDetector.process(
                     scores: scores,

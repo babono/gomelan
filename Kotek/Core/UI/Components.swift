@@ -139,7 +139,9 @@ struct KajarButtonStyle: PrimitiveButtonStyle {
 
 extension PrimitiveButtonStyle where Self == KajarButtonStyle {
     /// `.buttonStyle(.kajar)` — the app's `.plain`.
-    static var kajar: KajarButtonStyle { KajarButtonStyle() }
+    static var kajar: KajarButtonStyle {
+        KajarButtonStyle()
+    }
 }
 
 /// Every switch in the app ticks when it flips.
@@ -164,7 +166,9 @@ struct KajarToggleStyle: ToggleStyle {
 }
 
 extension ToggleStyle where Self == KajarToggleStyle {
-    static var kajar: KajarToggleStyle { KajarToggleStyle() }
+    static var kajar: KajarToggleStyle {
+        KajarToggleStyle()
+    }
 }
 
 extension View {
@@ -178,7 +182,7 @@ extension View {
     ///
     /// Deliberately NOT used on the sliders. A slider changes continuously, and
     /// a kajar per step is a machine gun.
-    func kajarOnChange<V: Equatable>(of value: V) -> some View {
+    func kajarOnChange(of value: some Equatable) -> some View {
         onChange(of: value) {
             KajarTick.strike()
         }
@@ -193,11 +197,11 @@ enum PillStyle { case filled, outlined, secondary }
 /// Labels are tracked and uppercased by default to match the spec.
 struct PillButton: View {
     let title: String
-    var systemImage: String? = nil
+    var systemImage: String?
     /// An icon AFTER the label. For the buttons that carry you forward through
     /// a flow — a leading icon labels what a button is, a trailing arrow says
     /// where it goes, and those are different jobs on the same control.
-    var trailingSystemImage: String? = nil
+    var trailingSystemImage: String?
     var style: PillStyle = .outlined
     var tint: Color = Theme.gold
     var uppercase: Bool = true
@@ -261,9 +265,9 @@ struct PillButton: View {
         switch style {
         // The primary button is a cream slab with dark type on it — the one
         // place in the app where ink-on-light is correct.
-        case .filled: return Theme.onButtonFill
-        case .outlined: return Theme.cream
-        case .secondary: return Theme.cream
+        case .filled: Theme.onButtonFill
+        case .outlined: Theme.cream
+        case .secondary: Theme.cream
         }
     }
 
@@ -290,7 +294,7 @@ struct PillButton: View {
 /// use it; it is just a non-uppercased filled `PillButton` with an icon.
 struct PrimaryButton: View {
     let title: String
-    var systemImage: String? = nil
+    var systemImage: String?
     var tint: Color = Theme.cream
     let action: () -> Void
 
@@ -311,7 +315,7 @@ struct PrimaryButton: View {
 /// so it reads on both paper (light) and stage (dark) screens.
 struct SecondaryButton: View {
     let title: String
-    var systemImage: String? = nil
+    var systemImage: String?
     let action: () -> Void
 
     var body: some View {
@@ -363,13 +367,13 @@ struct SecondaryButton: View {
 /// whose whole character is soft.
 struct TopBar: View {
     var title: String
-    var backTitle: String? = nil
-    var onBack: (() -> Void)? = nil
-    var trailingText: String? = nil
+    var backTitle: String?
+    var onBack: (() -> Void)?
+    var trailingText: String?
     /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
-    var settingsAction: (() -> Void)? = nil
+    var settingsAction: (() -> Void)?
     /// When set, a help button is shown at the trailing edge, before the gear.
-    var infoAction: (() -> Void)? = nil
+    var infoAction: (() -> Void)?
     var tint: Color = Theme.cream
     var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
@@ -416,9 +420,9 @@ struct TopBar: View {
                             Image(systemName: "questionmark.circle")
                                 .font(.symbol(19, weight: .medium))
                                 .foregroundStyle(tint)
-                                //R Same 44pt target as the gear below, for the
-                                //R same reason: a bare glyph in a corner is a
-                                //R 19pt target and the HIG minimum is 44.
+                                // R Same 44pt target as the gear below, for the
+                                // R same reason: a bare glyph in a corner is a
+                                // R 19pt target and the HIG minimum is 44.
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
@@ -459,6 +463,7 @@ struct SectionLabel: View {
         self.text = text
         self.color = color
     }
+
     var body: some View {
         Text(text)
             .font(.sans(12, weight: .semibold))
@@ -562,21 +567,21 @@ struct BusyOverlay: View {
 
     var body: some View {
         ZStack {
-            //R Same scrim as `GuidePanel`. Everything that floats over a screen
-            //R in this app is the same two moves — this depth of black, and the
-            //R panel below — so a wait and an explainer do not read as coming
-            //R from two different apps.
+            // R Same scrim as `GuidePanel`. Everything that floats over a screen
+            // R in this app is the same two moves — this depth of black, and the
+            // R panel below — so a wait and an explainer do not read as coming
+            // R from two different apps.
             Color.black.opacity(0.72).ignoresSafeArea()
-            //R The card was solid cream for a while: a dark card on a dark
-            //R camera feed used to disappear into it, three shades of near-black
-            //R stacked up. What that missed is that `Theme.charcoal` has been an
-            //R ALIAS OF CREAM since the palette went all-dark, so the label was
-            //R cream on cream and the message could not be read at all.
-            //R
-            //R The panel colours are the guide panel's, which solve the same
-            //R problem the right way round: `deep` is a step darker than the
-            //R ground, so it separates from a dark feed by being darker than it
-            //R rather than by being the one light thing on the screen.
+            // R The card was solid cream for a while: a dark card on a dark
+            // R camera feed used to disappear into it, three shades of near-black
+            // R stacked up. What that missed is that `Theme.charcoal` has been an
+            // R ALIAS OF CREAM since the palette went all-dark, so the label was
+            // R cream on cream and the message could not be read at all.
+            // R
+            // R The panel colours are the guide panel's, which solve the same
+            // R problem the right way round: `deep` is a step darker than the
+            // R ground, so it separates from a dark feed by being darker than it
+            // R rather than by being the one light thing on the screen.
             VStack(spacing: 16) {
                 ProgressView()
                     .controlSize(.large)
@@ -660,10 +665,10 @@ struct ConfirmDialog: View {
                     ) {
                         onCancel()
                     }
-                    //R The destructive button is outlined in its own colour
-                    //R rather than filled with it. `.filled` is the cream slab —
-                    //R the app's one "do this" — and the delete is precisely not
-                    //R the thing being recommended.
+                    // R The destructive button is outlined in its own colour
+                    // R rather than filled with it. `.filled` is the cream slab —
+                    // R the app's one "do this" — and the delete is precisely not
+                    // R the thing being recommended.
                     Button(action: onConfirm) {
                         Text(confirmTitle)
                             .textCase(.uppercase)
@@ -805,7 +810,9 @@ struct ShareSheet: UIViewControllerRepresentable {
 /// So a URL can drive `.sheet(item:)` directly. The path is already unique,
 /// which is exactly what identity means here.
 extension URL: @retroactive Identifiable {
-    public var id: String { absoluteString }
+    public var id: String {
+        absoluteString
+    }
 }
 
 extension Comparable {

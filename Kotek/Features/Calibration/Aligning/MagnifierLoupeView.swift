@@ -7,12 +7,11 @@
 
 import SwiftUI
 
-
 /// A CamScanner-style magnifier: shows a zoomed crop of the live camera around
 /// the point being placed, with a crosshair, so masks can be positioned to the
 /// pixel. Sampled from the same buffered frame the overlay maps against.
 struct MagnifierLoupeView: View {
-    let focus: CGPoint  // overlay-normalised (0…1)
+    let focus: CGPoint // overlay-normalised (0…1)
     let image: CGImage
     let bufferSize: CGSize
     let viewSize: CGSize
@@ -48,7 +47,7 @@ struct MagnifierLoupeView: View {
     /// loupe at `zoom`. Uses CropMapper to project overlay space to buffer pixels.
     private var cropped: CGImage? {
         guard bufferSize.width > 0, bufferSize.height > 0,
-            viewSize.width > 0, viewSize.height > 0
+              viewSize.width > 0, viewSize.height > 0
         else { return nil }
         let spanX = (diameter / zoom) / viewSize.width
         let spanY = (diameter / zoom) / viewSize.height

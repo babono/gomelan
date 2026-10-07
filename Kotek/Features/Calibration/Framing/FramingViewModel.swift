@@ -59,7 +59,8 @@ final class FramingViewModel {
         let deadline = CACurrentMediaTime() + 6
         while !cameraReady, !Task.isCancelled {
             if camera.frameBuffer.nearest(to: CACurrentMediaTime()) != nil
-                || CACurrentMediaTime() > deadline {
+                || CACurrentMediaTime() > deadline
+            {
                 cameraReady = true
                 break
             }

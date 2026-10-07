@@ -40,7 +40,7 @@ struct FramingRegionView: View {
 
 extension View {
     /// Punch a hole in this view in the shape of `mask`.
-    func reverseMask<Mask: View>(@ViewBuilder _ mask: () -> Mask) -> some View {
+    func reverseMask(@ViewBuilder _ mask: () -> some View) -> some View {
         self.mask {
             ZStack {
                 Rectangle()

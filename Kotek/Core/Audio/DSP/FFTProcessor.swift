@@ -20,7 +20,6 @@
 import Accelerate
 
 final class FFTProcessor {
-
     let size: Int
     /// Number of magnitude bins produced: `size/2 + 1`, matching numpy rfft.
     let binCount: Int
@@ -38,24 +37,24 @@ final class FFTProcessor {
     init(size: Int) {
         precondition(size > 0 && (size & (size - 1)) == 0, "FFT size must be a power of two")
         self.size = size
-        self.halfSize = size / 2
-        self.binCount = size / 2 + 1
-        self.log2n = vDSP_Length(log2(Float(size)))
-        self.setup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2))!
+        halfSize = size / 2
+        binCount = size / 2 + 1
+        log2n = vDSP_Length(log2(Float(size)))
+        setup = vDSP_create_fftsetup(log2n, FFTRadix(kFFTRadix2))!
 
         // Built by hand rather than vDSP_hann_window: numpy's np.hanning is the
         // SYMMETRIC window (endpoints exactly zero, denominator N-1). vDSP's
         // variants differ in normalisation and periodicity, and a mismatch here
         // is invisible until fingerprints quietly stop agreeing with Python.
-        self.window = [Float](repeating: 0, count: size)
+        window = [Float](repeating: 0, count: size)
         let denom = Float(size - 1)
-        for i in 0..<size {
+        for i in 0 ..< size {
             window[i] = 0.5 - 0.5 * cos(2 * .pi * Float(i) / denom)
         }
 
-        self.windowed = [Float](repeating: 0, count: size)
-        self.real = [Float](repeating: 0, count: halfSize)
-        self.imag = [Float](repeating: 0, count: halfSize)
+        windowed = [Float](repeating: 0, count: size)
+        real = [Float](repeating: 0, count: halfSize)
+        imag = [Float](repeating: 0, count: halfSize)
     }
 
     deinit { vDSP_destroy_fftsetup(setup) }
@@ -72,11 +71,15 @@ final class FFTProcessor {
 
         real.withUnsafeMutableBufferPointer { realPtr in
             imag.withUnsafeMutableBufferPointer { imagPtr in
-                var split = DSPSplitComplex(realp: realPtr.baseAddress!,
-                                            imagp: imagPtr.baseAddress!)
+                var split = DSPSplitComplex(
+                    realp: realPtr.baseAddress!,
+                    imagp: imagPtr.baseAddress!
+                )
                 windowed.withUnsafeBufferPointer { wPtr in
-                    wPtr.baseAddress!.withMemoryRebound(to: DSPComplex.self,
-                                                        capacity: halfSize) { cPtr in
+                    wPtr.baseAddress!.withMemoryRebound(
+                        to: DSPComplex.self,
+                        capacity: halfSize
+                    ) { cPtr in
                         vDSP_ctoz(cPtr, 2, &split, 1, vDSP_Length(halfSize))
                     }
                 }
@@ -89,7 +92,7 @@ final class FFTProcessor {
                 out.withUnsafeMutableBufferPointer { dst in
                     dst[0] = dc
                     dst[halfSize] = nyquist
-                    for bin in 1..<halfSize {
+                    for bin in 1 ..< halfSize {
                         let re = realPtr[bin]
                         let im = imagPtr[bin]
                         dst[bin] = sqrt(re * re + im * im) * 0.5

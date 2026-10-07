@@ -12,13 +12,15 @@ import Foundation
 
 /// A rectangle normalised 0–1 against the video frame, so the overlay survives
 /// resolution and orientation changes (PRD §7).
-nonisolated struct NormalizedRect: Codable, Equatable, Sendable {
+nonisolated struct NormalizedRect: Codable, Equatable {
     var x: Double
     var y: Double
     var w: Double
     var h: Double
 
-    var cgRect: CGRect { CGRect(x: x, y: y, width: w, height: h) }
+    var cgRect: CGRect {
+        CGRect(x: x, y: y, width: w, height: h)
+    }
 
     /// Maps this normalised rect into a concrete view-space rect.
     func rect(in size: CGSize) -> CGRect {
@@ -47,8 +49,10 @@ nonisolated struct NormalizedRect: Codable, Equatable, Sendable {
         guard let first = pts.first else { return NormalizedRect(x: 0, y: 0, w: 0, h: 0) }
         var minX = first.x, maxX = first.x, minY = first.y, maxY = first.y
         for p in pts {
-            minX = min(minX, p.x); maxX = max(maxX, p.x)
-            minY = min(minY, p.y); maxY = max(maxY, p.y)
+            minX = min(minX, p.x)
+            maxX = max(maxX, p.x)
+            minY = min(minY, p.y)
+            maxY = max(maxY, p.y)
         }
         return NormalizedRect(x: minX, y: minY, w: maxX - minX, h: maxY - minY)
     }
@@ -56,7 +60,7 @@ nonisolated struct NormalizedRect: Codable, Equatable, Sendable {
 
 /// A point normalised 0–1 against the video frame. Four of these make the
 /// free-corner quad the aligning step edits (CamScanner-style).
-nonisolated struct NormalizedPoint: Codable, Equatable, Sendable {
+nonisolated struct NormalizedPoint: Codable, Equatable {
     var x: Double
     var y: Double
 }

@@ -22,7 +22,6 @@
 import AVFoundation
 
 final class AudioEngineController {
-
     /// Called on the main queue for every gated onset — a real strike happened at
     /// `hostTime`, regardless of which key. This is the trigger for the vision-first
     /// path: audio says *when*, vision decides *which key* from the frame at that
@@ -44,6 +43,7 @@ final class AudioEngineController {
         /// High for a real strike, low for a scream/clap — nil when no baseline.
         let baselineSimilarity: Double?
     }
+
     var onOnsetDebug: ((OnsetDebug) -> Void)?
 
     /// Called on the main queue when a strike is confirmed as a real gangsa hit:
@@ -73,6 +73,7 @@ final class AudioEngineController {
         let wasAccepted: Bool
         let similarity: Double?
     }
+
     var onBaselineProgress: ((BaselineProgress) -> Void)?
 
     /// One captured strike, with the loudness used to pick between candidates.
@@ -94,6 +95,7 @@ final class AudioEngineController {
         /// Whether the detector has been flushed at window end (see below).
         var flushed = false
     }
+
     private var capture: Capture?
 
     private let engine = AVAudioEngine()
@@ -121,6 +123,7 @@ final class AudioEngineController {
         /// into the dictionary after the fact.
         let bands: [Float]
     }
+
     private var recentOpinions: [StrikeOpinion] = []
     private let opinionsLock = NSLock()
     /// DSP-queue only — see `setKeyOpinionsEnabled`.
@@ -199,7 +202,7 @@ final class AudioEngineController {
         // Prefer the settings the Python builder recorded; fall back to defaults.
         var newConfig =
             CalibrationFile.loadFromBundle()?.dspConfig(sampleRate: sampleRate)
-            ?? DSPConfig()
+                ?? DSPConfig()
         newConfig.sampleRate = sampleRate
 
         queue.sync {
@@ -290,13 +293,13 @@ final class AudioEngineController {
     func resetDetector() {
         queue.async { [weak self] in
             guard let self else { return }
-            self.ring.reset()
-            self.flux?.reset()
-            self.detector?.reset()
-            self.pending.removeAll(keepingCapacity: true)
-            self.nextWindowStart = 0
-            self.anchorHostSeconds = nil
-            self.strikeAmplitudePeak = 0
+            ring.reset()
+            flux?.reset()
+            detector?.reset()
+            pending.removeAll(keepingCapacity: true)
+            nextWindowStart = 0
+            anchorHostSeconds = nil
+            strikeAmplitudePeak = 0
         }
     }
 
@@ -324,22 +327,22 @@ final class AudioEngineController {
         queue.async { [weak self] in
             guard let self else { return }
             // Start clean, then wait out the warm-up before the window opens.
-            self.ring.reset()
-            self.flux?.reset()
-            self.detector?.reset()
-            self.pending.removeAll(keepingCapacity: true)
-            self.nextWindowStart = 0
-            self.anchorHostSeconds = nil
-            self.strikeAmplitudePeak = 0
+            ring.reset()
+            flux?.reset()
+            detector?.reset()
+            pending.removeAll(keepingCapacity: true)
+            nextWindowStart = 0
+            anchorHostSeconds = nil
+            strikeAmplitudePeak = 0
 
-            let samples = Int(duration * self.config.sampleRate)
-            self.capture = Capture(endSample: samples, completion: completion)
+            let samples = Int(duration * config.sampleRate)
+            capture = Capture(endSample: samples, completion: completion)
         }
     }
 
     func cancelCapture() {
         queue.async { [weak self] in
-            guard let self, let capture = self.capture else { return }
+            guard let self, let capture else { return }
             self.capture = nil
             DispatchQueue.main.async { capture.completion(nil) }
         }
@@ -348,7 +351,7 @@ final class AudioEngineController {
     /// Worst-case similarity between calibrated keys. Want < 0.5.
     func separability(
         completion:
-            @escaping ((worst: Double, mean: Double, pair: (Int, Int))?) -> Void
+        @escaping ((worst: Double, mean: Double, pair: (Int, Int))?) -> Void
     ) {
         queue.async { [weak self] in
             let result = self?.classifier?.separability()
@@ -434,7 +437,7 @@ final class AudioEngineController {
         // be reported — which is why an isolated key seemed undetectable while a
         // noisier one worked. Fingerprint the flushed onset immediately if enough
         // audio exists; otherwise it waits in `pending` like any other.
-        if !current.flushed && ring.totalWritten >= current.endSample {
+        if !current.flushed, ring.totalWritten >= current.endSample {
             current.flushed = true
             capture = current
             if let flushed = detector?.flush(), !flushed.isEmpty {
@@ -490,7 +493,7 @@ final class AudioEngineController {
         for onset in pending {
             let required = onset.sampleIndex + config.fingerprintLatencySamples
             if ring.totalWritten < required {
-                stillPending.append(onset)  // not enough of the note has sounded yet
+                stillPending.append(onset) // not enough of the note has sounded yet
                 continue
             }
             emit(onset, fingerprinter: fingerprinter)
@@ -506,7 +509,9 @@ final class AudioEngineController {
             return 0
         }
         var peak: Float = 0
-        for value in scratch { peak = max(peak, abs(value)) }
+        for value in scratch {
+            peak = max(peak, abs(value))
+        }
         return peak
     }
 
@@ -557,10 +562,10 @@ final class AudioEngineController {
         // the main actor and because `previous` only means anything if strikes
         // are decomposed in the order they were played.
         if keyOpinionsEnabled,
-            let bands = fingerprinter.linearBands(
-                onsetSample: onset.sampleIndex,
-                ring: ring
-            )
+           let bands = fingerprinter.linearBands(
+               onsetSample: onset.sampleIndex,
+               ring: ring
+           )
         {
             let decomposition = decomposer?.decompose(linearBands: bands)
             recordOpinion(
@@ -577,7 +582,7 @@ final class AudioEngineController {
         // 4096-pt FFT entirely in normal play when none of those are active.
         guard
             capture != nil || onCalibrationStrike != nil || onOnsetDebug != nil
-                || baselineAccumulator != nil || strikeBaseline != nil
+            || baselineAccumulator != nil || strikeBaseline != nil
         else { return }
 
         guard
@@ -608,7 +613,7 @@ final class AudioEngineController {
                 var wasAccepted = true
                 var sim: Double?
                 if acc.count >= baselineSeedCount,
-                    let avg = KeyClassifier.averageFingerprints(acc)
+                   let avg = KeyClassifier.averageFingerprints(acc)
                 {
                     let s = dot(avg, vector)
                     sim = Double(s)
@@ -766,15 +771,15 @@ final class AudioEngineController {
         opinionsLock.lock()
         let match =
             recentOpinions
-            .filter { abs($0.hostTime - hostTime) <= tolerance }
-            .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
+                .filter { abs($0.hostTime - hostTime) <= tolerance }
+                .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
         opinionsLock.unlock()
 
         // `isTrusted` was decided on the DSP queue when the strike was decomposed,
         // so nothing owned by that queue is read from here.
         guard let decomposition = match?.decomposition,
-            decomposition.isTrusted,
-            let best = decomposition.best
+              decomposition.isTrusted,
+              let best = decomposition.best
         else { return nil }
         return best
     }
@@ -791,9 +796,9 @@ final class AudioEngineController {
         defer { opinionsLock.unlock() }
         return
             recentOpinions
-            .filter { abs($0.hostTime - hostTime) <= tolerance }
-            .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }?
-            .decomposition
+                .filter { abs($0.hostTime - hostTime) <= tolerance }
+                .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }?
+                .decomposition
     }
 
     /// Teach the dictionary: the camera identified `keyIndex` at `hostTime`.
@@ -809,8 +814,8 @@ final class AudioEngineController {
         opinionsLock.lock()
         let match =
             recentOpinions
-            .filter { abs($0.hostTime - hostTime) <= tolerance }
-            .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
+                .filter { abs($0.hostTime - hostTime) <= tolerance }
+                .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
         opinionsLock.unlock()
 
         guard let opinion = match else { return }
@@ -840,8 +845,8 @@ final class AudioEngineController {
         opinionsLock.lock()
         let match =
             recentOpinions
-            .filter { abs($0.hostTime - hostTime) <= tolerance }
-            .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
+                .filter { abs($0.hostTime - hostTime) <= tolerance }
+                .min { abs($0.hostTime - hostTime) < abs($1.hostTime - hostTime) }
         opinionsLock.unlock()
 
         let decomposition = match?.decomposition
@@ -860,8 +865,7 @@ final class AudioEngineController {
     }
 
     /// Eye/ear agreement so far this session, for the diagnostics screen.
-    func agreementStats(completion: @escaping (KeyDecomposer.Agreement) -> Void)
-    {
+    func agreementStats(completion: @escaping (KeyDecomposer.Agreement) -> Void) {
         queue.async { [weak self] in
             let stats = self?.decomposer?.agreement ?? KeyDecomposer.Agreement()
             DispatchQueue.main.async { completion(stats) }
@@ -903,7 +907,9 @@ final class AudioEngineController {
     // MARK: - Gangsa-strike baseline
 
     /// Whether a generic strike baseline has been learned this session.
-    var hasStrikeBaseline: Bool { queue.sync { strikeBaseline != nil } }
+    var hasStrikeBaseline: Bool {
+        queue.sync { strikeBaseline != nil }
+    }
 
     /// Begin averaging the next strikes into a generic gangsa-strike template.
     func startBaselineCapture() {
@@ -930,11 +936,11 @@ final class AudioEngineController {
     func finishBaselineCapture(completion: @escaping (Int, [Float]?) -> Void) {
         queue.async { [weak self] in
             guard let self else { return }
-            let collected = self.baselineAccumulator ?? []
-            self.baselineAccumulator = nil
+            let collected = baselineAccumulator ?? []
+            baselineAccumulator = nil
             let template = KeyClassifier.averageFingerprints(collected)
             if let template {
-                self.strikeBaseline = template
+                strikeBaseline = template
             }
             DispatchQueue.main.async { completion(collected.count, template) }
         }
@@ -971,13 +977,12 @@ final class AudioEngineController {
     /// The onset time closest to `hostTime` within `tolerance` seconds, or nil.
     /// The vision path uses this to sharpen its strike timing without ever
     /// depending on it — nil just means "keep the visual time".
-    func nearestOnset(to hostTime: Double, within tolerance: Double) -> Double?
-    {
+    func nearestOnset(to hostTime: Double, within tolerance: Double) -> Double? {
         recentOnsetsLock.lock()
         defer { recentOnsetsLock.unlock() }
         return
             recentOnsets
-            .filter { abs($0 - hostTime) <= tolerance }
-            .min { abs($0 - hostTime) < abs($1 - hostTime) }
+                .filter { abs($0 - hostTime) <= tolerance }
+                .min { abs($0 - hostTime) < abs($1 - hostTime) }
     }
 }

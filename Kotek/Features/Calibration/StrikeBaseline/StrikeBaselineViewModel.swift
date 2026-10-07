@@ -28,7 +28,7 @@ final class StrikeBaselineViewModel {
             return "Strike any keys a few times so the app learns what a real gangsa strike sounds like."
         case .some(0):
             return "No strikes heard — tap Start and hit a few keys."
-        case .some(let n):
+        case let .some(n):
             return "Learned from \(n) strike\(n == 1 ? "" : "s"). You can re-record or continue."
         }
     }
@@ -63,9 +63,9 @@ final class StrikeBaselineViewModel {
             busyMessage = "Learning the strike…"
             audio.finishBaselineCapture { [weak self] count, _ in
                 guard let self else { return }
-                self.strikeCount = count
-                self.capturing = false
-                self.busyMessage = nil
+                strikeCount = count
+                capturing = false
+                busyMessage = nil
             }
         } else {
             audio.startBaselineCapture()
@@ -86,8 +86,8 @@ final class StrikeBaselineViewModel {
         busyMessage = "Saving the gangsa…"
         Task { [weak self] in
             guard let self else { return }
-            await self.app.baselineFinishedAsync()
-            self.busyMessage = nil
+            await app.baselineFinishedAsync()
+            busyMessage = nil
         }
     }
 }

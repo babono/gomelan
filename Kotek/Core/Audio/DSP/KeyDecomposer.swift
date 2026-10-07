@@ -37,7 +37,7 @@ import Accelerate
 /// The count is half the atom. Without it, partial progress cannot be written
 /// down, and a dictionary that can only be saved once it is finished is a
 /// dictionary that mostly never gets saved.
-nonisolated struct LearnedAtom: Equatable, Sendable {
+nonisolated struct LearnedAtom: Equatable {
     var bands: [Float]
     var examples: Int
 }
@@ -67,11 +67,12 @@ struct Decomposition {
     let isTrusted: Bool
 
     /// The most likely newly struck key, or nil when nothing is clear enough.
-    var best: KeyActivation? { activations.first }
+    var best: KeyActivation? {
+        activations.first
+    }
 }
 
 final class KeyDecomposer {
-
     /// Strikes vision must confidently attribute to a key before that key's atom
     /// is trusted for recovery. One example is a single dynamic and possibly a
     /// mis-seen one; by four the template has averaged across the hard and soft
@@ -152,7 +153,9 @@ final class KeyDecomposer {
     }
 
     /// Examples collected per key, for the diagnostics screen.
-    func progress() -> [Int: Int] { learned.mapValues(\.count) }
+    func progress() -> [Int: Int] {
+        learned.mapValues(\.count)
+    }
 
     /// How often eye and ear reached the same answer.
     ///
@@ -189,7 +192,9 @@ final class KeyDecomposer {
     }
 
     private(set) var agreement = Agreement()
-    private var quarantined = 0 { didSet { agreement.quarantined = quarantined } }
+    private var quarantined = 0 {
+        didSet { agreement.quarantined = quarantined }
+    }
 
     /// Compare the camera's answer with the ear's, and tally.
     func noteVisionDecision(keyIndex: Int, confidence: Double, against decomposition: Decomposition?) {
@@ -201,18 +206,24 @@ final class KeyDecomposer {
             agreement.agreed += 1
         } else {
             agreement.disagreed += 1
-            agreement.recent.append(Disagreement(visionKey: keyIndex,
-                                                 visionConfidence: confidence,
-                                                 heardKey: heard.keyIndex,
-                                                 heardShare: heard.share,
-                                                 residual: decomposition.residual))
+            agreement.recent.append(Disagreement(
+                visionKey: keyIndex,
+                visionConfidence: confidence,
+                heardKey: heard.keyIndex,
+                heardShare: heard.share,
+                residual: decomposition.residual
+            ))
             if agreement.recent.count > 20 { agreement.recent.removeFirst() }
         }
     }
 
-    func noteRecovery() { agreement.recovered += 1 }
+    func noteRecovery() {
+        agreement.recovered += 1
+    }
 
-    var isUsable: Bool { (dictionary?.atomCount ?? 0) > 1 }
+    var isUsable: Bool {
+        (dictionary?.atomCount ?? 0) > 1
+    }
 
     /// Fold one strike's linear band vector into a key's atom.
     ///
@@ -238,7 +249,8 @@ final class KeyDecomposer {
         let previous = learned[keyIndex]?.count ?? 0
         if previous >= Self.quarantineSeedCount,
            let entry = learned[keyIndex],
-           let atom = Self.l2Normalised(entry.sum) {
+           let atom = Self.l2Normalised(entry.sum)
+        {
             var similarity: Float = 0
             vDSP_dotpr(atom, 1, unit, 1, &similarity, vDSP_Length(bandCount))
             guard similarity >= Self.learnConsistency else {
@@ -264,7 +276,8 @@ final class KeyDecomposer {
         // so it happens on a stride instead.
         let count = previous + 1
         if count == Self.strikesToTrustAtom
-            || (count > Self.strikesToTrustAtom && count % Self.rebuildStride == 0) {
+            || (count > Self.strikesToTrustAtom && count % Self.rebuildStride == 0)
+        {
             rebuild()
         }
         return true
@@ -318,7 +331,10 @@ final class KeyDecomposer {
         // is meaningless now.
         previousActivations = nil
         let keys = trustedKeys
-        guard keys.count >= 2 else { dictionary = nil; atomKeys = []; return }
+        guard keys.count >= 2 else { dictionary = nil
+            atomKeys = []
+            return
+        }
 
         var atoms: [[Float]] = []
         atoms.reserveCapacity(keys.count + 1)
@@ -390,11 +406,13 @@ final class KeyDecomposer {
         }
         .sorted { $0.activation > $1.activation }
 
-        return Decomposition(activations: activations,
-                             residual: residual,
-                             noiseShare: noise / (keyTotal + noise),
-                             raw: raw,
-                             isTrusted: residualBar.map { residual <= $0 } ?? false)
+        return Decomposition(
+            activations: activations,
+            residual: residual,
+            noiseShare: noise / (keyTotal + noise),
+            raw: raw,
+            isTrusted: residualBar.map { residual <= $0 } ?? false
+        )
     }
 
     /// The learned residual bar, or nil while too few confirmed strikes have

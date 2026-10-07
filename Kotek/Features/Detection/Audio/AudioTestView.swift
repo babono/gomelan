@@ -43,8 +43,8 @@ struct AudioTestView: View {
 
     // Gangsa-strike spectral baseline.
     @State private var capturingBaseline = false
-    @State private var baselineCount: Int?          // strikes learned, nil = none yet
-    @State private var simThreshold: Float = 0.5    // accept as gangsa above this
+    @State private var baselineCount: Int? // strikes learned, nil = none yet
+    @State private var simThreshold: Float = 0.5 // accept as gangsa above this
 
     var body: some View {
         ZStack {
@@ -59,11 +59,13 @@ struct AudioTestView: View {
                         historyStrip
                         baselineControls
                         gateControls
-                        Text("Tap the gangsa. Green = accepted strike · Yellow = passed gate but no fingerprint · Grey = below gate (too quiet / noise floor).")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.5))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 32)
+                        Text(
+                            "Tap the gangsa. Green = accepted strike · Yellow = passed gate but no fingerprint · Grey = below gate (too quiet / noise floor)."
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
                     }
                     .padding(.top, 24)
                     .padding(.bottom, 40)
@@ -174,7 +176,8 @@ struct AudioTestView: View {
         VStack(spacing: 10) {
             HStack(spacing: 12) {
                 SecondaryButton(
-                    title: capturingBaseline ? "Done" : (baselineCount == nil ? "Learn strike baseline" : "Re-learn baseline"),
+                    title: capturingBaseline ? "Done" :
+                        (baselineCount == nil ? "Learn strike baseline" : "Re-learn baseline"),
                     systemImage: capturingBaseline ? "checkmark" : "waveform.badge.plus"
                 ) {
                     if capturingBaseline {
@@ -197,7 +200,7 @@ struct AudioTestView: View {
                 Spacer()
             }
             if baselineCount != nil {
-                slider(label: "gangsa≥", value: $simThreshold, range: 0...1)
+                slider(label: "gangsa≥", value: $simThreshold, range: 0 ... 1)
             }
         }
         .padding(.horizontal, 24)
@@ -206,8 +209,8 @@ struct AudioTestView: View {
 
     private var gateControls: some View {
         VStack(spacing: 12) {
-            slider(label: "floor", value: $gateFloor, range: 0.005...0.30)
-            slider(label: "relative", value: $gateRelative, range: 0...0.50)
+            slider(label: "floor", value: $gateFloor, range: 0.005 ... 0.30)
+            slider(label: "relative", value: $gateRelative, range: 0 ... 0.50)
         }
         .padding(.horizontal, 24)
         .onChange(of: gateFloor) { _, _ in pushGate() }
@@ -265,9 +268,13 @@ struct AudioTestView: View {
     }
 
     private func ingest(_ d: AudioEngineController.OnsetDebug) {
-        let e = OnsetEvent(amplitude: d.amplitude, gate: d.gate,
-                           passedGate: d.passedGate, fingerprinted: d.fingerprinted,
-                           baselineSimilarity: d.baselineSimilarity)
+        let e = OnsetEvent(
+            amplitude: d.amplitude,
+            gate: d.gate,
+            passedGate: d.passedGate,
+            fingerprinted: d.fingerprinted,
+            baselineSimilarity: d.baselineSimilarity
+        )
         history.append(e)
         if history.count > 60 { history.removeFirst(history.count - 60) }
         lastEvent = e

@@ -13,7 +13,7 @@
 
 import Foundation
 
-struct ResourceLoader {
+enum ResourceLoader {
     private static let decoder: JSONDecoder = {
         let d = JSONDecoder()
         d.keyDecodingStrategy = .convertFromSnakeCase
@@ -32,7 +32,8 @@ struct ResourceLoader {
     static func bundledSongs() -> [Song] {
         // Try the bundle first.
         if let urls = Bundle.main.urls(forResourcesWithExtension: "json", subdirectory: "songs"),
-           !urls.isEmpty {
+           !urls.isEmpty
+        {
             let songs = urls.compactMap { url -> Song? in
                 guard let data = try? Data(contentsOf: url) else { return nil }
                 return try? decoder.decode(Song.self, from: data)

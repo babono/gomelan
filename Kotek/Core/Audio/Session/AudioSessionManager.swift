@@ -10,8 +10,7 @@
 
 import AVFoundation
 
-nonisolated struct AudioSessionManager {
-
+nonisolated enum AudioSessionManager {
     /// The session for the splash and title screens, where nothing is captured.
     ///
     /// `.playback` rather than the capture configuration below, because
@@ -46,9 +45,11 @@ nonisolated struct AudioSessionManager {
     static func configure() async {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord,
-                                    mode: .measurement,
-                                    options: [.defaultToSpeaker, .allowBluetoothA2DP])
+            try session.setCategory(
+                .playAndRecord,
+                mode: .measurement,
+                options: [.defaultToSpeaker, .allowBluetoothA2DP]
+            )
             try session.setPreferredSampleRate(44100)
             try session.setPreferredIOBufferDuration(0.005)
             try session.setActive(true)

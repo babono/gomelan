@@ -34,6 +34,8 @@ final class DisplayLink {
     /// cycle (CADisplayLink retains its target).
     private final class Proxy: NSObject {
         var onFrame: (() -> Void)?
-        @objc func step() { onFrame?() }
+        @objc func step() {
+            onFrame?()
+        }
     }
 }

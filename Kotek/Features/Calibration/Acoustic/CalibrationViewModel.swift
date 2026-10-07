@@ -30,8 +30,13 @@ final class CalibrationViewModel {
     /// Up from the moment this screen appears until it is actually listening.
     var preparing = true
 
-    var confidence: Double { min(1, Double(strikeCount) / Double(strikesNeeded)) }
-    var learned: Bool { strikeCount >= strikesNeeded }
+    var confidence: Double {
+        min(1, Double(strikeCount) / Double(strikesNeeded))
+    }
+
+    var learned: Bool {
+        strikeCount >= strikesNeeded
+    }
 
     var busyMessage: String? {
         if preparing { return "Getting ready to listen…" }
@@ -79,7 +84,7 @@ final class CalibrationViewModel {
         audio.onBaselineProgress = { [weak self] progress in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.strikeCount = progress.accepted
+                strikeCount = progress.accepted
                 withAnimation(.snappy(duration: 0.2)) {
                     self.lastAccepted = progress.wasAccepted
                 }
@@ -96,15 +101,15 @@ final class CalibrationViewModel {
     func commit() {
         guard !committing else { return }
         committing = true
-        audio.finishBaselineCapture { [weak self] count, template in
+        audio.finishBaselineCapture { [weak self] _, template in
             guard let self else { return }
             if let template {
-                var updated = self.app.profile
+                var updated = app.profile
                 updated.strikeBaseline = template
-                self.app.profile = updated
-                self.app.saveProfile()
+                app.profile = updated
+                app.saveProfile()
             }
-            self.app.baselineFinished()
+            app.baselineFinished()
         }
     }
 

@@ -14,7 +14,7 @@ extension AppState {
     /// Swap in the database's catalogue, if it has one.
     func refreshCatalogue() async {
         do {
-            let fetched = Kotekan.catalogue(from: try await kotekanRepo.catalogue())
+            let fetched = try await Kotekan.catalogue(from: kotekanRepo.catalogue())
             guard !fetched.isEmpty else { return }
             kotekans = fetched
             if let id = selectedKotekan?.id {
@@ -80,14 +80,14 @@ extension AppState {
         previousRecord = nil
         lastSetRecord = false
         guard let k = selectedKotekan,
-            result.cycles.count >= SongResult.scoringWindow,
-            let best = result.best
+              result.cycles.count >= SongResult.scoringWindow,
+              let best = result.best
         else { return }
 
         let half = chosenHalf.rawValue
         previousRecord =
             profile.record(kotekanId: k.id, half: half, tempo: tempoScale)?
-            .accuracy
+                .accuracy
         var updated = profile
         lastSetRecord = updated.noteRecord(
             kotekanId: k.id,

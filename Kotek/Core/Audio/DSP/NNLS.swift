@@ -36,7 +36,6 @@ import Accelerate
 /// observations. Holding the Gram matrix is the whole point of the type — build
 /// it per profile, not per strike.
 struct NNLSDictionary {
-
     /// One row per atom, each `bandCount` long. Rows are L2-normalised by the
     /// builder so that a loud key cannot outbid a quiet one on scale alone.
     private let atoms: [[Float]]
@@ -49,21 +48,21 @@ struct NNLSDictionary {
     /// Atoms must already be L2-normalised — see `KeyDecomposer` for the
     /// builder that does it. Passing raw energies here silently biases the fit.
     init(normalisedAtoms: [[Float]]) {
-        self.atoms = normalisedAtoms
-        self.atomCount = normalisedAtoms.count
-        self.bandCount = normalisedAtoms.first?.count ?? 0
+        atoms = normalisedAtoms
+        atomCount = normalisedAtoms.count
+        bandCount = normalisedAtoms.first?.count ?? 0
 
         var g = [Float](repeating: 0, count: atomCount * atomCount)
         let n = vDSP_Length(bandCount)
-        for i in 0..<atomCount {
-            for j in i..<atomCount {
+        for i in 0 ..< atomCount {
+            for j in i ..< atomCount {
                 var dot: Float = 0
                 vDSP_dotpr(normalisedAtoms[i], 1, normalisedAtoms[j], 1, &dot, n)
                 g[i * atomCount + j] = dot
                 g[j * atomCount + i] = dot
             }
         }
-        self.gram = g
+        gram = g
     }
 
     /// Activation of each atom in `observation`, in the observation's own units.
@@ -84,7 +83,7 @@ struct NNLSDictionary {
         // dy[a] = <atom_a, y>. The whole band-length side of the problem is done
         // here, once, and never touched again inside the loop.
         var dy = [Float](repeating: 0, count: atomCount)
-        for a in 0..<atomCount {
+        for a in 0 ..< atomCount {
             vDSP_dotpr(atoms[a], 1, y, 1, &dy[a], n)
         }
 
@@ -95,16 +94,25 @@ struct NNLSDictionary {
         var gx = [Float](repeating: 0, count: atomCount)
         let m = vDSP_Length(atomCount)
 
-        for _ in 0..<iterations {
+        for _ in 0 ..< iterations {
             gram.withUnsafeBufferPointer { gPtr in
                 x.withUnsafeBufferPointer { xPtr in
                     gx.withUnsafeMutableBufferPointer { out in
-                        vDSP_mmul(gPtr.baseAddress!, 1, xPtr.baseAddress!, 1,
-                                  out.baseAddress!, 1, m, 1, m)
+                        vDSP_mmul(
+                            gPtr.baseAddress!,
+                            1,
+                            xPtr.baseAddress!,
+                            1,
+                            out.baseAddress!,
+                            1,
+                            m,
+                            1,
+                            m
+                        )
                     }
                 }
             }
-            for a in 0..<atomCount {
+            for a in 0 ..< atomCount {
                 let updated = x[a] * dy[a] / (gx[a] + eps)
                 x[a] = (updated.isFinite && updated > 0) ? updated : 0
             }
@@ -122,7 +130,7 @@ struct NNLSDictionary {
         guard x.count == atomCount, y.count == bandCount else { return 1 }
         var recon = [Float](repeating: 0, count: bandCount)
         let n = vDSP_Length(bandCount)
-        for a in 0..<atomCount where x[a] > 0 {
+        for a in 0 ..< atomCount where x[a] > 0 {
             var scale = x[a]
             recon.withUnsafeMutableBufferPointer { dst in
                 vDSP_vsma(atoms[a], 1, &scale, dst.baseAddress!, 1, dst.baseAddress!, 1, n)

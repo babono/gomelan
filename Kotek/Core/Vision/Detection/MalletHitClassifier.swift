@@ -12,15 +12,14 @@
 //  to comes from WHERE we cropped, not from the model.
 //
 
-import Vision
-import CoreML
 import CoreGraphics
+import CoreML
+import Vision
 
 /// Nonisolated so StrikeFusion can run inference off the main actor — this
 /// target defaults to MainActor isolation, which would otherwise put every
 /// CoreML call on the same thread as the display link.
-nonisolated final class MalletHitClassifier {
-
+final nonisolated class MalletHitClassifier {
     private let model: VNCoreMLModel
 
     /// How Vision fits the (non-square) key crop into the model's square input.
@@ -60,13 +59,16 @@ nonisolated final class MalletHitClassifier {
     /// back to audio-only, so vision simply adds nothing rather than crashing.
     init?() {
         do {
-            guard let modelURL = Bundle(for: MalletHitClassifier.self).url(forResource: "MalletDetector", withExtension: "mlmodelc") ?? Bundle.main.url(forResource: "MalletDetector", withExtension: "mlmodelc") else {
+            guard let modelURL = Bundle(for: MalletHitClassifier.self).url(
+                forResource: "MalletDetector",
+                withExtension: "mlmodelc"
+            ) ?? Bundle.main.url(forResource: "MalletDetector", withExtension: "mlmodelc") else {
                 Self.loaded = false
                 Self.lastFailure = "load: model not found in bundle"
                 return nil
             }
             let core = try MLModel(contentsOf: modelURL, configuration: MLModelConfiguration())
-            self.model = try VNCoreMLModel(for: core)
+            model = try VNCoreMLModel(for: core)
             Self.loaded = true
             Self.lastFailure = nil
         } catch {
@@ -90,7 +92,7 @@ nonisolated final class MalletHitClassifier {
     /// main actor, and the two are different screens that cannot be on-screen
     /// at once. If a second concurrent consumer is ever added it must get its
     /// own instance rather than this one.
-    nonisolated(unsafe) private static var cached: MalletHitClassifier?
+    private nonisolated(unsafe) static var cached: MalletHitClassifier?
     private static let cacheLock = NSLock()
 
     static func shared() -> MalletHitClassifier? {
@@ -164,4 +166,3 @@ nonisolated final class MalletHitClassifier {
         return image.cropping(to: clamped)
     }
 }
-

@@ -87,8 +87,10 @@ struct DetectionDictionaryPanel: View {
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .foregroundStyle(app.markerColour == c.rawValue ? Theme.ink : .white)
                             .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(app.markerColour == c.rawValue ? Theme.copper : .white.opacity(0.15),
-                                        in: Capsule())
+                            .background(
+                                app.markerColour == c.rawValue ? Theme.copper : .white.opacity(0.15),
+                                in: Capsule()
+                            )
                     }
                     .buttonStyle(.kajar)
                 }
@@ -107,8 +109,10 @@ struct DetectionDictionaryPanel: View {
                             .font(.system(size: 10, weight: .bold, design: .monospaced))
                             .foregroundStyle(app.markerPOV == p.rawValue ? Theme.ink : .white)
                             .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(app.markerPOV == p.rawValue ? Theme.accent : .white.opacity(0.15),
-                                        in: Capsule())
+                            .background(
+                                app.markerPOV == p.rawValue ? Theme.accent : .white.opacity(0.15),
+                                in: Capsule()
+                            )
                     }
                     .buttonStyle(.kajar)
                 }
@@ -123,14 +127,34 @@ struct DetectionDictionaryPanel: View {
                 .toggleStyle(.switch)
                 .tint(Theme.copper)
 
-                tuningRow("band left", value: $app.markerBandLeft, range: 0...1, step: 0.01,
-                          display: String(format: "%.2f", app.markerBandLeft))
-                tuningRow("band right", value: $app.markerBandRight, range: 0...1, step: 0.01,
-                          display: String(format: "%.2f", app.markerBandRight))
-                tuningRow("band skew", value: $app.markerBandSkew, range: (-0.6)...0.6, step: 0.02,
-                          display: String(format: "%+.2f", app.markerBandSkew))
-                tuningRow("horizon", value: $app.markerROITop, range: 0...0.8, step: 0.02,
-                          display: String(format: "%.2f", app.markerROITop))
+                tuningRow(
+                    "band left",
+                    value: $app.markerBandLeft,
+                    range: 0 ... 1,
+                    step: 0.01,
+                    display: String(format: "%.2f", app.markerBandLeft)
+                )
+                tuningRow(
+                    "band right",
+                    value: $app.markerBandRight,
+                    range: 0 ... 1,
+                    step: 0.01,
+                    display: String(format: "%.2f", app.markerBandRight)
+                )
+                tuningRow(
+                    "band skew",
+                    value: $app.markerBandSkew,
+                    range: -0.6 ... 0.6,
+                    step: 0.02,
+                    display: String(format: "%+.2f", app.markerBandSkew)
+                )
+                tuningRow(
+                    "horizon",
+                    value: $app.markerROITop,
+                    range: 0 ... 0.8,
+                    step: 0.02,
+                    display: String(format: "%.2f", app.markerROITop)
+                )
             }
 
             let lit = (viewModel.markerFrame?.litFraction ?? 0) * 100
@@ -151,10 +175,12 @@ struct DetectionDictionaryPanel: View {
                             .foregroundStyle(Theme.wrong)
                             .fixedSize(horizontal: false, vertical: true)
                     } else if f.colourRejected > f.brightnessPassed / 2 {
-                        Text("bright, but the wrong colour for \(MarkerColour(rawValue: app.markerColour)?.name ?? "?")")
-                            .font(.system(size: 9, design: .monospaced))
-                            .foregroundStyle(Theme.wrong)
-                            .fixedSize(horizontal: false, vertical: true)
+                        Text(
+                            "bright, but the wrong colour for \(MarkerColour(rawValue: app.markerColour)?.name ?? "?")"
+                        )
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(Theme.wrong)
+                        .fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text("passing pixels, all too small — lower min area")
                             .font(.system(size: 9, design: .monospaced))
@@ -174,21 +200,51 @@ struct DetectionDictionaryPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            tuningRow("brightness", value: $app.markerBrightness, range: 100...254, step: 1,
-                      display: String(format: "%.0f", app.markerBrightness))
+            tuningRow(
+                "brightness",
+                value: $app.markerBrightness,
+                range: 100 ... 254,
+                step: 1,
+                display: String(format: "%.0f", app.markerBrightness)
+            )
             if app.markerColour == MarkerColour.white.rawValue {
-                tuningRow("sat ceiling", value: $app.markerSaturation, range: 10...200, step: 5,
-                          display: String(format: "%.0f", app.markerSaturation))
+                tuningRow(
+                    "sat ceiling",
+                    value: $app.markerSaturation,
+                    range: 10 ... 200,
+                    step: 5,
+                    display: String(format: "%.0f", app.markerSaturation)
+                )
             } else {
-                tuningRow("colour lead", value: $app.markerSaturationFloor, range: 10...200, step: 5,
-                          display: String(format: "%.0f", app.markerSaturationFloor))
+                tuningRow(
+                    "colour lead",
+                    value: $app.markerSaturationFloor,
+                    range: 10 ... 200,
+                    step: 5,
+                    display: String(format: "%.0f", app.markerSaturationFloor)
+                )
             }
-            tuningRow("EV", value: $app.markerExposureBias, range: (-8)...0, step: 0.5,
-                      display: String(format: "%.1f", app.markerExposureBias))
-            tuningRow("min speed", value: $app.markerMinSpeed, range: 0.001...0.02, step: 0.001,
-                      display: String(format: "%.3f", app.markerMinSpeed))
-            tuningRow("tip reach", value: $app.markerTipExtension, range: 0...1, step: 0.05,
-                      display: String(format: "%.2f", app.markerTipExtension))
+            tuningRow(
+                "EV",
+                value: $app.markerExposureBias,
+                range: -8 ... 0,
+                step: 0.5,
+                display: String(format: "%.1f", app.markerExposureBias)
+            )
+            tuningRow(
+                "min speed",
+                value: $app.markerMinSpeed,
+                range: 0.001 ... 0.02,
+                step: 0.001,
+                display: String(format: "%.3f", app.markerMinSpeed)
+            )
+            tuningRow(
+                "tip reach",
+                value: $app.markerTipExtension,
+                range: 0 ... 1,
+                step: 0.05,
+                display: String(format: "%.2f", app.markerTipExtension)
+            )
         }
     }
 
@@ -218,8 +274,13 @@ struct DetectionDictionaryPanel: View {
                     .foregroundStyle(Theme.wrong)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            tuningRow("gate margin", value: $app.markerGateMargin, range: 0...0.3, step: 0.01,
-                      display: String(format: "%.2f", app.markerGateMargin))
+            tuningRow(
+                "gate margin",
+                value: $app.markerGateMargin,
+                range: 0 ... 0.3,
+                step: 0.01,
+                display: String(format: "%.2f", app.markerGateMargin)
+            )
         }
     }
 
@@ -242,8 +303,10 @@ struct DetectionDictionaryPanel: View {
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(app.cropScaleMode == i ? Theme.ink : .white)
                         .padding(.horizontal, 8).padding(.vertical, 4)
-                        .background(app.cropScaleMode == i ? Theme.copper : .white.opacity(0.15),
-                                    in: Capsule())
+                        .background(
+                            app.cropScaleMode == i ? Theme.copper : .white.opacity(0.15),
+                            in: Capsule()
+                        )
                 }
                 .buttonStyle(.kajar)
             }
@@ -282,7 +345,7 @@ struct DetectionDictionaryPanel: View {
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.white.opacity(0.75))
                     HStack(spacing: 2) {
-                        ForEach(0..<KeyDecomposer.strikesToTrustAtom, id: \.self) { i in
+                        ForEach(0 ..< KeyDecomposer.strikesToTrustAtom, id: \.self) { i in
                             Circle()
                                 .fill(i < count ? Theme.hit : Color.white.opacity(0.18))
                                 .frame(width: 5, height: 5)
@@ -301,16 +364,18 @@ struct DetectionDictionaryPanel: View {
         Divider().overlay(Color.white.opacity(0.2))
 
         let decided = viewModel.agreement.agreed + viewModel.agreement.disagreed
-        statRow("agree", decided > 0
+        statRow(
+            "agree",
+            decided > 0
                 ? "\(viewModel.agreement.agreed)/\(decided)  \(Int(viewModel.agreement.agreementRate * 100))%"
-                : "—")
+                : "—"
+        )
         statRow("recovered", "\(viewModel.agreement.recovered)")
         statRow("no opinion", "\(viewModel.agreement.noOpinion)")
         statRow("quarantined", "\(viewModel.agreement.quarantined)")
         statRow("silent-vetoed", "\(viewModel.vetoed)")
     }
 
-    @ViewBuilder
     private var thresholdTuningSection: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
@@ -322,9 +387,14 @@ struct DetectionDictionaryPanel: View {
                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Theme.copper)
             }
-            Slider(value: $app.visionThreshold, in: 0.05...0.95, step: 0.05)
-            tuningRow("re-arm dip", value: $app.visionRelativeDip, range: 0.02...0.40, step: 0.01,
-                      display: String(format: "%.2f", app.visionRelativeDip))
+            Slider(value: $app.visionThreshold, in: 0.05 ... 0.95, step: 0.05)
+            tuningRow(
+                "re-arm dip",
+                value: $app.visionRelativeDip,
+                range: 0.02 ... 0.40,
+                step: 0.01,
+                display: String(format: "%.2f", app.visionRelativeDip)
+            )
             Text("lower = repeated strokes on one bar register; too low = one stroke fires twice")
                 .font(.system(size: 9, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.5))
@@ -364,8 +434,10 @@ struct DetectionDictionaryPanel: View {
         .scaleEffect(0.75, anchor: .leading)
         .frame(height: 22)
 
-        Toggle(isOn: Binding(get: { app.requireStrikeSound },
-                             set: { app.requireStrikeSound = $0 })) {
+        Toggle(isOn: Binding(
+            get: { app.requireStrikeSound },
+            set: { app.requireStrikeSound = $0 }
+        )) {
             Text("heard only")
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundStyle(.white.opacity(0.75))
@@ -384,9 +456,11 @@ struct DetectionDictionaryPanel: View {
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundStyle(Theme.wrong)
             ForEach(Array(viewModel.agreement.recent.suffix(4).enumerated()), id: \.offset) { _, d in
-                Text("saw \(d.visionKey) (\(Int(d.visionConfidence * 100))%) · heard \(d.heardKey) (\(Int(d.heardShare * 100))%)")
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.8))
+                Text(
+                    "saw \(d.visionKey) (\(Int(d.visionConfidence * 100))%) · heard \(d.heardKey) (\(Int(d.heardShare * 100))%)"
+                )
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundStyle(.white.opacity(0.8))
             }
         }
     }
@@ -398,9 +472,13 @@ struct DetectionDictionaryPanel: View {
         return min(300, max(120, viewModel.overlaySize.height - 150))
     }
 
-    private func tuningRow(_ label: String, value: Binding<Double>,
-                           range: ClosedRange<Double>, step: Double,
-                           display: String) -> some View {
+    private func tuningRow(
+        _ label: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        step: Double,
+        display: String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             HStack {
                 Text(label)

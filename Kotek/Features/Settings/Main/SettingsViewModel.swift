@@ -26,15 +26,20 @@ final class SettingsViewModel {
     private var jumpToken = 0
 
     nonisolated static let scrollSpace = "settingsScroll"
-    static func chipID(_ id: SettingsSection) -> String { "chip-" + id.rawValue }
+    static func chipID(_ id: SettingsSection) -> String {
+        "chip-" + id.rawValue
+    }
+
     static let activeThreshold: CGFloat = 40
 
     init(app: AppState) {
         self.app = app
-        self.draftName = app.profile.name
+        draftName = app.profile.name
     }
 
-    var activeSection: SettingsSection { jumpTarget ?? active }
+    var activeSection: SettingsSection {
+        jumpTarget ?? active
+    }
 
     func updateActiveProfileId() {
         draftName = app.profile.name
@@ -66,7 +71,8 @@ final class SettingsViewModel {
         if next != active { active = next }
 
         if let last = SettingsSection.allCases.last,
-           let frame = metrics.frames[last], viewport > 0 {
+           let frame = metrics.frames[last], viewport > 0
+        {
             let wanted = max(22, viewport - frame.height - 22)
             if abs(wanted - tailInset) > 0.5 { tailInset = wanted }
         }

@@ -18,8 +18,7 @@
 
 import AVFoundation
 
-nonisolated final class TitleMusic {
-
+final nonisolated class TitleMusic {
     private var player: AVAudioPlayer?
     /// Guards against a fade already in flight when the view disappears — the
     /// screen can be left by the button and by navigation at nearly the same

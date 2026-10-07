@@ -62,7 +62,9 @@ struct PerformanceGraph: View {
 
             var line = Path()
             line.move(to: point(0))
-            for i in 1..<cycles.count { line.addLine(to: point(i)) }
+            for i in 1 ..< cycles.count {
+                line.addLine(to: point(i))
+            }
             ctx.stroke(line, with: .color(Theme.terracotta), lineWidth: 2)
 
             // Dots only when there is room for them to be distinct.

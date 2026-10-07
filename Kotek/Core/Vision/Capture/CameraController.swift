@@ -14,7 +14,7 @@ import AVFoundation
 import Observation
 
 @Observable
-nonisolated final class CameraController: NSObject, @unchecked Sendable {
+final nonisolated class CameraController: NSObject, @unchecked Sendable {
     enum Status: Equatable {
         case idle
         case configuring
@@ -45,7 +45,7 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
     /// Created lazily rather than eagerly: on a first launch, before camera
     /// permission exists, there is no session worth attaching to yet.
     @ObservationIgnored var previewLayer: AVCaptureVideoPreviewLayer =
-        AVCaptureVideoPreviewLayer()
+        .init()
 
     /// Short rolling history of frames, keyed by host time, for vision fusion
     /// (StrikeFusion looks up the frame nearest an audio strike).
@@ -94,11 +94,11 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
     func requestAccess() async -> Bool {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            return true
+            true
         case .notDetermined:
-            return await AVCaptureDevice.requestAccess(for: .video)
+            await AVCaptureDevice.requestAccess(for: .video)
         default:
-            return false
+            false
         }
     }
 
@@ -109,9 +109,9 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
         setStatus(.configuring)
         sessionQueue.async { [weak self] in
             guard let self else { return }
-            self.configureIfNeeded()
-            if !self.session.isRunning { self.session.startRunning() }
-            self.setStatus(.running)
+            configureIfNeeded()
+            if !session.isRunning { session.startRunning() }
+            setStatus(.running)
         }
     }
 
@@ -152,9 +152,9 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
 
     func stop() {
         sessionQueue.async { [weak self] in
-            guard let self, self.session.isRunning else { return }
-            self.session.stopRunning()
-            self.setStatus(.idle)
+            guard let self, session.isRunning else { return }
+            session.stopRunning()
+            setStatus(.idle)
         }
     }
 
@@ -186,12 +186,12 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
             if device.isFocusModeSupported(.locked) {
                 device.focusMode = .locked
             }
-            //R Exposure is marker mode's to own while it is on. Both this and
-            //R `enableContinuousAutoFocus` are called from screen setup, AFTER
-            //R the toggle has already configured the device — so without the
-            //R guard, entering the detection screen in marker mode handed the
-            //R exposure straight back to autoexposure and the marker stopped
-            //R being the only bright thing in the frame.
+            // R Exposure is marker mode's to own while it is on. Both this and
+            // R `enableContinuousAutoFocus` are called from screen setup, AFTER
+            // R the toggle has already configured the device — so without the
+            // R guard, entering the detection screen in marker mode handed the
+            // R exposure straight back to autoexposure and the marker stopped
+            // R being the only bright thing in the frame.
             if !markerVisionActive, device.isExposureModeSupported(.locked) {
                 device.exposureMode = .locked
             }
@@ -209,14 +209,14 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
     /// focus is handed back. Screens that don't need a frozen overlay call this.
     func enableContinuousAutoFocus() {
         sessionQueue.async { [weak self] in
-            guard let self, let device = self.device else { return }
+            guard let self, let device else { return }
             do {
                 try device.lockForConfiguration()
                 if device.isFocusModeSupported(.continuousAutoFocus) {
                     device.focusMode = .continuousAutoFocus
                 }
-                if !self.markerVisionActive,
-                    device.isExposureModeSupported(.continuousAutoExposure)
+                if !markerVisionActive,
+                   device.isExposureModeSupported(.continuousAutoExposure)
                 {
                     device.exposureMode = .continuousAutoExposure
                 }
@@ -262,8 +262,8 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
         torchLevel: Float = 0.8
     ) {
         sessionQueue.async { [weak self] in
-            guard let self, let device = self.device else { return }
-            self.markerVisionActive = on
+            guard let self, let device else { return }
+            markerVisionActive = on
             do {
                 try device.lockForConfiguration()
                 defer { device.unlockForConfiguration() }
@@ -292,7 +292,7 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
                     // one quantity that survives trading duration against gain.
                     let metered =
                         CMTimeGetSeconds(device.exposureDuration)
-                        * Double(device.iso)
+                            * Double(device.iso)
                     let target = metered * pow(2.0, exposureBias)
 
                     let minDuration = max(
@@ -345,7 +345,7 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
                 // Non-fatal, and it degrades honestly: without the torch and the
                 // exposure the marker simply is not the brightest thing in frame,
                 // the tracker finds nothing, and the screen says so.
-                self.markerVisionActive = false
+                markerVisionActive = false
             }
         }
     }
@@ -357,14 +357,14 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
     /// live in. Driven by CameraPreview, which is the single source of truth for
     /// orientation — a fixed angle here breaks the moment the device rotates.
     func setVideoRotationAngle(_ angle: CGFloat) {
-        //R Called from the preview's updateUIView, which SwiftUI can run very
-        //R often. Reconfiguring the connection hops onto the same queue that
-        //R delivers frames, so an unchanged angle must cost nothing.
+        // R Called from the preview's updateUIView, which SwiftUI can run very
+        // R often. Reconfiguring the connection hops onto the same queue that
+        // R delivers frames, so an unchanged angle must cost nothing.
         guard angle != lastRotationAngle else { return }
         lastRotationAngle = angle
         sessionQueue.async { [weak self] in
             guard let connection = self?.videoOutput?.connection(with: .video),
-                connection.isVideoRotationAngleSupported(angle)
+                  connection.isVideoRotationAngleSupported(angle)
             else { return }
             connection.videoRotationAngle = angle
         }
@@ -415,16 +415,16 @@ nonisolated final class CameraController: NSObject, @unchecked Sendable {
 
         let videoOutput = AVCaptureVideoDataOutput()
         videoOutput.alwaysDiscardsLateVideoFrames = true
-        //R The preview stays on the high preset, but the frames we CLASSIFY do
-        //R not need to be 1920×1080: every one of them was being rendered to a
-        //R full-size CGImage (8MB) thirty times a second, and a dozen of those
-        //R sat in the ring buffer. The classifier squashes its crop to 360×360
-        //R anyway, so ask AVFoundation for a smaller buffer instead.
+        // R The preview stays on the high preset, but the frames we CLASSIFY do
+        // R not need to be 1920×1080: every one of them was being rendered to a
+        // R full-size CGImage (8MB) thirty times a second, and a dozen of those
+        // R sat in the ring buffer. The classifier squashes its crop to 360×360
+        // R anyway, so ask AVFoundation for a smaller buffer instead.
         videoOutput.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String:
                 kCVPixelFormatType_32BGRA,
             kCVPixelBufferWidthKey as String: 960,
-            kCVPixelBufferHeightKey as String: 540,
+            kCVPixelBufferHeightKey as String: 540
         ]
         videoOutput.setSampleBufferDelegate(self, queue: videoQueue)
         if session.canAddOutput(videoOutput) {
@@ -452,7 +452,7 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         // Cheapest possible bail-out: rendering a frame nobody will read is the
         // most expensive thing this app does per unit of value.
         guard wantsFrames,
-            let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
+              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer)
         else { return }
         // Presentation timestamps ride the same host clock as the audio strike's
         // hostTime, so fusion can align the two without extra bookkeeping.

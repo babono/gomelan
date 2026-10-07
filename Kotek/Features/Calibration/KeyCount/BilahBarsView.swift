@@ -14,7 +14,7 @@ struct BilahBarsView: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 5) {
-            ForEach(0..<count, id: \.self) { i in
+            ForEach(0 ..< count, id: \.self) { i in
                 let t = count > 1 ? Double(i) / Double(count - 1) : 0
                 RoundedRectangle(cornerRadius: 2)
                     .fill(Theme.charcoal.opacity(0.18))

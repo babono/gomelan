@@ -5,7 +5,7 @@
 
 import Foundation
 
-nonisolated struct PracticeSessionRow: Encodable, Sendable {
+nonisolated struct PracticeSessionRow: Encodable {
     var userID: UUID
     var kotekanID: String?
     var instrumentID: UUID?

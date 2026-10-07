@@ -44,17 +44,27 @@ struct KotekanMiniScore: View {
             }
 
             func draw(_ key: Int, slot: Int, color: Color, half: Bool, rightHalf: Bool) {
-                let rect = CGRect(x: CGFloat(slot) * slotW, y: y(key),
-                                  width: blockW, height: blockH)
+                let rect = CGRect(
+                    x: CGFloat(slot) * slotW,
+                    y: y(key),
+                    width: blockW,
+                    height: blockH
+                )
                 let block = Path(roundedRect: rect, cornerRadius: 1.5)
-                guard half else { ctx.fill(block, with: .color(color)); return }
+                guard half else { ctx.fill(block, with: .color(color))
+                    return
+                }
                 var layer = ctx
-                layer.clip(to: Path(CGRect(x: rightHalf ? rect.midX : rect.minX, y: rect.minY,
-                                           width: rect.width / 2, height: rect.height)))
+                layer.clip(to: Path(CGRect(
+                    x: rightHalf ? rect.midX : rect.minX,
+                    y: rect.minY,
+                    width: rect.width / 2,
+                    height: rect.height
+                )))
                 layer.fill(block, with: .color(color))
             }
 
-            for offset in 0..<pageSlots {
+            for offset in 0 ..< pageSlots {
                 let slot = firstSlot + offset
                 guard slot < total else { break }
                 let p = kotekan.polos[slot]
@@ -79,8 +89,10 @@ struct KotekanMiniScore: View {
             let playhead = engine.playhead
             return Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
                 let x = size.width * min(1, max(0, playhead))
-                ctx.fill(Path(CGRect(x: x - 0.75, y: 0, width: 1.5, height: size.height)),
-                         with: .color(Theme.cream.opacity(0.85)))
+                ctx.fill(
+                    Path(CGRect(x: x - 0.75, y: 0, width: 1.5, height: size.height)),
+                    with: .color(Theme.cream.opacity(0.85))
+                )
             }
         }
     }

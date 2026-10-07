@@ -13,16 +13,19 @@
 
 import Foundation
 
-nonisolated struct Defaults {
+nonisolated enum Defaults {
     static func double(_ key: String, _ fallback: Double) -> Double {
         UserDefaults.standard.object(forKey: key) as? Double ?? fallback
     }
+
     static func bool(_ key: String, _ fallback: Bool) -> Bool {
         UserDefaults.standard.object(forKey: key) as? Bool ?? fallback
     }
+
     static func int(_ key: String, _ fallback: Int) -> Int {
         UserDefaults.standard.object(forKey: key) as? Int ?? fallback
     }
+
     /// Whether anything has ever been written for this key.
     ///
     /// The difference between "the user chose false" and "the user has not

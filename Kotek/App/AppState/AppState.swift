@@ -76,7 +76,7 @@ final class AppState {
     /// number the animation has to start from.
     var previousNotesLanded: Int?
 
-    // Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
+    /// Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
     // Audio cue toggles (§5.4)
     var metronomeEnabled: Bool = true
@@ -133,6 +133,7 @@ final class AppState {
     }
 
     // MARK: - Detection tuning
+
     //
     // Owned here rather than by the test screen, because they ARE the detector's
     // behaviour, not a debug view's local state. Tuning them somewhere the
@@ -183,27 +184,26 @@ final class AppState {
         case cameraAndMic
         case heardOnly
 
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
 
         var title: String {
             switch self {
-            case .cameraOnly: return "Camera"
-            case .cameraAndMic: return "Camera + mic"
-            case .heardOnly: return "Heard only"
+            case .cameraOnly: "Camera"
+            case .cameraAndMic: "Camera + mic"
+            case .heardOnly: "Heard only"
             }
         }
 
         var detail: String {
             switch self {
             case .cameraOnly:
-                return
-                    "The microphone is ignored, so nothing in the room can trigger a stroke or block one. Use this in a loud hall — a mallet that hovers over a bar can still register."
+                "The microphone is ignored, so nothing in the room can trigger a stroke or block one. Use this in a loud hall — a mallet that hovers over a bar can still register."
             case .cameraAndMic:
-                return
-                    "Either can register a stroke. The most willing of the three, and the microphone is what catches a bar struck twice in a row, which the camera cannot see."
+                "Either can register a stroke. The most willing of the three, and the microphone is what catches a bar struck twice in a row, which the camera cannot see."
             case .heardOnly:
-                return
-                    "A stroke counts only where the camera sees one and the microphone hears the attack. Use this when strokes register that you did not play."
+                "A stroke counts only where the camera sees one and the microphone hears the attack. Use this when strokes register that you did not play."
             }
         }
     }
@@ -234,12 +234,15 @@ final class AppState {
     var markerBandLeft: Double = Defaults.double("markerBandLeft", 0.05) {
         didSet { Defaults.set("markerBandLeft", markerBandLeft) }
     }
+
     var markerBandRight: Double = Defaults.double("markerBandRight", 0.95) {
         didSet { Defaults.set("markerBandRight", markerBandRight) }
     }
+
     var markerBandSkew: Double = Defaults.double("markerBandSkew", 0) {
         didSet { Defaults.set("markerBandSkew", markerBandSkew) }
     }
+
     var markerBandFlip: Bool = Defaults.bool("markerBandFlip", false) {
         didSet { Defaults.set("markerBandFlip", markerBandFlip) }
     }
@@ -318,7 +321,10 @@ final class AppState {
         case kotekan
         case mekarBhuana
 
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
+
         var seenKey: String {
             self == .app ? "hasSeenGuide" : "hasSeenGuide.\(rawValue)"
         }
@@ -341,7 +347,7 @@ final class AppState {
     // MARK: - Setup & Calibration Geometry
 
     var isAddingNewInstrument = false
-    var previousProfile: InstrumentProfile? = nil
+    var previousProfile: InstrumentProfile?
 
     /// The area the player framed the instrument into (step 2/4), normalised.
     var framedRegion = NormalizedRect(x: 0, y: 0.17, w: 1, h: 0.68)
@@ -361,45 +367,93 @@ final class AppState {
         MalletHitClassifier.applyCropScale(
             mode: Defaults.int("cropScaleMode", 1)
         )
-        self.savedProfiles = all
+        savedProfiles = all
         if let current = ProfileStore.loadSelected() {
-            self.profile = current
-            self.baselineLearned = current.hasLearnedBaseline
+            profile = current
+            baselineLearned = current.hasLearnedBaseline
             if !Defaults.has("requireStrikeSound") {
-                self.requireStrikeSound = current.hasLearnedBaseline
+                requireStrikeSound = current.hasLearnedBaseline
             } else if !current.hasLearnedBaseline {
-                self.requireStrikeSound = false
+                requireStrikeSound = false
             }
         } else {
-            self.profile = ResourceLoader.defaultProfile()
+            profile = ResourceLoader.defaultProfile()
         }
-        self.screen = .welcome
+        screen = .welcome
 
         let pending = all
         Task {
             await refreshCatalogue()
-            for p in pending { await push(p) }
+            for p in pending {
+                await push(p)
+            }
         }
     }
 
     // MARK: - Screen Navigation
 
-    func retry() { screen = .countdown }
-    func backToKotekan() { screen = .chooseKotekan }
-    func openSettings() { screen = .settings }
-    func closeSettings() { screen = .chooseKotekan }
-    func openCalibration() { screen = .calibrating }
-    func calibrationFinished() { screen = .chooseKotekan }
-    func openBaseline() { screen = .baseline }
-    func openMalletTest() { screen = .malletTest }
-    func closeMalletTest() { screen = .settings }
-    func openDetectionTest() { screen = .detectionTest }
-    func openCaptureTraining() { screen = .captureTraining }
-    func closeCaptureTraining() { screen = .settings }
-    func closeDetectionTest() { screen = .settings }
-    func openAudioTest() { screen = .audioTest }
-    func closeAudioTest() { screen = .settings }
+    func retry() {
+        screen = .countdown
+    }
+
+    func backToKotekan() {
+        screen = .chooseKotekan
+    }
+
+    func openSettings() {
+        screen = .settings
+    }
+
+    func closeSettings() {
+        screen = .chooseKotekan
+    }
+
+    func openCalibration() {
+        screen = .calibrating
+    }
+
+    func calibrationFinished() {
+        screen = .chooseKotekan
+    }
+
+    func openBaseline() {
+        screen = .baseline
+    }
+
+    func openMalletTest() {
+        screen = .malletTest
+    }
+
+    func closeMalletTest() {
+        screen = .settings
+    }
+
+    func openDetectionTest() {
+        screen = .detectionTest
+    }
+
+    func openCaptureTraining() {
+        screen = .captureTraining
+    }
+
+    func closeCaptureTraining() {
+        screen = .settings
+    }
+
+    func closeDetectionTest() {
+        screen = .settings
+    }
+
+    func openAudioTest() {
+        screen = .audioTest
+    }
+
+    func closeAudioTest() {
+        screen = .settings
+    }
 
     /// The persistent re-alignment affordance (§13.4).
-    func realign() { screen = .aligning }
+    func realign() {
+        screen = .aligning
+    }
 }
