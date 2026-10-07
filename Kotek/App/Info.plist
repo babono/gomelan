@@ -14,6 +14,9 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing.</string>
 
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Kotek connects to the gangsa's strike sensors, so it can feel exactly which bar you hit and when.</string>
+
 	<!-- Filled from Config.xcconfig at build time. Read by RemoteStore. -->
 	<key>SupabaseURL</key>
 	<string>$(SUPABASE_URL)</string>
