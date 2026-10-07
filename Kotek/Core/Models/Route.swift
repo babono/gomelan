@@ -63,7 +63,7 @@ nonisolated extension Route: AppEnum {
         .malletTest: "Mallet Test",
         .detectionTest: "Detection Test",
         .audioTest: "Audio Test",
-        .captureTraining: "Capture Training"
+        .captureTraining: "Capture Training",
         .sensorTest: "Sensor Test",
     ]
 }

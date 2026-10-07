@@ -146,7 +146,7 @@ struct RootView: View {
         case .captureTraining:
             CaptureTrainingView()
         case .sensorTest:
-            SensorPlayView(cue: cue)
+            SensorPlayView()
         }
     }
 }

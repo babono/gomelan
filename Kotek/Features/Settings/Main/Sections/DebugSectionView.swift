@@ -29,6 +29,9 @@ struct DebugSectionView: View {
                 SecondaryButton(title: "Capture Training Data", systemImage: "camera.viewfinder") {
                     app.openCaptureTraining()
                 }
+                SecondaryButton(title: "Test Sensors", systemImage: "sensor.tag.radiowaves.forward") {
+                    app.openSensorTest()
+                }
             }
         }
     }

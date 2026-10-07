@@ -10,8 +10,8 @@
 
 import AppIntents
 import FactoryKit
-import Observation
 import OSLog
+import Observation
 import SwiftUI
 
 @MainActor
@@ -266,7 +266,8 @@ final class AppState {
     var markerColour: Int = Defaults.int(
         "markerColour",
         MarkerColour.red.rawValue
-    ) {
+    )
+    {
         didSet { Defaults.set("markerColour", markerColour) }
     }
 
@@ -279,12 +280,14 @@ final class AppState {
     var markerSaturationFloor: Double = Defaults.double(
         "markerSaturationFloor",
         60
-    ) {
+    )
+    {
         didSet { Defaults.set("markerSaturationFloor", markerSaturationFloor) }
     }
 
     /// Stops below metered exposure while marker vision is on. Negative.
-    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5) {
+    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5)
+    {
         didSet { Defaults.set("markerExposureBias", markerExposureBias) }
     }
 
@@ -294,7 +297,8 @@ final class AppState {
     }
 
     /// How far past the head marker the striking point sits.
-    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35) {
+    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35)
+    {
         didSet { Defaults.set("markerTipExtension", markerTipExtension) }
     }
 
@@ -355,9 +359,11 @@ final class AppState {
 
     // MARK: - Remote Repositories
 
-    @ObservationIgnored let instrumentRemote = Container.shared.instrumentRemoteRepository()
+    @ObservationIgnored let instrumentRemote = Container.shared
+        .instrumentRemoteRepository()
     @ObservationIgnored let kotekanRepo = Container.shared.kotekanRepository()
-    @ObservationIgnored let sessionRepo = Container.shared.practiceSessionRepository()
+    @ObservationIgnored let sessionRepo = Container.shared
+        .practiceSessionRepository()
     @ObservationIgnored let log = Logger(subsystem: "Kotek", category: "remote")
 
     // MARK: - Initialization
@@ -388,6 +394,9 @@ final class AppState {
                 await push(p)
             }
         }
+        #if DEBUG
+            applyScreenshotScene()
+        #endif
     }
 
     // MARK: - Screen Navigation
@@ -449,6 +458,14 @@ final class AppState {
     }
 
     func closeAudioTest() {
+        screen = .settings
+    }
+
+    func openSensorTest() {
+        screen = .sensorTest
+    }
+
+    func closeSensorTest() {
         screen = .settings
     }
 

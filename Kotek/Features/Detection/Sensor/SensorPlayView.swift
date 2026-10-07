@@ -15,93 +15,90 @@
 //  (keys 5…7). Sensor bar 0 sits on the lowest of them.
 //
 
+import FactoryKit
 import SwiftUI
 
 struct SensorPlayView: View {
     @Environment(AppState.self) private var app
-    let cue: CuePlayer
+    @State private var viewModel: SensorPlayViewModel
 
-    @State private var sensor = GangsaSensor()
-    @State private var engine = PlayEngine()
-    @State private var displayLink = DisplayLink()
-    @State private var half: KotekanHalf = .polos
-    //R Half speed by default. 250 ms a slot is a lot to ask while also
-    //R watching whether a breadboard is keeping up.
-    @State private var tempo: Double = 0.5
-    @State private var running = false
-    @State private var lastResult: SongResult?
-
-    private let figure = Kotekan.bundled.first { $0.id == "ubitannyendok" }!
-    private var keys: ClosedRange<Int> { figure.voicedKeyRange }
-    private func key(forBar bar: Int) -> Int { keys.lowerBound + bar }
+    @MainActor
+    init(viewModel: SensorPlayViewModel? = nil) {
+        _viewModel = State(wrappedValue: viewModel ?? SensorPlayViewModel())
+    }
 
     var body: some View {
+        @Bindable var vm = viewModel
+
         VStack(spacing: 0) {
-            header
+            header(vm: vm)
                 .padding(.horizontal, 24)
                 .padding(.vertical, 12)
 
             HStack(alignment: .top, spacing: 16) {
                 VStack(spacing: 12) {
-                    packetLine
-                    SensorBars(engine: engine, sensor: sensor, keys: keys)
-                    summary
+                    packetLine(sensor: vm.sensor)
+                    SensorBars(engine: vm.engine, sensor: vm.sensor, keys: vm.keys)
+                    summary(vm: vm)
                 }
                 .frame(maxWidth: .infinity)
-                hitLog.frame(width: 220)
+                hitLog(sensor: vm.sensor).frame(width: 220)
             }
             .padding(.horizontal, 24)
             .frame(maxHeight: .infinity)
 
-            NotesRiver(engine: engine, keyRange: keys,
-                       keyCount: app.profile.keys.count, yourHalf: half)
+            NotesRiver(
+                engine: vm.engine,
+                keyRange: vm.keys,
+                keyCount: app.profile.keys.count,
+                yourHalf: vm.half
+            )
         }
         .background(Theme.ink)
         .onAppear {
-            sensor.onHit = { hit in
-                guard running else { return }
-                engine.registerStrike(keyIndex: key(forBar: hit.bar),
-                                      hostTime: hit.hostTime, confidence: 1)
-            }
-            sensor.start()
+            viewModel.onAppear()
         }
         .onDisappear {
-            stopSession()
-            sensor.onHit = nil
-            sensor.stop()
+            viewModel.onDisappear()
         }
-        .onChange(of: half) { _, new in
-            guard running else { return }
-            engine.setHalf(song: figure.makeSong(half: new, cycles: 1),
-                           partner: figure.makeSong(half: new.other, cycles: 1))
+        .onChange(of: vm.half) { _, new in
+            viewModel.updateHalf(new)
         }
-        .onChange(of: tempo) { _, new in engine.setTempoScale(new) }
+        .onChange(of: vm.tempo) { _, new in
+            viewModel.updateTempo(new)
+        }
     }
 
     // MARK: - Chrome
 
-    private var header: some View {
-        HStack(spacing: 12) {
-            SecondaryButton(title: "Back", systemImage: "chevron.left") { app.closeSensorTest() }
-            statusPill
+    private func header(vm: SensorPlayViewModel) -> some View {
+        @Bindable var bindableVM = vm
+
+        return HStack(spacing: 12) {
+            SecondaryButton(title: "Back", systemImage: "chevron.left") {
+                app.closeSensorTest()
+            }
+            statusPill(sensor: vm.sensor)
             Spacer()
-            Picker("Half", selection: $half) {
+            Picker("Half", selection: $bindableVM.half) {
                 ForEach([KotekanHalf.polos, .sangsih]) { Text($0.title).tag($0) }
             }
             .pickerStyle(.segmented)
             .frame(width: 180)
-            Picker("Tempo", selection: $tempo) {
+            Picker("Tempo", selection: $bindableVM.tempo) {
                 ForEach(Theme.tempoScales, id: \.self) { Text(Theme.tempoLabel($0)).tag($0) }
             }
             .tint(Theme.gold)
-            SecondaryButton(title: running ? "Stop" : "Play",
-                            systemImage: running ? "stop.fill" : "play.fill") {
-                running ? stopSession() : startSession()
+            SecondaryButton(
+                title: vm.running ? "Stop" : "Play",
+                systemImage: vm.running ? "stop.fill" : "play.fill"
+            ) {
+                vm.toggleSession(app: app)
             }
         }
     }
 
-    private var statusPill: some View {
+    private func statusPill(sensor: GangsaSensor) -> some View {
         let (text, color): (String, Color) = switch sensor.status {
         case .off: ("Off", Theme.stone)
         case .scanning: ("Searching for Gangsa-Sensor…", Theme.gold)
@@ -118,42 +115,46 @@ struct SensorPlayView: View {
     }
 
     @ViewBuilder
-    private var packetLine: some View {
+    private func packetLine(sensor: GangsaSensor) -> some View {
         if sensor.status == .scanning {
-            Text(sensor.seenDevices.isEmpty
-                 ? "scanning · no Bluetooth devices heard yet"
-                 : "scanning · heard " + sensor.seenDevices.suffix(12).joined(separator: ", "))
-                .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(Theme.gold)
-                .lineLimit(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        packetCounts
-    }
-
-    private var packetCounts: some View {
-        Text("packets · events \(sensor.eventPackets) · levels \(sensor.levelPackets)"
-             + (sensor.rejectedPackets > 0 ? " · rejected \(sensor.rejectedPackets)" : ""))
+            Text(
+                sensor.seenDevices.isEmpty
+                    ? "scanning · no Bluetooth devices heard yet"
+                    : "scanning · heard " + sensor.seenDevices.suffix(12).joined(separator: ", ")
+            )
             .font(.system(size: 11, design: .monospaced))
-            .foregroundStyle(sensor.rejectedPackets > 0 ? Theme.miss : Theme.cream.opacity(0.5))
+            .foregroundStyle(Theme.gold)
+            .lineLimit(3)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        packetCounts(sensor: sensor)
     }
 
-    private var summary: some View {
+    private func packetCounts(sensor: GangsaSensor) -> some View {
+        Text(
+            "packets · events \(sensor.eventPackets) · levels \(sensor.levelPackets)"
+                + (sensor.rejectedPackets > 0 ? " · rejected \(sensor.rejectedPackets)" : "")
+        )
+        .font(.system(size: 11, design: .monospaced))
+        .foregroundStyle(sensor.rejectedPackets > 0 ? Theme.miss : Theme.cream.opacity(0.5))
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func summary(vm: SensorPlayViewModel) -> some View {
         Group {
-            if running {
-                SensorSessionLine(engine: engine)
-            } else if let r = lastResult {
+            if vm.running {
+                SensorSessionLine(engine: vm.engine)
+            } else if let r = vm.lastResult {
                 Text("Last run · \(r.landedNotes) notes landed")
             } else {
-                Text("\(figure.name) on bilah \(keys.lowerBound + 1)–\(keys.upperBound + 1). Press Play, then strike along.")
+                Text("\(vm.figure.name) on bilah \(vm.keys.lowerBound + 1)–\(vm.keys.upperBound + 1). Press Play, then strike along.")
             }
         }
         .font(.sans(13, weight: .semibold))
         .foregroundStyle(Theme.cream.opacity(0.8))
     }
 
-    private var hitLog: some View {
+    private func hitLog(sensor: GangsaSensor) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 SectionLabel("Hits")
@@ -180,42 +181,6 @@ struct SensorPlayView: View {
         }
         .padding(12)
         .background(.black.opacity(0.3), in: RoundedRectangle(cornerRadius: Theme.radius))
-    }
-
-    // MARK: - Session
-
-    private func startSession() {
-        engine.cue = cue
-        engine.leniency = app.judgementLeniency
-        engine.callsStrokes = true
-        engine.scoresWrongBar = app.scoresWrongBar
-        engine.metronomeEnabled = app.metronomeEnabled
-        engine.referenceToneEnabled = app.referenceToneEnabled
-        //R Partner on: you are playing one half of an interlocking figure, and
-        //R without the other half there is nothing to lock into.
-        engine.partnerAudible = true
-        engine.yourVoiceAudible = true
-        engine.sessionSubtitle = "Sensor demo"
-        //R Results stay on this screen. Going through `app.finish` would file a
-        //R record against the real kotekan for a session played on a breadboard.
-        engine.onComplete = { result in
-            Task { @MainActor in lastResult = result }
-        }
-        engine.configure(song: figure.makeSong(half: half, cycles: 1),
-                         partner: figure.makeSong(half: half.other, cycles: 1),
-                         profile: app.profile, tempoScale: tempo)
-        engine.start()
-        displayLink.onFrame = { now in engine.tick(now: now) }
-        displayLink.start()
-        running = true
-    }
-
-    private func stopSession() {
-        guard running else { return }
-        running = false
-        displayLink.stop()
-        engine.end()
-        cue.stop()
     }
 }
 
@@ -254,8 +219,10 @@ private struct SensorBars: View {
                     .fill(Theme.upcoming.opacity(0.55))
                     .scaleEffect(x: 1, y: state.fill, anchor: .bottom)
                 RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
-                    .strokeBorder(state.strikeNow ? Theme.cream : Theme.gold.opacity(0.4),
-                                  lineWidth: state.strikeNow ? 4 : 1)
+                    .strokeBorder(
+                        state.strikeNow ? Theme.cream : Theme.gold.opacity(0.4),
+                        lineWidth: state.strikeNow ? 4 : 1
+                    )
                 if state.hit {
                     RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
                         .fill(Theme.hit.opacity(0.5))
@@ -327,7 +294,9 @@ private struct SensorSessionLine: View {
         if let ms = engine.msUntilFirstNote {
             Text("Count-in · first note in \(Int(ms / 1000) + 1)s")
         } else {
-            Text("Cycle \(engine.loopIndex + 1) · \(engine.landedNotes) landed · best \(engine.bestSoFar.map { "\(Int($0 * 100))%" } ?? "—")")
+            Text(
+                "Cycle \(engine.loopIndex + 1) · \(engine.landedNotes) landed · best \(engine.bestSoFar.map { "\(Int($0 * 100))%" } ?? "—")"
+            )
         }
     }
 }
