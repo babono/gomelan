@@ -22,6 +22,8 @@ final class ChooseKotekanViewModel {
     var position: Double = 0
     var dragOrigin: Double?
     var muted = false
+    /// Whether the preview is what is driving the shared cue player right now.
+    private var previewing = false
 
     static let gap: CGFloat = 22
     static var step: CGFloat {
@@ -106,16 +108,35 @@ final class ChooseKotekanViewModel {
             self?.engine.tick(now: now)
         }
         displayLink.start()
+        previewing = true
     }
 
+    /// Stops the preview, and the shared cue player only if the preview still
+    /// owns it.
+    ///
+    /// The guard is the whole point. `start` stops the preview and THEN changes
+    /// screen, and SwiftUI runs the next screen's `onAppear` before this one's
+    /// `onDisappear`. Unguarded, that late second stop landed after the next
+    /// screen had started the same CuePlayer, and silenced its entire session:
+    /// `started` went false, so every gong, kajar and key sample after it was
+    /// dropped by `ensureLive()`. The waterfall, which starts its clock in
+    /// `onAppear`, had no sound at all. PlayView only escaped because it waits
+    /// 400 ms before starting.
     func stopPreview() {
         displayLink.stop()
+        guard previewing else { return }
+        previewing = false
         cue.stop()
     }
 
     func start(_ k: Kotekan) {
         stopPreview()
         app.chooseKotekan(k)
+    }
+
+    func startWaterfall(_ k: Kotekan) {
+        stopPreview()
+        app.chooseKotekanWaterfall(k)
     }
 
     func onDragChanged(translationWidth: CGFloat) {

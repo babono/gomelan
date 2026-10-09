@@ -50,6 +50,9 @@ extension AppState {
             screen = .chooseInstrument
         case "kotekan":
             screen = .chooseKotekan
+        case "waterfall":
+            renderHalves()
+            screen = .waterfall
         case "guide":
             screen = .chooseKotekan
             visibleGuide = .kotekan
