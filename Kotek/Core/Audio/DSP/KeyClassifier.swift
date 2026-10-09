@@ -30,11 +30,12 @@ struct KeyMatch {
     /// Kept for call sites that show a 0...1 confidence. Derived from the margin
     /// over the runner-up, since a high similarity means nothing on its own if
     /// two keys score equally.
-    var confidence: Double { min(1, max(0, gap / 0.3)) }
+    var confidence: Double {
+        min(1, max(0, gap / 0.3))
+    }
 }
 
 final class KeyClassifier {
-
     private var config: DSPConfig
     private var indices: [Int] = []
     private var templates: [[Float]] = []
@@ -56,7 +57,9 @@ final class KeyClassifier {
         }
     }
 
-    var calibratedKeyCount: Int { templates.count }
+    var calibratedKeyCount: Int {
+        templates.count
+    }
 
     /// Every template's score, best first. For diagnostics and calibration UI.
     func scores(for vector: [Float]) -> [(keyIndex: Int, similarity: Double)] {
@@ -91,16 +94,15 @@ final class KeyClassifier {
         let gap = templates.count == 1 ? 1 : best - second
         guard gap >= config.confidenceGap else { return nil }
 
-        return KeyMatch(keyIndex: indices[bestIndex],
-                        similarity: Double(best),
-                        gap: Double(gap))
+        return KeyMatch(
+            keyIndex: indices[bestIndex],
+            similarity: Double(best),
+            gap: Double(gap)
+        )
     }
 
     private func dot(_ a: [Float], _ b: [Float]) -> Float {
-        guard a.count == b.count else { return 0 }
-        var result: Float = 0
-        vDSP_dotpr(a, 1, b, 1, &result, vDSP_Length(a.count))
-        return result
+        DSPVector.dot(a, b)
     }
 
     // MARK: - Calibration support
@@ -141,12 +143,14 @@ final class KeyClassifier {
         var total = 0.0
         var count = 0
         var pair = (0, 0)
-        for i in 0..<templates.count {
-            for j in (i + 1)..<templates.count {
+        for i in 0 ..< templates.count {
+            for j in (i + 1) ..< templates.count {
                 let score = Double(dot(templates[i], templates[j]))
                 total += score
                 count += 1
-                if score > worst { worst = score; pair = (indices[i], indices[j]) }
+                if score > worst { worst = score
+                    pair = (indices[i], indices[j])
+                }
             }
         }
         return (worst, total / Double(count), pair)

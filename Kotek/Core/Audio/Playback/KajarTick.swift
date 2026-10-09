@@ -39,7 +39,9 @@ final class KajarTick {
     static let shared = KajarTick()
 
     /// Strike the tick. The call every control makes.
-    static func strike() { shared.strike() }
+    static func strike() {
+        shared.strike()
+    }
 
     // MARK: - Tuning
 
@@ -77,22 +79,34 @@ final class KajarTick {
     /// Called from `Preloader` behind the splash. Idempotent, and `strike()`
     /// calls it too — so a missed warm-up is a slightly late first tick, never
     /// a silent one.
-    func warm() {
-        guard !isWarm else { return }
-        isWarm = true
+    static func warm() async {
+        guard !shared.isWarm else { return }
 
-        guard let wav = Self.tick else {
+        guard let wav = tick else {
             print("[KajarTick] could not build the tick from kajar.wav")
             return
         }
-        voices = (0..<Self.voiceCount).compactMap { _ in
-            guard let player = try? AVAudioPlayer(data: wav) else { return nil }
-            player.volume = Self.level
-            // Prepared once, here. This is the part with the latency in it, and
-            // doing it per tap is what would put the tick behind the finger.
+
+        let level = level
+        let count = voiceCount
+
+        // Perform prepareToPlay() off the main thread to avoid AVAudioSession_iOS.mm warning
+        let preparedVoices = await buildVoices(data: wav, level: level, count: count)
+
+        shared.voices = preparedVoices
+        shared.isWarm = true
+    }
+
+    @concurrent
+    private nonisolated static func buildVoices(data: Data, level: Float, count: Int) async -> sending [AVAudioPlayer] {
+        var result: [AVAudioPlayer] = []
+        for _ in 0 ..< count {
+            guard let player = try? AVAudioPlayer(data: data) else { continue }
+            player.volume = level
             player.prepareToPlay()
-            return player
+            result.append(player)
         }
+        return result
     }
 
     /// Sound one tick, immediately.
@@ -102,7 +116,6 @@ final class KajarTick {
     /// `AVAudioPlayer` has to stop it first, and a stopped-and-restarted tick
     /// is audibly a stutter where two overlapping ones are just two taps.
     func strike() {
-        warm()
         guard !voices.isEmpty else { return }
 
         let voice = voices[next]
@@ -110,9 +123,11 @@ final class KajarTick {
 
         // `pause()`, not `stop()`: stop() tears down what prepareToPlay() set
         // up, so the voice would pay that cost again on its next turn.
-        voice.pause()
-        voice.currentTime = 0
-        voice.play()
+        Task.detached { @concurrent in
+            voice.pause()
+            voice.currentTime = 0
+            voice.play()
+        }
     }
 
     // MARK: - Building the tick
@@ -126,7 +141,8 @@ final class KajarTick {
         // is a lookup — and `trimLeadingSilence` is why frame 0 below is the
         // strike rather than 23 ms of room tone ahead of it.
         guard let source = SampleLibrary.shared.buffer("kajar"),
-              let channel = source.floatChannelData else { return nil }
+              let channel = source.floatChannelData
+        else { return nil }
 
         let sampleRate = source.format.sampleRate
         let count = min(Int(source.frameLength), Int(sampleRate * tickDuration))
@@ -137,14 +153,18 @@ final class KajarTick {
         // Normalise: the recording peaks at 0.52, and starting from full scale
         // is what leaves `level` somewhere to work from.
         var peak: Float = 0
-        for value in tick { peak = max(peak, abs(value)) }
+        for value in tick {
+            peak = max(peak, abs(value))
+        }
         guard peak > 0 else { return nil }
         let scale = 0.97 / peak
-        for i in 0..<count { tick[i] *= scale }
+        for i in 0 ..< count {
+            tick[i] *= scale
+        }
 
         let fade = min(count, Int(sampleRate * fadeDuration))
         if fade > 1 {
-            for i in (count - fade)..<count {
+            for i in (count - fade) ..< count {
                 tick[i] *= Float(count - i) / Float(fade)
             }
         }

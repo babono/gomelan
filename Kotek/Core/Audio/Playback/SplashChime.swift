@@ -41,7 +41,6 @@ import AVFoundation
 /// lets the ring and fade be scheduled without handing a non-`Sendable`
 /// `AVAudioPlayer` across an isolation boundary.
 final class SplashChime {
-
     private var player: AVAudioPlayer?
     /// Struck once per launch, ever — including across a trip to the background
     /// and back, which must not sound the gong again over the landing screen.
@@ -52,9 +51,11 @@ final class SplashChime {
     /// Published so the title music can duck underneath for exactly this long
     /// and swell afterwards, rather than both guessing at a number and drifting
     /// apart the first time either is adjusted.
-    static let ringDuration: TimeInterval = 2.0
-    static let fadeDuration: TimeInterval = 0.8
-    static var totalDuration: TimeInterval { ringDuration + fadeDuration }
+    nonisolated static let ringDuration: TimeInterval = 2.0
+    nonisolated static let fadeDuration: TimeInterval = 0.8
+    nonisolated static var totalDuration: TimeInterval {
+        SplashChime.ringDuration + SplashChime.fadeDuration
+    }
 
     // MARK: - Striking
 
@@ -67,9 +68,11 @@ final class SplashChime {
     ///     splash's minimum duration, so the fall lands with the hand-over.
     ///   - fade: how long the fall takes. A gong cut off dead reads as a
     ///     glitch; one still falling as the screen changes reads as one moment.
-    func strike(gain: Float = 1.0,
-                ringFor: TimeInterval = SplashChime.ringDuration,
-                fade: TimeInterval = SplashChime.fadeDuration) {
+    func strike(
+        gain: Float = 1.0,
+        ringFor: TimeInterval = SplashChime.ringDuration,
+        fade: TimeInterval = SplashChime.fadeDuration
+    ) async {
         guard !hasStruck else { return }
         hasStruck = true
 
@@ -78,31 +81,45 @@ final class SplashChime {
             return
         }
 
+        // Offload session activation and prepareToPlay() off the main thread
+        // to silence AVAudioSession_iOS.mm:978 and prevent UI hangs.
+        guard let player = await buildPlayer(data: wav, gain: gain) else {
+            print("[SplashChime] could not prepare the player from kempur.wav")
+            return
+        }
+
+        // No fade in. This is a struck instrument — the attack IS the
+        // sound, and easing into it would turn a stroke into a swell.
+        await playMusic(player: player)
+
+        self.player = player
+        scheduleFade(after: ringFor, over: fade)
+    }
+
+    @concurrent
+    private nonisolated func playMusic(player: AVAudioPlayer) async {
+        guard player.play() else {
+            let session = AVAudioSession.sharedInstance()
+            print("""
+            [SplashChime] play() refused. \
+            category=\(session.category.rawValue) \
+            mode=\(session.mode.rawValue) \
+            outputVolume=\(session.outputVolume)
+            """)
+            return
+        }
+    }
+
+    @concurrent
+    private nonisolated func buildPlayer(data: Data, gain: Float) async -> sending AVAudioPlayer? {
         // Activating an already-active session is a no-op, so this costs
         // nothing and covers the case where it is not active yet.
+        // Runs off the main thread -> no AVAudioSession_iOS.mm warning!
         try? AVAudioSession.sharedInstance().setActive(true)
-
-        do {
-            let player = try AVAudioPlayer(data: wav)
-            player.volume = gain
-            player.prepareToPlay()
-            // No fade in. This is a struck instrument — the attack IS the
-            // sound, and easing into it would turn a stroke into a swell.
-            guard player.play() else {
-                let session = AVAudioSession.sharedInstance()
-                print("""
-                      [SplashChime] play() refused. \
-                      category=\(session.category.rawValue) \
-                      mode=\(session.mode.rawValue) \
-                      outputVolume=\(session.outputVolume)
-                      """)
-                return
-            }
-            self.player = player
-            scheduleFade(after: ringFor, over: fade)
-        } catch {
-            print("[SplashChime] could not play the stroke: \(error)")
-        }
+        guard let player = try? AVAudioPlayer(data: data) else { return nil }
+        player.volume = gain
+        player.prepareToPlay()
+        return player
     }
 
     /// Let it ring, then fall.
@@ -139,10 +156,10 @@ final class SplashChime {
     /// are harmonics of the same tone, so the ear fuses them into one gong and
     /// infers the pitch from the series — the stroke still reads as a kempur.
     private static let octaves: [(step: Int, gain: Float)] = [
-        (1, 0.30),   //  125 Hz — the true tone, for headphones
-        (2, 0.45),   //  250 Hz
-        (4, 0.90),   //  500 Hz — a phone speaker starts working here
-        (8, 0.70),   // 1000 Hz — and is at its most efficient here
+        (1, 0.30), //  125 Hz — the true tone, for headphones
+        (2, 0.45), //  250 Hz
+        (4, 0.90), //  500 Hz — a phone speaker starts working here
+        (8, 0.70) // 1000 Hz — and is at its most efficient here
     ]
 
     /// How hard the sum is driven into saturation before normalising.
@@ -188,14 +205,16 @@ final class SplashChime {
 
         // Saturate, then normalise to just under full scale.
         var peak: Float = 0
-        for i in 0..<count {
+        for i in 0 ..< count {
             let saturated = tanhf(mixed[i] * drive)
             mixed[i] = saturated
             peak = max(peak, abs(saturated))
         }
         guard peak > 0 else { return nil }
         let scale = 0.97 / peak
-        for i in 0..<count { mixed[i] *= scale }
+        for i in 0 ..< count {
+            mixed[i] *= scale
+        }
 
         return PCMWav.encode(mixed, sampleRate: Int(source.format.sampleRate))
     }

@@ -27,13 +27,13 @@
 
 import AVFoundation
 
-nonisolated final class SampleLibrary {
+final nonisolated class SampleLibrary {
     static let shared = SampleLibrary()
 
     /// Every sample the app ships, in the order the preloader warms them.
     /// Keys first: they are the ones a session cannot start without.
     static let allNames: [String] =
-        (0..<10).map { "key\($0)" } + ["gong", "kempur", "kajar"]
+        (0 ..< 10).map { "key\($0)" } + ["gong", "kempur", "kajar"]
 
     private let lock = NSLock()
     private var cache: [String: AVAudioPCMBuffer] = [:]
@@ -79,8 +79,10 @@ nonisolated final class SampleLibrary {
     private static func decode(_ name: String) -> AVAudioPCMBuffer? {
         guard let url = Bundle.main.url(forResource: name, withExtension: "wav"),
               let file = try? AVAudioFile(forReading: url),
-              let buf = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
-                                         frameCapacity: AVAudioFrameCount(file.length))
+              let buf = AVAudioPCMBuffer(
+                  pcmFormat: file.processingFormat,
+                  frameCapacity: AVAudioFrameCount(file.length)
+              )
         else {
             print("[SampleLibrary] missing sample: \(name).wav — check it's in Resources and the target")
             return nil
@@ -89,10 +91,10 @@ nonisolated final class SampleLibrary {
         return trimLeadingSilence(buf)
     }
 
-    // Several bundled samples were recorded with the strike well into the file
-    // — key4 at 247ms, key3 at 620ms, key7 at 870ms, kajar at 23ms. Playing
-    // them from frame 0 put the audible attack that far behind the visual cue.
-    // Trim the lead-in at load time so frame 0 of every buffer IS the attack.
+    /// Several bundled samples were recorded with the strike well into the file
+    /// — key4 at 247ms, key3 at 620ms, key7 at 870ms, kajar at 23ms. Playing
+    /// them from frame 0 put the audible attack that far behind the visual cue.
+    /// Trim the lead-in at load time so frame 0 of every buffer IS the attack.
     private static func trimLeadingSilence(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
         guard let source = buffer.floatChannelData else { return buffer }
         let channels = Int(buffer.format.channelCount)
@@ -100,8 +102,10 @@ nonisolated final class SampleLibrary {
         guard frames > 0, channels > 0 else { return buffer }
 
         var peak: Float = 0
-        for c in 0..<channels {
-            for i in 0..<frames { peak = max(peak, abs(source[c][i])) }
+        for c in 0 ..< channels {
+            for i in 0 ..< frames {
+                peak = max(peak, abs(source[c][i]))
+            }
         }
         guard peak > 0 else { return buffer }
 
@@ -109,8 +113,8 @@ nonisolated final class SampleLibrary {
         // while still landing on the leading edge of the transient.
         let threshold = peak * 0.08
         var onset = 0
-        search: for i in 0..<frames {
-            for c in 0..<channels where abs(source[c][i]) >= threshold {
+        search: for i in 0 ..< frames {
+            for c in 0 ..< channels where abs(source[c][i]) >= threshold {
                 onset = i
                 break search
             }
@@ -124,7 +128,7 @@ nonisolated final class SampleLibrary {
               let destination = trimmed.floatChannelData
         else { return buffer }
         trimmed.frameLength = length
-        for c in 0..<channels {
+        for c in 0 ..< channels {
             destination[c].update(from: source[c] + onset, count: Int(length))
         }
         return trimmed

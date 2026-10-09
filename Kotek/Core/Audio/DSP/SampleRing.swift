@@ -14,7 +14,6 @@
 import Foundation
 
 final class SampleRing {
-
     private var storage: [Float]
     private let capacity: Int
     /// Total samples ever written — also the absolute index of the next write.
@@ -22,15 +21,19 @@ final class SampleRing {
 
     init(capacity: Int) {
         self.capacity = capacity
-        self.storage = [Float](repeating: 0, count: capacity)
+        storage = [Float](repeating: 0, count: capacity)
     }
 
     /// Oldest absolute index still held. Anything below this has been overwritten.
-    var oldestAvailable: Int { max(0, totalWritten - capacity) }
+    var oldestAvailable: Int {
+        max(0, totalWritten - capacity)
+    }
 
     func reset() {
         totalWritten = 0
-        for i in storage.indices { storage[i] = 0 }
+        for i in storage.indices {
+            storage[i] = 0
+        }
     }
 
     func write(_ source: UnsafePointer<Float>, count: Int) {

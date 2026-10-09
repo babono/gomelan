@@ -30,7 +30,6 @@
 import Foundation
 
 final class OnsetDetector {
-
     /// Absolute sample index of a detected attack.
     struct Onset {
         let sampleIndex: Int
@@ -76,7 +75,9 @@ final class OnsetDetector {
         lastEmittedSample = nil
     }
 
-    private var lookaheadFrames: Int { config.medianLengthFrames / 2 }
+    private var lookaheadFrames: Int {
+        config.medianLengthFrames / 2
+    }
 
     /// Absolute sample index at the CENTRE of a frame's analysis window.
     /// Trap 1 lives here — do not change this to `frame * hop`.
@@ -112,7 +113,7 @@ final class OnsetDetector {
         // stretch it drops and soft hits still count.
         var neighbourhood: [Float] = []
         neighbourhood.reserveCapacity(2 * half + 1)
-        for f in (frame - half)...(frame + half) {
+        for f in (frame - half) ... (frame + half) {
             // mode="nearest": clamp at the edges rather than assuming silence.
             neighbourhood.append(self[clampFrame(f)] ?? value)
         }
@@ -183,8 +184,11 @@ final class OnsetDetector {
     /// Snap a coarse STFT onset to the sample where the attack actually begins.
     /// STFT gives ~6ms resolution at best; timing feedback is measured in
     /// milliseconds, so this is worth the few lines it costs.
-    private func refine(coarseSample: Int, searchSeconds: Double = 0.030,
-                        riseFraction: Float = 0.15) -> Int {
+    private func refine(
+        coarseSample: Int,
+        searchSeconds: Double = 0.030,
+        riseFraction: Float = 0.15
+    ) -> Int {
         let span = Int(searchSeconds * config.sampleRate)
         let lo = max(0, coarseSample - span)
         let hi = coarseSample + span
@@ -192,23 +196,29 @@ final class OnsetDetector {
         guard count >= 64, let provider = sampleProvider,
               provider(lo, count, &refineScratch) else { return coarseSample }
 
-        for i in 0..<count { refineScratch[i] = abs(refineScratch[i]) }
+        for i in 0 ..< count {
+            refineScratch[i] = abs(refineScratch[i])
+        }
 
         // Moving-average envelope, k=32, matching the Python's np.convolve(mode="same").
         let k = 32
         if envelope.count != count { envelope = [Float](repeating: 0, count: count) }
         var running: Float = 0
         let halfK = k / 2
-        for i in 0..<count {
+        for i in 0 ..< count {
             running += refineScratch[i]
             if i >= k { running -= refineScratch[i - k] }
             let centre = i - halfK
             if centre >= 0 { envelope[centre] = running / Float(k) }
         }
-        for i in max(0, count - halfK)..<count { envelope[i] = envelope[max(0, count - halfK - 1)] }
+        for i in max(0, count - halfK) ..< count {
+            envelope[i] = envelope[max(0, count - halfK - 1)]
+        }
 
         var peak: Float = 0
-        for v in envelope where v > peak { peak = v }
+        for v in envelope where v > peak {
+            peak = v
+        }
         guard peak > 1e-6 else { return coarseSample }
 
         // Trap 3: track the RISE, not the level. A previous note still ringing
@@ -216,16 +226,20 @@ final class OnsetDetector {
         // threshold would snap onto it and report the hit ~35ms early.
         var steepest = 0
         var steepestSlope: Float = 0
-        for i in 0..<(count - 1) {
+        for i in 0 ..< (count - 1) {
             let slope = envelope[i + 1] - envelope[i]
-            if slope > steepestSlope { steepestSlope = slope; steepest = i }
+            if slope > steepestSlope { steepestSlope = slope
+                steepest = i
+            }
         }
         guard steepestSlope > 0 else { return coarseSample }
 
         // Walk back to where the rise began.
         let cutoff = riseFraction * steepestSlope
         var i = steepest
-        while i > 0, envelope[i] - envelope[i - 1] > cutoff { i -= 1 }
+        while i > 0, envelope[i] - envelope[i - 1] > cutoff {
+            i -= 1
+        }
 
         return lo + i
     }

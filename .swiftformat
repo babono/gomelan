@@ -1,0 +1,9 @@
+--swiftversion 5.9
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapcollections before-first
+--self remove
+--commas inline
+--semicolons never
+--stripunusedargs closure-only

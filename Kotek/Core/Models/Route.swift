@@ -1,5 +1,5 @@
 //
-//  Routes.swift
+//  Route.swift
 //  Kotek
 //
 //  Created by Dimas Nugraha on 05/10/26.
@@ -11,11 +11,11 @@ enum Route: String, Hashable {
     case welcome
     case checkingPermissions
     case permissionsBlocked
-    case chooseInstrument  // Multi-instrument selection
-    case choosingKeyCount  // setup 1/4
-    case framing  // setup 2/4
-    case aligning  // setup 3/4
-    case calibrating  // baseline · learn the voice
+    case chooseInstrument // Multi-instrument selection
+    case choosingKeyCount // setup 1/4
+    case framing // setup 2/4
+    case aligning // setup 3/4
+    case calibrating // baseline · learn the voice
     case baseline
     case chooseKotekan
     case countdown
@@ -28,7 +28,17 @@ enum Route: String, Hashable {
     case captureTraining
     case sensorTest
 
-    
+    /// Screens whose ground is the live camera feed rather than the pattern.
+    var isCameraScreen: Bool {
+        switch self {
+        case .framing, .aligning, .calibrating, .baseline,
+             .countdown, .playing, .malletTest, .detectionTest, .audioTest,
+             .captureTraining:
+            true
+        default:
+            false
+        }
+    }
 }
 
 nonisolated extension Route: AppEnum {
@@ -56,5 +66,4 @@ nonisolated extension Route: AppEnum {
         .captureTraining: "Capture Training",
         .sensorTest: "Sensor Test",
     ]
-    
 }

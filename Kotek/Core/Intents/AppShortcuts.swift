@@ -28,6 +28,4 @@ struct AppShortcuts: AppShortcutsProvider {
             systemImageName: "arrow.right.circle    "
         )
     }
-    
-    
 }

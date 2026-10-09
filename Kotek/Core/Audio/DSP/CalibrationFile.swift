@@ -14,7 +14,6 @@
 import Foundation
 
 struct CalibrationFile: Decodable {
-
     struct Key: Decodable {
         let name: String
         let vector: [Float]

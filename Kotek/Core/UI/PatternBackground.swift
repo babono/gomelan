@@ -79,24 +79,30 @@ struct PatternBackground: View {
             ZStack {
                 if showsGround { Theme.ground }
 
-                //R One tile of slack on each axis, so the visible window stays
-                //R covered at both ends of the travel: at offset 0 by the tiles
-                //R starting at the origin, and at -tile by the ones after them.
+                // R One tile of slack on each axis, so the visible window stays
+                // R covered at both ends of the travel: at offset 0 by the tiles
+                // R starting at the origin, and at -tile by the ones after them.
                 tiles
-                    .frame(width: geo.size.width + tile.width,
-                           height: geo.size.height + tile.height,
-                           alignment: .topLeading)
+                    .frame(
+                        width: geo.size.width + tile.width,
+                        height: geo.size.height + tile.height,
+                        alignment: .topLeading
+                    )
                     .opacity(opacity)
-                    .offset(x: drifted ? 0 : -tile.width,
-                            y: drifted ? 0 : -tile.height)
-                    //R Both axes wrap on ONE duration, so a single value drives
-                    //R the whole drift. The tile is wider than it is tall, so
-                    //R this travels at a shallower angle than the old
-                    //R equal-speed diagonal — on decoration moving nine points
-                    //R a second, past caring.
-                    .animation(.linear(duration: tile.width / speed)
-                                .repeatForever(autoreverses: false),
-                               value: drifted)
+                    .offset(
+                        x: drifted ? 0 : -tile.width,
+                        y: drifted ? 0 : -tile.height
+                    )
+                    // R Both axes wrap on ONE duration, so a single value drives
+                    // R the whole drift. The tile is wider than it is tall, so
+                    // R this travels at a shallower angle than the old
+                    // R equal-speed diagonal — on decoration moving nine points
+                    // R a second, past caring.
+                    .animation(
+                        .linear(duration: tile.width / speed)
+                            .repeatForever(autoreverses: false),
+                        value: drifted
+                    )
             }
             .clipped()
             .onAppear { drifted = true }
@@ -115,9 +121,15 @@ struct PatternBackground: View {
             while y < size.height {
                 var x: CGFloat = 0
                 while x < size.width {
-                    context.draw(symbol,
-                                 in: CGRect(x: x, y: y,
-                                            width: tile.width, height: tile.height))
+                    context.draw(
+                        symbol,
+                        in: CGRect(
+                            x: x,
+                            y: y,
+                            width: tile.width,
+                            height: tile.height
+                        )
+                    )
                     x += tile.width
                 }
                 y += tile.height

@@ -48,6 +48,7 @@ enum Theme {
     static let bronze = Color(hex: 0xC9A876)
 
     // MARK: - Legacy names, repointed
+
     //
     // `charcoal` and `stone` used to be dark-on-light text. Since every surface
     // is now dark, they resolve to the light end instead: the same call sites
@@ -74,6 +75,7 @@ enum Theme {
     static let onCream = Color(hex: 0x3D322C)
 
     // MARK: - Button colours
+
     //
     // These two come from the asset catalog rather than a hex literal here, so
     // the designer can change them without a code edit. Named for the JOB, like
@@ -193,10 +195,10 @@ enum Theme {
         String(format: "%g×", scale)
     }
 
-    //R The approach-track geometry lived here — strike line at 0.15, three
-    //R seconds of lookahead, 0.8s of trail. All of it belonged to a score that
-    //R scrolled. NotesRiver draws one still cycle now and has no lookahead to
-    //R size: the whole figure is always on screen.
+    // R The approach-track geometry lived here — strike line at 0.15, three
+    // R seconds of lookahead, 0.8s of trail. All of it belonged to a score that
+    // R scrolled. NotesRiver draws one still cycle now and has no lookahead to
+    // R size: the whole figure is always on screen.
 }
 
 // MARK: - Typography
@@ -211,11 +213,11 @@ enum Theme {
 /// instead, which is the thing we actually depend on.
 enum KotekFonts {
     static let displayRegular: String? = [
-        "DreamOrphans-Regular", "DreamOrphans",
+        "DreamOrphans-Regular", "DreamOrphans"
     ].first { UIFont(name: $0, size: 12) != nil }
 
     static let displayBold: String? = [
-        "DreamOrphans-Bold", "DreamOrphans-Regular",
+        "DreamOrphans-Bold", "DreamOrphans-Regular"
     ].first { UIFont(name: $0, size: 12) != nil }
 
     /// What the app actually resolved, for the diagnostics screen — so "is the
@@ -277,8 +279,7 @@ extension Font {
 extension View {
     /// The uppercase, letter-spaced label used for section headers and eyebrows.
     func eyebrow(_ color: Color) -> some View {
-        self
-            .font(.sans(12))
+        font(.sans(12))
             .textCase(.uppercase)
             .tracking(2.5)
             .foregroundStyle(color)
@@ -288,7 +289,7 @@ extension View {
 extension Text {
     /// Convenience for a tracked uppercase eyebrow string.
     func trackedLabel() -> some View {
-        self.textCase(.uppercase).tracking(2.5)
+        textCase(.uppercase).tracking(2.5)
     }
 }
 
@@ -300,5 +301,32 @@ extension Color {
         let g = Double((hex >> 8) & 0xFF) / 255
         let b = Double(hex & 0xFF) / 255
         self.init(.sRGB, red: r, green: g, blue: b, opacity: alpha)
+    }
+}
+
+// MARK: - Model UI Color Extensions
+
+extension Mastery.Rank {
+    /// Grey, green, blue, purple, gold. See `Theme.rankParia` and friends.
+    var color: Color {
+        switch self {
+        case .paria: Theme.rankParia
+        case .sudra: Theme.rankSudra
+        case .waisya: Theme.rankWaisya
+        case .ksatria: Theme.rankKsatria
+        case .brahmana: Theme.rankBrahmana
+        }
+    }
+}
+
+extension JudgementResult {
+    var color: Color {
+        switch self {
+        case .perfect: Theme.hit
+        case .good: Theme.hit.opacity(0.8)
+        case .lateEarly: Theme.upcoming
+        case .miss: Theme.miss
+        case .wrongKey: Theme.wrong
+        }
     }
 }

@@ -25,11 +25,23 @@ enum KotekanHalf: String, Equatable, Identifiable {
     case polos
     case sangsih
 
-    var id: String { rawValue }
-    var title: String { self == .polos ? "Polos" : "Sangsih" }
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        self == .polos ? "Polos" : "Sangsih"
+    }
+
     /// The half your partner plays — the one the app takes over when you play alone.
-    var other: KotekanHalf { self == .polos ? .sangsih : .polos }
-    var eyebrow: String { self == .polos ? "On the beat" : "Off the beat" }
+    var other: KotekanHalf {
+        self == .polos ? .sangsih : .polos
+    }
+
+    var eyebrow: String {
+        self == .polos ? "On the beat" : "Off the beat"
+    }
+
     var blurb: String {
         self == .polos
             ? "The straight half. You land on the pulse and hold the frame steady."
@@ -58,11 +70,11 @@ enum KotekanKind: Equatable {
 
 struct Kotekan: Identifiable, Equatable {
     var id: String
-    var name: String            // "Kotekan Telu"
-    var level: Int              // 1…3 — figures only; a melody has no rung
+    var name: String // "Kotekan Telu"
+    var level: Int // 1…3 — figures only; a melody has no rung
     var kind: KotekanKind = .figure
-    var toneLabel: String       // "3 tones", "4 tones", "Neighbour", "Sparse"
-    var blurb: String           // one-line description for the selection card
+    var toneLabel: String // "3 tones", "4 tones", "Neighbour", "Sparse"
+    var blurb: String // one-line description for the selection card
     /// One gong cycle laid out as 16 grid slots. A value is the key index to
     /// strike on that slot; nil is a rest.
     var polos: [Int?]
@@ -70,8 +82,10 @@ struct Kotekan: Identifiable, Equatable {
     /// Milliseconds per grid slot — sets the tempo (smaller = faster).
     var strokeMs: Int
 
-//    static let strokesPerCycle = 16
-    var slotsPerCycle: Int { polos.count }
+    ///    static let strokesPerCycle = 16
+    var slotsPerCycle: Int {
+        polos.count
+    }
 
     /// Highest key index touched by either half, so we know the smallest
     /// instrument this figure fits on.
@@ -89,8 +103,8 @@ struct Kotekan: Identifiable, Equatable {
     /// lanes stay put as the notes go by.
     var voicedKeyRange: ClosedRange<Int> {
         let used = (polos + sangsih).compactMap { $0 }
-        guard let low = used.min(), let high = used.max() else { return 0...0 }
-        return low...high
+        guard let low = used.min(), let high = used.max() else { return 0 ... 0 }
+        return low ... high
     }
 
     /// How many actual strokes a half plays in one cycle (rests excluded).
@@ -98,7 +112,9 @@ struct Kotekan: Identifiable, Equatable {
         pattern(half).compactMap { $0 }.count
     }
 
-    var cycleMs: Int { slotsPerCycle * strokeMs }
+    var cycleMs: Int {
+        slotsPerCycle * strokeMs
+    }
 
     /// The eyebrow above the name on a picker card.
     ///
@@ -113,7 +129,7 @@ struct Kotekan: Identifiable, Equatable {
     func makeSong(half: KotekanHalf, cycles: Int) -> Song {
         let grid = pattern(half)
         var notes: [Note] = []
-        for c in 0..<cycles {
+        for c in 0 ..< cycles {
             for (slot, value) in grid.enumerated() {
                 guard let key = value else { continue }
                 let t = (c * slotsPerCycle + slot) * strokeMs
@@ -123,13 +139,15 @@ struct Kotekan: Identifiable, Equatable {
         let duration = cycles * cycleMs
         // One "beat" per grid slot — keeps the metronome aligned to the pulse.
         let bpm = max(1, Int((60000.0 / Double(strokeMs)).rounded()))
-        return Song(id: "\(id)-\(half.rawValue)",
-                    title: name,
-                    difficulty: .beginner,
-                    bpm: bpm,
-                    requiredKeys: requiredKeys,
-                    durationMs: duration,
-                    notes: notes)
+        return Song(
+            id: "\(id)-\(half.rawValue)",
+            title: name,
+            difficulty: .beginner,
+            bpm: bpm,
+            requiredKeys: requiredKeys,
+            durationMs: duration,
+            notes: notes
+        )
     }
 }
 
@@ -147,15 +165,25 @@ extension Kotekan {
     /// The unison is also why the river reads these as it does — `NotesRiver`
     /// splits a slot both halves share into a polos/sangsih pair, so every note
     /// of a melody is drawn two-tone. That is accurate: everyone is on it.
-    static func melody(id: String,
-                       name: String,
-                       toneLabel: String,
-                       blurb: String,
-                       grid: [Int?],
-                       strokeMs: Int) -> Kotekan {
-        Kotekan(id: id, name: name, level: 0, kind: .melody,
-                toneLabel: toneLabel, blurb: blurb,
-                polos: grid, sangsih: grid, strokeMs: strokeMs)
+    static func melody(
+        id: String,
+        name: String,
+        toneLabel: String,
+        blurb: String,
+        grid: [Int?],
+        strokeMs: Int
+    ) -> Kotekan {
+        Kotekan(
+            id: id,
+            name: name,
+            level: 0,
+            kind: .melody,
+            toneLabel: toneLabel,
+            blurb: blurb,
+            polos: grid,
+            sangsih: grid,
+            strokeMs: strokeMs
+        )
     }
 
     /// Everything the picker offers: the figures first, then the melodies.
@@ -175,7 +203,7 @@ extension Kotekan {
             level: 1,
             toneLabel: "Telu family",
             blurb: "A short, repeating telu-family motif that introduces the basic interlocking movement.",
-            polos:   [7, nil, 6, 7, nil, 7, 6, nil],
+            polos: [7, nil, 6, 7, nil, 7, 6, nil],
             sangsih: [nil, 5, 6, nil, 5, nil, 6, 5],
             strokeMs: 250
         ),
@@ -185,7 +213,7 @@ extension Kotekan {
             level: 2,
             toneLabel: "Telu family",
             blurb: "A foundational telu-family kotekan built around a shared middle-note anchor.",
-            polos:   [4, nil, 5, 4, nil, 4, 5, nil],
+            polos: [4, nil, 5, 4, nil, 4, 5, nil],
             sangsih: [7, 6, nil, 7, 6, 7, nil, 6],
             strokeMs: 250
         ),
@@ -195,7 +223,7 @@ extension Kotekan {
             level: 3,
             toneLabel: "Empat · Leap",
             blurb: "An empat-family pattern defined by wide leaps between 1, 3, 5, and 6, without a shared anchor.",
-            polos:   [4, nil, 3, 4, nil, 4, 3, nil, 4, nil, 2, nil, 4, nil, 2, nil],
+            polos: [4, nil, 3, 4, nil, 4, 3, nil, 4, nil, 2, nil, 4, nil, 2, nil],
             sangsih: [nil, 2, 3, nil, 2, nil, 3, 2, nil, 1, nil, 3, nil, 1, nil, 3],
             strokeMs: 250
         ),
@@ -205,10 +233,76 @@ extension Kotekan {
             level: 4,
             toneLabel: "Capstone",
             blurb: "The capstone figure: a longer phrase with a wider pitch range and greater memory and hand-span demands.",
-            polos:   [6, nil, 7, nil, 6, 7, nil, 6, 7, nil, 8, nil, 7, 8, nil, 7, 8, nil, 7, nil, 8, 7, nil, 8, 7, nil, 6, nil, 7, 6, nil, 7],
-            sangsih: [nil, 6, nil, 5, 6, nil, 5, 6, nil, 7, nil, 6, 7, nil, 6, 7, nil, 8, nil, 9, 8, nil, 9, 8, nil, 7, nil, 8, 7, nil, 8, 7],
+            polos: [
+                6,
+                nil,
+                7,
+                nil,
+                6,
+                7,
+                nil,
+                6,
+                7,
+                nil,
+                8,
+                nil,
+                7,
+                8,
+                nil,
+                7,
+                8,
+                nil,
+                7,
+                nil,
+                8,
+                7,
+                nil,
+                8,
+                7,
+                nil,
+                6,
+                nil,
+                7,
+                6,
+                nil,
+                7
+            ],
+            sangsih: [
+                nil,
+                6,
+                nil,
+                5,
+                6,
+                nil,
+                5,
+                6,
+                nil,
+                7,
+                nil,
+                6,
+                7,
+                nil,
+                6,
+                7,
+                nil,
+                8,
+                nil,
+                9,
+                8,
+                nil,
+                9,
+                8,
+                nil,
+                7,
+                nil,
+                8,
+                7,
+                nil,
+                8,
+                7
+            ],
             strokeMs: 250
-        ),
+        )
     ]
 
     /// "Gundul gundul pacul cul, gembelengan" — 32 slots, one gong cycle.
@@ -221,7 +315,7 @@ extension Kotekan {
         3, nil, 4, nil, 3, nil, 4, nil, 5, nil, 6, nil, 6, nil, nil, nil,
         // "gembelengan"               7  1' 7  1' 7  5   ·   ·
         //  on the bilah:               8  9  8  9  8  7
-        7, nil, 8, nil, 7, nil, 8, nil, 7, nil, 6, nil, nil, nil, nil, nil,
+        7, nil, 8, nil, 7, nil, 8, nil, 7, nil, 6, nil, nil, nil, nil, nil
     ]
 
     /// "Wakul ngglimpang segane dadi sak latar" — 32 slots, and also sung twice.
@@ -235,7 +329,7 @@ extension Kotekan {
         //  Four beats of rest before the next phrase. That tail is a breath, not
         //  a gap to be trimmed: cut it and the second time round lands on top of
         //  the last note of the first.
-        3, nil, 5, nil, 4, nil, 3, nil, nil, nil, nil, nil, nil, nil, nil, nil,
+        3, nil, 5, nil, 4, nil, 3, nil, nil, nil, nil, nil, nil, nil, nil, nil
     ]
 
     /// Two Javanese *lagu dolanan* laid out for the gangsa, for exhibition
@@ -349,16 +443,16 @@ extension Kotekan {
                 //  the loop then drops a fifth back to the opening 5. If it is
                 //  meant to be a 4 — the octave below — it is one digit here.
                 6, nil, 6, nil, 5, nil, 5, nil, 4, nil, 5, nil, 8, nil,
-                nil, nil, nil, nil,
+                nil, nil, nil, nil
             ],
             strokeMs: 250
-        ),
+        )
     ]
 }
 
 /// Instrument-style bilah label: keys read 1…n, and the top key of a two-octave
 /// set echoes the low "1" an octave up, shown as "1·" (matches the design).
 func bilahLabel(_ index: Int, count: Int) -> String {
-    if count >= 6 && index == count - 1 { return "1·" }
+    if count >= 6, index == count - 1 { return "1·" }
     return "\(index + 1)"
 }

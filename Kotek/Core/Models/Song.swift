@@ -15,7 +15,9 @@ struct Note: Codable, Equatable, Identifiable {
     var timeMs: Int
     var durationMs: Int
 
-    var id: String { "\(keyIndex)-\(timeMs)" }
+    var id: String {
+        "\(keyIndex)-\(timeMs)"
+    }
 }
 
 enum Difficulty: String, Codable, Equatable {

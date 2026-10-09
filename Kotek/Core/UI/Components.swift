@@ -82,9 +82,11 @@ struct KotekWordmark: View {
             // `logo-kotek`.
             image("wordmark-kotek", width: width, aspect: Self.aspectRatio)
 
-            image("logo-sanskrit",
-                  width: width * Self.sanskritScale,
-                  aspect: Self.sanskritAspectRatio)
+            image(
+                "logo-sanskrit",
+                width: width * Self.sanskritScale,
+                aspect: Self.sanskritAspectRatio
+            )
         }
         // One accessibility element: VoiceOver reading two undescribed images
         // in a row is worse than reading the name once.
@@ -96,7 +98,9 @@ struct KotekWordmark: View {
     /// constrains — a resizable image in a width-only frame is free to take the
     /// height it likes, and the two marks would size independently of each
     /// other.
-    private func image(_ name: String, width: CGFloat, aspect: CGFloat) -> some View {
+    private func image(_ name: String, width: CGFloat, aspect: CGFloat)
+        -> some View
+    {
         Image(name)
             .resizable()
             .aspectRatio(contentMode: .fit)
@@ -135,7 +139,9 @@ struct KajarButtonStyle: PrimitiveButtonStyle {
 
 extension PrimitiveButtonStyle where Self == KajarButtonStyle {
     /// `.buttonStyle(.kajar)` — the app's `.plain`.
-    static var kajar: KajarButtonStyle { KajarButtonStyle() }
+    static var kajar: KajarButtonStyle {
+        KajarButtonStyle()
+    }
 }
 
 /// Every switch in the app ticks when it flips.
@@ -153,12 +159,16 @@ struct KajarToggleStyle: ToggleStyle {
             .toggleStyle(.switch)
             // On the VALUE, not on the touch: a switch can also be flipped by a
             // drag across it, and that should sound the same as tapping it.
-            .onChange(of: configuration.isOn) { KajarTick.strike() }
+            .onChange(of: configuration.isOn) {
+                KajarTick.strike()
+            }
     }
 }
 
 extension ToggleStyle where Self == KajarToggleStyle {
-    static var kajar: KajarToggleStyle { KajarToggleStyle() }
+    static var kajar: KajarToggleStyle {
+        KajarToggleStyle()
+    }
 }
 
 extension View {
@@ -172,8 +182,10 @@ extension View {
     ///
     /// Deliberately NOT used on the sliders. A slider changes continuously, and
     /// a kajar per step is a machine gun.
-    func kajarOnChange<V: Equatable>(of value: V) -> some View {
-        onChange(of: value) { KajarTick.strike() }
+    func kajarOnChange(of value: some Equatable) -> some View {
+        onChange(of: value) {
+            KajarTick.strike()
+        }
     }
 }
 
@@ -185,11 +197,11 @@ enum PillStyle { case filled, outlined, secondary }
 /// Labels are tracked and uppercased by default to match the spec.
 struct PillButton: View {
     let title: String
-    var systemImage: String? = nil
+    var systemImage: String?
     /// An icon AFTER the label. For the buttons that carry you forward through
     /// a flow — a leading icon labels what a button is, a trailing arrow says
     /// where it goes, and those are different jobs on the same control.
-    var trailingSystemImage: String? = nil
+    var trailingSystemImage: String?
     var style: PillStyle = .outlined
     var tint: Color = Theme.gold
     var uppercase: Bool = true
@@ -253,9 +265,9 @@ struct PillButton: View {
         switch style {
         // The primary button is a cream slab with dark type on it — the one
         // place in the app where ink-on-light is correct.
-        case .filled: return Theme.onButtonFill
-        case .outlined: return Theme.cream
-        case .secondary: return Theme.cream
+        case .filled: Theme.onButtonFill
+        case .outlined: Theme.cream
+        case .secondary: Theme.cream
         }
     }
 
@@ -268,7 +280,10 @@ struct PillButton: View {
             // behind, which on the camera screens is the instrument itself.
             RoundedRectangle(cornerRadius: Theme.radius)
                 .fill(Theme.cream.opacity(0.08))
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: Theme.radius))
+                .background(
+                    .ultraThinMaterial,
+                    in: RoundedRectangle(cornerRadius: Theme.radius)
+                )
         case .secondary:
             RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.inkRaised)
         }
@@ -279,13 +294,20 @@ struct PillButton: View {
 /// use it; it is just a non-uppercased filled `PillButton` with an icon.
 struct PrimaryButton: View {
     let title: String
-    var systemImage: String? = nil
+    var systemImage: String?
     var tint: Color = Theme.cream
     let action: () -> Void
 
     var body: some View {
-        PillButton(title: title, systemImage: systemImage, style: .filled,
-                   tint: tint, uppercase: false, fullWidth: true, action: action)
+        PillButton(
+            title: title,
+            systemImage: systemImage,
+            style: .filled,
+            tint: tint,
+            uppercase: false,
+            fullWidth: true,
+            action: action
+        )
     }
 }
 
@@ -293,7 +315,7 @@ struct PrimaryButton: View {
 /// so it reads on both paper (light) and stage (dark) screens.
 struct SecondaryButton: View {
     let title: String
-    var systemImage: String? = nil
+    var systemImage: String?
     let action: () -> Void
 
     var body: some View {
@@ -313,10 +335,14 @@ struct SecondaryButton: View {
             // HIG's 44pt minimum, which is exactly the kind of near-miss that
             // never gets noticed. Stated explicitly instead.
             .frame(minHeight: 44)
-            .background(Theme.cream.opacity(0.08),
-                        in: RoundedRectangle(cornerRadius: Theme.radius))
-            .overlay(RoundedRectangle(cornerRadius: Theme.radius)
-                .strokeBorder(Theme.gold.opacity(0.45), lineWidth: 1))
+            .background(
+                Theme.cream.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: Theme.radius)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.radius)
+                    .strokeBorder(Theme.gold.opacity(0.45), lineWidth: 1)
+            )
             .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
         .buttonStyle(.kajar)
@@ -341,13 +367,13 @@ struct SecondaryButton: View {
 /// whose whole character is soft.
 struct TopBar: View {
     var title: String
-    var backTitle: String? = nil
-    var onBack: (() -> Void)? = nil
-    var trailingText: String? = nil
+    var backTitle: String?
+    var onBack: (() -> Void)?
+    var trailingText: String?
     /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
-    var settingsAction: (() -> Void)? = nil
+    var settingsAction: (() -> Void)?
     /// When set, a help button is shown at the trailing edge, before the gear.
-    var infoAction: (() -> Void)? = nil
+    var infoAction: (() -> Void)?
     var tint: Color = Theme.cream
     var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
@@ -394,9 +420,9 @@ struct TopBar: View {
                             Image(systemName: "questionmark.circle")
                                 .font(.symbol(19, weight: .medium))
                                 .foregroundStyle(tint)
-                                //R Same 44pt target as the gear below, for the
-                                //R same reason: a bare glyph in a corner is a
-                                //R 19pt target and the HIG minimum is 44.
+                                // R Same 44pt target as the gear below, for the
+                                // R same reason: a bare glyph in a corner is a
+                                // R 19pt target and the HIG minimum is 44.
                                 .frame(width: 44, height: 44)
                                 .contentShape(Rectangle())
                         }
@@ -437,6 +463,7 @@ struct SectionLabel: View {
         self.text = text
         self.color = color
     }
+
     var body: some View {
         Text(text)
             .font(.sans(12, weight: .semibold))
@@ -475,7 +502,11 @@ struct CountStepper: View {
         .animation(.snappy(duration: 0.2), value: value)
     }
 
-    private func circle(system: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    private func circle(
+        system: String,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: system)
                 .font(.symbol(24, weight: .semibold))
@@ -487,7 +518,11 @@ struct CountStepper: View {
                 )
                 .overlay(
                     Circle()
-                        .strokeBorder(enabled ? tint.opacity(0.75) : lineColor.opacity(0.2), lineWidth: 2)
+                        .strokeBorder(
+                            enabled
+                                ? tint.opacity(0.75) : lineColor.opacity(0.2),
+                            lineWidth: 2
+                        )
                 )
                 .contentShape(Circle())
         }
@@ -509,7 +544,9 @@ struct StatBar: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(track)
                 Capsule().fill(color)
-                    .frame(width: max(6, geo.size.width * min(1, max(0, fraction))))
+                    .frame(
+                        width: max(6, geo.size.width * min(1, max(0, fraction)))
+                    )
             }
         }
         .frame(height: 7)
@@ -530,21 +567,21 @@ struct BusyOverlay: View {
 
     var body: some View {
         ZStack {
-            //R Same scrim as `GuidePanel`. Everything that floats over a screen
-            //R in this app is the same two moves — this depth of black, and the
-            //R panel below — so a wait and an explainer do not read as coming
-            //R from two different apps.
+            // R Same scrim as `GuidePanel`. Everything that floats over a screen
+            // R in this app is the same two moves — this depth of black, and the
+            // R panel below — so a wait and an explainer do not read as coming
+            // R from two different apps.
             Color.black.opacity(0.72).ignoresSafeArea()
-            //R The card was solid cream for a while: a dark card on a dark
-            //R camera feed used to disappear into it, three shades of near-black
-            //R stacked up. What that missed is that `Theme.charcoal` has been an
-            //R ALIAS OF CREAM since the palette went all-dark, so the label was
-            //R cream on cream and the message could not be read at all.
-            //R
-            //R The panel colours are the guide panel's, which solve the same
-            //R problem the right way round: `deep` is a step darker than the
-            //R ground, so it separates from a dark feed by being darker than it
-            //R rather than by being the one light thing on the screen.
+            // R The card was solid cream for a while: a dark card on a dark
+            // R camera feed used to disappear into it, three shades of near-black
+            // R stacked up. What that missed is that `Theme.charcoal` has been an
+            // R ALIAS OF CREAM since the palette went all-dark, so the label was
+            // R cream on cream and the message could not be read at all.
+            // R
+            // R The panel colours are the guide panel's, which solve the same
+            // R problem the right way round: `deep` is a step darker than the
+            // R ground, so it separates from a dark feed by being darker than it
+            // R rather than by being the one light thing on the screen.
             VStack(spacing: 16) {
                 ProgressView()
                     .controlSize(.large)
@@ -560,8 +597,10 @@ struct BusyOverlay: View {
             .padding(.vertical, 30)
             .frame(minWidth: 260)
             .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
+            )
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
         }
     }
@@ -596,7 +635,10 @@ struct ConfirmDialog: View {
             // panel swallows its own taps.
             Color.black.opacity(0.72)
                 .ignoresSafeArea()
-                .onTapGesture { KajarTick.strike(); onCancel() }
+                .onTapGesture {
+                    KajarTick.strike()
+                    onCancel()
+                }
 
             VStack(alignment: .leading, spacing: 10) {
                 Text(title)
@@ -615,13 +657,18 @@ struct ConfirmDialog: View {
 
                 HStack(spacing: 12) {
                     Spacer(minLength: 0)
-                    PillButton(title: "Cancel", style: .outlined, tint: Theme.cream, compact: true) {
+                    PillButton(
+                        title: "Cancel",
+                        style: .outlined,
+                        tint: Theme.cream,
+                        compact: true
+                    ) {
                         onCancel()
                     }
-                    //R The destructive button is outlined in its own colour
-                    //R rather than filled with it. `.filled` is the cream slab —
-                    //R the app's one "do this" — and the delete is precisely not
-                    //R the thing being recommended.
+                    // R The destructive button is outlined in its own colour
+                    // R rather than filled with it. `.filled` is the cream slab —
+                    // R the app's one "do this" — and the delete is precisely not
+                    // R the thing being recommended.
                     Button(action: onConfirm) {
                         Text(confirmTitle)
                             .textCase(.uppercase)
@@ -631,12 +678,21 @@ struct ConfirmDialog: View {
                             .lineLimit(1)
                             .padding(.horizontal, 18)
                             .frame(height: 38)
-                            .overlay(RoundedRectangle(cornerRadius: Theme.radius)
-                                .strokeBorder(confirmTint.opacity(0.6), lineWidth: 1.5))
-                            .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: Theme.radius)
+                                    .strokeBorder(
+                                        confirmTint.opacity(0.6),
+                                        lineWidth: 1.5
+                                    )
+                            )
+                            .clipShape(
+                                RoundedRectangle(cornerRadius: Theme.radius)
+                            )
                             // Drawn at 38, targeted at 44 — see `PillButton`.
                             .frame(minHeight: 44)
-                            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+                            .contentShape(
+                                RoundedRectangle(cornerRadius: Theme.radius)
+                            )
                     }
                     .buttonStyle(.kajar)
                 }
@@ -645,8 +701,10 @@ struct ConfirmDialog: View {
             .padding(24)
             .frame(maxWidth: 520)
             .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
+            )
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
             .padding(.horizontal, 28)
         }
@@ -658,24 +716,28 @@ extension View {
     ///
     /// Dismisses itself before running `action`, so the caller's handler is free
     /// to change screen without the dialog animating out over the next one.
-    func confirm(_ isPresented: Binding<Bool>,
-                 title: String,
-                 message: String,
-                 confirmTitle: String,
-                 confirmTint: Color = Theme.miss,
-                 action: @escaping () -> Void) -> some View {
+    func confirm(
+        _ isPresented: Binding<Bool>,
+        title: String,
+        message: String,
+        confirmTitle: String,
+        confirmTint: Color = Theme.miss,
+        action: @escaping () -> Void
+    ) -> some View {
         overlay {
             if isPresented.wrappedValue {
-                ConfirmDialog(title: title,
-                              message: message,
-                              confirmTitle: confirmTitle,
-                              confirmTint: confirmTint,
-                              onConfirm: {
-                                  isPresented.wrappedValue = false
-                                  action()
-                              },
-                              onCancel: { isPresented.wrappedValue = false })
-                    .transition(.opacity)
+                ConfirmDialog(
+                    title: title,
+                    message: message,
+                    confirmTitle: confirmTitle,
+                    confirmTint: confirmTint,
+                    onConfirm: {
+                        isPresented.wrappedValue = false
+                        action()
+                    },
+                    onCancel: { isPresented.wrappedValue = false }
+                )
+                .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.15), value: isPresented.wrappedValue)
@@ -708,7 +770,12 @@ struct RealignButton: View {
                 .foregroundStyle(Theme.terracotta)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
-                .overlay(Capsule().strokeBorder(Theme.terracotta.opacity(0.5), lineWidth: 1))
+                .overlay(
+                    Capsule().strokeBorder(
+                        Theme.terracotta.opacity(0.5),
+                        lineWidth: 1
+                    )
+                )
                 // Drawn small on purpose — it is a persistent affordance, not a
                 // call to action — but still tappable to the HIG minimum.
                 .frame(minHeight: 44)
@@ -728,18 +795,25 @@ struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        UIActivityViewController(
+            activityItems: items,
+            applicationActivities: nil
+        )
     }
 
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+    func updateUIViewController(
+        _ controller: UIActivityViewController,
+        context: Context
+    ) {}
 }
 
 /// So a URL can drive `.sheet(item:)` directly. The path is already unique,
 /// which is exactly what identity means here.
 extension URL: @retroactive Identifiable {
-    public var id: String { absoluteString }
+    public var id: String {
+        absoluteString
+    }
 }
-
 
 extension Comparable {
     /// `x.clamped(to: a, b)` — reads better inline than nesting min and max, and

@@ -18,8 +18,7 @@
 
 import AVFoundation
 
-nonisolated final class TitleMusic {
-
+final nonisolated class TitleMusic {
     private var player: AVAudioPlayer?
     /// Guards against a fade already in flight when the view disappears — the
     /// screen can be left by the button and by navigation at nearly the same
@@ -27,27 +26,44 @@ nonisolated final class TitleMusic {
     private var isFading = false
 
     /// Start looping, from the top. Safe to call when already playing.
-    func start(volume: Float = 1.0) {
+    @concurrent
+    func start(volume: Float = 1.0) async {
         guard player == nil else { return }
-        guard let url = Bundle.main.url(forResource: "bgm", withExtension: "m4a") else {
+        guard
+            let url = Bundle.main.url(forResource: "bgm", withExtension: "m4a")
+        else {
             print("[TitleMusic] bgm.m4a missing from the bundle")
             return
         }
         do {
-            let player = try AVAudioPlayer(contentsOf: url)
-            player.numberOfLoops = -1
-            player.volume = 0
-            player.prepareToPlay()
-            player.play()
-            // Fade UP too. The screen appears with a navigation animation and
-            // music arriving at full level on the same frame sounds like a
-            // mistake rather than an entrance.
-            player.setVolume(volume, fadeDuration: 1.2)
-            self.player = player
-            isFading = false
+            if let player = try await buildPlayer(url: url, volume: volume) {
+                self.player = player
+                isFading = false
+            }
         } catch {
             print("[TitleMusic] could not play bgm.m4a: \(error)")
         }
+    }
+
+    @concurrent
+    nonisolated func buildPlayer(url: URL, volume: Float) async throws
+        -> AVAudioPlayer?
+    {
+        let player: AVAudioPlayer?
+        do {
+            player = try AVAudioPlayer(contentsOf: url)
+            player?.numberOfLoops = -1
+            player?.volume = 0
+            player?.prepareToPlay()
+            player?.play()
+            // Fade UP too. The screen appears with a navigation animation and
+            // music arriving at full level on the same frame sounds like a
+            // mistake rather than an entrance.
+            player?.setVolume(volume, fadeDuration: 1.2)
+        } catch {
+            throw error
+        }
+        return player
     }
 
     /// Change the level of a bed that is already playing.

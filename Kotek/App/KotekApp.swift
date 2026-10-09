@@ -5,9 +5,9 @@
 //  Play gamelan anywhere — no sekaa required.
 //
 
-import SwiftUI
-import FactoryKit
 import AppIntents
+import FactoryKit
+import SwiftUI
 
 @main
 struct KotekApp: App {
@@ -24,11 +24,13 @@ struct KotekApp: App {
         // listens: on leaving the title screen, and again inside
         // `AudioEngineController.start`, which is the one door every listening
         // path goes through.
-        AudioSessionManager.configureForPlayback()
-        
-        let appState = AppState()
+        Task { @concurrent in
+            await AudioSessionManager.configureForPlayback()
+        }
+
+        let appState = Container.shared.router()
         _app = State(initialValue: appState)
-        
+
         // App Intents
         AppDependencyManager.shared.add(dependency: appState)
     }
@@ -43,8 +45,10 @@ struct KotekApp: App {
 
 /// Landscape-locked during the whole experience (PRD §6.2, §13.1).
 final class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication,
-                     supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+    func application(
+        _ application: UIApplication,
+        supportedInterfaceOrientationsFor window: UIWindow?
+    ) -> UIInterfaceOrientationMask {
         .landscape
     }
 }

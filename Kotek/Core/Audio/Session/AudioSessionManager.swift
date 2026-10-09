@@ -10,8 +10,7 @@
 
 import AVFoundation
 
-enum AudioSessionManager {
-
+nonisolated enum AudioSessionManager {
     /// The session for the splash and title screens, where nothing is captured.
     ///
     /// `.playback` rather than the capture configuration below, because
@@ -25,7 +24,8 @@ enum AudioSessionManager {
     /// Nothing before the capture flow needs a microphone, so nothing before it
     /// needs to pay that. `configure()` MUST be restored before any capture —
     /// see the call sites, which are deliberately belt-and-braces.
-    static func configureForPlayback() {
+    @concurrent
+    static func configureForPlayback() async {
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playback, mode: .default, options: [])
@@ -41,12 +41,15 @@ enum AudioSessionManager {
     /// this is what puts the recording configuration back. Detection depends on
     /// `.measurement`, so anything that listens calls this first rather than
     /// assuming it is already in force.
-    static func configure() {
+    @concurrent
+    static func configure() async {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playAndRecord,
-                                    mode: .measurement,
-                                    options: [.defaultToSpeaker, .allowBluetoothA2DP])
+            try session.setCategory(
+                .playAndRecord,
+                mode: .measurement,
+                options: [.defaultToSpeaker, .allowBluetoothA2DP]
+            )
             try session.setPreferredSampleRate(44100)
             try session.setPreferredIOBufferDuration(0.005)
             try session.setActive(true)
