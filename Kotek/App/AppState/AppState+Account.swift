@@ -129,6 +129,24 @@ extension AppState {
         screen = .welcome
     }
 
+    /// Gone for good, from every device: the server deletes the rows and the
+    /// user, and revokes Sign in with Apple. Then this phone is wiped the same
+    /// way signing out wipes it.
+    func deleteAccount(appleAuthorizationCode code: String) async {
+        accountError = nil
+        accountBusy = "Deleting account…"
+        defer { accountBusy = nil }
+        do {
+            try await auth.deleteAccount(appleAuthorizationCode: code)
+            wipeLocalData()
+            setAccount(nil)
+            screen = .welcome
+        } catch {
+            accountError = "Couldn't delete your account. Check your connection and try again."
+            log.error("account delete failed: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Profile
 
     /// After any Apple sign-in: keep Apple's name if it sent one, then ask for

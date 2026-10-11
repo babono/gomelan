@@ -98,6 +98,17 @@ nonisolated struct AuthRepository {
         )
     }
 
+    /// Delete the account and everything under it, server-side — the client
+    /// cannot delete its own user. See `supabase/functions/delete-account`.
+    /// The session is dead afterwards, so it is dropped here too.
+    func deleteAccount(appleAuthorizationCode code: String) async throws {
+        try await remote.client.functions.invoke(
+            "delete-account",
+            options: FunctionInvokeOptions(body: ["authorization_code": code])
+        )
+        await signOut()
+    }
+
     /// Forget the session on this phone.
     ///
     /// Local scope: other devices signed in to the same account stay signed in.

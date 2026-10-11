@@ -38,6 +38,27 @@ struct AccountSectionView: View {
                         viewModel.showSignOutConfirm = true
                     }
                 }
+
+                // Same treatment as deleting a gangsa: red, apart, and behind
+                // a confirmation.
+                Button(role: .destructive) {
+                    viewModel.showDeleteAccountConfirm = true
+                } label: {
+                    Label("Delete account", systemImage: "trash")
+                        .font(.sans(15, weight: Theme.buttonWeight))
+                        .tracking(Theme.buttonTracking)
+                        .foregroundStyle(Theme.miss)
+                        .padding(.vertical, 11)
+                        .padding(.horizontal, 18)
+                        .frame(minHeight: 44)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.radius)
+                                .strokeBorder(Theme.miss.opacity(0.5), lineWidth: 1)
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+                }
+                .buttonStyle(.kajar)
+                .padding(.top, 4)
             } else {
                 // Said plainly, because nothing else will say it: a guest
                 // finds out their progress was only on this phone the day
