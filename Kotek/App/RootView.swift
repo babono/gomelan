@@ -137,6 +137,8 @@ struct RootView: View {
             ResultsView()
         case .settings:
             SettingsView()
+        case .history:
+            PracticeHistoryView()
         case .baseline:
             StrikeBaselineView()
         case .malletTest:

@@ -68,6 +68,9 @@ struct InstrumentSectionView: View {
                 SecondaryButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath") {
                     app.openChooseInstrument()
                 }
+                SecondaryButton(title: "History", systemImage: "clock.arrow.circlepath") {
+                    app.openHistory()
+                }
             }
 
             Button(role: .destructive) {

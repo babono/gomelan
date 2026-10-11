@@ -434,6 +434,14 @@ final class AppState {
         screen = .chooseKotekan
     }
 
+    func openHistory() {
+        screen = .history
+    }
+
+    func closeHistory() {
+        screen = .settings
+    }
+
     func openCalibration() {
         screen = .calibrating
     }

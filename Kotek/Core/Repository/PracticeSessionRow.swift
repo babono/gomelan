@@ -52,3 +52,27 @@ nonisolated struct PracticeSessionRow: Encodable {
         try c.encodeIfPresent(session.driftMs, forKey: .driftMs)
     }
 }
+
+/// A filed session as the history screen reads it back. Only the columns it
+/// shows; `created_at` is filled in by the database.
+nonisolated struct PracticeHistoryRow: Decodable, Identifiable {
+    var id: String {
+        createdAt
+    }
+    var kotekanID: String?
+    var half: String
+    var tempoScale: Double
+    var accuracy: Double?
+    var landedNotes: Int
+    var bestStreak: Int
+    var createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case half, accuracy
+        case kotekanID = "kotekan_id"
+        case tempoScale = "tempo_scale"
+        case landedNotes = "landed_notes"
+        case bestStreak = "best_streak"
+        case createdAt = "created_at"
+    }
+}

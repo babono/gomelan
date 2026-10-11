@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Supabase
 
 nonisolated struct InstrumentRemoteRepository {
     private let remote: SupabaseRepository
@@ -28,7 +29,8 @@ nonisolated struct InstrumentRemoteRepository {
             name: p.name,
             type: p.type.rawValue,
             keyCount: p.keyCount,
-            createdAt: p.createdAt
+            createdAt: p.createdAt,
+            profile: try JSONDecoder().decode(AnyJSON.self, from: ProfileStore.encoded(p))
         )
         try await remote.upsert(row, in: "instruments")
 
@@ -53,6 +55,21 @@ nonisolated struct InstrumentRemoteRepository {
             andColumn: "key_index",
             gte: p.keyCount
         )
+    }
+
+    /// Every instrument this account has uploaded. `profile` is nil for a row
+    /// from before the column existed: it is there, but cannot be restored.
+    func fetchInstruments() async throws -> [(id: String, profile: InstrumentProfile?)] {
+        let uid = try await remote.userID()
+        let rows: [InstrumentRow] = try await remote.read(from: "instruments", matching: "user_id", equals: uid)
+        return rows.map { row in
+            let profile = row.profile.flatMap { json in
+                try? ProfileStore.decoded(InstrumentProfile.self, from: JSONEncoder().encode(json))
+            }
+            // Uppercase, as `UUID().uuidString` made it on the phone; the
+            // column hands it back lowercase.
+            return (row.id.uuidString, profile)
+        }
     }
 
     func deleteInstrument(id: String) async throws {

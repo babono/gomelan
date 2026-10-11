@@ -84,6 +84,22 @@ nonisolated struct SupabaseRepository {
         try await client.from(table).select().eq(column, value: value).execute().value
     }
 
+    func read<T: Decodable & Sendable>(
+        from table: String,
+        matching column: String,
+        equals value: some PostgrestFilterValue,
+        newestFirstBy orderColumn: String,
+        limit: Int
+    ) async throws -> [T] {
+        try await client.from(table)
+            .select()
+            .eq(column, value: value)
+            .order(orderColumn, ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+    }
+
     // MARK: - Update
 
     func update(
