@@ -111,9 +111,9 @@ struct WelcomeView: View {
     private var accountChoice: some View {
         VStack(spacing: 8) {
             HStack(spacing: 14) {
-                AppleSignInButton { token, nonce in
+                AppleSignInButton { token, nonce, name in
                     music.stop()
-                    Task { await app.signInWithApple(idToken: token, nonce: nonce) }
+                    Task { await app.signInWithApple(idToken: token, nonce: nonce, fullName: name) }
                 } onError: { _ in
                     app.accountError = "Couldn't sign in with Apple. Try again."
                 }

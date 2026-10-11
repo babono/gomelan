@@ -65,7 +65,7 @@ extension AppState {
 
     /// From the welcome screen. Nothing is on the phone yet, so there is no
     /// guest to link and nothing to warn about.
-    func signInWithApple(idToken: String, nonce: String) async {
+    func signInWithApple(idToken: String, nonce: String, fullName: String?) async {
         accountError = nil
         accountBusy = "Signing in…"
         defer { accountBusy = nil }
@@ -73,7 +73,7 @@ extension AppState {
             try await auth.signInWithApple(idToken: idToken, nonce: nonce, linkingGuest: false)
             setAccount(.apple)
             startSync()
-            begin()
+            await didSignInWithApple(fullName: fullName, returnTo: nil)
         } catch {
             accountError = "Couldn't sign in with Apple. Check your connection and try again."
             log.error("apple sign-in failed: \(error.localizedDescription)")
@@ -81,13 +81,14 @@ extension AppState {
     }
 
     /// From Settings: attach the Apple ID to this guest, keeping everything.
-    func linkApple(idToken: String, nonce: String) async {
+    func linkApple(idToken: String, nonce: String, fullName: String?) async {
         accountError = nil
         accountBusy = "Linking…"
         defer { accountBusy = nil }
         do {
             try await auth.signInWithApple(idToken: idToken, nonce: nonce, linkingGuest: true)
             setAccount(.apple)
+            await didSignInWithApple(fullName: fullName, returnTo: .settings)
         } catch let existing as AuthRepository.AccountExists {
             pendingSwitch = existing
         } catch {
@@ -109,6 +110,9 @@ extension AppState {
             wipeLocalData()
             setAccount(.apple)
             startSync()
+            // No name: Apple only sends it the first time an Apple ID signs
+            // in to the app, and an existing account is by definition not that.
+            await didSignInWithApple(fullName: nil, returnTo: .settings)
         } catch {
             // The guest was signed out first, so a failure here leaves no one
             // signed in. The local data is still here and syncs as a fresh
@@ -125,6 +129,73 @@ extension AppState {
         setAccount(nil)
         Task { [auth] in await auth.signOut() }
         screen = .welcome
+    }
+
+    // MARK: - Profile
+
+    /// After any Apple sign-in: keep Apple's name if it sent one, then ask for
+    /// the rest once. `returnTo` nil means carry on into the app.
+    ///
+    /// The name is saved HERE, before the profile step, because Apple sends it
+    /// only on the first sign-in ever — a player who backs out of the step
+    /// would otherwise lose it for good.
+    private func didSignInWithApple(fullName: String?, returnTo: Route?) async {
+        loadPlayer()
+        if playerName == nil, let fullName {
+            do {
+                try await auth.savePlayer(name: fullName, avatar: nil)
+                playerName = fullName
+            } catch {
+                log.error("saving apple name failed: \(error.localizedDescription)")
+            }
+        }
+        if playerAvatar == nil {
+            openProfileSetup(returnTo: returnTo)
+        } else if let returnTo {
+            screen = returnTo
+        } else {
+            begin()
+        }
+    }
+
+    /// The profile as the account last had it — from the stored session, so
+    /// it works offline.
+    func loadPlayer() {
+        let player = auth.player
+        playerName = player.name
+        playerAvatar = player.avatar.flatMap(Avatar.init)
+    }
+
+    func openProfileSetup(returnTo: Route?) {
+        profileReturn = returnTo
+        screen = .profileSetup
+    }
+
+    /// Returns whether it saved; the profile step stays up when it did not.
+    func savePlayer(name: String, avatar: Avatar) async -> Bool {
+        accountError = nil
+        accountBusy = "Saving…"
+        defer { accountBusy = nil }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            try await auth.savePlayer(name: trimmed.isEmpty ? nil : trimmed, avatar: avatar.rawValue)
+            if !trimmed.isEmpty { playerName = trimmed }
+            playerAvatar = avatar
+            return true
+        } catch {
+            accountError = "Couldn't save your profile. Check your connection and try again."
+            log.error("profile save failed: \(error.localizedDescription)")
+            return false
+        }
+    }
+
+    func closeProfileSetup() {
+        accountError = nil
+        if let profileReturn {
+            screen = profileReturn
+        } else {
+            begin()
+        }
     }
 
     // MARK: - Helpers
@@ -146,5 +217,7 @@ extension AppState {
         kotekans = Kotekan.bundled
         selectedKotekan = nil
         lastResult = nil
+        playerName = nil
+        playerAvatar = nil
     }
 }

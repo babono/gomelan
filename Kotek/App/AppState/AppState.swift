@@ -369,6 +369,12 @@ final class AppState {
     /// Set when a guest tries to link an Apple ID that already has an account;
     /// Settings asks before `confirmSwitch` drops this phone's progress.
     var pendingSwitch: AuthRepository.AccountExists?
+    /// The profile an Apple account carries. Nil for guests.
+    var playerName: String?
+    var playerAvatar: Avatar?
+    /// Where the profile step goes when it is done: Settings when it was
+    /// opened from there, nil to carry on into the app.
+    var profileReturn: Route?
 
     // MARK: - Remote Repositories
 
@@ -403,6 +409,7 @@ final class AppState {
         screen = .welcome
 
         account = Defaults.string("account").flatMap(Account.init)
+        if account == .apple { loadPlayer() }
         if account != nil { startSync() }
         #if DEBUG
             applyScreenshotScene()

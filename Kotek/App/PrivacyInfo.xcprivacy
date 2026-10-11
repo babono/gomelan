@@ -4,7 +4,8 @@
 <dict>
 	<!-- Required for App Store submission. What leaves the phone goes to the
 	     app's own Supabase project, keyed by a user id that is either an
-	     anonymous guest or an Apple ID (no name or email is requested):
+	     anonymous guest or an Apple ID (the name Apple shares, or one typed on
+	     the profile step; never an email): the player's name and avatar,
 	     instruments, kotekan the player made, and practice sessions. The audio
 	     dictionary and captured training crops stay in the app's container.
 	     Keep the App Store Connect privacy answers in step with this list. -->
@@ -14,6 +15,18 @@
 	<array/>
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeName</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeUserID</string>
