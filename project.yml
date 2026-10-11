@@ -91,10 +91,12 @@ packages:
     url: https://github.com/hmlongco/Factory
     from: "3.4.1"
   # Instruments, kotekan and practice sessions sync to Supabase. See
-  # `Core/Remote/RemoteStore.swift` for what goes up and what stays on the phone.
+  # `Core/Repository/` for what goes up and what stays on the phone. 2.55 is
+  # the floor because linking a guest to Apple needs
+  # `linkIdentityWithIdToken`, which 2.0 does not have.
   Supabase:
     url: https://github.com/supabase/supabase-swift
-    from: "2.0.0"
+    from: "2.55.0"
 
 targets:
   Kotek:

@@ -12,7 +12,7 @@ import Foundation
 /// `allCases` IS the running order — the rail reads "where am I" as the last
 /// case whose card has passed the top of the screen.
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case instrument, debug, tempo, audio, judging, camera, detection
+    case account, instrument, debug, tempo, audio, judging, camera, detection
 
     var id: String {
         rawValue
@@ -22,6 +22,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     /// gangsa's name, which only the view can supply.
     var title: String {
         switch self {
+        case .account: "Account"
         case .instrument: ""
         case .debug: "Debug"
         case .tempo: "Practice tempo"

@@ -17,9 +17,10 @@ final class SettingsViewModel {
 
     var draftName: String = ""
     var showDeleteConfirm = false
+    var showSignOutConfirm = false
 
     var metrics = SectionMetrics()
-    var active: SettingsSection = .instrument
+    var active: SettingsSection = .account
     var tailInset: CGFloat = 22
     var viewport: CGFloat = 0
     var jumpTarget: SettingsSection?
@@ -67,7 +68,7 @@ final class SettingsViewModel {
         let passed = SettingsSection.allCases.filter {
             (metrics.frames[$0]?.minY ?? .greatestFiniteMagnitude) <= Self.activeThreshold
         }
-        let next = passed.last ?? .instrument
+        let next = passed.last ?? .account
         if next != active { active = next }
 
         if let last = SettingsSection.allCases.last,

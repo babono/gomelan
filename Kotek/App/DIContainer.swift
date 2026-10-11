@@ -21,6 +21,10 @@ extension Container {
         self { SupabaseRepository() }.singleton
     }
 
+    nonisolated var authRepository: Factory<AuthRepository> {
+        self { AuthRepository(remote: self.supabaseRepository()) }.singleton
+    }
+
     nonisolated var instrumentRemoteRepository: Factory<InstrumentRemoteRepository> {
         self { InstrumentRemoteRepository(remote: self.supabaseRepository()) }.singleton
     }

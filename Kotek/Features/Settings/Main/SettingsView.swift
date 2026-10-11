@@ -43,6 +43,10 @@ private struct SettingsContentView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        section(.account) {
+                            AccountSectionView(viewModel: vm)
+                        }
+
                         section(.instrument) {
                             InstrumentSectionView(viewModel: vm)
                         }
@@ -93,6 +97,29 @@ private struct SettingsContentView: View {
         ) {
             vm.deleteInstrument()
         }
+        .confirm(
+            $vm.showSignOutConfirm,
+            title: "Sign out?",
+            message: "Your gangsa and records will be removed from this iPhone.",
+            confirmTitle: "Sign out"
+        ) {
+            app.signOut()
+        }
+        .confirm(
+            Binding(
+                get: { app.pendingSwitch != nil },
+                set: { if !$0 { app.pendingSwitch = nil } }
+            ),
+            title: "This Apple ID already has an account",
+            message: "Switch to it? The gangsa and records on this iPhone will be removed.",
+            confirmTitle: "Switch account"
+        ) { [pending = app.pendingSwitch] in
+            // Captured here because the dialog clears the binding — and with
+            // it `pendingSwitch` — before it runs this.
+            guard let pending else { return }
+            Task { await app.confirmSwitch(pending) }
+        }
+        .busy(app.accountBusy)
     }
 
     private func section(

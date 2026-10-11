@@ -357,8 +357,22 @@ final class AppState {
     var framedRegion = NormalizedRect(x: 0, y: 0.17, w: 1, h: 0.68)
     var seedMasksFromFraming = false
 
+    // MARK: - Account
+
+    /// Nil until the welcome screen's choice is made. Persisted, so the choice
+    /// is asked once — and again only after signing out or a data reset.
+    /// Read in `init`, after the data reset has had its chance to clear it.
+    var account: Account?
+    /// The label for the busy scrim while a sign-in is in flight.
+    var accountBusy: String?
+    var accountError: String?
+    /// Set when a guest tries to link an Apple ID that already has an account;
+    /// Settings asks before `confirmSwitch` drops this phone's progress.
+    var pendingSwitch: AuthRepository.AccountExists?
+
     // MARK: - Remote Repositories
 
+    @ObservationIgnored let auth = Container.shared.authRepository()
     @ObservationIgnored let instrumentRemote = Container.shared
         .instrumentRemoteRepository()
     @ObservationIgnored let kotekanRepo = Container.shared.kotekanRepository()
@@ -369,6 +383,7 @@ final class AppState {
     // MARK: - Initialization
 
     init() {
+        Self.resetLocalDataIfStale()
         let all = ProfileStore.loadAll()
         MalletHitClassifier.applyCropScale(
             mode: Defaults.int("cropScaleMode", 1)
@@ -387,13 +402,8 @@ final class AppState {
         }
         screen = .welcome
 
-        let pending = all
-        Task {
-            await refreshCatalogue()
-            for p in pending {
-                await push(p)
-            }
-        }
+        account = Defaults.string("account").flatMap(Account.init)
+        if account != nil { startSync() }
         #if DEBUG
             applyScreenshotScene()
         #endif
