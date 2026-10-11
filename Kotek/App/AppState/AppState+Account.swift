@@ -78,15 +78,18 @@ extension AppState {
         }
     }
 
-    /// From Settings: attach the Apple ID to this guest, keeping everything.
-    func linkApple(idToken: String, nonce: String, fullName: String?) async {
+    /// Attach the Apple ID to this guest, keeping everything. `origin` is the
+    /// screen it was asked from — Settings, or the results screen's prompt —
+    /// and where the player lands again afterwards.
+    func linkApple(idToken: String, nonce: String, fullName: String?, from origin: Route) async {
         accountError = nil
         accountBusy = "Linking…"
         defer { accountBusy = nil }
+        linkOrigin = origin
         do {
             try await auth.signInWithApple(idToken: idToken, nonce: nonce, linkingGuest: true)
             setAccount(.apple)
-            await didSignInWithApple(fullName: fullName, returnTo: .settings)
+            await didSignInWithApple(fullName: fullName, returnTo: origin)
         } catch let existing as AuthRepository.AccountExists {
             pendingSwitch = existing
         } catch {
@@ -110,7 +113,10 @@ extension AppState {
             startSync()
             // No name: Apple only sends it the first time an Apple ID signs
             // in to the app, and an existing account is by definition not that.
-            await didSignInWithApple(fullName: nil, returnTo: .settings)
+            // Back to Settings if that is where it started; anywhere else —
+            // the results screen — showed progress that has just been wiped,
+            // so carry on into the app instead.
+            await didSignInWithApple(fullName: nil, returnTo: linkOrigin == .settings ? .settings : nil)
         } catch {
             // The guest was signed out first, so a failure here leaves no one
             // signed in. The local data is still here and syncs as a fresh
@@ -145,6 +151,27 @@ extension AppState {
             accountError = "Couldn't delete your account. Check your connection and try again."
             log.error("account delete failed: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - Save Prompt
+
+    /// Once, ever: a guest who has just set their first record — or played a
+    /// few sessions without one — is asked on the results screen whether to
+    /// keep it with an Apple ID. The moment the progress is worth something
+    /// is the moment losing it would hurt, and also the moment it is most
+    /// likely to be heard rather than dismissed.
+    func offerSaveIfDue() {
+        guard account == .guest,
+              !Defaults.bool("hasSeenSavePrompt", false),
+              lastSetRecord || profile.sessionsPlayed >= 3
+        else { return }
+        showingSavePrompt = true
+    }
+
+    /// Either answer counts as having asked.
+    func dismissSavePrompt() {
+        showingSavePrompt = false
+        Defaults.set("hasSeenSavePrompt", true)
     }
 
     // MARK: - Profile

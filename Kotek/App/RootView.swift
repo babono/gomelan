@@ -62,6 +62,24 @@ struct RootView: View {
                 OnboardingView { app.closeOnboarding() }
             }
         }
+        // Account work can start on several screens — welcome, Settings, the
+        // results screen's save prompt — so its scrim and the switch question
+        // live here, once, rather than in each of them.
+        .busy(app.accountBusy)
+        .confirm(
+            Binding(
+                get: { app.pendingSwitch != nil },
+                set: { if !$0 { app.pendingSwitch = nil } }
+            ),
+            title: "This Apple ID already has an account",
+            message: "Switch to it? The gangsa and records on this iPhone will be removed.",
+            confirmTitle: "Switch account"
+        ) { [pending = app.pendingSwitch] in
+            // Captured here because the dialog clears the binding — and with
+            // it `pendingSwitch` — before it runs this.
+            guard let pending else { return }
+            Task { await app.confirmSwitch(pending) }
+        }
         // BELOW both, so a first run shows the splash finish and hand over to
         // the introduction rather than the introduction appearing behind it.
         .overlay {

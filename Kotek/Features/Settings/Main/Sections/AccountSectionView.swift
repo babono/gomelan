@@ -73,7 +73,7 @@ struct AccountSectionView: View {
                     .frame(maxWidth: 360, alignment: .leading)
 
                 AppleSignInButton { token, nonce, name in
-                    Task { await app.linkApple(idToken: token, nonce: nonce, fullName: name) }
+                    Task { await app.linkApple(idToken: token, nonce: nonce, fullName: name, from: .settings) }
                 } onError: { _ in
                     app.accountError = "Couldn't link your Apple ID. Try again."
                 }
