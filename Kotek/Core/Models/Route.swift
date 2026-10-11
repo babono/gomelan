@@ -11,6 +11,7 @@ enum Route: String, Hashable {
     case welcome
     case checkingPermissions
     case permissionsBlocked
+    case profileSetup
     case chooseInstrument // Multi-instrument selection
     case choosingKeyCount // setup 1/4
     case framing // setup 2/4
@@ -49,6 +50,7 @@ nonisolated extension Route: AppEnum {
         .welcome: "Welcome",
         .checkingPermissions: "Checking Permissions",
         .permissionsBlocked: "Permissions Blocked",
+        .profileSetup: "Profile Setup",
         .chooseInstrument: "Choose Instrument",
         .choosingKeyCount: "Choosing Key Count",
         .framing: "Framing",

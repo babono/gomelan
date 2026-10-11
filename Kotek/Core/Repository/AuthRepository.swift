@@ -32,6 +32,36 @@ nonisolated struct AuthRepository {
         remote.client.auth.currentUser.map { !$0.isAnonymous } ?? false
     }
 
+    /// What the player chose on the profile step.
+    struct Player {
+        var name: String?
+        var avatar: String?
+    }
+
+    /// Kept in the account's user metadata rather than a table of its own: it
+    /// rides along with the session, so a second phone has it the moment it
+    /// signs in, and it reads from the keychain offline.
+    ///
+    /// ponytail: user metadata is private to its owner. A leaderboard will need
+    /// a public `profiles` table; copy these two fields into it then.
+    var player: Player {
+        let metadata = remote.client.auth.currentUser?.userMetadata ?? [:]
+        return Player(
+            name: metadata["display_name"]?.stringValue,
+            avatar: metadata["avatar"]?.stringValue
+        )
+    }
+
+    /// Merged into the metadata server-side, so nil leaves a field alone.
+    /// `display_name` is also what the dashboard's Users list shows.
+    func savePlayer(name: String?, avatar: String?) async throws {
+        var data: [String: AnyJSON] = [:]
+        if let name { data["display_name"] = .string(name) }
+        if let avatar { data["avatar"] = .string(avatar) }
+        guard !data.isEmpty else { return }
+        try await remote.client.auth.update(user: UserAttributes(data: data))
+    }
+
     /// Sign in with an Apple ID token.
     ///
     /// `linkingGuest` is the Settings path: the token is attached to the guest

@@ -13,7 +13,9 @@ import SwiftUI
 struct AppleSignInButton: View {
     /// The ID token, and the raw nonce whose hash Apple sealed into it —
     /// Supabase re-hashes the raw one to check the token was minted for us.
-    let onToken: (_ idToken: String, _ nonce: String) -> Void
+    /// The name only arrives the first time an Apple ID signs in to the app;
+    /// every later sign-in, on any device, gets nil.
+    let onToken: (_ idToken: String, _ nonce: String, _ fullName: String?) -> Void
     var onError: (Error) -> Void = { _ in }
 
     @State private var nonce = ""
@@ -21,10 +23,10 @@ struct AppleSignInButton: View {
     var body: some View {
         SignInWithAppleButton(.continue) { request in
             nonce = Self.randomNonce()
-            // No name or email. The account is only somewhere to keep a
-            // gangsa's progress, and asking for either is more to disclose in
-            // the privacy label for nothing the app would show.
-            request.requestedScopes = []
+            // The name prefills the profile step. No email: the account is
+            // only somewhere to keep a gangsa's progress, and an address is
+            // more to disclose in the privacy label for nothing the app shows.
+            request.requestedScopes = [.fullName]
             request.nonce = Self.sha256(nonce)
         } onCompletion: { result in
             switch result {
@@ -34,7 +36,10 @@ struct AppleSignInButton: View {
                     let data = credential.identityToken,
                     let token = String(data: data, encoding: .utf8)
                 else { return }
-                onToken(token, nonce)
+                let name = credential.fullName.map {
+                    PersonNameComponentsFormatter.localizedString(from: $0, style: .default)
+                }
+                onToken(token, nonce, name?.isEmpty == false ? name : nil)
             case let .failure(error):
                 // Closing the sheet is a choice, not a failure.
                 if (error as? ASAuthorizationError)?.code == .canceled { return }

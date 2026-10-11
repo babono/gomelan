@@ -117,6 +117,8 @@ struct RootView: View {
             PermissionsView()
         case .permissionsBlocked:
             PermissionsBlockedView()
+        case .profileSetup:
+            ProfileSetupView()
         case .chooseInstrument:
             ChooseInstrumentView()
         case .choosingKeyCount:
