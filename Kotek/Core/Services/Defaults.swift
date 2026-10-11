@@ -30,6 +30,10 @@ nonisolated enum Defaults {
         UserDefaults.standard.string(forKey: key)
     }
 
+    static func strings(_ key: String) -> [String] {
+        UserDefaults.standard.stringArray(forKey: key) ?? []
+    }
+
     /// Whether anything has ever been written for this key.
     ///
     /// The difference between "the user chose false" and "the user has not

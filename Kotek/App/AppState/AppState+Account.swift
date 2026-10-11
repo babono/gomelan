@@ -34,6 +34,7 @@ extension AppState {
     static func resetLocalDataIfStale() {
         guard Defaults.int("dataEpoch", 1) < Self.dataEpoch else { return }
         ProfileStore.reset()
+        syncedInstrumentIDs = []
         Defaults.set("dataEpoch", Self.dataEpoch)
         Defaults.set("account", "")
         // ponytail: not awaited. The SDK drops the stored session before its
@@ -46,12 +47,9 @@ extension AppState {
     /// Before the choice, fetching the catalogue would sign in anonymously and
     /// leave an orphaned guest behind every player who goes on to pick Apple.
     func startSync() {
-        let pending = savedProfiles
         Task {
             await refreshCatalogue()
-            for p in pending {
-                await push(p)
-            }
+            await syncInstruments()
         }
     }
 
@@ -209,6 +207,7 @@ extension AppState {
     /// tuning are left alone: they belong to the phone, not the account.
     private func wipeLocalData() {
         ProfileStore.reset()
+        Self.syncedInstrumentIDs = []
         savedProfiles = []
         profile = ResourceLoader.defaultProfile()
         previousProfile = nil

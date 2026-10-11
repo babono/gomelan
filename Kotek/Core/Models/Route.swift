@@ -23,6 +23,7 @@ enum Route: String, Hashable {
     case playing
     case results
     case settings
+    case history
     case malletTest
     case detectionTest
     case audioTest
@@ -62,6 +63,7 @@ nonisolated extension Route: AppEnum {
         .playing: "Playing",
         .results: "Results",
         .settings: "Settings",
+        .history: "Practice History",
         .malletTest: "Mallet Test",
         .detectionTest: "Detection Test",
         .audioTest: "Audio Test",

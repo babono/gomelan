@@ -154,6 +154,12 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
     /// counters above.
     var records: [PatternRecord]? = nil
 
+    /// Stamped by `ProfileStore.save` on every write — calibration, a rename,
+    /// a finished session. What sync compares when two phones disagree.
+    /// `lastUsedAt` cannot do it: realigning the keys is a change worth
+    /// keeping, but it is not playing.
+    var updatedAt: String? = nil
+
     /// Whether this instrument has a learned strike-sound baseline.
     var hasLearnedBaseline: Bool {
         !(strikeBaseline?.isEmpty ?? true)
@@ -244,6 +250,12 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
     /// used, which is exactly when you most want it in front of you.
     var recency: Date {
         lastPlayedDate ?? InstrumentProfile.date(from: createdAt) ?? .distantPast
+    }
+
+    /// When this copy last changed, for sync. Profiles saved before
+    /// `updatedAt` existed fall back to their recency.
+    var modifiedAt: Date {
+        InstrumentProfile.date(from: updatedAt) ?? recency
     }
 
     /// ISO8601 in, `Date` out. A free function rather than a cached

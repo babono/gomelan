@@ -2,8 +2,8 @@
 //  PracticeSessionRepository.swift
 //  Kotek
 //
-//  Repository handling practice session record persistence.
-//  Scoped to the Play feature where sessions are executed and scored.
+//  Repository handling practice session records: filed by the Play feature
+//  when a session ends, read back by the history screen in Settings.
 //
 
 import Foundation
@@ -41,5 +41,18 @@ nonisolated struct PracticeSessionRepository {
             session: s
         )
         try await remote.create(row, in: "practice_session")
+    }
+
+    /// The most recent sessions played on one instrument, newest first.
+    func history(instrumentID: String, limit: Int = 50) async throws -> [PracticeHistoryRow] {
+        guard let id = UUID(uuidString: instrumentID) else { return [] }
+        _ = try await remote.userID()
+        return try await remote.read(
+            from: "practice_session",
+            matching: "instrument_id",
+            equals: id,
+            newestFirstBy: "created_at",
+            limit: limit
+        )
     }
 }

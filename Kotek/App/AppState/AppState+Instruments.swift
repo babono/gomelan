@@ -98,11 +98,16 @@ extension AppState {
     // MARK: - Profile Persistence & Remote Sync
 
     // ponytail: a failed write is logged and dropped, not queued. The launch
-    // push re-sends every instrument, so only practice sessions played offline
-    // are actually lost.
-    func push(_ p: InstrumentProfile) async {
-        do { try await instrumentRemote.saveInstrument(p) } catch {
+    // sync re-sends every instrument the server is behind on, so only practice
+    // sessions played offline are actually lost.
+    @discardableResult
+    func push(_ p: InstrumentProfile) async -> Bool {
+        do {
+            try await instrumentRemote.saveInstrument(p)
+            return true
+        } catch {
             log.error("instrument sync failed: \(error.localizedDescription)")
+            return false
         }
     }
 
@@ -111,17 +116,104 @@ extension AppState {
     }
 
     func saveProfile() {
-        ProfileStore.save(profile)
+        profile = ProfileStore.save(profile)
         savedProfiles = ProfileStore.loadAll()
         pushInBackground(profile)
     }
 
     /// Save a specific instrument, which may not be the active one.
     func saveInstrument(_ p: InstrumentProfile) {
-        ProfileStore.save(p)
+        let saved = ProfileStore.save(p)
         ProfileStore.setSelectedID(profile.id)
         savedProfiles = ProfileStore.loadAll()
-        pushInBackground(p)
+        pushInBackground(saved)
+    }
+
+    /// IDs of the instruments the server has confirmed holding. The only way
+    /// to tell "deleted on my other phone" from "made here and not uploaded
+    /// yet" — both are simply missing from the download — without keeping
+    /// deletion records on the server.
+    static var syncedInstrumentIDs: Set<String> {
+        get { Set(Defaults.strings("syncedInstrumentIDs")) }
+        set { Defaults.set("syncedInstrumentIDs", Array(newValue)) }
+    }
+
+    /// Bring this phone and the server into agreement.
+    ///
+    /// Apple accounts only: they are the ones that can be on two phones. For
+    /// each instrument the copy changed most recently wins, whichever side it
+    /// is on — so an iPad realigned this morning is not undone by a phone that
+    /// has not been opened since last week. A guest only pushes, as before.
+    func syncInstruments() async {
+        let local = ProfileStore.loadAll()
+        guard account == .apple else {
+            for p in local { await push(p) }
+            return
+        }
+        let remote: [(id: String, profile: InstrumentProfile?)]
+        do {
+            remote = try await instrumentRemote.fetchInstruments()
+        } catch {
+            // Offline, most likely. Do what a guest does; the next launch
+            // will reconcile.
+            log.error("instrument download failed: \(error.localizedDescription)")
+            for p in local { await push(p) }
+            return
+        }
+
+        let localByID = Dictionary(local.map { ($0.id.uppercased(), $0) }) { a, _ in a }
+        let remoteIDs = Set(remote.map { $0.id.uppercased() })
+        let synced = Set(Self.syncedInstrumentIDs.map { $0.uppercased() })
+        var merged: [InstrumentProfile] = []
+        var toPush: [InstrumentProfile] = []
+
+        for (id, theirs) in remote {
+            guard let mine = localByID[id.uppercased()] else {
+                // Nil `theirs` is a row from before the full profile went up:
+                // nothing to restore from.
+                if let theirs { merged.append(theirs) }
+                continue
+            }
+            if let theirs, theirs.modifiedAt > mine.modifiedAt {
+                merged.append(theirs)
+            } else {
+                merged.append(mine)
+                // A tie is already in step; anything else, the server is behind.
+                if theirs.map({ mine.modifiedAt > $0.modifiedAt }) ?? true { toPush.append(mine) }
+            }
+        }
+        for mine in local where !remoteIDs.contains(mine.id.uppercased()) {
+            // Gone from the server after it once held it: deleted elsewhere.
+            if synced.contains(mine.id.uppercased()) { continue }
+            merged.append(mine)
+            toPush.append(mine)
+        }
+
+        ProfileStore.saveAll(merged)
+        savedProfiles = ProfileStore.loadAll()
+        adoptSyncedActiveProfile()
+
+        var confirmed = remoteIDs
+        for p in toPush {
+            // Instruments without a UUID are never uploaded (see
+            // `saveInstrument`), so a "successful" push is not a confirmation.
+            if await push(p), UUID(uuidString: p.id) != nil {
+                confirmed.insert(p.id.uppercased())
+            }
+        }
+        Self.syncedInstrumentIDs = confirmed
+    }
+
+    /// The active instrument may have been replaced by a newer copy, or
+    /// deleted elsewhere. Left alone mid-setup: that profile is not saved yet,
+    /// and swapping it out would lose the step the player is on.
+    private func adoptSyncedActiveProfile() {
+        guard !isAddingNewInstrument else { return }
+        if let current = savedProfiles.first(where: { $0.id == profile.id }) {
+            if current != profile { activateInstrument(current) }
+        } else if let next = ProfileStore.loadSelected() {
+            activateInstrument(next)
+        }
     }
 
     /// Fold the audio dictionary a session learned back into the instrument.
@@ -149,11 +241,12 @@ extension AppState {
     /// The same save, off the main actor for loading spinners.
     func saveProfileAsync() async {
         let snapshot = profile
-        savedProfiles = await Task.detached {
-            ProfileStore.save(snapshot)
-            return ProfileStore.loadAll()
+        let (saved, all) = await Task.detached {
+            (ProfileStore.save(snapshot), ProfileStore.loadAll())
         }.value
-        pushInBackground(snapshot)
+        savedProfiles = all
+        profile = saved
+        pushInBackground(saved)
     }
 
     /// Kotekan this instrument has enough keys for.
