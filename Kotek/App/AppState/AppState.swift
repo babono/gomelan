@@ -375,6 +375,10 @@ final class AppState {
     /// Where the profile step goes when it is done: Settings when it was
     /// opened from there, nil to carry on into the app.
     var profileReturn: Route?
+    /// The screen a guest started linking from, for after a switch.
+    var linkOrigin: Route?
+    /// The one-time "keep your progress" prompt on the results screen.
+    var showingSavePrompt = false
 
     // MARK: - Remote Repositories
 

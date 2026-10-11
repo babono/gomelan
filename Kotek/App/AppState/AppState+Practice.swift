@@ -57,6 +57,7 @@ extension AppState {
         recordSession(landed: result.landedNotes)
         lastResult = result
         screen = .results
+        offerSaveIfDue()
 
         let session = PracticeSession(
             result: result,

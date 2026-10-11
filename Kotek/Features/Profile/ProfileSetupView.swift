@@ -128,7 +128,6 @@ struct ProfileSetupView: View {
         // field has no Done key of its own. Tapping the screen is the escape.
         .contentShape(Rectangle())
         .onTapGesture { nameFocused = false }
-        .busy(app.accountBusy)
         .onAppear {
             name = app.playerName ?? ""
             avatar = app.playerAvatar ?? Avatar.allCases.randomElement() ?? .wayang

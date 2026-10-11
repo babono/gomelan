@@ -83,7 +83,6 @@ struct WelcomeView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .ignoresSafeArea()
-        .busy(app.accountBusy)
         .task {
             await chime.strike()
         }

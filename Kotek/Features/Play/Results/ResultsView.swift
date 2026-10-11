@@ -46,6 +46,13 @@ struct ResultsView: View {
                     .padding(.vertical, 12)
                 }
             }
+            .overlay {
+                if app.showingSavePrompt {
+                    SaveProgressPrompt()
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: app.showingSavePrompt)
         } else {
             Color.clear.onAppear { app.backToKotekan() }
         }
