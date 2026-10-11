@@ -98,6 +98,14 @@ private struct SettingsContentView: View {
             vm.deleteInstrument()
         }
         .confirm(
+            $vm.showDeleteAccountConfirm,
+            title: "Delete your account?",
+            message: "Your gangsa, records and practice history are deleted from every device, and Gomelan stops using your Apple ID. This cannot be undone. Apple will ask you to confirm next.",
+            confirmTitle: "Delete account"
+        ) {
+            vm.deleteAccount()
+        }
+        .confirm(
             $vm.showSignOutConfirm,
             title: "Sign out?",
             message: "Your gangsa and records will be removed from this iPhone.",
