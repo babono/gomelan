@@ -40,12 +40,17 @@ private struct WaterfallContentView: View {
 
             GeometryReader { geo in
                 let framePad: CGFloat = 22
-                // The instrument is sized from its HEIGHT: a third of the
-                // stage, the rest is waterfall. The lane width then follows
-                // from a bronze bar's own proportions (`GangsaLayout`), so the
-                // gangsa keeps its shape on every phone instead of stretching
-                // to fill the width.
-                let gangsaHeight = min(132, geo.size.height * 0.36)
+                // The instrument is sized from its HEIGHT and the lane width
+                // follows from a bronze bar's own proportions (`GangsaLayout`),
+                // so the gangsa keeps its shape on every phone instead of
+                // stretching to fill the width.
+                //
+                // More than half of it hangs off the bottom of the screen. The near
+                // ends of the bars carry nothing — notes land on the top edge —
+                // so sinking them buys waterfall height without making the
+                // bars any smaller.
+                let gangsaHeight = min(136, geo.size.height * 0.4)
+                let sunk = gangsaHeight * Self.sunkFraction
                 let lane = GangsaLayout.lane(forHeight: gangsaHeight)
                 let lanesWidth = min(geo.size.width - framePad * 2 - 48,
                                      lane * CGFloat(vm.keyCount))
@@ -59,6 +64,7 @@ private struct WaterfallContentView: View {
                             .padding(.top, 18)
                     }
                     .frame(width: lanesWidth)
+                    .frame(maxHeight: .infinity)
 
                     GangsaStage(vm: vm, layout: layout, framePad: framePad)
                         .frame(width: lanesWidth + framePad * 2, height: gangsaHeight)
@@ -70,16 +76,24 @@ private struct WaterfallContentView: View {
                         .accessibilityAction(named: vm.tilted ? "Flat view" : "Tilted view") {
                             toggleTilt()
                         }
-
-                    Label(vm.tilted ? "Swipe up for the flat view" : "Swipe up to tilt",
+                        .padding(.bottom, -sunk)
+                }
+                .frame(maxWidth: .infinity)
+                // The hint can no longer sit under the gangsa — that is off the
+                // screen now — so it sits in the empty corner just above it,
+                // clear of the frame in both views (the tilt widens the frame).
+                .overlay(alignment: .bottomTrailing) {
+                    Label(vm.tilted ? "Swipe up for flat" : "Swipe up to tilt",
                           systemImage: "chevron.up")
                         .font(.sans(11, weight: .medium))
                         .foregroundStyle(Theme.cream.opacity(0.35))
-                        .padding(.top, 6)
-                        .padding(.bottom, 8)
+                        .padding(.trailing, 24)
+                        .padding(.bottom, gangsaHeight - sunk + 10)
                 }
-                .frame(maxWidth: .infinity)
             }
+            // Down to the physical edge of the screen, so "sunk" is measured
+            // from the glass and not from the home indicator's inset.
+            .ignoresSafeArea(.container, edges: .bottom)
         }
         .background(Theme.deep.ignoresSafeArea())
         .overlay {
@@ -133,6 +147,9 @@ private struct WaterfallContentView: View {
         .padding(.horizontal, 24)
         .padding(.vertical, 10)
     }
+
+    /// How much of the instrument sits below the screen edge.
+    private static let sunkFraction: CGFloat = 0.6
 
     private var swipeToTilt: some Gesture {
         DragGesture(minimumDistance: 24)

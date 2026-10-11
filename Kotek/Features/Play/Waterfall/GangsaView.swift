@@ -2,8 +2,11 @@
 //  GangsaView.swift
 //  Kotek
 //
-//  The instrument, drawn: a carved pelawah frame, bronze bilah on two cords,
-//  low and long on the left to high and short on the right. The waterfall
+//  The instrument, drawn: a carved pelawah frame, bronze bilah on two cords.
+//  Every bar the same size — the graduated lengths of a real gangsa were
+//  dropped as visual noise; the numbers say low → high well enough. The
+//  bottom of the instrument sinks off the screen (see WaterfallPlayView), so
+//  it costs less of the stage. The waterfall
 //  lands on the top edge of these bars, so both read their geometry from
 //  `GangsaLayout` and a lane is exactly one bilah wide.
 //
@@ -18,14 +21,14 @@ struct GangsaLayout {
     let width: CGFloat
 
     var lane: CGFloat { width / CGFloat(max(1, keyCount)) }
-    /// A little under the lane, so the dark well shows between bars the way
-    /// the resonators do on the real thing.
+    /// Most of the lane, leaving a narrow strip of the dark well between bars
+    /// the way the resonators show on the real thing.
     var barWidth: CGFloat { lane * Self.barFill }
 
-    private static let barFill: CGFloat = 0.7
-    /// Long side over short side of the LOWEST bar. Gangsa bilah are long and
-    /// narrow; a squarer bar reads as a xylophone toy.
-    private static let barAspect: CGFloat = 3.1
+    private static let barFill: CGFloat = 0.8
+    /// Long side over short side of a bar. Gangsa bilah are long and narrow;
+    /// a squarer bar reads as a xylophone toy.
+    private static let barAspect: CGFloat = 3.6
     static let barInsets: CGFloat = 24   // top + bottom, see GangsaView
 
     /// The lane that gives a properly proportioned bar in a gangsa this tall.
@@ -37,14 +40,6 @@ struct GangsaLayout {
         (CGFloat(key) + 0.5) * lane
     }
 
-    /// Lowest bar the full `maxLength`, highest 70% of it. Linear rather than
-    /// acoustic (length goes as 1/√f): an acoustic taper on a ten-bar pemade
-    /// is barely visible, and the step down is what says "low → high" at a
-    /// glance.
-    func barLength(_ key: Int, maxLength: CGFloat) -> CGFloat {
-        let t = keyCount > 1 ? CGFloat(key) / CGFloat(keyCount - 1) : 0
-        return maxLength * (1 - 0.3 * t)
-    }
 }
 
 /// Highlights for one bilah this frame, worked out by the caller from the
@@ -143,28 +138,18 @@ struct GangsaView: View {
     private func barRect(_ key: Int, maxLength: CGFloat) -> CGRect {
         let w = layout.barWidth
         return CGRect(x: framePad + layout.laneCenter(key) - w / 2, y: topInset,
-                      width: w, height: layout.barLength(key, maxLength: maxLength))
+                      width: w, height: maxLength)
     }
 
-    /// The two cords the bars hang on: one straight under the top pegs, one
-    /// stepping down with the bar ends — which is also how the real one looks.
+    /// The two cords the bars hang on, straight across under the pegs.
     private func drawCords(_ ctx: GraphicsContext, maxLength: CGFloat) {
         let cord = Color(hex: 0x8E2F22)
-        var top = Path()
-        top.move(to: CGPoint(x: framePad - 4, y: topInset + pegInset))
-        top.addLine(to: CGPoint(x: framePad + layout.width + 4, y: topInset + pegInset))
-        ctx.stroke(top, with: .color(cord), lineWidth: 2)
-
-        let pegs = (0 ..< layout.keyCount).map { key in
-            let r = barRect(key, maxLength: maxLength)
-            return CGPoint(x: r.midX, y: r.maxY - pegInset)
+        for y in [topInset + pegInset, topInset + maxLength - pegInset] {
+            var line = Path()
+            line.move(to: CGPoint(x: framePad - 4, y: y))
+            line.addLine(to: CGPoint(x: framePad + layout.width + 4, y: y))
+            ctx.stroke(line, with: .color(cord), lineWidth: 2)
         }
-        guard let first = pegs.first, let last = pegs.last else { return }
-        var bottom = Path()
-        bottom.move(to: CGPoint(x: framePad - 4, y: first.y))
-        pegs.forEach { bottom.addLine(to: $0) }
-        bottom.addLine(to: CGPoint(x: framePad + layout.width + 4, y: last.y))
-        ctx.stroke(bottom, with: .color(cord), lineWidth: 2)
     }
 
     private var pegInset: CGFloat { 12 }
@@ -197,10 +182,11 @@ struct GangsaView: View {
             ctx.fill(Path(ellipseIn: peg.insetBy(dx: 1.8, dy: 1.8)), with: .color(Theme.gold))
         }
 
-        // Key number, engraved halfway between the pegs.
+        // Key number, engraved just under the top peg — the only part of the
+        // bar sure to be on screen with most of the instrument sunk.
         ctx.draw(Text("\(key + 1)").font(.sans(11, weight: .bold))
                     .foregroundStyle(Color(hex: 0x3D2A16).opacity(0.75)),
-                 at: CGPoint(x: rect.midX, y: rect.midY))
+                 at: CGPoint(x: rect.midX, y: rect.minY + pegInset + 16))
 
         if !isVoiced {
             ctx.fill(shape, with: .color(Theme.ink.opacity(0.45)))
