@@ -48,8 +48,7 @@ private struct ChooseKotekanContentView: View {
                 muted: $vm.muted,
                 current: vm.current,
                 playable: vm.playable,
-                onStart: { vm.start($0) },
-                onStartWaterfall: { vm.startWaterfall($0) }
+                onStart: { vm.start($0) }
             )
         }
         .onAppear { vm.onAppear() }

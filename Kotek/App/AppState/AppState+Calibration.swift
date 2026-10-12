@@ -10,7 +10,14 @@ import Foundation
 extension AppState {
     // MARK: - Setup Flow
 
-    /// Step 1/4: how many keys does this gangsa have, and what is it called?
+    /// Step 1/2: how many keys does this gangsa have, and what is it called?
+    ///
+    /// Goes straight on to the voice (step 2/2). Framing and aligning the
+    /// camera mask were dropped from adding a gangsa: the keys start on the
+    /// default `layout(count:)` from `resize(to:)`, and `realign()` /
+    /// `realignInstrument(_:)` still reach `.aligning` for anyone who wants
+    /// the camera fit. The framing/aligning screens are kept, just unrouted
+    /// from here.
     func keyCountChosen(_ count: Int, name: String, type: GangsaType) {
         var updated = profile
         updated.resize(to: count)
@@ -21,16 +28,18 @@ extension AppState {
         if !isAddingNewInstrument {
             saveProfile()
         }
-        screen = .framing
+        // ponytail: was `screen = .framing`; the camera fit is skipped, so this
+        // is now the same hand-off the aligning step makes when it is done.
+        alignmentConfirmed()
     }
 
-    /// Step 2/4 → 3/4.
+    /// Framing → aligning. No longer reached when adding a gangsa.
     func framingConfirmed() {
         seedMasksFromFraming = true
         screen = .aligning
     }
 
-    /// Step 3/4 leads into the baseline (4/4).
+    /// Aligning done (or skipped by `keyCountChosen`) → the baseline.
     func alignmentConfirmed() {
         if isAddingNewInstrument {
             isAddingNewInstrument = false

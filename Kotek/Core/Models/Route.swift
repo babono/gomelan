@@ -13,10 +13,10 @@ enum Route: String, Hashable {
     case permissionsBlocked
     case profileSetup
     case chooseInstrument // Multi-instrument selection
-    case choosingKeyCount // setup 1/4
-    case framing // setup 2/4
-    case aligning // setup 3/4
-    case calibrating // baseline · learn the voice
+    case choosingKeyCount // setup 1/2
+    case framing // realign only — no longer part of adding a gangsa
+    case aligning // realign only — no longer part of adding a gangsa
+    case calibrating // setup 2/2 · baseline · learn the voice
     case baseline
     case chooseKotekan
     case countdown

@@ -52,7 +52,7 @@ private struct CalibrationContentView: View {
                     title: "Learn this gangsa's voice",
                     backTitle: "Cancel",
                     onBack: { viewModel.cancel() },
-                    trailingText: "4 / 4",
+                    trailingText: "2 / 2",
                     tint: Theme.cream,
                     accent: Theme.copper,
                     compact: true

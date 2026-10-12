@@ -131,12 +131,7 @@ final class ChooseKotekanViewModel {
 
     func start(_ k: Kotekan) {
         stopPreview()
-        app.chooseKotekan(k)
-    }
-
-    func startWaterfall(_ k: Kotekan) {
-        stopPreview()
-        app.chooseKotekanWaterfall(k)
+        app.playKotekan(k)
     }
 
     func onDragChanged(translationWidth: CGFloat) {
