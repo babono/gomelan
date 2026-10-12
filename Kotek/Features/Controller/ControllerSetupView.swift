@@ -12,25 +12,23 @@ import SwiftUI
 
 struct ControllerSetupView: View {
     @Environment(AppState.self) private var app
-    @State private var viewModel: ControllerSetupViewModel?
 
     var body: some View {
-        Group {
-            if let viewModel {
-                ControllerSetupContent(vm: viewModel)
-            }
-        }
-        .onAppear {
-            if viewModel == nil {
-                viewModel = ControllerSetupViewModel(app: app, sensor: Container.shared.sensorService())
-            }
-        }
+        ControllerSetupContent(app: app)
     }
 }
 
+/// Split from the view above so the view model can be made in `init`, where
+/// `app` is already in hand. It used to be an optional made in `onAppear` on
+/// an empty `Group` — which has nothing to appear, so the hook never ran and
+/// the screen stayed blank, with no Back to leave it by.
 private struct ControllerSetupContent: View {
-    let vm: ControllerSetupViewModel
+    @State private var vm: ControllerSetupViewModel
     @State private var quietTooLong = false
+
+    init(app: AppState, sensor: GangsaSensor = Container.shared.sensorService()) {
+        _vm = State(wrappedValue: ControllerSetupViewModel(app: app, sensor: sensor))
+    }
 
     private var sensor: GangsaSensor {
         vm.sensor
