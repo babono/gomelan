@@ -51,7 +51,8 @@ private struct ChooseKotekanContentView: View {
                 onStart: { vm.start($0) },
                 onCreate: { vm.create() },
                 onEdit: { vm.edit($0) },
-                onDelete: { vm.pendingDelete = $0 }
+                onDelete: { vm.pendingDelete = $0 },
+                onCoop: { vm.coop($0) }
             )
         }
         .confirm(

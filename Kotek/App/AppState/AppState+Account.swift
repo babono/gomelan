@@ -262,6 +262,7 @@ extension AppState {
         requireStrikeSound = false
         kotekans = Kotekan.bundled
         selectedKotekan = nil
+        coop = nil
         lastResult = nil
         playerName = nil
         playerAvatar = nil

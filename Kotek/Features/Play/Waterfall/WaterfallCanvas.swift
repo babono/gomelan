@@ -22,7 +22,10 @@ struct WaterfallCanvas: View {
     /// How tall one beat is. Beats, not ms, so the speed of the fall follows
     /// the tempo control and the spacing on screen means the same at 0.5× as
     /// at 1×. Six beats of warning fits the reference shot's density.
-    private func pxPerBeat(height: CGFloat) -> CGFloat {
+    ///
+    /// Static so coop's unison bands, drawn across two of these, land on the
+    /// same heights as the blocks they join.
+    static func pxPerBeat(height: CGFloat) -> CGFloat {
         max(34, height / 6)
     }
 
@@ -37,7 +40,7 @@ struct WaterfallCanvas: View {
         Canvas { ctx, size in
             let beatMs = engine.beatLengthMs
             guard beatMs > 0 else { return }
-            let pxPerMs = pxPerBeat(height: size.height) / beatMs
+            let pxPerMs = Self.pxPerBeat(height: size.height) / beatMs
             let aheadMs = Double(size.height) / pxPerMs
             let lineY = size.height
             func y(_ msAhead: Double) -> CGFloat { lineY - msAhead * pxPerMs }

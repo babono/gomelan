@@ -20,6 +20,9 @@ struct ChooseKotekanFooter: View {
     /// Only offered on the player's own figures; the built-ins are the app's.
     let onEdit: (Kotekan) -> Void
     let onDelete: (Kotekan) -> Void
+    /// Two players, one screen (§6.6.3). Its own setup screen checks the
+    /// figure fits both gangsa; here it only has to fit this one.
+    let onCoop: (Kotekan) -> Void
 
     var body: some View {
         HStack(spacing: 14) {
@@ -69,6 +72,12 @@ struct ChooseKotekanFooter: View {
             }
 
             if let current {
+                PillButton(title: "Coop", systemImage: "person.2.fill", style: .outlined, compact: true) {
+                    onCoop(current)
+                }
+                .disabled(!playable)
+                .opacity(playable ? 1 : 0.4)
+
                 PillButton(
                     title: "Start",
                     trailingSystemImage: "arrow.right",

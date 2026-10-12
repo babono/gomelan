@@ -243,8 +243,13 @@ final class PlayEngine {
     /// makes becomes meaningless.
     var partnerAudible = false
     var yourVoiceAudible = true
-    /// Stereo placement of the two halves, so they read as two players.
-    private let yourPan: Float = -0.32
+    /// Whether this engine sounds the gong, kempur, kajar and metronome. Off
+    /// only for the second engine of one-screen coop: two engines on one clock
+    /// would strike every gong twice, a hair apart, and it would ring flanged.
+    var colotomicAudible = true
+    /// Stereo placement of the two halves, so they read as two players. Coop
+    /// sets it per lane, so each player's guide comes from their own side.
+    var yourPan: Float = -0.32
     private let partnerPan: Float = 0.32
 
     /// Transient flash bookkeeping: keyIndex -> (kind, expiry host time)
@@ -385,12 +390,16 @@ final class PlayEngine {
         partnerFired = Array(repeating: false, count: partnerNotes.count)
     }
 
-    func start() {
+    /// `hostTime` is for engines that must share one clock — the two lanes of
+    /// one-screen coop. Two plain `start()`s a line apart would put them a few
+    /// microseconds out, harmless now, but every pause and resume would then
+    /// have to keep that gap exactly; one stamp keeps it zero by construction.
+    func start(at hostTime: Double? = nil) {
         // R Booting the audio engine loads and decodes 13 samples, which took
         // R long enough that the clock had already run on without the cues.
         // R Start the cue player first, then stamp the clock.
         cue?.start()
-        startHostTime = CACurrentMediaTime()
+        startHostTime = hostTime ?? CACurrentMediaTime()
     }
 
     /// Change speed mid-session without the music jumping.
@@ -408,13 +417,17 @@ final class PlayEngine {
     /// fractional part carries too, so nothing re-triggers and nothing is
     /// skipped — the next beat simply arrives sooner or later than the last one
     /// did.
-    func setTempoScale(_ scale: Double) {
+    ///
+    /// `now` lets coop's two engines rebase on one instant: each reading the
+    /// clock for itself would land them microseconds apart, and every later
+    /// change would add to the gap.
+    func setTempoScale(_ scale: Double, now: Double = CACurrentMediaTime()) {
         let next = min(2, max(0.25, scale))
         guard abs(next - tempoScale) > 0.001 else { return }
         let beatsElapsed = currentTimeMs / beatMs
         tempoScale = next
         recomputeTiming()
-        startHostTime = CACurrentMediaTime() - beatsElapsed * beatMs / 1000
+        startHostTime = now - beatsElapsed * beatMs / 1000
         // R The pass in progress spans two speeds, so it is not a fair reading of
         // R either. Same reasoning as a mid-pass change of half.
         cycleVoided = true
@@ -636,28 +649,11 @@ final class PlayEngine {
         currentBeatIndex = max(0, beatIndex)
         if beatIndex != lastBeatIndex, currentTimeMs >= 0 {
             lastBeatIndex = beatIndex
-            // R Unconditional. The colotomic frame is what everything else is
-            // R measured against — silence it and the figure floats free, with
-            // R nothing to be early or late against.
-            switch colotomicIndex(forBeat: beatIndex) {
-            case 0:
-                cue?.playGong()
-                cue?.playKajar()
-
-            case 4, 8, 12:
-                cue?.playKajar()
-
-            case 16:
-                cue?.playKempur()
-                cue?.playKajar()
-
-            case 20, 24, 28:
-                cue?.playKajar()
-
-            default:
-                break
-            }
-            if metronomeEnabled { cue?.playClick() }
+            // R Unconditional — but for coop's second engine, see
+            // R `colotomicAudible`. The colotomic frame is what everything else
+            // R is measured against — silence it and the figure floats free,
+            // R with nothing to be early or late against.
+            if colotomicAudible { soundColotomic(beat: beatIndex) }
         }
 
         let patternTime = currentTimeMs - patternOriginMs
@@ -686,6 +682,30 @@ final class PlayEngine {
             ? min(1, max(0, (patternTime - Double(scorePage) * pageMs) / pageMs))
             : 0
         rebuildTrack(patternTime: patternTime, beatMs: beatMs)
+    }
+
+    /// The gong, kempur and kajar of one beat of the 32-beat cycle, and the
+    /// metronome under them.
+    private func soundColotomic(beat: Int) {
+        switch colotomicIndex(forBeat: beat) {
+        case 0:
+            cue?.playGong()
+            cue?.playKajar()
+
+        case 4, 8, 12:
+            cue?.playKajar()
+
+        case 16:
+            cue?.playKempur()
+            cue?.playKajar()
+
+        case 20, 24, 28:
+            cue?.playKajar()
+
+        default:
+            break
+        }
+        if metronomeEnabled { cue?.playClick() }
     }
 
     /// Bank the pass that just ended.

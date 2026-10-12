@@ -190,6 +190,10 @@ struct RootView: View {
             ControllerSetupView()
         case .waterfall:
             WaterfallPlayView()
+        case .coopSetup:
+            CoopSetupView()
+        case .coopPlay:
+            CoopPlayView()
         }
     }
 }
