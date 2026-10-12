@@ -43,9 +43,7 @@ struct SessionOverviewCard: View {
                             .foregroundStyle(Theme.terracotta)
                     }
                     if model.phase == .done {
-                        Text(credit)
-                            .font(.sans(11))
-                            .foregroundStyle(Theme.stone.opacity(0.8))
+                        credit
                             .padding(.top, 2)
                     }
                 }
@@ -57,12 +55,36 @@ struct SessionOverviewCard: View {
     }
 
     /// Says what wrote it and from what. An AI's advice should never be
-    /// mistaken for the teacher's own words.
-    private var credit: String {
-        if !model.sources.isEmpty {
-            "Written on this iPhone by Apple Intelligence, drawing on \(model.sources.formatted(.list(type: .and)))."
-        } else {
-            "Written on this iPhone by Apple Intelligence."
+    /// mistaken for the teacher's own words, and the books it drew on get
+    /// their pages cited and a way to go and find them.
+    private var credit: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Written on this iPhone by Apple Intelligence\(model.citations.isEmpty ? "." : ", drawing on:")")
+                .font(.sans(11))
+                .foregroundStyle(Theme.stone.opacity(0.8))
+            ForEach(model.citations) { citation in
+                if let url = citation.book.url {
+                    // R Opens in Safari, not in-app: it is the publisher's page,
+                    // R and somebody about to buy a book wants the real browser.
+                    Link(destination: url) {
+                        HStack(spacing: 4) {
+                            Text(citation.label)
+                            Image(systemName: "arrow.up.right")
+                                .imageScale(.small)
+                        }
+                        .font(.sans(12, weight: .medium))
+                            .foregroundStyle(Theme.gold)
+                            .padding(.vertical, 6)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityHint("Opens where to get this book in Safari")
+                } else {
+                    Text(citation.label)
+                        .font(.sans(12, weight: .medium))
+                        .foregroundStyle(Theme.stone)
+                        .padding(.vertical, 6)
+                }
+            }
         }
     }
 

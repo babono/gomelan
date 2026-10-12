@@ -6,8 +6,17 @@
 //  `Kotek/Resources/BookIndex.json`, one book at a time:
 //
 //      swift scripts/build-book-index.swift add book.pdf "Book title" [--pages 29-469] [--ocr]
+//          [--author "Name"] [--url https://…] [--page-offset -27]
+//      swift scripts/build-book-index.swift set "Book title" [--title …] [--author …] [--url …] [--page-offset …]
 //      swift scripts/build-book-index.swift remove "Book title"
 //      swift scripts/build-book-index.swift list
+//
+//  The overview cites the pages it drew on and links to `--url`, where to get
+//  the book. `--page-offset` turns a PDF page into the number PRINTED on it,
+//  which is what a reader can find: printed = PDF page + offset. A scan of
+//  pages 5–210 starts at PDF page 1, so its offset is +4; a PDF with 27 pages
+//  of cover and front matter has −27. `set` changes these without re-reading
+//  the book.
 //
 //  `add` replaces a book already in the index under the same title, so
 //  re-running it after a better scan is safe. Only the book being added needs
@@ -53,7 +62,13 @@ struct StoredPassage: Codable {
 }
 
 struct Book: Codable {
-    let title: String
+    var title: String
+    var author: String?
+    /// Where to get the book — a publisher or bookshop page.
+    var url: String?
+    /// Printed page = PDF page + this. Passages store the PDF page, so a
+    /// wrong offset is fixed with `set` instead of a re-scan.
+    var pageOffset: Int?
     let passages: [StoredPassage]
 }
 
@@ -99,7 +114,12 @@ func writeIndex(_ index: Index, to url: URL) throws {
 
 func describe(_ index: Index) {
     for book in index.books {
-        print("  \(book.title) — \(book.passages.count) passages")
+        var line = "  \(book.title)"
+        if let author = book.author { line += " (\(author))" }
+        line += " — \(book.passages.count) passages"
+        if let offset = book.pageOffset { line += ", page offset \(offset)" }
+        print(line)
+        if let url = book.url { print("    \(url)") }
     }
 }
 
@@ -123,10 +143,19 @@ func flag(_ name: String) -> Bool {
 let indexURL = URL(fileURLWithPath: option("--index") ?? "Kotek/Resources/BookIndex.json")
 let pagesArg = option("--pages")
 let forceOCR = flag("--ocr")
+let newTitle = option("--title")
+let author = option("--author")
+let link = option("--url")
+let offsetArg = option("--page-offset")
+let pageOffset = offsetArg.flatMap { Int($0) }
+if offsetArg != nil, pageOffset == nil { fail("--page-offset wants a whole number, e.g. -27") }
+if let link, URL(string: link)?.scheme?.hasPrefix("http") != true { fail("--url wants an http(s) link") }
 
 let usage = """
     usage:
       swift scripts/build-book-index.swift add book.pdf "Book title" [--pages first-last] [--ocr]
+          [--author "Name"] [--url https://…] [--page-offset n]
+      swift scripts/build-book-index.swift set "Book title" [--title …] [--author …] [--url …] [--page-offset n]
       swift scripts/build-book-index.swift remove "Book title"
       swift scripts/build-book-index.swift list
     """
@@ -143,6 +172,18 @@ case "remove":
     let before = index.books.count
     index.books.removeAll { $0.title == args[1] }
     guard index.books.count < before else { fail("no book titled \"\(args[1])\"") }
+    try writeIndex(index, to: indexURL)
+    describe(index)
+    exit(0)
+
+case "set":
+    guard args.count == 2 else { fail(usage) }
+    guard var index = readIndex(indexURL) else { fail("no index at \(indexURL.path)") }
+    guard let i = index.books.firstIndex(where: { $0.title == args[1] }) else { fail("no book titled \"\(args[1])\"") }
+    if let newTitle { index.books[i].title = newTitle }
+    if let author { index.books[i].author = author }
+    if let link { index.books[i].url = link }
+    if let pageOffset { index.books[i].pageOffset = pageOffset }
     try writeIndex(index, to: indexURL)
     describe(index)
     exit(0)
@@ -350,11 +391,19 @@ for (n, p) in passages.enumerated() {
     if n % 200 == 0 { print("embedded \(n) / \(passages.count)") }
 }
 
-let replacing = index.books.contains { $0.title == title }
+// R A re-scan keeps the details given last time unless new ones are passed —
+// R nobody should have to retype the link to fix one blurred page.
+let previous = index.books.first { $0.title == title }
 index.books.removeAll { $0.title == title }
-index.books.append(Book(title: title, passages: stored))
+index.books.append(Book(
+    title: title,
+    author: author ?? previous?.author,
+    url: link ?? previous?.url,
+    pageOffset: pageOffset ?? previous?.pageOffset,
+    passages: stored
+))
 
 print("\(title): \(pdf.pageCount) pages (\(recognised) read by text recognition) → \(sentences.count) sentences → \(stored.count) passages")
-if replacing { print("replaced the earlier \"\(title)\"") }
+if previous != nil { print("replaced the earlier \"\(title)\"") }
 try writeIndex(index, to: indexURL)
 describe(index)

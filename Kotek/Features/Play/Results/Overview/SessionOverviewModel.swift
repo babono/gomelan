@@ -25,6 +25,39 @@ nonisolated struct SessionOverview {
     var suggestion: String
 }
 
+/// One book in the credit line, with the pages the overview was given from it.
+///
+/// "Given", not "used": the model is handed these passages and cannot say
+/// reliably which of them it leaned on — a small model asked to cite tends to
+/// cite whatever number it was shown. So the credit claims only what is true:
+/// the advice was written with these pages in front of it.
+struct BookCitation: Identifiable, Equatable {
+    let book: BookInfo
+    let pages: [Int]
+
+    var id: String {
+        book.title
+    }
+
+    /// "Michael Tenzer, Gamelan Gong Kebyar, pp. 213, 236"
+    var label: String {
+        let pageList = pages.map(String.init).joined(separator: ", ")
+        let where_ = pages.count == 1 ? "p. \(pageList)" : "pp. \(pageList)"
+        return [book.author, book.title, where_].compactMap { $0 }.joined(separator: ", ")
+    }
+
+    /// Grouped by book in the order the books first appear, pages ascending.
+    static func from(_ passages: [BookPassage]) -> [BookCitation] {
+        var order: [BookInfo] = []
+        var pages: [BookInfo: Set<Int>] = [:]
+        for p in passages {
+            if pages[p.book] == nil { order.append(p.book) }
+            pages[p.book, default: []].insert(p.page)
+        }
+        return order.map { BookCitation(book: $0, pages: pages[$0, default: []].sorted()) }
+    }
+}
+
 @Observable
 final class SessionOverviewModel {
     enum Phase: Equatable {
@@ -43,10 +76,9 @@ final class SessionOverviewModel {
     private(set) var phase: Phase = .thinking
     private(set) var summary = ""
     private(set) var suggestion = ""
-    /// The books the advice drew on, for the credit line — only those a
-    /// retrieved passage came from, best match first. Empty when no book is
-    /// bundled.
-    private(set) var sources: [String] = []
+    /// The books the advice drew on and the pages it was given from them,
+    /// best match first. Empty when no book is bundled.
+    private(set) var citations: [BookCitation] = []
 
     @ObservationIgnored private let log = Logger(subsystem: "Kotek", category: "overview")
 
@@ -78,8 +110,8 @@ final class SessionOverviewModel {
 
         phase = .thinking
         let passages = await BookIndex.bundled.passages(for: facts.query)
-        sources = passages.map(\.book).reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
-        log.debug("query: \(facts.query) → \(passages.map { "\($0.book) p\($0.page)" })")
+        citations = BookCitation.from(passages)
+        log.debug("query: \(facts.query) → \(passages.map { "\($0.book.title) p\($0.page)" })")
 
         var prompt = "Session results:\n\(facts.text)\n"
         if !passages.isEmpty {
