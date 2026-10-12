@@ -186,6 +186,8 @@ struct RootView: View {
             SensorPlayView()
         case .controllerSetup:
             ControllerSetupView()
+        case .waterfall:
+            WaterfallPlayView()
         }
     }
 }

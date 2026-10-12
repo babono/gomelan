@@ -23,7 +23,8 @@
 //
 //  One instance for the app (see `Container.sensorService`). Whoever is on
 //  screen says what it wants with `use(_:)`: RootView follows the active
-//  gangsa's controller, the setup screen browses, the sensor test takes any.
+//  gangsa's controller, the setup screen browses, the sensor test — and the
+//  waterfall screen on a gangsa with no controller set up — take any.
 //
 
 import CoreBluetooth

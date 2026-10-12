@@ -14,6 +14,7 @@ struct ChooseKotekanFooter: View {
     let current: Kotekan?
     let playable: Bool
     let onStart: (Kotekan) -> Void
+    let onStartWaterfall: (Kotekan) -> Void
 
     var body: some View {
         HStack(spacing: 14) {
@@ -44,6 +45,19 @@ struct ChooseKotekanFooter: View {
             Spacer()
 
             if let current {
+                PillButton(
+                    title: "Waterfall",
+                    systemImage: "pianokeys",
+                    style: .outlined,
+                    uppercase: false,
+                    compact: true
+                ) {
+                    onStartWaterfall(current)
+                }
+                .disabled(!playable)
+                .opacity(playable ? 1 : 0.4)
+                .accessibilityHint("Practise on a drawn gangsa with the strike sensors, without the camera")
+
                 PillButton(
                     title: "Start",
                     trailingSystemImage: "arrow.right",

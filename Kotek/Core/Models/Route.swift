@@ -30,6 +30,7 @@ enum Route: String, Hashable {
     case captureTraining
     case sensorTest
     case controllerSetup // strike controller · Flow D
+    case waterfall // play without the camera: notes fall onto a drawn gangsa
 
     /// Screens whose ground is the live camera feed rather than the pattern.
     var isCameraScreen: Bool {
@@ -71,5 +72,6 @@ nonisolated extension Route: AppEnum {
         .captureTraining: "Capture Training",
         .sensorTest: "Sensor Test",
         .controllerSetup: "Controller Setup",
+        .waterfall: "Waterfall Practice",
     ]
 }
