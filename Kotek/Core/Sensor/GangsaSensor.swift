@@ -12,11 +12,11 @@
 //  LEVEL (…0003…) · 3 bytes, one 0…255 vibration level per bar, 50 Hz.
 //
 //  The sensor answers WHICH bar and WHEN with no camera at all, which is what
-//  `SensorPlayView` exists to show. It does not yet join the vision/audio
-//  fusion in `PlayView`.
+//  `SensorPlayView` exists to show, and what Create Kotek records a figure
+//  from. It does not yet join the vision/audio fusion in `PlayView`.
 //
-//  ponytail: lives beside its only screen. Promote to `Core/` when PlayView
-//  starts taking sensor strikes.
+//  In `Core/` since Create Kotek became its second user. One instance per
+//  screen, not a singleton: each screen starts and stops its own scan.
 //
 
 import CoreBluetooth

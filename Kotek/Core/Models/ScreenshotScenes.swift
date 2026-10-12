@@ -50,6 +50,8 @@ extension AppState {
             screen = .chooseInstrument
         case "kotekan":
             screen = .chooseKotekan
+        case "create":
+            screen = .createKotek
         case "guide":
             screen = .chooseKotekan
             visibleGuide = .kotekan

@@ -14,6 +14,7 @@ struct ChooseKotekanFooter: View {
     let current: Kotekan?
     let playable: Bool
     let onStart: (Kotekan) -> Void
+    let onCreate: () -> Void
 
     var body: some View {
         HStack(spacing: 14) {
@@ -54,6 +55,14 @@ struct ChooseKotekanFooter: View {
                 }
                 .disabled(!playable)
                 .opacity(playable ? 1 : 0.4)
+            } else {
+                PillButton(
+                    title: "Create",
+                    trailingSystemImage: "arrow.right",
+                    style: .filled,
+                    compact: true,
+                    action: onCreate
+                )
             }
         }
         .padding(.horizontal, 28)

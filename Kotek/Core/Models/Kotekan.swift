@@ -21,6 +21,44 @@
 
 import Foundation
 
+/// The colotomic instruments a player can write into a figure in Create Kotek.
+/// The kempli is not one of them: it marks every beat, so the piano roll plays
+/// it on its own rather than asking for it to be written.
+enum ColotomicInstrument: String, CaseIterable, Identifiable {
+    case gong
+    case kajar
+    case klentong
+
+    var id: String {
+        rawValue
+    }
+
+    var title: String {
+        rawValue.capitalized
+    }
+
+    /// `hit_type` in `kotekan_hits`, which allows gong / kempur / kajar. A
+    /// klentong is stored as kempur, the hanging gong the schema and the
+    /// bundled samples have in its place.
+    var hitType: String {
+        self == .klentong ? "kempur" : rawValue
+    }
+
+    init?(hitType: String) {
+        switch hitType {
+        case "gong": self = .gong
+        case "kajar": self = .kajar
+        case "kempur": self = .klentong
+        default: return nil
+        }
+    }
+}
+
+struct ColotomicHit: Equatable {
+    var slot: Int
+    var instrument: ColotomicInstrument
+}
+
 enum KotekanHalf: String, Equatable, Identifiable {
     case polos
     case sangsih
@@ -73,6 +111,9 @@ struct Kotekan: Identifiable, Equatable {
     var name: String // "Kotekan Telu"
     var level: Int // 1…3 — figures only; a melody has no rung
     var kind: KotekanKind = .figure
+    /// Built in, or made by the player in Create Kotek. A player's figure has
+    /// no rung on the ladder, so it carries no level either.
+    var source: KotekanSource = .builtin
     var toneLabel: String // "3 tones", "4 tones", "Neighbour", "Sparse"
     var blurb: String // one-line description for the selection card
     /// One gong cycle laid out as 16 grid slots. A value is the key index to
@@ -81,6 +122,12 @@ struct Kotekan: Identifiable, Equatable {
     var sangsih: [Int?]
     /// Milliseconds per grid slot — sets the tempo (smaller = faster).
     var strokeMs: Int
+    /// Gong, kajar and klentong strokes a player wrote into their own figure.
+    /// Empty for every built-in.
+    ///
+    /// ponytail: stored and read back, but the play engine still lays its own
+    /// colotomic layer under every figure and does not play these.
+    var colotomic: [ColotomicHit] = []
 
     ///    static let strokesPerCycle = 16
     var slotsPerCycle: Int {
@@ -122,7 +169,7 @@ struct Kotekan: Identifiable, Equatable {
     /// the number is the reason to swipe right. Melodies carry only what they
     /// are — they sit in the same rail but not on the same ladder.
     var catalogLabel: String {
-        kind == .figure ? "Level \(level) · \(toneLabel)" : toneLabel
+        kind == .figure && source == .builtin ? "Level \(level) · \(toneLabel)" : toneLabel
     }
 
     /// Render the chosen half, repeated `cycles` times, into engine notes.

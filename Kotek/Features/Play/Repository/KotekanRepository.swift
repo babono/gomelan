@@ -62,6 +62,8 @@ nonisolated struct KotekanRepository {
             grid.enumerated().compactMap { slot, key in
                 key.map { KotekanHitRow(kotekanID: k.id, type: type, beatIndex: slot, keyIndex: $0) }
             }
+        } + k.colotomic.map {
+            KotekanHitRow(kotekanID: k.id, type: $0.instrument.hitType, beatIndex: $0.slot)
         }
         if !hits.isEmpty {
             try await remote.create(hits, in: "kotekan_hits")

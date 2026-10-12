@@ -409,6 +409,10 @@ final class AppState {
         screen = .chooseKotekan
     }
 
+    func openCreateKotek() {
+        screen = .createKotek
+    }
+
     func openSettings() {
         screen = .settings
     }

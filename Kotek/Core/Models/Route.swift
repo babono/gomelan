@@ -18,6 +18,7 @@ enum Route: String, Hashable {
     case calibrating // baseline · learn the voice
     case baseline
     case chooseKotekan
+    case createKotek
     case countdown
     case playing
     case results
@@ -56,6 +57,7 @@ nonisolated extension Route: AppEnum {
         .calibrating: "Calibrating",
         .baseline: "Baseline",
         .chooseKotekan: "Choose Kotekan",
+        .createKotek: "Create Kotek",
         .countdown: "Countdown",
         .playing: "Playing",
         .results: "Results",

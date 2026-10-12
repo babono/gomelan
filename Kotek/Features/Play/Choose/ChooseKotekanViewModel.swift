@@ -31,6 +31,11 @@ final class ChooseKotekanViewModel {
     init(app: AppState, cue: CuePlayer = Container.shared.cueService()) {
         self.app = app
         self.cue = cue
+        // Land on the figure last chosen — or just created — rather than the
+        // first card.
+        if let id = app.selectedKotekan?.id, let i = app.kotekans.firstIndex(where: { $0.id == id }) {
+            position = Double(i)
+        }
     }
 
     var kotekans: [Kotekan] {
@@ -41,8 +46,19 @@ final class ChooseKotekanViewModel {
         Int(position.rounded())
     }
 
+    /// Every figure, then the "+ Create" card.
+    var railCount: Int {
+        kotekans.count + 1
+    }
+
+    /// The figure at a rail slot, or nil for the create card.
+    func kotekan(atSlot slot: Int) -> Kotekan? {
+        let i = wrap(slot)
+        return i < kotekans.count ? kotekans[i] : nil
+    }
+
     var current: Kotekan? {
-        kotekans.isEmpty ? nil : kotekans[wrap(focusedSlot)]
+        kotekan(atSlot: focusedSlot)
     }
 
     var playable: Bool {
@@ -59,7 +75,7 @@ final class ChooseKotekanViewModel {
     }
 
     func wrap(_ i: Int) -> Int {
-        let n = kotekans.count
+        let n = railCount
         guard n > 0 else { return 0 }
         return ((i % n) + n) % n
     }
@@ -88,7 +104,7 @@ final class ChooseKotekanViewModel {
     }
 
     func startPreview() {
-        guard let k = current else { return }
+        guard let k = current else { return stopPreview() }
         engine.cue = cue
         engine.metronomeEnabled = false
         engine.partnerAudible = !muted
@@ -116,6 +132,11 @@ final class ChooseKotekanViewModel {
     func start(_ k: Kotekan) {
         stopPreview()
         app.chooseKotekan(k)
+    }
+
+    func create() {
+        stopPreview()
+        app.openCreateKotek()
     }
 
     func onDragChanged(translationWidth: CGFloat) {
@@ -154,7 +175,7 @@ final class ChooseKotekanViewModel {
             await KajarTick.strike()
         }
         if slot == focusedSlot {
-            let k = kotekans[wrap(slot)]
+            guard let k = kotekan(atSlot: slot) else { return create() }
             if isPlayable(k) { start(k) }
         } else {
             withAnimation(.snappy(duration: 0.32)) { position = Double(slot) }

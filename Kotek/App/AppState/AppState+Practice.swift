@@ -25,6 +25,20 @@ extension AppState {
         }
     }
 
+    /// File a figure from Create Kotek and land on it in the picker.
+    ///
+    /// Waits for the database rather than adding it locally and syncing behind:
+    /// the catalogue is REPLACED by whatever Supabase holds on the next launch,
+    /// so a figure that never reached it would vanish without a word. Throwing
+    /// lets the review screen keep the work and say so.
+    func saveKotekan(_ k: Kotekan) async throws {
+        let instrumentID = UUID(uuidString: profile.id) == nil ? nil : profile.id
+        try await kotekanRepo.saveKotekan(RemoteKotekan(k, source: k.source, instrumentID: instrumentID))
+        kotekans.append(k)
+        selectedKotekan = k
+        screen = .chooseKotekan
+    }
+
     // MARK: - Session Selection & Flow
 
     /// Take this figure and advance to countdown.
