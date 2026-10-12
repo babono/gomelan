@@ -402,6 +402,10 @@ final class AppState {
     // MARK: - Remote Repositories
 
     @ObservationIgnored let auth = Container.shared.authRepository()
+    /// The figure Create Kotek opens on, or nil for a new one. Read once, when
+    /// the screen builds its draft.
+    var editingKotekan: Kotekan?
+
     @ObservationIgnored let instrumentRemote = Container.shared
         .instrumentRemoteRepository()
     @ObservationIgnored let kotekanRepo = Container.shared.kotekanRepository()
@@ -453,6 +457,15 @@ final class AppState {
     }
 
     func openCreateKotek() {
+        editingKotekan = nil
+        screen = .createKotek
+    }
+
+    /// Create Kotek, opened on one of the player's own figures. Saving keeps
+    /// its id, so the row is updated in place rather than duplicated.
+    func openEditKotek(_ k: Kotekan) {
+        guard k.source != .builtin else { return }
+        editingKotekan = k
         screen = .createKotek
     }
 

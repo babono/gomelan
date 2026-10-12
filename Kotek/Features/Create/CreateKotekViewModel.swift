@@ -37,6 +37,8 @@ final class CreateKotekViewModel {
     let app: AppState
     let cue: CuePlayer
     let draft = KotekanDraft()
+    /// The saved figure this draft was opened from, or nil for a new one.
+    let editing: Kotekan?
 
     var step: Step = .compose
     /// The half the grid writes into, and the half the sensors record.
@@ -84,6 +86,8 @@ final class CreateKotekViewModel {
         self.app = app
         self.cue = cue
         self.sensor = sensor
+        editing = app.editingKotekan
+        if let editing { draft.load(editing) }
         firstSensorKey = min(firstSensorKey, max(0, keyCount - GangsaSensor.legacyInputCount))
     }
 
@@ -292,7 +296,8 @@ final class CreateKotekViewModel {
         leave()
         saving = true
         saveError = nil
-        let k = draft.kotekan(id: UUID().uuidString.lowercased())
+        // Same id when editing: the save then replaces the figure, not adds one.
+        let k = draft.kotekan(id: editing?.id ?? UUID().uuidString.lowercased())
         Task {
             defer { saving = false }
             do {

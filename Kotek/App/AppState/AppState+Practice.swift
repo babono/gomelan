@@ -31,12 +31,36 @@ extension AppState {
     /// the catalogue is REPLACED by whatever Supabase holds on the next launch,
     /// so a figure that never reached it would vanish without a word. Throwing
     /// lets the review screen keep the work and say so.
+    ///
+    /// An edit has the same id as the figure it came from, so it replaces that
+    /// figure — on the server (`saveKotekan` upserts) and in the rail.
     func saveKotekan(_ k: Kotekan) async throws {
-        let instrumentID = UUID(uuidString: profile.id) == nil ? nil : profile.id
+        let instrument = profile
+        let instrumentID = UUID(uuidString: instrument.id) == nil ? nil : instrument.id
+        // R The instrument goes up first, as it does before a practice
+        // R session: `kotekan.instrument_id` points at `instruments`, and a
+        // R player who writes a figure before ever finishing a session has
+        // R never uploaded this gangsa — the save failed on the foreign key.
+        if instrumentID != nil { try await instrumentRemote.saveInstrument(instrument) }
         try await kotekanRepo.saveKotekan(RemoteKotekan(k, source: k.source, instrumentID: instrumentID))
-        kotekans.append(k)
+        if let i = kotekans.firstIndex(where: { $0.id == k.id }) {
+            kotekans[i] = k
+        } else {
+            kotekans.append(k)
+        }
+        editingKotekan = nil
         selectedKotekan = k
         screen = .chooseKotekan
+    }
+
+    /// One of the player's own figures, from the server and the rail. Its
+    /// records stay on the gangsa: harmless, and a figure re-made under a new
+    /// id starts its own.
+    func deleteKotekan(_ k: Kotekan) async throws {
+        guard k.source != .builtin else { return }
+        try await kotekanRepo.deleteKotekan(id: k.id)
+        kotekans.removeAll { $0.id == k.id }
+        if selectedKotekan?.id == k.id { selectedKotekan = nil }
     }
 
     // MARK: - Session Selection & Flow

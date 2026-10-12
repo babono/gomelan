@@ -233,6 +233,37 @@ final class KotekanDraft {
         colotomic = s.colotomic
     }
 
+    // MARK: - From a kotekan
+
+    /// Open a saved figure for editing: its grid back onto the piano roll.
+    ///
+    /// A saved figure keeps only slots and milliseconds per slot, not the snap
+    /// it was written at, so the slot is read as the longest note value that
+    /// puts the tempo inside `bpmRange` — a 16th for anything written
+    /// straight, which gives back exactly what was saved.
+    func load(_ k: Kotekan) {
+        name = k.name
+        source = k.source
+        let candidates = [Subdivision.sixteenth.ticks, 16, 12, 8, 6, 4, 3]
+        let slot = candidates.first { ticks in
+            Self.bpmRange.contains(Self.bpm(strokeMs: k.strokeMs, slotTicks: ticks))
+        } ?? Subdivision.sixteenth.ticks
+        bpm = min(max(Self.bpm(strokeMs: k.strokeMs, slotTicks: slot), Self.bpmRange.lowerBound), Self.bpmRange.upperBound)
+        notes = [(KotekanHalf.polos, k.polos), (.sangsih, k.sangsih)].flatMap { half, grid in
+            grid.enumerated().compactMap { i, key in
+                key.map { DraftNote(half: half, key: $0, tick: i * slot, length: slot) }
+            }
+        }
+        colotomic = k.colotomic.map { DraftColotomic(instrument: $0.instrument, tick: $0.slot * slot) }
+        undoStack = []
+        redoStack = []
+    }
+
+    private static func bpm(strokeMs: Int, slotTicks: Int) -> Int {
+        guard strokeMs > 0 else { return 88 }
+        return Int((60000.0 * Double(slotTicks) / (Double(ticksPerQuarter) * Double(strokeMs))).rounded())
+    }
+
     // MARK: - As a kotekan
 
     /// Ticks per engine slot: the coarsest step every note lands on.

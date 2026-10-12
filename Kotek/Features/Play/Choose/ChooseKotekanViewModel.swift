@@ -155,6 +155,34 @@ final class ChooseKotekanViewModel {
         app.openCreateKotek()
     }
 
+    func edit(_ k: Kotekan) {
+        stopPreview()
+        app.openEditKotek(k)
+    }
+
+    /// The figure waiting on the delete confirmation.
+    var pendingDelete: Kotekan?
+    var deleting = false
+    var deleteError: String?
+
+    func delete(_ k: Kotekan) {
+        guard !deleting else { return }
+        deleting = true
+        deleteError = nil
+        Task {
+            defer { deleting = false }
+            do {
+                try await app.deleteKotekan(k)
+                // R The rail just lost a card; stay on the slot, which is now
+                // R the next figure (or the create card), rather than jumping.
+                position = Double(min(focusedSlot, railCount - 1))
+                startPreview()
+            } catch {
+                deleteError = "Couldn't delete \(k.name). Check your connection and try again."
+            }
+        }
+    }
+
     func onDragChanged(translationWidth: CGFloat) {
         let origin = dragOrigin ?? position
         dragOrigin = origin

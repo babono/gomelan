@@ -69,4 +69,12 @@ nonisolated struct KotekanRepository {
             try await remote.create(hits, in: "kotekan_hits")
         }
     }
+
+    /// A player's own figure, gone: its hits, then the row. Row-level security
+    /// limits both deletes to rows this user owns, so a built-in cannot be
+    /// removed from here even by mistake.
+    func deleteKotekan(id: String) async throws {
+        try await remote.delete(from: "kotekan_hits", matching: "kotekan_id", equals: id)
+        try await remote.delete(from: "kotekan", matching: "id", equals: id)
+    }
 }
