@@ -34,6 +34,7 @@ extension AppState {
     static func resetLocalDataIfStale() {
         guard Defaults.int("dataEpoch", 1) < Self.dataEpoch else { return }
         ProfileStore.reset()
+        KotekanStore.reset()
         syncedInstrumentIDs = []
         Defaults.set("dataEpoch", Self.dataEpoch)
         Defaults.set("account", "")
@@ -252,6 +253,7 @@ extension AppState {
     /// tuning are left alone: they belong to the phone, not the account.
     private func wipeLocalData() {
         ProfileStore.reset()
+        KotekanStore.reset()
         Self.syncedInstrumentIDs = []
         savedProfiles = []
         profile = ResourceLoader.defaultProfile()

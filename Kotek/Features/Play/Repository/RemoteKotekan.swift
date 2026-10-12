@@ -20,6 +20,7 @@ nonisolated struct RemoteKotekan {
     var instrumentID: String?
     var polos: [Int?]
     var sangsih: [Int?]
+    var colotomic: [ColotomicHit]
 
     init(
         id: String,
@@ -30,7 +31,8 @@ nonisolated struct RemoteKotekan {
         source: KotekanSource,
         instrumentID: String? = nil,
         polos: [Int?],
-        sangsih: [Int?]
+        sangsih: [Int?],
+        colotomic: [ColotomicHit] = []
     ) {
         self.id = id
         self.name = name
@@ -41,24 +43,28 @@ nonisolated struct RemoteKotekan {
         self.instrumentID = instrumentID
         self.polos = polos
         self.sangsih = sangsih
+        self.colotomic = colotomic
     }
 }
 
 nonisolated extension RemoteKotekan {
     /// Rebuild the two grids from the hit rows.
     ///
-    /// Gong, kempur and kajar hits are read past for now: the play engine lays
-    /// its own colotomic layer under every figure, so a figure that stores one
-    /// would only be heard twice.
+    /// Gong, kempur and kajar hits only come back on a player's own figure —
+    /// see `Kotekan.colotomic`.
     init?(row: KotekanRow, hits: [KotekanHitRow]) {
         guard row.slotsPerCycle > 0, row.bpm > 0 else { return nil }
         var polos = [Int?](repeating: nil, count: row.slotsPerCycle)
         var sangsih = polos
+        var colotomic: [ColotomicHit] = []
         for hit in hits where polos.indices.contains(hit.beatIndex) {
             switch hit.type {
             case "polos": polos[hit.beatIndex] = hit.keyIndex
             case "sangsih": sangsih[hit.beatIndex] = hit.keyIndex
-            default: continue
+            default:
+                if let instrument = ColotomicInstrument(hitType: hit.type) {
+                    colotomic.append(ColotomicHit(slot: hit.beatIndex, instrument: instrument))
+                }
             }
         }
         self.init(
@@ -70,7 +76,8 @@ nonisolated extension RemoteKotekan {
             source: row.source,
             instrumentID: row.instrumentID?.uuidString,
             polos: polos,
-            sangsih: sangsih
+            sangsih: sangsih,
+            colotomic: colotomic
         )
     }
 
@@ -81,12 +88,16 @@ nonisolated extension RemoteKotekan {
             id: k.id,
             name: k.name,
             description: k.blurb,
-            level: k.kind == .melody ? nil : k.level,
+            // NULL for a player's figure too: it has no rung, and `level` is
+            // what the picker prints. `source` keeps it from reading back as a
+            // melody — see `Kotekan(remote:)`.
+            level: k.kind == .melody || k.source != .builtin ? nil : k.level,
             bpm: Int((60000.0 / Double(k.strokeMs)).rounded()),
             source: source,
             instrumentID: instrumentID,
             polos: k.polos,
-            sangsih: k.sangsih
+            sangsih: k.sangsih,
+            colotomic: k.colotomic
         )
     }
 }
@@ -95,18 +106,22 @@ extension Kotekan {
     init(remote r: RemoteKotekan) {
         // The schema has no tone label or kind. A built-in takes its label from
         // the bundled copy of itself; a NULL level is what marks a melody, which
-        // keeps "Level 0" off its card exactly as `KotekanKind` intends.
+        // keeps "Level 0" off its card exactly as `KotekanKind` intends. Only
+        // for built-ins: a player's figure has a NULL level too, and is still a
+        // figure.
         let bundled = Kotekan.bundled.first { $0.id == r.id }
         self.init(
             id: r.id,
             name: r.name,
             level: r.level ?? 0,
-            kind: r.level == nil ? .melody : .figure,
+            kind: r.level == nil && r.source == .builtin ? .melody : .figure,
+            source: r.source,
             toneLabel: bundled?.toneLabel ?? (r.source == .automatic ? "Recorded" : "Your kotekan"),
             blurb: r.description ?? "",
             polos: r.polos,
             sangsih: r.sangsih,
-            strokeMs: Int((60000.0 / Double(r.bpm)).rounded())
+            strokeMs: Int((60000.0 / Double(r.bpm)).rounded()),
+            colotomic: r.source == .builtin ? [] : r.colotomic
         )
     }
 

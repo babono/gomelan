@@ -62,9 +62,19 @@ nonisolated struct KotekanRepository {
             grid.enumerated().compactMap { slot, key in
                 key.map { KotekanHitRow(kotekanID: k.id, type: type, beatIndex: slot, keyIndex: $0) }
             }
+        } + k.colotomic.map {
+            KotekanHitRow(kotekanID: k.id, type: $0.instrument.hitType, beatIndex: $0.slot)
         }
         if !hits.isEmpty {
             try await remote.create(hits, in: "kotekan_hits")
         }
+    }
+
+    /// A player's own figure, gone: its hits, then the row. Row-level security
+    /// limits both deletes to rows this user owns, so a built-in cannot be
+    /// removed from here even by mistake.
+    func deleteKotekan(id: String) async throws {
+        try await remote.delete(from: "kotekan_hits", matching: "kotekan_id", equals: id)
+        try await remote.delete(from: "kotekan", matching: "id", equals: id)
     }
 }

@@ -116,7 +116,7 @@ struct ResultsView: View {
                 .font(.serif(34))
                 .foregroundStyle(Theme.charcoal)
             Text(
-                "The figure has to come round at least once. Give it a full pass of the gong cycle and the score has something to measure."
+                "The pattern has to come round at least once. Give it a full pass of the gong cycle and the score has something to measure."
             )
             .font(.sans(15))
             .foregroundStyle(Theme.stone)

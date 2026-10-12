@@ -164,6 +164,8 @@ struct RootView: View {
             CalibrationView()
         case .chooseKotekan:
             ChooseKotekanView()
+        case .createKotek:
+            CreateKotekView()
         case .countdown, .playing:
             PlayView()
         case .results:

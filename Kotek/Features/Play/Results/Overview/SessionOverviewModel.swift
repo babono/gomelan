@@ -84,7 +84,7 @@ final class SessionOverviewModel {
 
     private static let instructions = """
         You are a patient Balinese gamelan teacher. A student has just practised \
-        one half of a kotekan, an interlocking figure, on a gangsa, and you are \
+        one half of a kotekan, an interlocking pattern, on a gangsa, and you are \
         given the measured results of the session.
         Write in plain, encouraging English, speaking to the student as "you".
         Use only the numbers you are given and never change them.
