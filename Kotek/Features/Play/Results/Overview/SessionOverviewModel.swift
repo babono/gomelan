@@ -43,9 +43,10 @@ final class SessionOverviewModel {
     private(set) var phase: Phase = .thinking
     private(set) var summary = ""
     private(set) var suggestion = ""
-    /// The book the advice drew on, for the credit line. Nil when none was
-    /// bundled or nothing was retrieved.
-    private(set) var source: String?
+    /// The books the advice drew on, for the credit line — only those a
+    /// retrieved passage came from, best match first. Empty when no book is
+    /// bundled.
+    private(set) var sources: [String] = []
 
     @ObservationIgnored private let log = Logger(subsystem: "Kotek", category: "overview")
 
@@ -77,8 +78,8 @@ final class SessionOverviewModel {
 
         phase = .thinking
         let passages = await BookIndex.bundled.passages(for: facts.query)
-        if !passages.isEmpty { source = await BookIndex.bundled.title }
-        log.debug("query: \(facts.query) → \(passages.count) passages (pages \(passages.map(\.page)))")
+        sources = passages.map(\.book).reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
+        log.debug("query: \(facts.query) → \(passages.map { "\($0.book) p\($0.page)" })")
 
         var prompt = "Session results:\n\(facts.text)\n"
         if !passages.isEmpty {

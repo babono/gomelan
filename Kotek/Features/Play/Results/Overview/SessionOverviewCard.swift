@@ -59,8 +59,8 @@ struct SessionOverviewCard: View {
     /// Says what wrote it and from what. An AI's advice should never be
     /// mistaken for the teacher's own words.
     private var credit: String {
-        if let source = model.source {
-            "Written on this iPhone by Apple Intelligence, drawing on \(source)."
+        if !model.sources.isEmpty {
+            "Written on this iPhone by Apple Intelligence, drawing on \(model.sources.formatted(.list(type: .and)))."
         } else {
             "Written on this iPhone by Apple Intelligence."
         }

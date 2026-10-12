@@ -28,6 +28,8 @@ import NaturalLanguage
 import os
 
 nonisolated struct BookPassage: Sendable, Equatable {
+    /// The title of the book it came from, for the credit line.
+    let book: String
     let page: Int
     let text: String
 }
@@ -47,12 +49,6 @@ actor BookIndex {
 
     init(resource: String) {
         self.resource = resource
-    }
-
-    /// The book's title, for the credit line under the overview. Nil when no
-    /// book is bundled.
-    var title: String? {
-        get async { await load()?.title }
     }
 
     /// The `count` passages closest to `query`, best first. Empty when no book
@@ -80,8 +76,10 @@ actor BookIndex {
 
     // MARK: - Loading
 
+    /// Every book's passages in one list. One corpus rather than one per book:
+    /// the question is which passages answer the query, wherever they are, and
+    /// keyword rarity and the vectors' mean are both measured across all of it.
     private struct Loaded {
-        let title: String
         let passages: [BookPassage]
         /// Nil when this phone does not have the index's embedding model.
         let semantic: Semantic?
@@ -89,14 +87,19 @@ actor BookIndex {
     }
 
     nonisolated private struct File: Decodable {
-        let title: String
         let language: String
-        /// The `NLContextualEmbedding` the vectors came from.
+        /// The `NLContextualEmbedding` every book's vectors came from — the
+        /// builder refuses to mix models in one index.
         let model: String
         let dimension: Int
-        let chunks: [Chunk]
+        let books: [Book]
 
-        nonisolated struct Chunk: Decodable {
+        nonisolated struct Book: Decodable {
+            let title: String
+            let passages: [Passage]
+        }
+
+        nonisolated struct Passage: Decodable {
             let page: Int
             let text: String
             /// Float32, little-endian, base64.
@@ -121,12 +124,12 @@ actor BookIndex {
             log.error("book index unreadable: \(String(describing: error))")
             return nil
         }
-        let passages = file.chunks.map { BookPassage(page: $0.page, text: $0.text) }
-        let vectors = file.chunks.map { Self.floats(base64: $0.vector, count: file.dimension) }
-        guard vectors.allSatisfy({ $0.count == file.dimension }) else { return nil }
+        let stored = file.books.flatMap { book in book.passages.map { (book.title, $0) } }
+        let passages = stored.map { BookPassage(book: $0.0, page: $0.1.page, text: $0.1.text) }
+        let vectors = stored.map { Self.floats(base64: $0.1.vector, count: file.dimension) }
+        guard !passages.isEmpty, vectors.allSatisfy({ $0.count == file.dimension }) else { return nil }
 
         return Loaded(
-            title: file.title,
             passages: passages,
             semantic: await semantic(file: file, vectors: vectors),
             keywords: Keywords(passages.map(\.text))
