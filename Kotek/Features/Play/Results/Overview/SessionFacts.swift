@@ -28,7 +28,7 @@ extension SessionFacts {
 
     init(result: SongResult, figure: String, half: String, tempo: String) {
         var lines: [String] = []
-        lines.append("Figure: \(figure), playing the \(half) half, at \(tempo) speed.")
+        lines.append("Pattern: \(figure), playing the \(half) half, at \(tempo) speed.")
         lines.append("Full cycles played: \(result.cycles.count).")
         if let best = result.best {
             lines.append("Best accuracy over \(best.range.count) cycles in a row: \(Self.percent(best.accuracy)).")
@@ -59,7 +59,7 @@ extension SessionFacts {
         }
 
         if let drift = Self.drift(of: strokes) {
-            lines.append("Across the whole figure, strokes land \(drift).")
+            lines.append("Across the whole pattern, strokes land \(drift).")
             problems.append(drift.contains("early") ? "rushing ahead of the beat" : "dragging behind the beat")
         }
 

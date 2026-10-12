@@ -46,7 +46,7 @@ struct AppGuideProgress: View {
         VStack(alignment: .leading, spacing: 10) {
             GuideBlock(
                 "Records",
-                "Your best eight cycles in a row on a figure is its record — one for each half and each speed, because playing sangsih at full tempo is not the same achievement as polos at half."
+                "Your best eight cycles in a row on a pattern is its record — one for each half and each speed, because playing sangsih at full tempo is not the same achievement as polos at half."
             )
 
             GuideBlock(
@@ -56,7 +56,7 @@ struct AppGuideProgress: View {
 
             GuideBlock(
                 "Where it slipped",
-                "After a session, the results show how each stroke of the cycle went on average, so you can see which part of the figure needs work."
+                "After a session, the results show how each stroke of the cycle went on average, so you can see which part of the pattern needs work."
             )
         }
     }

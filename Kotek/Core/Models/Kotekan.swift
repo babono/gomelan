@@ -279,7 +279,7 @@ extension Kotekan {
             name: "Babaru",
             level: 4,
             toneLabel: "Capstone",
-            blurb: "The capstone figure: a longer phrase with a wider pitch range and greater memory and hand-span demands.",
+            blurb: "The capstone pattern: a longer phrase with a wider pitch range and greater memory and hand-span demands.",
             polos: [
                 6,
                 nil,

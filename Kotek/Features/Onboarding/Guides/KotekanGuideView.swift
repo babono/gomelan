@@ -45,7 +45,7 @@ struct KotekanGuideLegend: View {
             SectionLabel("Reading a card", color: Theme.gold)
 
             GuideLead(
-                "Each card draws its figure across one gong cycle: time runs left to right, and the keys go low to high up the side. Swipe to hear the next."
+                "Each card draws its pattern across one gong cycle: time runs left to right, and the keys go low to high up the side. Swipe to hear the next."
             )
 
             VStack(spacing: 0) {

@@ -30,7 +30,7 @@ struct JudgingSectionView: View {
 
             Text(
                 app.judgementLeniency <= 1.05
-                    ? "A stroke has to land where the figure puts it. The honest setting, and the hardest."
+                    ? "A stroke has to land where the pattern puts it. The honest setting, and the hardest."
                     : "The same stroke earns a better grade, so a visitor who finds the right bilah is told so. It does not change whether a stroke registers — only what it scores."
             )
             .font(.sans(13)).foregroundStyle(Theme.cream.opacity(0.75)).frame(maxWidth: 360)
