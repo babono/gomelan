@@ -134,3 +134,6 @@ graphify-out/*
 GEMINI.md
 .gemini
 .claude
+# The AI overview's book index holds the full text of the book. Kept out of
+# this public repo until the rights to redistribute it are confirmed.
+Kotek/Resources/BookIndex.json

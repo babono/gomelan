@@ -19,6 +19,7 @@
 | Kotek Studio (make your own kotekan) | — | Not started; storage already exists (§v2-6.5) |
 | Coop mode | this document (§v2-6.6) | Specified, not built |
 | Design revamp | design files | In progress |
+| Results: cycle chart, AI overview, ranks removed | `results-ai-overview` | In progress — book index pending (§v2-6.8) |
 | Camera + microphone detection | `main` | **Being retired** (§v2-10) |
 
 ---
@@ -60,6 +61,7 @@
 - Kotek Studio: create, record, edit, delete your own kotekan
 - Coop: **one-screen** and **two-device**
 - Design revamp across every screen
+- Results: where in the cycle you slip, and an on-device AI overview; rank ladder removed
 - iPad layout
 
 ### Out of scope (v2)
@@ -264,6 +266,22 @@ Every screen is redrawn to the new design (the *Sangsih* design system begun in 
 - **One set of components** (`Core/UI`): buttons, dialogs, cards, avatar, sensor status — no per-screen variants.
 - **Motion** keeps time with the music where it can (the home screen already plays itself); never on the play screen outside the falling notes.
 
+### 6.8 Results: across the cycle, and the AI overview
+
+**Rank ladder removed.** The wangsa ranks (Paria → Brahmana) are gone from the results, the gangsa cards, Settings and the guide. The landed-note count stays, shown plainly, and is still synced.
+
+**Across the cycle.** The results chart no longer plots accuracy per pass. It shows the **average accuracy of each stroke of the figure** over the whole session, placed where the stroke falls in the gong cycle (rests show as gaps), pooled into **quarters** — opening, second, third, closing. The lowest quarter is shaded and named, but only if it is at least **5 points** below the best; otherwise the cycle reads "even all the way round".
+
+**AI overview.** Under the chart, two or three sentences: how the session went, and one specific way to practise the weakest part. Flow: **session facts → retrieve from the teaching book → foundation model → overview.**
+
+- **Facts** are computed in Swift, not by the model: figure, half, tempo, cycles, best accuracy, quarter averages, the weakest quarter's misses / wrong keys / timing drift, and overall drift. The model only phrases them and picks advice.
+- **Retrieval (RAG):** the team's teaching book (PDF) is split into ~700-character passages (main text only, `--pages`) and embedded **on a Mac** with Apple's NaturalLanguage **contextual embedding** (mean of token vectors) by `scripts/build-book-index.swift`, producing `Kotek/Resources/BookIndex.json`. On the phone the facts become a query in the book's own vocabulary, embedded with the same model, and the 3 best passages are picked by a **hybrid score**: cosine similarity (vectors centred on the book's mean) plus keyword BM25, each scaled 0–1 and weighted equally. Vectors alone ranked drum technique above kotekan, because the embedding barely knows Balinese terms. If the embedding model can't be loaded, retrieval falls back to keywords alone. No vector database or server: ~1,700 passages are compared in well under a millisecond.
+- **Book index is not in git.** `BookIndex.json` contains the book's full text and this repo is public, so it is gitignored until the right to redistribute the text is confirmed (§v2-15). Builds made without it still work; the overview is then written from the session alone.
+- **Model:** Apple's on-device **Foundation Models** (iOS 26), with guided generation into a summary and a suggestion, streamed as it writes. English only.
+- **Availability:** Apple Intelligence iPhones only. If Apple Intelligence is off, or the model is still downloading, the card says so; on an ineligible phone it is not shown. A failed generation shows nothing — the score is the result, the overview is commentary.
+- **Privacy:** nothing leaves the device; App Store privacy answers do not change.
+- **Credit:** every overview says it was written by Apple Intelligence on the phone, and names the book it drew on.
+
 ---
 
 ## 7. Timing & judgement
@@ -322,6 +340,7 @@ Camera-era fields (`rect`, `corners`, `strike_baseline`, `fingerprint`, `linear_
 | `Features/Coop` | Mode choice, player 2 setup, lobby, coop results; `Core/Coop` for the two-device transport and clock sync |
 | `Core/Repository` | Supabase repositories (shipped) |
 | `Core/Audio/Playback` | Kept — cues, gong, samples |
+| `Features/Play/Results/Overview` | AI overview: `BookIndex` (retrieval), `SessionFacts`, `SessionOverviewModel` (Foundation Models) |
 
 **Retired** (removed from the flow in v2, deleted in one cleanup PR once the waterfall ships):
 `Core/Vision` (camera, frame buffer, BilahFinder, mallet and bilah CoreML models — ~6.6 MB), `Core/Audio/DSP` detection pipeline (onset, FFT, fingerprinting, classifier, decomposer), the camera play screen and overlay, the framing / aligning / acoustic calibration screens, and the detection diagnostics. **Camera and microphone permissions are removed** with them (§v2-12). `CLAUDE.md`'s architecture section is rewritten in the same PR.
@@ -389,6 +408,8 @@ Two-device coop (7) can slip to a v2.x without affecting the rest.
 | One screen unreadable from two gangsa | One-screen coop fails | iPad-first; paper/prototype test of the two-lane layout |
 | Two-device clock drift | Interlock smears | Re-sync at gong boundaries; timing spike before building UI |
 | Kotek Studio records sloppy figures | Unplayable user figures | Quantise to slots; edit in the grid before saving |
+| On-device model gives wrong or generic advice | Players are misled | Numbers computed in code, not by the model; advice grounded in the book; credited as AI; tune the prompt on real sessions |
+| Phones without Apple Intelligence | No overview for many players | The chart names the weakest quarter on every phone; the overview is extra |
 | Large v2 merges from parallel branches | Conflicts, regressions | Land milestones in order; one feature per PR |
 
 ---
@@ -402,7 +423,8 @@ Two-device coop (7) can slip to a v2.x without affecting the rest.
 5. **Player 2's account** in one-screen coop: is a typed name enough, or should player 2 be able to claim the session on their own device later?
 6. **Tempo lead:** add a kendang layer, or is the gong enough to play against?
 7. **Exhibition:** two sensor-fitted gangsa and an iPad would make one-screen coop the demo. Does that reorder §13?
-8. **What happens after the song?** (v1 §11 Q4) — still open: a pointer to real teaching (Mekar Bhuana, a local *sekaa*).
+8. **AI overview book:** the current index is built from Michael Tenzer's *Gamelan Gong Kebyar* (Univ. of Chicago Press, 2000), credited in-app as "Gamelan Book" for now. Do we have permission to ship its text inside the app, and to credit it properly? It is an analytical text, not a practice manual — is there a teaching book better suited to practice advice? Should a teacher review sample overviews before release?
+9. **What happens after the song?** (v1 §11 Q4) — still open: a pointer to real teaching (Mekar Bhuana, a local *sekaa*).
 
 ---
 

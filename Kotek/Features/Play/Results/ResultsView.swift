@@ -11,6 +11,7 @@ import SwiftUI
 
 struct ResultsView: View {
     @Environment(AppState.self) private var app
+    @State private var overview = SessionOverviewModel()
 
     var body: some View {
         if let result = app.lastResult {
@@ -25,6 +26,9 @@ struct ResultsView: View {
                                 performance(result)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
+
+                            SessionOverviewCard(model: overview)
+                                .task { await overview.run(facts: facts(for: result)) }
                         } else {
                             tooShort
                         }
@@ -63,6 +67,15 @@ struct ResultsView: View {
             .padding(.vertical, 10)
             Rectangle().fill(Theme.charcoal.opacity(0.12)).frame(height: 1)
         }
+    }
+
+    private func facts(for result: SongResult) -> SessionFacts {
+        SessionFacts(
+            result: result,
+            figure: app.selectedKotekan?.name ?? result.songTitle,
+            half: app.chosenHalf.title.lowercased(),
+            tempo: Theme.tempoLabel(app.tempoScale)
+        )
     }
 
     /// Where in the figure it went right and wrong, averaged over the session.
