@@ -28,10 +28,19 @@ import NaturalLanguage
 import os
 
 nonisolated struct BookPassage: Sendable, Equatable {
-    /// The title of the book it came from, for the credit line.
-    let book: String
+    let book: BookInfo
+    /// The number printed on the page, which is what a reader can turn to —
+    /// not the PDF's page, which counts the cover and front matter too.
     let page: Int
     let text: String
+}
+
+/// A book as the overview credits it.
+nonisolated struct BookInfo: Sendable, Hashable {
+    let title: String
+    let author: String?
+    /// Where to get it — a publisher or bookshop page.
+    let url: URL?
 }
 
 actor BookIndex {
@@ -96,6 +105,10 @@ actor BookIndex {
 
         nonisolated struct Book: Decodable {
             let title: String
+            let author: String?
+            let url: String?
+            /// Printed page = PDF page + this.
+            let pageOffset: Int?
             let passages: [Passage]
         }
 
@@ -124,9 +137,12 @@ actor BookIndex {
             log.error("book index unreadable: \(String(describing: error))")
             return nil
         }
-        let stored = file.books.flatMap { book in book.passages.map { (book.title, $0) } }
-        let passages = stored.map { BookPassage(book: $0.0, page: $0.1.page, text: $0.1.text) }
-        let vectors = stored.map { Self.floats(base64: $0.1.vector, count: file.dimension) }
+        let stored = file.books.flatMap { book in
+            let info = BookInfo(title: book.title, author: book.author, url: book.url.flatMap(URL.init(string:)))
+            return book.passages.map { (info, $0.page + (book.pageOffset ?? 0), $0) }
+        }
+        let passages = stored.map { BookPassage(book: $0.0, page: $0.1, text: $0.2.text) }
+        let vectors = stored.map { Self.floats(base64: $0.2.vector, count: file.dimension) }
         guard !passages.isEmpty, vectors.allSatisfy({ $0.count == file.dimension }) else { return nil }
 
         return Loaded(

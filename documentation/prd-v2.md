@@ -276,11 +276,11 @@ Every screen is redrawn to the new design (the *Sangsih* design system begun in 
 
 - **Facts** are computed in Swift, not by the model: figure, half, tempo, cycles, best accuracy, quarter averages, the weakest quarter's misses / wrong keys / timing drift, and overall drift. The model only phrases them and picks advice.
 - **Retrieval (RAG):** the index holds **several books**. Each is added on a Mac with `scripts/build-book-index.swift add book.pdf "Title" [--pages a-b] [--ocr]` (also `remove`, `list`): split into ~700-character passages (main text only, `--pages`) and embedded with Apple's NaturalLanguage **contextual embedding** (mean of token vectors) into `Kotek/Resources/BookIndex.json`. **Physical books** are scanned with the iPhone's document scanner (Notes or Files, auto-capture); pages with no text layer are read with **Apple Vision text recognition**, with gamelan terms supplied so they are not "corrected" into English. On the phone the facts become a query in the books' own vocabulary, embedded with the same model, and the 3 best passages across all books are picked by a **hybrid score**: cosine similarity (vectors centred on the corpus mean) plus keyword BM25, each scaled 0–1 and weighted equally. Vectors alone ranked drum technique above kotekan, because the embedding barely knows Balinese terms. If the embedding model can't be loaded, retrieval falls back to keywords alone. No vector database or server.
-- **Book index is not in git.** `BookIndex.json` contains the book's full text and this repo is public, so it is gitignored until the right to redistribute the text is confirmed (§v2-15). Builds made without it still work; the overview is then written from the session alone.
+- **Book index is in git** (`Kotek/Resources/BookIndex.json`, ~6 MB; the repo is private). Every build bundles it, so it ships with the app — the rights question below still applies before release.
 - **Model:** Apple's on-device **Foundation Models** (iOS 26), with guided generation into a summary and a suggestion, streamed as it writes. English only.
 - **Availability:** Apple Intelligence iPhones only. If Apple Intelligence is off, or the model is still downloading, the card says so; on an ineligible phone it is not shown. A failed generation shows nothing — the score is the result, the overview is commentary.
 - **Privacy:** nothing leaves the device; App Store privacy answers do not change.
-- **Credit:** every overview says it was written by Apple Intelligence on the phone, and names the books its retrieved passages came from.
+- **Credit and citations:** every overview says it was written by Apple Intelligence on the phone, then cites each book it was given passages from: author, title and **printed** page numbers (`--page-offset` maps PDF pages to printed ones), as a link that opens the book's publisher or shop page in Safari (`--url`). It cites the pages the model was *given*, not ones it claims to have used — a small model asked to cite tends to invent.
 
 ---
 
@@ -423,7 +423,7 @@ Two-device coop (7) can slip to a v2.x without affecting the rest.
 5. **Player 2's account** in one-screen coop: is a typed name enough, or should player 2 be able to claim the session on their own device later?
 6. **Tempo lead:** add a kendang layer, or is the gong enough to play against?
 7. **Exhibition:** two sensor-fitted gangsa and an iPad would make one-screen coop the demo. Does that reorder §13?
-8. **AI overview book:** the current index is built from Michael Tenzer's *Gamelan Gong Kebyar* (Univ. of Chicago Press, 2000), credited in-app as "Gamelan Book" for now. Do we have permission to ship its text inside the app, and to credit it properly? It is an analytical text, not a practice manual — is there a teaching book better suited to practice advice? Should a teacher review sample overviews before release?
+8. **AI overview book:** the current index is built from Michael Tenzer's *Gamelan Gong Kebyar* (Univ. of Chicago Press, 2000), cited in-app with author, title, pages and a link to the publisher's page. Do we have permission to ship its text inside the app, and to credit it properly? It is an analytical text, not a practice manual — is there a teaching book better suited to practice advice? Should a teacher review sample overviews before release?
 9. **What happens after the song?** (v1 §11 Q4) — still open: a pointer to real teaching (Mekar Bhuana, a local *sekaa*).
 
 ---
