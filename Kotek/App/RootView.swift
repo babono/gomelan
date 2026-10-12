@@ -23,6 +23,7 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppState.self) private var app
     @State private var preloader = Container.shared.preloaderService()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -117,6 +118,20 @@ struct RootView: View {
                 Container.shared.cameraService().stop()
             }
         }
+        // The strike controller follows the active gangsa (Flow E), from here
+        // for the same reason the camera teardown lives here: this is the one
+        // place that sees every screen and every instrument switch. Gangsa A →
+        // B on the same controller keeps the connection (`GangsaSensor.use`).
+        // The setup screen and the sensor test drive it themselves (nil).
+        .onChange(of: app.sensorTarget, initial: true) { _, target in
+            if let target { app.sensor.use(target) }
+        }
+        // Foreground only: nothing here needs strikes while the app is away,
+        // and coming back reconnects on its own.
+        .onChange(of: scenePhase) { _, phase in
+            guard let target = app.sensorTarget else { return }
+            app.sensor.use(phase == .background ? .none : target)
+        }
         // Every switch under here ticks like a kajar when it flips. Buttons get
         // the same treatment one at a time (`.buttonStyle(.kajar)`), because
         // each of them already names a style and the nearest one wins; toggles
@@ -169,6 +184,8 @@ struct RootView: View {
             CaptureTrainingView()
         case .sensorTest:
             SensorPlayView()
+        case .controllerSetup:
+            ControllerSetupView()
         case .waterfall:
             WaterfallPlayView()
         }

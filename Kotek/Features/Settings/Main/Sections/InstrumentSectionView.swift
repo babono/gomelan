@@ -58,6 +58,8 @@ struct InstrumentSectionView: View {
                     .foregroundStyle(Theme.cream.opacity(0.62))
             }
 
+            controller
+
             FlowLayout(spacing: 10) {
                 SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") {
                     app.realign()
@@ -92,6 +94,46 @@ struct InstrumentSectionView: View {
             .buttonStyle(.kajar)
             .padding(.top, 4)
         }
+    }
+
+    /// The strike controller (§3.6) — this gangsa's only. Others sharing it
+    /// keep their own setup whatever happens here.
+    private var controller: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel("Strike controller")
+            if let link = app.profile.controller {
+                Text(controllerLine(link))
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.62))
+                ControllerStatusChip()
+                FlowLayout(spacing: 10) {
+                    SecondaryButton(title: "Check keys", systemImage: "checklist") {
+                        app.openControllerSetup(recheck: true)
+                    }
+                    SecondaryButton(title: "Change controller", systemImage: "arrow.left.arrow.right") {
+                        app.openControllerSetup()
+                    }
+                    SecondaryButton(title: "Forget controller", systemImage: "xmark.circle") {
+                        app.forgetController()
+                    }
+                }
+            } else {
+                Text("Optional. Piezo sensors on the bilah feel exactly which key you hit and when — no camera or microphone needed.")
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.62))
+                    .frame(maxWidth: 520, alignment: .leading)
+                SecondaryButton(title: "Connect controller", systemImage: "dot.radiowaves.left.and.right") {
+                    app.openControllerSetup()
+                }
+            }
+        }
+    }
+
+    private func controllerLine(_ link: ControllerLink) -> String {
+        let sensors = app.profile.keys.filter { $0.sensorInput != nil }.count
+        var line = "\(link.name) · sensors on \(sensors) of \(app.profile.keyCount) keys"
+        if sensors < app.profile.keyCount { line += " · the rest use camera + mic" }
+        return line
     }
 
     private var gradeLine: String {

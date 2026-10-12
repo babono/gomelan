@@ -1,6 +1,6 @@
 # Gomelan — Product Requirements Document
 
-**Version:** 0.5 (v1 scaffold implemented; reconciled with the codebase)
+**Version:** 0.6 (adds the strike controller — 14 inputs, shared between gangsa, stored on Supabase: §3.6, Flows D–E, §7, §8, §13.5)
 **Platform:** iOS 17+, iPhone only
 **Instrument:** Gangsa (gong kebyar family) — single mallet, monophonic, one bundled profile
 **Status:** Implemented and running end-to-end on placeholder data — awaiting the physical instrument for real calibration values
@@ -112,6 +112,7 @@ v1 supports exactly one instrument: the gangsa we own.
 | Audio | Built-in mic acceptable in a quiet room; external/lavalier preferred for the exhibition | See §6.3 |
 | Lighting | Even, no hard shadow across the keys | Affects key detection |
 | Optional | Lightning/USB-C to HDMI, or AirPlay to a screen | Exhibition only — mirrors the guidance to a larger display |
+| Optional | Strike controller — ESP32, Bluetooth LE, plug-in piezo sensors (one per bilah) | One controller can serve several gangsa; set up once per gangsa, reconnects by itself. See §3.6 |
 
 **One device, one app.** No Mac, no second app, no Continuity Camera dependency. Camera, microphone, processing, and display all live on the phone.
 
@@ -155,6 +156,80 @@ A player standing over a large instrument cannot comfortably read a 6-inch scree
 4. **Exhibition: mirror to an external display.** AirPlay or a cable to a monitor behind the instrument. Cheap, and it removes the problem entirely for the demo that matters most.
 
 Playtest this specifically in Phase 1. If users can't follow the overlay, the fix is more audio, not more visuals.
+
+### 3.6 Strike controller (optional, shared between gangsa)
+
+Two parts:
+
+- **Controller** — one small box: an ESP32 with Bluetooth LE and **14 numbered inputs** (jacks), 1…14 (0…13 on the wire). Fourteen covers every gangsa size in scope (pemade and kantilan are 10 keys). The app reads the count from the controller rather than assuming 14, so a later board with more inputs needs no app change.
+- **Sensors** — piezo discs, each on a lead, clipped one per bilah and plugged into an input. Sensors can be added or taken away: plug in five for a 5-key gangsa, ten for a 10-key one.
+
+The controller does the hit detection itself — threshold, ring-down rejection, a 4 ms loudest-wins window against crosstalk between neighbouring bilah — and sends only results to the phone: *which input, how hard, and when on its own clock*. It answers both of the questions vision and audio split between them (§6), with no camera and no microphone, so it is immune to room noise and to a hand hiding the key.
+
+**One controller, many gangsa.** A controller isn't tied to an instrument. Clip its sensors onto gangsa A today and gangsa B tomorrow. Each gangsa remembers its own setup with that controller (which input sits on which key), so moving between them doesn't need setup again (Flow E). Physically it's on one gangsa at a time, and the phone uses the app's **active instrument** to decide which gangsa's map applies.
+
+The prototype exists (`Kotek/Features/Detection/Sensor/GangsaSensor.swift`, Settings → Sensor Test). It is hardcoded to 3 inputs, has no idea what is plugged in, and connects to *any* device named "Gangsa…". This section specifies what turns it into something a player sets up once per gangsa and then forgets.
+
+**Transport: Bluetooth LE only. No Wi‑Fi, at setup or ever.**
+
+| | BLE (chosen) | Wi‑Fi |
+|---|---|---|
+| Setup cost | None — the phone finds the controller by itself | A provisioning step: type the network password into the app, push it to the ESP32 (SoftAP or BLE provisioning), retry when it's wrong |
+| Works in a *banjar* hall / outdoors / at the exhibition | Yes — phone ↔ controller directly, no router | Only where there is a network the user knows the password of |
+| Moving the controller to another gangsa | Nothing to do | Nothing, unless the other gangsa is in another building on another network — then provisioning again |
+| Timing | Hits are stamped on the ESP32's clock (§3.6.3), so BLE's 7.5–30 ms connection-interval jitter never reaches judgement | Same, but buys nothing extra |
+| What it would be for | — | Cloud upload or firmware updates over the air. Neither is in scope; the phone is the only consumer of hits |
+
+So setup is **scan → connect → check keys**, nothing else. "Set up" in this document means *the app remembering a controller and its key map for a gangsa* — not iOS system pairing/bonding. No PIN, no Settings → Bluetooth step.
+
+#### 3.6.1 Identity — why the app can't just remember "the controller"
+
+- **CoreBluetooth's peripheral `identifier` is per-phone.** The same controller has a different UUID on a second iPhone, so it cannot be the thing synced with the instrument across devices. It is kept only as a local cache, for a fast reconnect on the phone that already knows it.
+- **The stable identity is the ESP32's hardware ID** (its factory eFuse MAC, 6 bytes). The firmware exposes it two ways:
+  - in the advertised name as a suffix, `Gangsa-Sensor-E5F6` (last 2 bytes), so controllers can be told apart in the scan list *before* connecting;
+  - in full, in a readable **INFO** characteristic.
+- The full hardware ID is what is stored on each gangsa set up with it (§7), and synced. On a new phone, the app scans for the name suffix, connects, reads INFO, checks the full ID, and only then caches that phone's `identifier`.
+
+A room with a whole *gamelan* in it can have several controllers. Connecting to the first thing named "Gangsa…" — the prototype's behaviour — would steal a neighbour's. Once set up, the app connects **only** to the hardware ID the active gangsa was set up with.
+
+#### 3.6.2 Controllers and gangsa
+
+- **A controller → many gangsa.** Any number of the user's gangsa can be set up with the same controller. Setting it up on gangsa B never touches gangsa A's map.
+- **A gangsa → one controller.** Each gangsa remembers one. Setting up a different controller on it replaces the old one (for that gangsa only).
+- **One phone at a time.** The ESP32 stops advertising while connected, so a second phone can't take it mid-session. Nothing needs to enforce that across accounts.
+
+#### 3.6.3 Which inputs are plugged in
+
+**The controller is the only source of this.** It detects which inputs have a sensor in them and sends that to the app; the app never guesses it from hits. Plug detection is a **later hardware revision** (a plug-detect pin on each jack), so the spec has two stages:
+
+| | Now — no plug detect | Later — plug-detect jacks |
+|---|---|---|
+| What the controller sends | INFO says *plug detect: no*; no INPUTS notifications | INFO says *plug detect: yes* and the plugged-in bitmask (bit n = input n has a sensor); INPUTS notifies on every plug / unplug |
+| Hits on empty inputs | Can't tell they're empty — sent like any other | Ignored by the controller (a loose lead flapping against the frame can't fire) |
+| Setup (Flow D) starting map | Inputs 1…N → keys 1…N; the player marks any key with no sensor ("No sensor here") | The k-th *plugged-in* input → key k; keys past the last sensor start as "no sensor" |
+| Re-check (Flow E) | Never automatic — "Check keys" in Settings only | Automatic when the plugged-in set differs from the one saved for this gangsa |
+| `instruments.controller_inputs` (§7) | `null` | the plugged-in set at setup |
+
+Same app build for both: it branches on the INFO flag, so the new board needs no app update, and gangsa set up before it simply get their `controller_inputs` filled in at their next re-check.
+
+With plug detect, the app compares the set with the one the active gangsa was set up with. **Different set → the saved map can't be trusted → ask for a re-check** (Flow E). Same set → trust it. Comparing the set rather than just the count also catches the same five sensors moved to different jacks — which changes every key, but not the count.
+
+#### 3.6.4 Firmware protocol (changes from the prototype)
+
+Service `7A1F0001-…` unchanged. Characteristics:
+
+| Char | Dir | Payload | Status |
+|---|---|---|---|
+| `…0002` EVENT | notify | 8 bytes: `[0]` type (1 = hit, 2 = damp, reserved) · `[1]` **input** 0…13 · `[2–3]` strength 0…4095 LE · `[4–7]` ESP32 `millis()` LE | exists; byte 1 is now an *input*, not a key (§3.6.5) |
+| `…0003` LEVEL | notify | 14 bytes (one per input), 0…255 vibration level, 50 Hz; empty inputs read 0 once plug detect exists | exists; length becomes the input count instead of a fixed 3 |
+| `…0004` INFO | read | `[0–5]` hardware ID · `[6]` input count (14) · `[7]` flags, bit 0 = has plug detect · `[8–11]` plugged-in bitmask LE (0 without plug detect) · `[12]` protocol version · `[13…]` firmware version string | **new** — needed now |
+| `…0005` INPUTS | notify | 4 bytes, plugged-in bitmask LE — sent on every plug / unplug | **new** — with the plug-detect board |
+
+The app reads the input count and the plugged-in set instead of the hardcoded `barCount = 3`. The bitmask is 32 bits so a bigger board fits without a protocol change.
+
+#### 3.6.5 Inputs are not keys
+
+The firmware only knows *input 3 fired*. Which bilah that sensor is clipped to is the player's doing, and it differs per gangsa. The **input → key index map** is checked in setup (Flow D) and stored **per gangsa** — that is what lets one controller serve many instruments. Everything downstream still addresses bilah by key index (the rule in §7: key indices, never pitches — and now never inputs either).
 
 ---
 
@@ -205,6 +280,100 @@ Songs must be filtered against the calibrated instrument: hide or grey out songs
    e. Judgement rendered (timing accuracy + correct key)
 3. Song ends → results screen → retry / next / back
 ```
+
+### Flow D — Controller setup (once per gangsa)
+
+Reached two ways: as an optional last step when registering a new gangsa ("Got a strike controller? Connect it now · Skip"), and any time later from the gangsa's row in Settings → Instruments ("Connect controller"). Optional either way — a gangsa without one works exactly as before, on camera + mic. Prerequisite: the instrument exists, so its key count is known.
+
+Run once for each gangsa a controller is used on. The same screen, from step 5, is the **re-check** that Flow E opens when the plugged-in sensors change.
+
+```
+1. Start        → "Switch the controller on, clip a sensor onto each bilah and plug them in"
+2. Scanning     → list of nearby controllers by name (Gangsa-Sensor-E5F6), nearest first (RSSI);
+                  ones already set up with your other gangsa say so ("Also on Gangsa Pemade") —
+                  information only, using it here takes nothing away from them
+3. Connect      → user taps one → connect → read INFO
+4. Summary      → controller inputs  : 14
+                  sensors plugged in : 5 (inputs 1–5)   live — only with plug detect (§3.6.3)
+                  instrument keys    : 5 keys           (from the profile)
+                  [Test key hits]
+5. Test & remap → "5 sensors detected — hit the key"
+                  a row of tiles, one per bilah, in key order (1 … N), plus [Finish]
+                  Starting map: input k → key k — with plug detect, the k-th *plugged-in* input
+                  (§3.6.3) — i.e. the order the sensors are meant to be clipped on. On a re-check, the saved map instead,
+                  with removed inputs cleared and new ones filled into keys without a sensor.
+                  a. the app highlights the next unchecked key, say key 3
+                  b. the player hits that bilah; input i fires
+                  c. map[i] = key 3 → match: tile 3 turns green ✓, move on to key 4
+                  d. map[i] = key 5 → mismatch: tile 5 lights instead, tile 3 shows
+                     "Heard as key 5" and offers [Remap] · [Try again]
+                       Remap     → swap: input i moves to key 3, and key 3's old input
+                                   (if any) moves to key 5. Tile 3 turns green; tile 5 goes
+                                   back to unchecked, to be confirmed when its turn comes.
+                       Try again → nothing changes (the stroke was meant for another bilah)
+                  e. tap any tile to re-check it, or mark it "No sensor here" (camera + mic);
+                     without plug detect this is how a key with no sensor is said
+                  f. with plug detect, a sensor plugged in mid-test joins the next key without one, unchecked;
+                     one pulled out leaves its key without a sensor
+6. Finish       → enabled when every key is green or marked "No sensor here".
+                  Saves the controller, its plugged-in set and the map on *this* gangsa — to
+                  Supabase (§7), and to the phone for offline play.
+```
+
+**Why assume, then check.** The sensors are meant to be clipped on in input order, so most of the time the starting map is right and the player is only confirming it — hit 1, 2, 3, 4, 5, done. A mismatch shows exactly what went wrong ("key 3 was heard as key 5"), which also points at a lead in the wrong jack. Remapping is a swap rather than a reassign, so the map can never end up with one input on two keys.
+
+**Sensors ≠ keys.**
+- More sensors than keys: the extras start unmapped; their hits are ignored, except that a hit from one during the test offers [Remap] onto the key being tested.
+- Fewer sensors than keys: Finish is allowed. The keys left without a sensor are shown greyed ("camera + mic") and fall back to camera + mic in Play. Plug more in later and the re-check (Flow E) picks them up.
+
+**Errors.** Bluetooth off / permission denied → the existing `GangsaSensor.Status.unavailable` message with a Settings link. Nothing found after ~10 s → "Is it switched on? Is another phone connected to it?" (the ESP32 stops advertising while connected). With plug detect, no sensors plugged in → step 4 says so and holds. Disconnect mid-test → keep the keys checked and remapped so far, resume when it comes back.
+
+### Flow E — Automatic reconnect (every session after setup)
+
+No UI in the happy path — the controller simply is connected whenever a gangsa set up with it is the active instrument.
+
+```
+1. App foregrounds, or the active instrument changes
+2. Active gangsa has a controller?
+     no  → disconnect any controller; camera + mic as today
+     yes, and it's the one already connected → keep the connection, swap in this gangsa's map
+          (A → B with the same controller is instant: no reconnect)
+     yes, a different one → disconnect the current one, go on
+3. This phone has a cached CoreBluetooth identifier for that hardware ID?
+     yes → retrievePeripherals(withIdentifiers:) → connect
+     no  → scan for Gangsa-Sensor-<suffix> → connect → read INFO → hardware ID matches?
+             yes → cache the identifier for next time
+             no  → disconnect, keep scanning
+4. Controller has plug detect (INFO flag)?
+     no  → ready, with the saved map (re-check is manual: Settings → "Check keys")
+     yes → compare the plugged-in set with the one saved on this gangsa (`controller_inputs`)
+           same      → ready
+           different → banner: "Sensors changed since Gangsa A was set up (5 → 6) · Check keys"
+                       → Flow D step 5 as a re-check. Until it's done, Play uses the saved map for
+                         inputs that are still plugged in; other keys fall back to camera + mic.
+           none saved (set up before plug detect) → the same banner, once, to record the set
+5. Connected → small status dot (Play, Settings): connected · searching · off
+6. INPUTS notification (sensor plugged / pulled; plug-detect board only) → step 4 again
+7. Dropped   → connect() again immediately. A pending CoreBluetooth connect never times out,
+               so the controller rejoins on its own the moment it is back in range or powered on.
+```
+
+**The app can't see which gangsa the controller is clipped onto** — only the active instrument says so. Same set of sensors on gangsa B while A is active → A's map is used. Mitigation: the active gangsa's name is next to the status dot, and Settings has "Check keys" for any gangsa. ponytail: no detection beyond that until it proves to be a real mistake.
+
+Foreground only — the app is a landscape practice surface with no reason to hold the controller in the background, so no `bluetooth-central` background mode and no state restoration. ponytail: add them only if a reconnect on foreground proves too slow.
+
+Settings → Instruments → the gangsa: "Check keys" (Flow D step 5 on demand), "Forget controller" (this gangsa only — others using it keep theirs), and "Connect controller" again to switch to a different one.
+
+### Controller in Play
+
+When the active gangsa's controller is **connected**, it replaces camera + mic as the strike source on every key that has a sensor:
+
+- Each EVENT hit → `keyForInput[input]` → `PlayEngine.registerStrike(keyIndex:hostTime:confidence: 1)`, with `hostTime` from the controller-clock offset `GangsaSensor` already estimates. Hits from unmapped inputs are dropped.
+- Camera and microphone strikes on a key with a sensor are **dropped** (`PlayViewModel.applyStrike`), not fused: the sensor answers which *and* when, so a vote from the others could only make it worse. No new `DetectionMode` — the existing mode keeps covering the keys without a sensor, and Settings → Detection says so while a controller is set up.
+- Keys with no sensor — or, on a plug-detect board, whose sensor is unplugged — keep using camera + mic. Worked out per strike, so a controller dropping mid-session hands every key back to camera + mic without stopping play; the status chip in the top bar says "Camera" instead of "Sensors".
+- ponytail: the camera and mic pipelines keep running even when every key has a sensor. Not starting them would save power, but a mid-session drop would then have nothing to fall back on.
+
+`GangsaSensor` now lives in `Kotek/Core/Sensor/` as one shared instance (`Container.sensorService`). Whoever is on screen says what it wants with `use(_:)` — RootView follows the active gangsa, the setup screen browses, the sensor test takes any.
 
 ---
 
@@ -402,6 +571,48 @@ Rect coordinates normalised 0–1 against the video frame, so the overlay surviv
 
 **As-built note (v0.5):** `sample_path` is present in the model but the in-app calibration does not yet capture samples — `sample_path` is `null` and cue tones are synthesized sines. Capturing one clean `.caf` per key is still the intended step.
 
+**Strike controller (§3.6, Flow D) — stored on Supabase.** Controllers, which gangsa uses which, and each gangsa's input → key map live in real tables and columns, not in the `profile` jsonb. They are what a second phone, or a second gangsa, reads back. Three pieces, matching the three relationships:
+
+| Relationship | Where | Why there |
+|---|---|---|
+| A controller exists, and it's yours | new table `controllers`, one row per (user, hardware ID) | Shared by many gangsa, so it can't live on any one of them |
+| This gangsa uses that controller (many gangsa → one controller; one controller per gangsa) | `instruments.controller_id` → `controllers.id` | A foreign key is exactly "at most one per gangsa, shared freely" — no join table needed |
+| On this gangsa, input 3 is on key 0 | `instrument_keys.sensor_input` | The map is per key *and* per gangsa, which is what that table already is |
+
+```sql
+-- Additive and re-runnable, like the other migrations: v1 clients are live.
+create table if not exists public.controllers (
+    id               uuid primary key default gen_random_uuid(),
+    user_id          uuid not null references auth.users (id) on delete cascade,
+    hardware_id      text not null,              -- ESP32 eFuse MAC, 12 hex chars, uppercase
+    name             text not null,              -- as advertised: Gangsa-Sensor-E5F6
+    input_count      smallint not null default 14,
+    has_plug_detect  boolean not null default false,
+    firmware_version text,
+    created_at       timestamptz not null default now(),
+    unique (user_id, hardware_id)
+);
+alter table public.controllers enable row level security;
+create policy "controllers: owner" on public.controllers
+    for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+alter table public.instruments
+    add column if not exists controller_id uuid references public.controllers (id) on delete set null,
+    add column if not exists controller_inputs smallint[],      -- plugged-in set at setup; null = no plug detect
+    add column if not exists controller_set_up_at timestamptz;
+
+alter table public.instrument_keys
+    add column if not exists sensor_input smallint check (sensor_input between 0 and 31);  -- null = no sensor
+```
+
+- **Saving (Flow D Finish):** upsert `controllers` on `(user_id, hardware_id)` → its `id` → update the instrument's three `controller_*` columns → upsert `instrument_keys.sensor_input` for every key, `null` included. The keys upsert sends an explicit null for the same reason `InstrumentKeyRow` already does for `base_hz`. `input_count`, `has_plug_detect` and `firmware_version` are refreshed from INFO on every save, so moving to the plug-detect board updates the row.
+- **Restoring (second phone):** `fetchInstruments` also selects `controller_id`, `controller_inputs`, the joined `controllers.hardware_id` / `name`, and each key's `sensor_input`. The hardware ID is what Flow E scans for.
+- **Offline:** the phone keeps a copy in its local profile so a session works with no network. Supabase is the record; the local copy is overwritten by what comes back. Saves made offline go up on the next sync, as instrument saves do today.
+- **Forget controller** (one gangsa): `controller_id`, `controller_inputs`, `controller_set_up_at` → null, and every key's `sensor_input` → null. The `controllers` row stays — the controller is still yours, other gangsa may use it, and the next scan still labels it.
+- **Deleting a gangsa** leaves its controller alone, for the same reason. **Deleting the account** removes `controllers` too: add it to the `delete-account` Edge Function and give `service_role` `select, delete` on it, as `20261012020000_service_role_delete_grants.sql` does for the other tables.
+- **`instrument_keys.sensor_id`** (the hand-made column `InstrumentKeyRow` already avoids) is left unused rather than renamed: its type was never recorded, and v1 clients are live. `sensor_threshold` stays reserved too — thresholds live in the firmware for now *(open question — §11)*.
+- **Not on Supabase:** the phone's CoreBluetooth `identifier`. It differs per phone (§3.6.1), so it is cached in `UserDefaults`, keyed by hardware ID. One entry serves every gangsa that controller is used with.
+
 ### Song
 
 ```json
@@ -444,6 +655,8 @@ As built, screens map 1:1 to `AppState.Screen` cases and are hosted by `RootView
 | Mallet Test | `.malletTest` | `Kotek/Features/Detection/MalletTestView.swift` | Diagnostic: raw vision mallet probability per key |
 | Detection Test | `.detectionTest` | `Kotek/Features/Detection/DetectionTestView.swift` | Diagnostic: fused multi-modal strike detection pipeline |
 | Capture Training | `.captureTraining` | `Kotek/Features/Detection/CaptureTrainingView.swift` | Diagnostic: record labelled key strike frames for ML training |
+| Sensor Test | `.sensorTest` | `Kotek/Features/Detection/Sensor/SensorPlayView.swift` | Diagnostic: the BLE piezo prototype driving a kotekan with no camera |
+| Controller Setup | `.controllerSetup` | `Kotek/Features/Controller/ControllerSetupView.swift` | Flow D: scan → connect → summary → test & remap input→key map → finish; also the Flow E re-check |
 
 Global overlays hosted in `RootView`:
 - `SplashView`: Launch animation masking background warming.
@@ -508,6 +721,11 @@ Phases 0 and 3 carry nearly all the technical risk; Phase 1's mount test carries
 2. **Two-player *kotekan*?** Interlocking *polos* and *sangsih* parts are the defining technique of gong kebyar gangsa playing — not a bolt-on multiplayer mode but the thing the instrument exists to do. It also directly answers the "no one to play with" barrier that single-player cannot. Strong v2 candidate; consider whether a minimal two-phone version fits v1.
 3. **Exhibition flow.** Does the app need an unattended kiosk mode — auto-reset, no settings access, attract screen?
 4. **What happens after the song?** If a user finishes and enjoys it, where do they go? A pointer toward real teaching (Mekar Bhuana, a local *sekaa*) would honour the "support, don't replace" constraint and give the product an honest ending.
+5. **Strike controller (§3.6, Flow D/E)** — still open:
+   - **a. Thresholds.** Per-key sensitivity stays in firmware for now. If one bilah keeps missing light strokes, setup could record strength per key and write a threshold back over a CONFIG characteristic (`instrument_keys.sensor_threshold` is already reserved).
+   - **b. Firmware owner.** Who adds the INFO characteristic, the hardware-ID name suffix and 14 inputs to the firmware now, and INPUTS with the plug-detect board later (§3.6.3–3.6.4)? 14 inputs is a working assumption — confirm when the board is final.
+   - **c. Wrong gangsa, same sensors.** The app trusts the active instrument (Flow E). If players often forget to switch it, add a one-tap "Playing on Gangsa A?" confirm when the controller connects — only if it turns out to happen.
+   - **d. Damp events.** EVENT type 2 is reserved. Once the firmware sends it, it could drive §5.5's damping judgement.
 
 ---
 
@@ -701,8 +919,16 @@ launch → .welcome
   → .settings             // reached from navigation bar
       choose instrument → .chooseInstrument
       re-align → .aligning
-      diagnostics → .audioTest, .malletTest, .detectionTest, .captureTraining
+      diagnostics → .audioTest, .malletTest, .detectionTest, .captureTraining, .sensorTest
+      instrument → connect controller | check keys → .controllerSetup   (Flow D)
+  new gangsa registered → "Connect a controller?" → .controllerSetup | skip → as today
+  re-check banner (Flow E) → .controllerSetup at step 5
+  → .controllerSetup          // scanning / connecting / summary / mapping are local
+                          // steps of one screen, not Route cases
+      finish | cancel → back to where it was opened from (Settings, or the end of new-gangsa setup)
 ```
+
+Reconnect (Flow E) is not a screen: a controller service owned by `RootView` watches the active instrument and connects or disconnects in the background of whatever screen is showing.
 
 There is no dedicated `.ready` or `.paused` case: the kotekan selection screen *is* the ready state, and pause is handled by local `@State` inside `PlayView`. Re-alignment is reached from Settings or setup, which is the persistent "keys misaligned?" affordance.
 

@@ -357,6 +357,21 @@ final class AppState {
     var framedRegion = NormalizedRect(x: 0, y: 0.17, w: 1, h: 0.68)
     var seedMasksFromFraming = false
 
+    // MARK: - Strike controller (§3.6)
+
+    /// Where the controller setup goes back to: Settings, or the kotekan
+    /// picker when it was offered at the end of setting up a new gangsa.
+    var controllerSetupReturn: Route = .settings
+    /// Opened as the optional last step of a new gangsa — "Skip" rather than
+    /// "Back", and nothing is lost by taking it.
+    var controllerSetupIsOffer = false
+    /// Opened straight onto the key check (Settings → "Check keys", or the
+    /// re-check banner) instead of the scan.
+    var controllerSetupRecheck = false
+    /// Set when a new gangsa's alignment is confirmed, spent when its setup
+    /// lands — see `finishSetup`.
+    var offerControllerAfterSetup = false
+
     // MARK: - Account
 
     /// Nil until the welcome screen's choice is made. Persisted, so the choice
@@ -389,6 +404,7 @@ final class AppState {
     @ObservationIgnored let sessionRepo = Container.shared
         .practiceSessionRepository()
     @ObservationIgnored let log = Logger(subsystem: "Kotek", category: "remote")
+    @ObservationIgnored let sensor = Container.shared.sensorService()
 
     // MARK: - Initialization
 

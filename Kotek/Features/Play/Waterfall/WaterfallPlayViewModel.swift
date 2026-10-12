@@ -33,7 +33,7 @@ final class WaterfallPlayViewModel {
 
     init(app: AppState,
          cue: CuePlayer = Container.shared.cueService(),
-         sensor: GangsaSensor = GangsaSensor()) {
+         sensor: GangsaSensor = Container.shared.sensorService()) {
         self.app = app
         self.cue = cue
         self.sensor = sensor
@@ -59,13 +59,18 @@ final class WaterfallPlayViewModel {
         app.selectedKotekan?.voicedKeyRange ?? 0 ... keyCount - 1
     }
 
-    /// Sensor bar → key. The three sensors sit on the lowest three bilah the
-    /// figure uses.
+    /// Controller input → key. A gangsa with a controller set up uses its own
+    /// map (§3.6.5); nil is an input with no key on it, and its hits are
+    /// dropped.
     ///
-    /// ponytail: fixed offset, three sensors. Becomes a per-instrument mapping
-    /// in the profile once there is a sensor on every bar.
-    func key(forBar bar: Int) -> Int {
-        voicedKeys.lowerBound + bar
+    /// Without one, the prototype wiring this screen was built on: three
+    /// sensors on the lowest three bilah the figure uses.
+    ///
+    /// ponytail: the fixed offset goes once every gangsa is set up through the
+    /// controller screen.
+    func key(forInput input: Int) -> Int? {
+        if app.profile.controller != nil { return app.profile.keyForInput[input] }
+        return voicedKeys.lowerBound + input
     }
 
     // MARK: - Lifecycle
@@ -93,11 +98,12 @@ final class WaterfallPlayViewModel {
         }
 
         sensor.onHit = { [weak self] hit in
-            guard let self, !self.paused else { return }
-            self.engine.registerStrike(keyIndex: self.key(forBar: hit.bar),
-                                       hostTime: hit.hostTime, confidence: 1)
+            guard let self, !self.paused, let key = self.key(forInput: hit.input) else { return }
+            self.engine.registerStrike(keyIndex: key, hostTime: hit.hostTime, confidence: 1)
         }
-        sensor.start()
+        // A gangsa with a controller is already being followed by RootView
+        // (`AppState.sensorTarget`); without one, take any controller in reach.
+        if app.profile.controller == nil { sensor.use(.any) }
 
         // No microphone here, so none of the route-change race `PlayViewModel`
         // waits out before starting the cue engine — the clock can start now.
@@ -109,7 +115,8 @@ final class WaterfallPlayViewModel {
     func teardown() {
         displayLink.stop()
         sensor.onHit = nil
-        sensor.stop()
+        // Not `use(.none)`: RootView hands the controller back to the active
+        // gangsa as this screen goes, and may already have.
         cue.stop()
     }
 

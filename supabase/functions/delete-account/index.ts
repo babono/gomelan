@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
     admin.from("kotekan").delete().eq("user_id", uid),
     instrumentIds.length && admin.from("instrument_keys").delete().in("instrument_id", instrumentIds),
     admin.from("instruments").delete().eq("user_id", uid),
+    admin.from("controllers").delete().eq("user_id", uid),
   ];
   for (const step of steps) {
     if (!step) continue;

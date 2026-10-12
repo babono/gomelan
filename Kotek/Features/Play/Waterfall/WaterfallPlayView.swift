@@ -217,8 +217,10 @@ private struct GangsaStage: View {
         }
 
         // The raw sensor, before any judging — so a dead piezo is obvious.
-        if let hit = vm.sensor.hits.first, engine.renderNow - hit.hostTime < 0.2 {
-            cues[vm.key(forBar: hit.bar), default: BilahCue()].sensed = true
+        if let hit = vm.sensor.hits.first, engine.renderNow - hit.hostTime < 0.2,
+           let key = vm.key(forInput: hit.input)
+        {
+            cues[key, default: BilahCue()].sensed = true
         }
         return cues
     }

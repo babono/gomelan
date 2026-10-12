@@ -32,6 +32,17 @@ struct DetectionSectionView: View {
                 .foregroundStyle(Theme.cream.opacity(0.75))
                 .frame(maxWidth: 400)
 
+            if app.profile.controller != nil {
+                Text(
+                    app.controllerConnected
+                        ? "The strike controller is connected: keys with a sensor are judged by it alone, and this setting covers the rest."
+                        : "When the strike controller connects, keys with a sensor are judged by it alone. Until then, this setting covers every key."
+                )
+                .font(.sans(13))
+                .foregroundStyle(Theme.cream.opacity(0.75))
+                .frame(maxWidth: 400)
+            }
+
             if app.detectionMode == .heardOnly, app.yourVoiceAudible {
                 Text(
                     "Your half is playing through the speaker on the same keys you strike, which raises the bar an attack has to clear. Mute it under Audio cues if strikes start going missing."
