@@ -156,10 +156,12 @@ struct WaterfallCanvas: View {
         ctx.fill(shape, with: .color(colour.opacity(0.28)))
         ctx.stroke(shape, with: .color(colour.opacity(0.9)),
                    style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-        var pinch = ctx.resolve(Image(systemName: "hand.pinch.fill"))
-        pinch.shading = .color(Theme.cream.opacity(0.85))
-        let icon = min(14, r.height - 6)
-        ctx.draw(pinch, in: CGRect(x: r.midX - icon / 2, y: r.midY - icon / 2, width: icon, height: icon))
+        let iconH = min(22, r.height - 6)
+        let iconW = min(iconH * 0.8, r.width - 6)
+        DampGlyph.draw(in: ctx,
+                       rect: CGRect(x: r.midX - iconW / 2, y: r.midY - iconH / 2,
+                                    width: iconW, height: iconH),
+                       color: Theme.cream.opacity(0.9))
     }
 
     private func drawHitLine(_ ctx: GraphicsContext, size: CGSize) {

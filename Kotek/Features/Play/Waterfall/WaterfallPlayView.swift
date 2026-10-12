@@ -49,10 +49,10 @@ private struct WaterfallContentView: View {
                 // ends of the bars carry nothing — notes land on the top edge —
                 // so sinking them buys waterfall height without making the
                 // bars any smaller.
-                let gangsaHeight = min(136, geo.size.height * 0.4)
+                let gangsaHeight = min(150, geo.size.height * 0.44)
                 let sunk = gangsaHeight * Self.sunkFraction
                 let lane = GangsaLayout.lane(forHeight: gangsaHeight)
-                let lanesWidth = min(geo.size.width - framePad * 2 - 48,
+                let lanesWidth = min(geo.size.width - framePad * 2 - 40,
                                      lane * CGFloat(vm.keyCount))
                 let layout = GangsaLayout(keyCount: vm.keyCount, width: lanesWidth)
 
@@ -149,7 +149,7 @@ private struct WaterfallContentView: View {
     }
 
     /// How much of the instrument sits below the screen edge.
-    private static let sunkFraction: CGFloat = 0.6
+    private static let sunkFraction: CGFloat = 0.5
 
     private var swipeToTilt: some Gesture {
         DragGesture(minimumDistance: 24)

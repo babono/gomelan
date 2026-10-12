@@ -25,10 +25,10 @@ struct GangsaLayout {
     /// the way the resonators show on the real thing.
     var barWidth: CGFloat { lane * Self.barFill }
 
-    private static let barFill: CGFloat = 0.8
+    private static let barFill: CGFloat = 0.9
     /// Long side over short side of a bar. Gangsa bilah are long and narrow;
     /// a squarer bar reads as a xylophone toy.
-    private static let barAspect: CGFloat = 3.6
+    private static let barAspect: CGFloat = 2.5
     static let barInsets: CGFloat = 24   // top + bottom, see GangsaView
 
     /// The lane that gives a properly proportioned bar in a gangsa this tall.
@@ -203,9 +203,14 @@ struct GangsaView: View {
             ctx.stroke(Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: 3),
                        with: .color(Self.dampColor.opacity(cue.damp)),
                        style: StrokeStyle(lineWidth: 2.5, dash: [5, 4]))
-            var pinch = ctx.resolve(Image(systemName: "hand.pinch.fill"))
-            pinch.shading = .color(Theme.cream.opacity(cue.damp))
-            ctx.draw(pinch, in: CGRect(x: rect.midX - 9, y: rect.midY - 9, width: 18, height: 18))
+            // Over the key number, high on the bar — the lower half may be
+            // below the screen edge.
+            let size = CGSize(width: min(18, rect.width * 0.6), height: min(22, rect.width * 0.75))
+            DampGlyph.draw(in: ctx,
+                           rect: CGRect(x: rect.midX - size.width / 2,
+                                        y: rect.minY + pegInset + 16 - size.height / 2,
+                                        width: size.width, height: size.height),
+                           color: Theme.cream.opacity(cue.damp))
         }
         if cue.strikeNow {
             ctx.stroke(shape, with: .color(Theme.cream), lineWidth: 3)
