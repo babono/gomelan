@@ -168,7 +168,7 @@ Built on the same `PlayEngine` as v1: the count-in, judging, partner half, recor
 - **Partner half** shown faintly beside your notes — **never hidden behind them**: where both halves strike the same bilah at once, the two blocks sit side by side.
 - **Feedback** on each bilah as it is struck: hit, early/late, wrong key, miss — judged from the sensors.
 - **Practice mode** (default for first-timers) and **scored play**; tempo 50 / 75 / 100 %; voice toggles for your half and the partner half — as v1.
-- **Results**: accuracy over the best window, streak, notes landed, mastery rank (Paria → Brahmana), personal record per figure, half and tempo.
+- **Results**: accuracy over the best window, streak, personal record per figure, half and tempo; average accuracy of each stroke across the cycle, pooled into quarters, with the weakest quarter named; an on-device AI overview of the session (§v2-6.8). The rank ladder (Paria → Brahmana) is **removed**; a gangsa card shows notes landed instead.
 
 ### 6.4 Play-along without sensors
 

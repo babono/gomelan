@@ -22,20 +22,12 @@ struct ResultsView: View {
                         if let best = result.best {
                             HStack(alignment: .top, spacing: 28) {
                                 ResultsHeadlineView(best: best, result: result)
-                                performance(result, best: best)
+                                performance(result)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         } else {
                             tooShort
                         }
-
-                        // Always, even after a session too short to score: the
-                        // notes still landed and the gangsa still learned them.
-                        MasteryProgressView(
-                            profile: app.profile,
-                            before: app.previousNotesLanded,
-                            landed: result.landedNotes
-                        )
 
                         ResultsBottomBar(
                             onChooseAnother: { app.backToKotekan() },
@@ -73,20 +65,31 @@ struct ResultsView: View {
         }
     }
 
-    /// Accuracy pass by pass, with the stretch the headline came from lit.
-    private func performance(_ result: SongResult, best: ScoringWindow) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SectionLabel("Performance", color: Theme.stone)
+    /// Where in the figure it went right and wrong, averaged over the session.
+    private func performance(_ result: SongResult) -> some View {
+        let weakest = result.weakestPart
+        return VStack(alignment: .leading, spacing: 6) {
+            SectionLabel("Across the cycle", color: Theme.stone)
 
-            PerformanceGraph(cycles: result.cycles, best: best.range)
-                .frame(height: 108)
-                .frame(maxWidth: .infinity)
+            CycleAccuracyChart(
+                strokes: result.strokeAverages,
+                parts: result.partAverages,
+                cycleMs: result.cycleMs,
+                weakest: weakest?.part
+            )
+            .frame(height: 120)
+            .frame(maxWidth: .infinity)
 
             HStack {
-                Text("\(result.cycles.count) cycle\(result.cycles.count == 1 ? "" : "s")")
+                Text("average of \(result.cycles.count) cycle\(result.cycles.count == 1 ? "" : "s")")
                 Spacer()
-                Text("best \(best.range.lowerBound + 1)–\(best.range.upperBound + 1)")
-                    .foregroundStyle(Theme.terracotta)
+                if let weakest {
+                    Text("work on the \(weakest.part.label.lowercased()) quarter")
+                        .foregroundStyle(Theme.miss)
+                } else {
+                    Text("even all the way round")
+                        .foregroundStyle(Theme.terracotta)
+                }
             }
             .font(.sans(12))
             .foregroundStyle(Theme.stone)

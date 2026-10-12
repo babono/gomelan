@@ -156,31 +156,13 @@ enum Theme {
     /// Polos and sangsih keep their own colour wherever they appear, so the
     /// weave reads at a glance — the score, the picker cards, the mixer chips.
     ///
-    /// They are two of the RANK colours rather than hues of their own. The app
-    /// had a teal, an indigo, a purple and five rungs, which is a lot of
-    /// separate meanings for an eye to keep apart on one warm ground; reusing
-    /// two of them costs nothing, because a rung and a half never appear in the
-    /// same place. Blue for polos, the steady half on the beat; purple for
-    /// sangsih, which answers between. Swapping the two is a one-line change if
-    /// it reads better the other way round.
-    static let polosVoice = rankWaisya
-    static let sangsihVoice = rankKsatria
-
-    // MARK: - Mastery rungs
-
-    /// The five rungs of a gangsa's grade, lowest first — see `Mastery`.
-    ///
-    /// A cool-to-warm run ending in gold, which is the rarity ladder every
-    /// player already knows how to read: grey means new, gold means arrived, and
-    /// nobody has to be told the order. Held down in saturation so five strong
-    /// accents do not turn the instrument rail into a paint chart — they sit ON
-    /// the warm brown ground rather than fighting it, next to the cool voices
-    /// above, which are the app's precedent for a non-brown accent.
-    static let rankParia = Color(hex: 0x9A8F86)
-    static let rankSudra = Color(hex: 0x7FB069)
-    static let rankWaisya = Color(hex: 0x5FA8D3)
-    static let rankKsatria = Color(hex: 0xA97CD1)
-    static let rankBrahmana = Color(hex: 0xE8B44A)
+    /// Blue for polos, the steady half on the beat; purple for sangsih, which
+    /// answers between. They were borrowed from the old rank ladder's colours
+    /// to keep the number of separate accents down, and kept their values when
+    /// the ranks went. Swapping the two is a one-line change if it reads better
+    /// the other way round.
+    static let polosVoice = Color(hex: 0x5FA8D3)
+    static let sangsihVoice = Color(hex: 0xA97CD1)
 
     static let keyOutlineWidth: CGFloat = 3
     static let keyCornerRadius: CGFloat = 6
@@ -305,19 +287,6 @@ extension Color {
 }
 
 // MARK: - Model UI Color Extensions
-
-extension Mastery.Rank {
-    /// Grey, green, blue, purple, gold. See `Theme.rankParia` and friends.
-    var color: Color {
-        switch self {
-        case .paria: Theme.rankParia
-        case .sudra: Theme.rankSudra
-        case .waisya: Theme.rankWaisya
-        case .ksatria: Theme.rankKsatria
-        case .brahmana: Theme.rankBrahmana
-        }
-    }
-}
 
 extension JudgementResult {
     var color: Color {

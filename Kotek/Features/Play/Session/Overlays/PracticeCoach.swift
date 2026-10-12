@@ -6,7 +6,7 @@
 //  what it does, Next until it runs out.
 //
 //  A DIFFERENT JOB from the guide panels. Those explain ideas — what a kotekan
-//  is, what the grade counts — and a panel is right for that, because ideas do
+//  is, what a record means — and a panel is right for that, because ideas do
 //  not live anywhere on screen. This explains CONTROLS, which do, and pointing
 //  at the thing itself is worth more than any amount of describing where it is.
 //  So it is a spotlight rather than a page: the screen you are about to use,

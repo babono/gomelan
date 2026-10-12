@@ -210,7 +210,7 @@ final class PlayEngine {
     }
 
     /// Notes that landed anywhere this session, either half — the one number
-    /// that feeds the gangsa's grade, and the only running total worth putting
+    /// that feeds the gangsa's total, and the only running total worth putting
     /// in front of the player mid-session.
     private(set) var landedNotes = 0
     /// When each bilah last had a strike accepted, so one physical hit reported
@@ -453,6 +453,8 @@ final class PlayEngine {
             subtitle: sessionSubtitle,
             judgements: judgementsByPart[partKey] ?? [],
             cycles: cyclesByPart[partKey] ?? [],
+            strokes: notes,
+            cycleMs: song.durationMs,
             landedNotes: landedNotes
         ))
     }
@@ -840,7 +842,7 @@ final class PlayEngine {
             if patternTime > scaledTime(notes[i]) + strokeGap(around: i) {
                 judged[i] = true
                 outcomes[i] = .miss
-                record(.miss, at: notes[i].keyIndex, now: now, playSound: true)
+                record(.miss, at: notes[i].keyIndex, stroke: i, now: now, playSound: true)
             }
         }
         // Upcoming fills + strike-now, plus reference-tone one beat ahead.
@@ -964,11 +966,11 @@ final class PlayEngine {
                 leniency: leniency
             )
             outcomes[i] = result
-            record(result, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
+            record(result, at: keyIndex, stroke: i, now: hostTime, playSound: true, timingErrorMs: err)
         } else {
             // Correct timing, wrong key: amber on struck key, correct stays lit.
             outcomes[i] = .wrongKey
-            record(.wrongKey, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
+            record(.wrongKey, at: keyIndex, stroke: i, now: hostTime, playSound: true, timingErrorMs: err)
         }
     }
 
@@ -1078,15 +1080,16 @@ final class PlayEngine {
     private func record(
         _ result: JudgementResult,
         at key: Int,
+        stroke: Int,
         now: Double,
         playSound: Bool,
         timingErrorMs: Double = 0,
         storeResult: Bool = true
     ) {
-        let judgement = NoteJudgement(keyIndex: key, result: result, timingErrorMs: timingErrorMs)
+        let judgement = NoteJudgement(keyIndex: key, stroke: stroke, result: result, timingErrorMs: timingErrorMs)
         if storeResult {
             judgementsByPart[partKey, default: []].append(judgement)
-            // R `isHit`, not `onBeat`: the grade counts how much of this gangsa
+            // R `isHit`, not `onBeat`: the total counts how much of this gangsa
             // R you have actually played, and a stroke that found the right bar
             // R late is playing. Accuracy already docks it — see `score`.
             if result.isHit { landedNotes += 1 }

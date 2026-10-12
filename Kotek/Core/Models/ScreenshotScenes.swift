@@ -58,44 +58,46 @@ extension AppState {
                                            tempo: tempoScale, landed: 260)
             previousRecord = 0.74
             lastSetRecord = true
-            previousNotesLanded = profile.notesLanded - 260
             screen = .results
         default:
             break
         }
     }
 
-    /// Twelve passes of a half that starts shaky and settles — the shape a real
-    /// session has, so the cycle chart has something to say.
+    /// Twelve passes of a half that starts shaky and settles, and keeps
+    /// slipping in its third quarter — the shape a real session has, so the
+    /// cycle chart and the overview have something to say.
     private static func sampleResult(kotekan: Kotekan, half: KotekanHalf,
                                      tempo: Double, landed: Int) -> SongResult {
-        let slots = half == .polos ? kotekan.polos : kotekan.sangsih
-        let keys = slots.compactMap { $0 }
+        let song = kotekan.makeSong(half: half, cycles: 1)
         var rng = SeededRNG()  // the same session every capture
         var judgements: [NoteJudgement] = []
         var cycles: [CycleScore] = []
         for c in 0..<12 {
-            let skill = min(0.97, 0.62 + Double(c) * 0.04)
+            let settled = min(0.97, 0.62 + Double(c) * 0.04)
             var score = 0, onBeat = 0, mistakes = 0
-            for k in keys {
+            for (i, note) in song.notes.enumerated() {
+                let third = note.timeMs * 4 / song.durationMs == 2
+                let skill = third ? settled - 0.22 : settled
                 let roll = Double.random(in: 0...1, using: &rng)
                 let result: JudgementResult = roll < skill * 0.8 ? .perfect
                     : roll < skill ? .good
                     : roll < skill + 0.08 ? .lateEarly
                     : .miss
                 let err = result == .miss ? 0 : Double.random(in: -60...60, using: &rng)
-                judgements.append(NoteJudgement(keyIndex: k, result: result, timingErrorMs: err))
+                judgements.append(NoteJudgement(keyIndex: note.keyIndex, stroke: i, result: result, timingErrorMs: err))
                 score += result.score
                 if result.onBeat { onBeat += 1 }
                 if !result.isHit { mistakes += 1 }
             }
             cycles.append(CycleScore(index: c, startMs: Double(c * kotekan.slotsPerCycle * kotekan.strokeMs),
-                                     noteCount: keys.count, score: score,
+                                     noteCount: song.notes.count, score: score,
                                      onBeat: onBeat, mistakes: mistakes))
         }
         return SongResult(songTitle: kotekan.name,
                           subtitle: "\(kotekan.name) · \(half.title) · \(Theme.tempoLabel(tempo))",
-                          judgements: judgements, cycles: cycles, landedNotes: landed)
+                          judgements: judgements, cycles: cycles,
+                          strokes: song.notes, cycleMs: song.durationMs, landedNotes: landed)
     }
 }
 /// SplitMix64. `SystemRandomNumberGenerator` cannot be seeded, and a result

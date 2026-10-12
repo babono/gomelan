@@ -138,7 +138,7 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
     var lastUsedAt: String? = nil
 
     /// Sessions finished on this instrument, and the notes in them that landed
-    /// (right key, near enough the beat). Together they are the grade.
+    /// (right key, near enough the beat) — shown on the card and in Settings.
     ///
     /// Optional rather than `= 0` for a reason that has already cost this app
     /// once: synthesized `Decodable` does NOT fall back to a property's default
@@ -184,11 +184,6 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
 
     var notesLanded: Int {
         accurateNotes ?? 0
-    }
-
-    /// This instrument's grade — see `Mastery`.
-    var mastery: Mastery {
-        Mastery(notesLanded: notesLanded)
     }
 
     var hasBeenPlayed: Bool {
