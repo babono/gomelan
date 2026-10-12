@@ -169,6 +169,8 @@ struct RootView: View {
             CaptureTrainingView()
         case .sensorTest:
             SensorPlayView()
+        case .waterfall:
+            WaterfallPlayView()
         }
     }
 }

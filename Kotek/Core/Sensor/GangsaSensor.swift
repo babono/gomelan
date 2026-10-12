@@ -11,12 +11,10 @@
 //    [2–3] peak strength 0…4095 LE          [4–7] ESP32 millis() LE
 //  LEVEL (…0003…) · 3 bytes, one 0…255 vibration level per bar, 50 Hz.
 //
-//  The sensor answers WHICH bar and WHEN with no camera at all, which is what
-//  `SensorPlayView` exists to show. It does not yet join the vision/audio
-//  fusion in `PlayView`.
+//  The sensor answers WHICH bar and WHEN with no camera at all.
 //
-//  ponytail: lives beside its only screen. Promote to `Core/` when PlayView
-//  starts taking sensor strikes.
+//  Shared by the sensor test screen and the waterfall play screen, which is
+//  why it lives in Core. The camera PlayView does not take sensor strikes yet.
 //
 
 import CoreBluetooth
