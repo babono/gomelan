@@ -24,7 +24,7 @@ import Foundation
 /// The colotomic instruments a player can write into a figure in Create Kotek.
 /// The kempli is not one of them: it marks every beat, so the piano roll plays
 /// it on its own rather than asking for it to be written.
-enum ColotomicInstrument: String, CaseIterable, Identifiable {
+enum ColotomicInstrument: String, Codable, CaseIterable, Identifiable {
     case gong
     case kajar
     case klentong
@@ -54,7 +54,7 @@ enum ColotomicInstrument: String, CaseIterable, Identifiable {
     }
 }
 
-struct ColotomicHit: Equatable {
+struct ColotomicHit: Codable, Equatable {
     var slot: Int
     var instrument: ColotomicInstrument
 }
@@ -101,12 +101,12 @@ enum KotekanHalf: String, Equatable, Identifiable {
 /// It exists to keep `level` off the melody cards. A folk tune has no level in
 /// the kotekan ladder, and printing "Level 1" on one claims it is the easy end
 /// of a progression it is not part of.
-enum KotekanKind: Equatable {
+enum KotekanKind: String, Codable, Equatable {
     case figure
     case melody
 }
 
-struct Kotekan: Identifiable, Equatable {
+struct Kotekan: Identifiable, Codable, Equatable {
     var id: String
     var name: String // "Kotekan Telu"
     var level: Int // 1…3 — figures only; a melody has no rung

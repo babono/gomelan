@@ -17,11 +17,12 @@ extension AppState {
             let fetched = try await Kotekan.catalogue(from: kotekanRepo.catalogue())
             guard !fetched.isEmpty else { return }
             kotekans = fetched
+            KotekanStore.save(fetched)
             if let id = selectedKotekan?.id {
                 selectedKotekan = fetched.first { $0.id == id } ?? selectedKotekan
             }
         } catch {
-            log.error("catalogue fetch failed, keeping bundled: \(error.localizedDescription)")
+            log.error("catalogue fetch failed, keeping the last one: \(error.localizedDescription)")
         }
     }
 
@@ -48,6 +49,7 @@ extension AppState {
         } else {
             kotekans.append(k)
         }
+        KotekanStore.save(kotekans)
         editingKotekan = nil
         selectedKotekan = k
         screen = .chooseKotekan
@@ -60,6 +62,7 @@ extension AppState {
         guard k.source != .builtin else { return }
         try await kotekanRepo.deleteKotekan(id: k.id)
         kotekans.removeAll { $0.id == k.id }
+        KotekanStore.save(kotekans)
         if selectedKotekan?.id == k.id { selectedKotekan = nil }
     }
 

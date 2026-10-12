@@ -22,9 +22,10 @@ final class AppState {
     var savedProfiles: [InstrumentProfile] = []
 
     // The kotekan session carried through selection → play.
-    /// The bundled catalogue until Supabase answers, then whatever it holds —
-    /// see `refreshCatalogue`. Starting from the bundled copy is what keeps the
-    /// picker full offline and on a first launch before the network is up.
+    /// The last catalogue Supabase sent (`KotekanStore`) until it answers
+    /// again, then whatever it holds — see `refreshCatalogue`. The bundled copy
+    /// is the floor under both: it keeps the picker full on a first launch
+    /// before the network is up.
     var kotekans: [Kotekan] = Kotekan.bundled
     var selectedKotekan: Kotekan?
     /// Which half you are taking. Live: it is a toggle on the practice screen
@@ -418,6 +419,7 @@ final class AppState {
 
     init() {
         Self.resetLocalDataIfStale()
+        if let cached = KotekanStore.load(), !cached.isEmpty { kotekans = cached }
         let all = ProfileStore.loadAll()
         MalletHitClassifier.applyCropScale(
             mode: Defaults.int("cropScaleMode", 1)
