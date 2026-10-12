@@ -34,6 +34,14 @@ extension AppState {
         screen = .countdown
     }
 
+    /// Take this figure into the waterfall — the drawn gangsa, played from
+    /// the sensors, no camera. No countdown route: the screen counts itself in.
+    func chooseKotekanWaterfall(_ k: Kotekan) {
+        selectedKotekan = k
+        renderHalves()
+        screen = .waterfall
+    }
+
     /// Change sides without leaving the session.
     func setHalf(_ half: KotekanHalf) {
         guard half != chosenHalf else { return }

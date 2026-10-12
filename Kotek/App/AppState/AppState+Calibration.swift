@@ -35,8 +35,9 @@ extension AppState {
         if isAddingNewInstrument {
             isAddingNewInstrument = false
             previousProfile = nil
+            offerControllerAfterSetup = true
         }
-        screen = baselineLearned ? .chooseKotekan : .calibrating
+        if baselineLearned { finishSetup() } else { screen = .calibrating }
     }
 
     /// Baseline captured: strikes will now be confirmed by sound.
@@ -44,7 +45,7 @@ extension AppState {
         baselineLearned = true
         requireStrikeSound = true
         saveProfile()
-        screen = .chooseKotekan
+        finishSetup()
     }
 
     /// As above, but awaits the write so the caller can hold a "saving" state over it.
@@ -52,12 +53,24 @@ extension AppState {
         baselineLearned = true
         requireStrikeSound = true
         await saveProfileAsync()
-        screen = .chooseKotekan
+        finishSetup()
     }
 
     /// Left the baseline step without capturing — continue anyway (vision alone).
     func skipCalibration() {
         saveProfile()
-        screen = .chooseKotekan
+        finishSetup()
+    }
+
+    /// The end of setup. A gangsa set up just now is offered a strike
+    /// controller once, as an optional last step (Flow D); everything else
+    /// lands on the kotekan picker as before.
+    private func finishSetup() {
+        guard offerControllerAfterSetup else {
+            screen = .chooseKotekan
+            return
+        }
+        offerControllerAfterSetup = false
+        openControllerSetup(returnTo: .chooseKotekan, offer: true)
     }
 }

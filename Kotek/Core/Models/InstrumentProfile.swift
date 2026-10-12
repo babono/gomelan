@@ -56,6 +56,11 @@ nonisolated struct InstrumentKey: Codable, Identifiable, Equatable {
     /// nil and are taken at face value — see `learnedAtom`.
     var linearTemplateCount: Int?
 
+    /// The strike-controller input whose sensor sits on this bilah (§3.6.5),
+    /// nil when there is none and the key falls back to camera + mic. Per
+    /// gangsa, because one controller is shared between several.
+    var sensorInput: Int?
+
     /// The learned spectrum with its example count, if there is one.
     ///
     /// A profile from before the count existed is assumed fully trusted: it was
@@ -102,6 +107,26 @@ nonisolated struct PatternRecord: Codable, Equatable, Identifiable {
     var id: String {
         "\(kotekanId)·\(half)@\(tempo)"
     }
+}
+
+/// The strike controller this gangsa was set up with (PRD §3.6, Flow D). The
+/// per-key half of the setup is `InstrumentKey.sensorInput`.
+///
+/// Supabase holds it in its own table and columns, not in the `profile` JSON —
+/// see `InstrumentRemoteRepository`. This copy is what lets a session run
+/// offline.
+nonisolated struct ControllerLink: Codable, Equatable {
+    /// The ESP32's eFuse MAC as 12 hex digits — the identity that is the same
+    /// on every phone (§3.6.1).
+    var hardwareId: String
+    var name: String
+    var inputCount: Int
+    var hasPlugDetect: Bool
+    var firmware: String?
+    /// The inputs that had a sensor in them at setup. Nil without plug detect:
+    /// there was nothing to record, and nothing to compare against later.
+    var inputs: [Int]?
+    var setUpAt: String
 }
 
 /// Which gangsa this is. The two are the same instrument an octave apart —
@@ -159,6 +184,17 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
     /// `lastUsedAt` cannot do it: realigning the keys is a change worth
     /// keeping, but it is not playing.
     var updatedAt: String? = nil
+
+    /// The strike controller set up on this gangsa, if any.
+    var controller: ControllerLink? = nil
+
+    /// Controller input → key index, for the keys that have a sensor.
+    var keyForInput: [Int: Int] {
+        guard controller != nil else { return [:] }
+        return Dictionary(
+            keys.compactMap { key in key.sensorInput.map { ($0, key.index) } }
+        ) { first, _ in first }
+    }
 
     /// Whether this instrument has a learned strike-sound baseline.
     var hasLearnedBaseline: Bool {

@@ -500,6 +500,75 @@ final class PlayEngine {
     /// read this index are gong and kempur, positions inside this cycle.
     static let colotomicBeats = 32
 
+    // MARK: - Waterfall
+
+    /// The strokes of both halves inside a time window around now, for the
+    /// waterfall. Built from the same note arrays, clock and loop origin the
+    /// judge uses, so a block reaches the bilah at the exact moment the note
+    /// is due — the river's page coordinates cannot say that, they wrap.
+    ///
+    /// Walks every loop the window touches rather than only the current one:
+    /// the next pass has to be visible falling in before this one ends, and
+    /// the first pass has to fall in during the count-in.
+    func fallingNotes(aheadMs: Double, behindMs: Double) -> [FallingNote] {
+        guard patternMs > 0 else { return [] }
+        let from = currentTimeMs - behindMs
+        let to = currentTimeMs + aheadMs
+        let firstLoop = max(0, Int(((from - introMs) / patternMs).rounded(.down)))
+        let lastLoop = Int(((to - introMs) / patternMs).rounded(.down))
+        guard lastLoop >= firstLoop else { return [] }
+
+        var out: [FallingNote] = []
+        func add(_ list: [Note], voice: NoteVoice) {
+            for loop in firstLoop ... lastLoop {
+                let origin = introMs + Double(loop) * patternMs
+                for (i, note) in list.enumerated() {
+                    let at = origin + scaledTime(note)
+                    let duration = Double(note.durationMs) / tempoScale
+                    guard at + duration >= from, at <= to else { continue }
+                    // The stroke before the first one of a pass is the last one
+                    // of the pass before — the figure goes round without a seam.
+                    let previous = i > 0 ? list[i - 1] : (loop > 0 ? list.last : nil)
+                    let damp = voice == .yours
+                        ? previous.map(\.keyIndex).flatMap { $0 == note.keyIndex ? nil : $0 }
+                        : nil
+                    let outcome = voice == .yours && loop == loopIndex && phase == .userTurn
+                        && outcomes.indices.contains(i) ? outcomes[i] : nil
+                    out.append(FallingNote(
+                        id: "\(voice == .yours ? "y" : "p")-\(loop)-\(i)",
+                        keyIndex: note.keyIndex,
+                        voice: voice,
+                        msAhead: at - currentTimeMs,
+                        durationMs: duration,
+                        outcome: outcome,
+                        dampKey: damp
+                    ))
+                }
+            }
+        }
+        add(partnerNotes, voice: .partner)
+        add(notes, voice: .yours)
+        return out
+    }
+
+    /// Beat rules for the same window, counted from the figure's first slot so
+    /// the strong rule lands on the kajar.
+    func fallingBeats(aheadMs: Double, behindMs: Double) -> [FallingBeat] {
+        let first = Int(((currentTimeMs - behindMs) / beatMs).rounded(.up))
+        let last = Int(((currentTimeMs + aheadMs) / beatMs).rounded(.down))
+        guard last >= first else { return [] }
+        return (first ... last).map { b in
+            FallingBeat(id: b,
+                        msAhead: Double(b) * beatMs - currentTimeMs,
+                        strong: (b - introBeats) % 4 == 0)
+        }
+    }
+
+    /// One beat, in ms at the current tempo — the waterfall's unit of height.
+    var beatLengthMs: Double {
+        beatMs
+    }
+
     // MARK: - Frame tick
 
     func tick(now: Double) {
