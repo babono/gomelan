@@ -38,6 +38,7 @@ private struct ChooseKotekanContentView: View {
                 settingsAction: { app.openSettings() },
                 infoAction: { app.openGuide(.kotekan) }
             )
+            ControllerStatusChip()
 
             carousel
                 .frame(maxHeight: .infinity)

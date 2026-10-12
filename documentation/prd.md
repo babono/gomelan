@@ -366,14 +366,14 @@ Settings → Instruments → the gangsa: "Check keys" (Flow D step 5 on demand),
 
 ### Controller in Play
 
-When the active gangsa's controller is **connected**, it replaces camera + mic as the strike source:
+When the active gangsa's controller is **connected**, it replaces camera + mic as the strike source on every key that has a sensor:
 
-- A new `AppState.DetectionMode` case, **Sensor**, selected automatically while connected and handed back to the player's previous mode when it drops. The Settings picker shows it, disabled, when nothing is connected.
-- Each EVENT hit → `map[input]` → `PlayEngine.registerStrike(keyIndex:hostTime:confidence: 1)`, with `hostTime` from the controller-clock offset `GangsaSensor` already estimates. Hits from unmapped inputs are dropped.
-- Keys with no sensor keep using camera + mic for **those keys only**. If every key has a sensor, the camera and mic detection paths are not started at all — the camera feed stays as the overlay's background.
-- A drop mid-session falls back to camera + mic without stopping play; the status dot (Flow E step 5) says so. A sensor plugged in or pulled out mid-session does the same for the affected key, and the re-check banner waits for the end of the session.
+- Each EVENT hit → `keyForInput[input]` → `PlayEngine.registerStrike(keyIndex:hostTime:confidence: 1)`, with `hostTime` from the controller-clock offset `GangsaSensor` already estimates. Hits from unmapped inputs are dropped.
+- Camera and microphone strikes on a key with a sensor are **dropped** (`PlayViewModel.applyStrike`), not fused: the sensor answers which *and* when, so a vote from the others could only make it worse. No new `DetectionMode` — the existing mode keeps covering the keys without a sensor, and Settings → Detection says so while a controller is set up.
+- Keys with no sensor — or, on a plug-detect board, whose sensor is unplugged — keep using camera + mic. Worked out per strike, so a controller dropping mid-session hands every key back to camera + mic without stopping play; the status chip in the top bar says "Camera" instead of "Sensors".
+- ponytail: the camera and mic pipelines keep running even when every key has a sensor. Not starting them would save power, but a mid-session drop would then have nothing to fall back on.
 
-`GangsaSensor` moves from `Features/Detection/Sensor/` to `Core/` when this lands — its own ponytail note says to, once `PlayView` takes sensor strikes.
+`GangsaSensor` now lives in `Kotek/Core/Sensor/` as one shared instance (`Container.sensorService`). Whoever is on screen says what it wants with `use(_:)` — RootView follows the active gangsa, the setup screen browses, the sensor test takes any.
 
 ---
 
@@ -656,7 +656,7 @@ As built, screens map 1:1 to `AppState.Screen` cases and are hosted by `RootView
 | Detection Test | `.detectionTest` | `Kotek/Features/Detection/DetectionTestView.swift` | Diagnostic: fused multi-modal strike detection pipeline |
 | Capture Training | `.captureTraining` | `Kotek/Features/Detection/CaptureTrainingView.swift` | Diagnostic: record labelled key strike frames for ML training |
 | Sensor Test | `.sensorTest` | `Kotek/Features/Detection/Sensor/SensorPlayView.swift` | Diagnostic: the BLE piezo prototype driving a kotekan with no camera |
-| Controller Setup *(planned)* | `.controllerSetup` | `Kotek/Features/Controller/` | Flow D: scan → connect → summary → test & remap input→key map → finish; also the Flow E re-check |
+| Controller Setup | `.controllerSetup` | `Kotek/Features/Controller/ControllerSetupView.swift` | Flow D: scan → connect → summary → test & remap input→key map → finish; also the Flow E re-check |
 
 Global overlays hosted in `RootView`:
 - `SplashView`: Launch animation masking background warming.
@@ -920,7 +920,7 @@ launch → .welcome
       choose instrument → .chooseInstrument
       re-align → .aligning
       diagnostics → .audioTest, .malletTest, .detectionTest, .captureTraining, .sensorTest
-      instrument → connect controller | check keys → .controllerSetup   (planned, Flow D)
+      instrument → connect controller | check keys → .controllerSetup   (Flow D)
   new gangsa registered → "Connect a controller?" → .controllerSetup | skip → as today
   re-check banner (Flow E) → .controllerSetup at step 5
   → .controllerSetup          // scanning / connecting / summary / mapping are local
