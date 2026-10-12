@@ -17,33 +17,40 @@ struct InstrumentSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Name")
-                    .font(.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.cream.opacity(0.62))
+            HStack(alignment: .bottom, spacing: 16) {
+                GangsaPhotoPicker(
+                    image: InstrumentPhotoStore.image(for: app.profile),
+                    onPick: { app.setPhoto($0, for: app.profile.id) },
+                    width: 120, height: 76
+                )
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Name")
+                        .font(.sans(13, weight: .medium))
+                        .foregroundStyle(Theme.cream.opacity(0.62))
 
-                TextField("Gangsa name", text: $viewModel.draftName)
-                    .textFieldStyle(.plain)
-                    .font(.serif(22))
-                    .foregroundStyle(Theme.cream)
-                    .focused($nameFocused)
-                    .submitLabel(.done)
-                    .autocorrectionDisabled()
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: 360, alignment: .leading)
-                    .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.radius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.radius)
-                            .strokeBorder(
-                                nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
-                                lineWidth: nameFocused ? 2 : 1
-                            )
-                    )
-                    .onSubmit { viewModel.commitName() }
-                    .onChange(of: nameFocused) { _, focused in
-                        if !focused { viewModel.commitName() }
-                    }
+                    TextField("Gangsa name", text: $viewModel.draftName)
+                        .textFieldStyle(.plain)
+                        .font(.serif(22))
+                        .foregroundStyle(Theme.cream)
+                        .focused($nameFocused)
+                        .submitLabel(.done)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: 360, alignment: .leading)
+                        .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.radius))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.radius)
+                                .strokeBorder(
+                                    nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
+                                    lineWidth: nameFocused ? 2 : 1
+                                )
+                        )
+                        .onSubmit { viewModel.commitName() }
+                        .onChange(of: nameFocused) { _, focused in
+                            if !focused { viewModel.commitName() }
+                        }
+                }
             }
 
             VStack(alignment: .leading, spacing: 5) {

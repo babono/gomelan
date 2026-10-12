@@ -18,10 +18,17 @@ extension AppState {
     /// `realignInstrument(_:)` still reach `.aligning` for anyone who wants
     /// the camera fit. The framing/aligning screens are kept, just unrouted
     /// from here.
-    func keyCountChosen(_ count: Int, name: String, type: GangsaType) {
+    /// `photo` is already prepared (`InstrumentPhotoStore.prepare`); nil leaves
+    /// whatever photo the gangsa had.
+    func keyCountChosen(_ count: Int, name: String, photo: Data?) {
         var updated = profile
         updated.resize(to: count)
-        updated.gangsaType = type
+        if let photo {
+            let version = UUID().uuidString.lowercased()
+            if (try? InstrumentPhotoStore.save(photo, id: updated.id, version: version)) != nil {
+                updated.photoVersion = version
+            }
+        }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { updated.name = trimmed }
         profile = updated

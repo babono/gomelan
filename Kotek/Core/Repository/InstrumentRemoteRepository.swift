@@ -150,4 +150,36 @@ nonisolated struct InstrumentRemoteRepository {
         try await remote.delete(from: "instrument_keys", matching: "instrument_id", equals: id)
         try await remote.delete(from: "instruments", matching: "id", equals: id)
     }
+
+    // MARK: - Photos
+
+    /// Private bucket; its policy lets a user reach only the folder named for
+    /// their own id (supabase/migrations/20261013020000_instrument_photos.sql).
+    private static let photoBucket = "instrument-photos"
+
+    /// `<user id>/<instrument id>-<version>.jpg`. The version in the name means
+    /// a phone fetching a photo the profile says is current can never get an
+    /// older one that happened to be under the same path.
+    private func photoPath(id: String, version: String) async throws -> String {
+        let uid = try await remote.userID()
+        return "\(uid.uuidString.lowercased())/\(InstrumentPhotoStore.fileName(id: id, version: version))"
+    }
+
+    func uploadPhoto(_ jpeg: Data, id: String, version: String) async throws {
+        try await remote.client.storage.from(Self.photoBucket).upload(
+            try await photoPath(id: id, version: version),
+            data: jpeg,
+            options: FileOptions(contentType: "image/jpeg", upsert: true)
+        )
+    }
+
+    func downloadPhoto(id: String, version: String) async throws -> Data {
+        try await remote.client.storage.from(Self.photoBucket)
+            .download(path: try await photoPath(id: id, version: version))
+    }
+
+    func deletePhoto(id: String, version: String) async throws {
+        _ = try await remote.client.storage.from(Self.photoBucket)
+            .remove(paths: [try await photoPath(id: id, version: version)])
+    }
 }

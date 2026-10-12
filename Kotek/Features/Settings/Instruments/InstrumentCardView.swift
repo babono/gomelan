@@ -12,34 +12,48 @@ struct InstrumentCardView: View {
     let isCurrent: Bool
     let onSelect: () -> Void
 
+    private static let width: CGFloat = 258
+    private static let height: CGFloat = 240
+    private static let photoHeight: CGFloat = 104
+
     var body: some View {
         Button {
             onSelect()
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(profile.name)
-                    .font(.serif(30))
-                    .foregroundStyle(Theme.cream)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+            let photo = InstrumentPhotoStore.image(for: profile)
+            VStack(alignment: .leading, spacing: 0) {
+                // Across the top, edge to edge, as the revamp draws it.
+                if let photo {
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: Self.width, height: Self.photoHeight)
+                        .clipped()
+                }
 
-                Text("\(profile.keyCount) keys · \(lastPlayedText)")
-                    .font(.sans(15, weight: .medium))
-                    .foregroundStyle(Theme.cream.opacity(0.62))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(profile.name)
+                        .font(.serif(photo == nil ? 30 : 26))
+                        .foregroundStyle(Theme.cream)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
 
-                Spacer(minLength: 12)
+                    Text("\(profile.keyCount) keys · \(lastPlayedText)")
+                        .font(.sans(15, weight: .medium))
+                        .foregroundStyle(Theme.description)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
 
-                playedLine
-                statusDot
+                    Spacer(minLength: photo == nil ? 12 : 4)
+
+                    playedLine
+                    statusDot
+                }
+                .padding(photo == nil ? 20 : 16)
             }
-            .frame(width: 218, height: 200, alignment: .topLeading)
-            .padding(20)
-            .background(
-                Theme.deep.opacity(0.55),
-                in: RoundedRectangle(cornerRadius: 20)
-            )
+            .frame(width: Self.width, height: Self.height, alignment: .topLeading)
+            .background(Theme.deep)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
                     .strokeBorder(

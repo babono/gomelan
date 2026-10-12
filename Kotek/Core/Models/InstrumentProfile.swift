@@ -153,6 +153,10 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
     var keyCount: Int
     /// Optional for the decoding reason given on `sessionCount` below. Read
     /// through `type`, which falls back to pemade.
+    ///
+    /// No longer asked for: the photo (`photoVersion`) says which gangsa it
+    /// is better than a word did. Kept because the `instruments.type` column
+    /// is NOT NULL.
     var gangsaType: GangsaType? = nil
     var createdAt: String
     var keys: [InstrumentKey]
@@ -187,6 +191,13 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
 
     /// The strike controller set up on this gangsa, if any.
     var controller: ControllerLink? = nil
+
+    /// The photo of this gangsa, if one was added: a fresh id each time it
+    /// changes. The image itself is not in the profile — it is a file on the
+    /// phone (`InstrumentPhotoStore`) and an object in Storage, both named by
+    /// this — so a profile stays small enough to sync on every save, and a
+    /// phone can tell whether its copy of the photo is the current one.
+    var photoVersion: String? = nil
 
     /// Controller input → key index, for the keys that have a sensor.
     var keyForInput: [Int: Int] {
