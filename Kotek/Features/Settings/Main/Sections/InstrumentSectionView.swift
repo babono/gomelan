@@ -53,7 +53,7 @@ struct InstrumentSectionView: View {
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
 
-                Text(gradeLine)
+                Text(playedLine)
                     .font(.sans(14))
                     .foregroundStyle(Theme.cream.opacity(0.62))
             }
@@ -136,16 +136,10 @@ struct InstrumentSectionView: View {
         return line
     }
 
-    private var gradeLine: String {
+    private var playedLine: String {
         let p = app.profile
-        guard p.hasBeenPlayed else {
-            return "Unplayed · the grade starts on your first scored session"
-        }
-        let m = p.mastery
-        var line = "\(m.rank.title) — \(m.rank.gloss) · \(m.notes.formatted()) notes landed"
-        if let next = m.next, let togo = m.notesToNext {
-            line += " · \(togo.formatted()) to \(next.title)"
-        }
+        guard p.hasBeenPlayed else { return "Unplayed" }
+        var line = "\(p.notesLanded.formatted()) notes landed in \(p.sessionsPlayed.formatted()) sessions"
         if let played = p.lastPlayedDate {
             line += " · played \(played.formatted(.relative(presentation: .named)))"
         }

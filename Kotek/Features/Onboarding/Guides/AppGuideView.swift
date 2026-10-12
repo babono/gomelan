@@ -13,7 +13,7 @@ struct AppGuideView: View {
         GuideColumns {
             AppGuideInstrument()
         } right: {
-            AppGuideGrade()
+            AppGuideProgress()
         }
     }
 }
@@ -40,60 +40,24 @@ struct AppGuideInstrument: View {
     }
 }
 
-/// The five rungs, what each is called, and what it costs in notes.
-struct AppGuideGrade: View {
+/// What the app keeps from your playing.
+struct AppGuideProgress: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionLabel("Its grade", color: Theme.gold)
-
-            GuideLead(
-                "Notes that land — right key, near enough the beat — build the grade of the gangsa you played them on. It only ever goes up."
+            GuideBlock(
+                "Records",
+                "Your best eight cycles in a row on a figure is its record — one for each half and each speed, because playing sangsih at full tempo is not the same achievement as polos at half."
             )
 
-            VStack(spacing: 0) {
-                ForEach(Mastery.Rank.allCases.reversed(), id: \.self) { rank in
-                    row(rank)
-                    if rank != Mastery.Rank.allCases.first {
-                        Rectangle().fill(Theme.cream.opacity(0.07)).frame(height: 1)
-                    }
-                }
-            }
-            .padding(.vertical, 3)
-            .background(
-                Theme.ground.opacity(0.5),
-                in: RoundedRectangle(cornerRadius: Theme.radius)
+            GuideBlock(
+                "Notes landed",
+                "Every stroke that finds the right bilah counts towards the total on this card, whichever half you were playing."
+            )
+
+            GuideBlock(
+                "Where it slipped",
+                "After a session, the results show how each stroke of the cycle went on average, so you can see which part of the figure needs work."
             )
         }
-    }
-
-    private func row(_ rank: Mastery.Rank) -> some View {
-        HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(rank.color)
-                .frame(width: 8, height: 18)
-
-            Text(rank.title)
-                .font(.sans(13, weight: .semibold))
-                .foregroundStyle(rank.color)
-                .fixedSize()
-
-            Text(rank.gloss)
-                .font(.sans(11))
-                .foregroundStyle(Theme.cream.opacity(0.5))
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
-
-            Spacer(minLength: 6)
-
-            Text(
-                rank.threshold == 0
-                    ? "from note one" : "\(rank.threshold.formatted())"
-            )
-            .font(.sans(11, weight: .medium))
-            .foregroundStyle(Theme.cream.opacity(0.62))
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .accessibilityElement(children: .combine)
     }
 }

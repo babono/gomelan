@@ -110,7 +110,6 @@ extension AppState {
 
     /// Fold a finished session into the active instrument.
     func recordSession(landed: Int) {
-        previousNotesLanded = profile.notesLanded
         var updated = profile
         updated.lastUsedAt = InstrumentProfile.nowISO()
         updated.sessionCount = updated.sessionsPlayed + 1

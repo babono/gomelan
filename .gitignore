@@ -134,5 +134,9 @@ graphify-out/*
 GEMINI.md
 .gemini
 .claude
+# The AI overview's book index holds the full text of the books. Kept out of
+# git until the rights to redistribute it are confirmed.
+Kotek/Resources/BookIndex.json
+
 # Supabase CLI link state (project ref, versions) — per machine
 supabase/.temp/
