@@ -101,3 +101,27 @@ enum FloaterLabel: Int, CaseIterable {
         }
     }
 }
+
+/// One stroke on the waterfall, placed by how long until it lands.
+struct FallingNote: Identifiable, Equatable {
+    let id: String
+    let keyIndex: Int
+    let voice: NoteVoice
+    /// Milliseconds until it reaches the bilah; negative once it has passed.
+    let msAhead: Double
+    let durationMs: Double
+    var outcome: JudgementResult?
+    /// The bilah the left hand pinches as this one is struck — the previous
+    /// stroke of the same half (§5.5). nil for the very first stroke, for the
+    /// partner's half, and when the previous stroke was this same bilah: the
+    /// mallet re-strikes a bar that is still ringing, there is nothing to damp
+    /// beside it.
+    let dampKey: Int?
+}
+
+/// A beat rule on the waterfall. `strong` every four beats, on the kajar.
+struct FallingBeat: Identifiable, Equatable {
+    let id: Int
+    let msAhead: Double
+    let strong: Bool
+}

@@ -27,6 +27,21 @@ nonisolated enum ProfileStore {
 
     private static let selectedKey = "kotek_selected_instrument_id"
 
+    /// The one JSON shape a profile has, on disk and in the `profile` column
+    /// alike — so a downloaded instrument is byte-for-byte what was saved.
+    static func encoded(_ profiles: some Encodable) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(profiles)
+    }
+
+    static func decoded<T: Decodable>(_ type: T.Type, from data: Data) throws -> T {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try decoder.decode(type, from: data)
+    }
+
     /// Load all saved instrument profiles.
     static func loadAll() -> [InstrumentProfile] {
         let decoder = JSONDecoder()
@@ -77,24 +92,31 @@ nonisolated enum ProfileStore {
     }
 
     /// Save the complete list of instrument profiles to Documents.
+    ///
+    /// Writes as given, without stamping `updatedAt`: this is also how sync
+    /// lays down what it downloaded, and re-stamping that would make the
+    /// server's copy look older than itself.
     static func saveAll(_ profiles: [InstrumentProfile]) {
-        let encoder = JSONEncoder()
-        encoder.keyEncodingStrategy = .convertToSnakeCase
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(profiles) else { return }
+        guard let data = try? encoded(profiles) else { return }
         try? data.write(to: listUrl, options: .atomic)
     }
 
-    /// Insert or update a single profile by matching ID.
-    static func save(_ profile: InstrumentProfile) {
+    /// Insert or update a single profile by matching ID, stamped as changed
+    /// now. Returns the stamped copy — that, not the argument, is what should
+    /// be uploaded, or the server never learns when it changed.
+    @discardableResult
+    static func save(_ profile: InstrumentProfile) -> InstrumentProfile {
+        var stamped = profile
+        stamped.updatedAt = InstrumentProfile.nowISO()
         var all = loadAll()
-        if let idx = all.firstIndex(where: { $0.id == profile.id }) {
-            all[idx] = profile
+        if let idx = all.firstIndex(where: { $0.id == stamped.id }) {
+            all[idx] = stamped
         } else {
-            all.append(profile)
+            all.append(stamped)
         }
         saveAll(all)
-        setSelectedID(profile.id)
+        setSelectedID(stamped.id)
+        return stamped
     }
 
     /// Delete a profile by ID.

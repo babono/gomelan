@@ -21,6 +21,10 @@ extension Container {
         self { SupabaseRepository() }.singleton
     }
 
+    nonisolated var authRepository: Factory<AuthRepository> {
+        self { AuthRepository(remote: self.supabaseRepository()) }.singleton
+    }
+
     nonisolated var instrumentRemoteRepository: Factory<InstrumentRemoteRepository> {
         self { InstrumentRemoteRepository(remote: self.supabaseRepository()) }.singleton
     }
@@ -50,6 +54,13 @@ extension Container {
 
     nonisolated var cueService: Factory<CuePlayer> {
         self { MainActor.assumeIsolated { CuePlayer() } }.singleton
+    }
+
+    /// One Bluetooth central for the strike controller. RootView, the setup
+    /// screen and Play all take turns with it (`GangsaSensor.use`), so a
+    /// connection survives moving between them.
+    nonisolated var sensorService: Factory<GangsaSensor> {
+        self { MainActor.assumeIsolated { GangsaSensor() } }.singleton
     }
 
     nonisolated var preloaderService: Factory<Preloader> {

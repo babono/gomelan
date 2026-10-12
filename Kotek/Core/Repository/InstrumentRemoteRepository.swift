@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import Supabase
 
 nonisolated struct InstrumentRemoteRepository {
     private let remote: SupabaseRepository
@@ -22,13 +23,35 @@ nonisolated struct InstrumentRemoteRepository {
         guard let id = UUID(uuidString: p.id) else { return }
         let uid = try await remote.userID()
 
+        // The controller row first: the instrument points at it.
+        var controllerID: UUID?
+        if let link = p.controller {
+            let saved: ControllerRow = try await remote.upsert(
+                ControllerRow(
+                    userID: uid,
+                    hardwareID: link.hardwareId,
+                    name: link.name,
+                    inputCount: link.inputCount,
+                    hasPlugDetect: link.hasPlugDetect,
+                    firmwareVersion: link.firmware
+                ),
+                in: "controllers",
+                onConflict: "user_id,hardware_id"
+            )
+            controllerID = saved.id
+        }
+
         let row = InstrumentRow(
             id: id,
             userID: uid,
             name: p.name,
             type: p.type.rawValue,
             keyCount: p.keyCount,
-            createdAt: p.createdAt
+            createdAt: p.createdAt,
+            profile: try JSONDecoder().decode(AnyJSON.self, from: ProfileStore.encoded(Self.withoutController(p))),
+            controllerID: controllerID,
+            controllerInputs: p.controller?.inputs,
+            controllerSetUpAt: p.controller?.setUpAt
         )
         try await remote.upsert(row, in: "instruments")
 
@@ -36,7 +59,8 @@ nonisolated struct InstrumentRemoteRepository {
             InstrumentKeyRow(
                 instrumentID: id,
                 keyIndex: $0.index,
-                baseHz: $0.fundamentalHz > 0 ? Float($0.fundamentalHz) : nil
+                baseHz: $0.fundamentalHz > 0 ? Float($0.fundamentalHz) : nil,
+                sensorInput: p.controller == nil ? nil : $0.sensorInput
             )
         }
         if !keys.isEmpty {
@@ -53,6 +77,69 @@ nonisolated struct InstrumentRemoteRepository {
             andColumn: "key_index",
             gte: p.keyCount
         )
+    }
+
+    /// Every instrument this account has uploaded. `profile` is nil for a row
+    /// from before the column existed: it is there, but cannot be restored.
+    func fetchInstruments() async throws -> [(id: String, profile: InstrumentProfile?)] {
+        let uid = try await remote.userID()
+        let rows: [InstrumentRow] = try await remote.read(
+            from: "instruments",
+            columns: "*, controllers(*)",
+            matching: "user_id",
+            equals: uid
+        )
+        let sensorKeys: [InstrumentKeySensorRow] = try await remote.read(
+            from: "instrument_keys",
+            matching: "instrument_id",
+            in: rows.filter { $0.controller != nil }.map(\.id)
+        )
+        let inputs = Dictionary(grouping: sensorKeys, by: \.instrumentID)
+        return rows.map { row in
+            let profile = row.profile.flatMap { json in
+                try? ProfileStore.decoded(InstrumentProfile.self, from: JSONEncoder().encode(json))
+            }.map { Self.withController(of: row, keys: inputs[row.id] ?? [], on: $0) }
+            // Uppercase, as `UUID().uuidString` made it on the phone; the
+            // column hands it back lowercase.
+            return (row.id.uuidString, profile)
+        }
+    }
+
+    /// The `profile` JSON goes up without the controller: the columns and the
+    /// `controllers` table are its record, and a second copy inside the blob
+    /// would only be something for the two to disagree about.
+    private static func withoutController(_ p: InstrumentProfile) -> InstrumentProfile {
+        var stripped = p
+        stripped.controller = nil
+        for i in stripped.keys.indices { stripped.keys[i].sensorInput = nil }
+        return stripped
+    }
+
+    /// And comes back with it, from the columns.
+    private static func withController(
+        of row: InstrumentRow,
+        keys: [InstrumentKeySensorRow],
+        on p: InstrumentProfile
+    ) -> InstrumentProfile {
+        var restored = p
+        if let c = row.controller {
+            restored.controller = ControllerLink(
+                hardwareId: c.hardwareID,
+                name: c.name,
+                inputCount: c.inputCount,
+                hasPlugDetect: c.hasPlugDetect,
+                firmware: c.firmwareVersion,
+                inputs: row.controllerInputs,
+                setUpAt: row.controllerSetUpAt ?? row.createdAt
+            )
+        } else {
+            restored.controller = nil
+        }
+        let byKey = Dictionary(keys.map { ($0.keyIndex, $0.sensorInput) }) { a, _ in a }
+        for i in restored.keys.indices {
+            restored.keys[i].sensorInput = restored.controller == nil ? nil : byKey[restored.keys[i].index] ?? nil
+        }
+        return restored
     }
 
     func deleteInstrument(id: String) async throws {

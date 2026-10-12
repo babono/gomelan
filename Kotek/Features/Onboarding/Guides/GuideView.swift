@@ -2,7 +2,7 @@
 //  GuideView.swift
 //  Kotek
 //
-//  The explainer panels: what the grade on a card means, what a kotekan is, and
+//  The explainer panels: what a gangsa card keeps, what a kotekan is, and
 //  who we made this with. Each is reached by ASKING for it — a help button in a
 //  top bar, or the Mekar Bhuana mark in the corner of the landing screen.
 //

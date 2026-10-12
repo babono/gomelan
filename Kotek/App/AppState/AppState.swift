@@ -70,11 +70,6 @@ final class AppState {
     /// record destroys the old one.
     var previousRecord: Double?
     var lastSetRecord = false
-    /// The gangsa's landed-note total BEFORE the session that just ended, so
-    /// the results screen can animate from it to where it is now. Captured for
-    /// the same reason as `previousRecord`: crediting the session destroys the
-    /// number the animation has to start from.
-    var previousNotesLanded: Int?
 
     /// Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
@@ -175,6 +170,15 @@ final class AppState {
     /// impulsive and has no such problem.
     var audioTriggersStrikes: Bool = Defaults.bool("audioTriggers", true) {
         didSet { Defaults.set("audioTriggers", audioTriggersStrikes) }
+    }
+
+    /// Whether a chosen kotekan plays in the top view — the camera looking down
+    /// on the real bilah — instead of the waterfall. Off by default: adding a
+    /// gangsa no longer frames or aligns the keys, so the camera overlay would
+    /// sit on the default layout rather than the instrument. Kept behind the
+    /// Settings "Deprecated" card for anyone who still realigns by hand.
+    var topView: Bool = Defaults.bool("topView", false) {
+        didSet { Defaults.set("topView", topView) }
     }
 
     /// The three ways the two sensors can be arranged, as one choice instead of
@@ -357,18 +361,59 @@ final class AppState {
     var framedRegion = NormalizedRect(x: 0, y: 0.17, w: 1, h: 0.68)
     var seedMasksFromFraming = false
 
+    // MARK: - Strike controller (§3.6)
+
+    /// Where the controller setup goes back to: Settings, or the kotekan
+    /// picker when it was offered at the end of setting up a new gangsa.
+    var controllerSetupReturn: Route = .settings
+    /// Opened as the optional last step of a new gangsa — "Skip" rather than
+    /// "Back", and nothing is lost by taking it.
+    var controllerSetupIsOffer = false
+    /// Opened straight onto the key check (Settings → "Check keys", or the
+    /// re-check banner) instead of the scan.
+    var controllerSetupRecheck = false
+    /// Set when a new gangsa's alignment is confirmed, spent when its setup
+    /// lands — see `finishSetup`.
+    var offerControllerAfterSetup = false
+
+    // MARK: - Account
+
+    /// Nil until the welcome screen's choice is made. Persisted, so the choice
+    /// is asked once — and again only after signing out or a data reset.
+    /// Read in `init`, after the data reset has had its chance to clear it.
+    var account: Account?
+    /// The label for the busy scrim while a sign-in is in flight.
+    var accountBusy: String?
+    var accountError: String?
+    /// Set when a guest tries to link an Apple ID that already has an account;
+    /// Settings asks before `confirmSwitch` drops this phone's progress.
+    var pendingSwitch: AuthRepository.AccountExists?
+    /// The profile an Apple account carries. Nil for guests.
+    var playerName: String?
+    var playerAvatar: Avatar?
+    /// Where the profile step goes when it is done: Settings when it was
+    /// opened from there, nil to carry on into the app.
+    var profileReturn: Route?
+    /// The screen a guest started linking from, for after a switch.
+    var linkOrigin: Route?
+    /// The one-time "keep your progress" prompt on the results screen.
+    var showingSavePrompt = false
+
     // MARK: - Remote Repositories
 
+    @ObservationIgnored let auth = Container.shared.authRepository()
     @ObservationIgnored let instrumentRemote = Container.shared
         .instrumentRemoteRepository()
     @ObservationIgnored let kotekanRepo = Container.shared.kotekanRepository()
     @ObservationIgnored let sessionRepo = Container.shared
         .practiceSessionRepository()
     @ObservationIgnored let log = Logger(subsystem: "Kotek", category: "remote")
+    @ObservationIgnored let sensor = Container.shared.sensorService()
 
     // MARK: - Initialization
 
     init() {
+        Self.resetLocalDataIfStale()
         let all = ProfileStore.loadAll()
         MalletHitClassifier.applyCropScale(
             mode: Defaults.int("cropScaleMode", 1)
@@ -387,13 +432,9 @@ final class AppState {
         }
         screen = .welcome
 
-        let pending = all
-        Task {
-            await refreshCatalogue()
-            for p in pending {
-                await push(p)
-            }
-        }
+        account = Defaults.string("account").flatMap(Account.init)
+        if account == .apple { loadPlayer() }
+        if account != nil { startSync() }
         #if DEBUG
             applyScreenshotScene()
         #endif
@@ -401,8 +442,10 @@ final class AppState {
 
     // MARK: - Screen Navigation
 
+    /// Same figure again, on whichever play screen `topView` picks — the
+    /// waterfall counts itself in, so it has no countdown route.
     func retry() {
-        screen = .countdown
+        screen = topView ? .countdown : .waterfall
     }
 
     func backToKotekan() {
@@ -419,6 +462,14 @@ final class AppState {
 
     func closeSettings() {
         screen = .chooseKotekan
+    }
+
+    func openHistory() {
+        screen = .history
+    }
+
+    func closeHistory() {
+        screen = .settings
     }
 
     func openCalibration() {

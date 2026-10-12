@@ -35,17 +35,24 @@ struct WelcomeView: View {
                         width: KotekWordmark.width(in: proxy.size.width)
                     )
 
-                    Spacer().frame(height: h * 0.07)
+                    // Half the gap while the choice is up: its hint line
+                    // has to clear the pelawah, which rises to a fixed height
+                    // whatever the screen.
+                    Spacer().frame(height: h * (app.account == nil ? 0.03 : 0.07))
 
-                    PillButton(
-                        title: "Get started",
-                        trailingSystemImage: "arrow.right",
-                        style: .filled
-                    ) {
-                        music.stop()
-                        app.begin()
+                    if app.account == nil {
+                        accountChoice
+                    } else {
+                        PillButton(
+                            title: "Get started",
+                            trailingSystemImage: "arrow.right",
+                            style: .filled
+                        ) {
+                            music.stop()
+                            app.begin()
+                        }
+                        .fixedSize()
                     }
-                    .fixedSize()
 
                     Spacer()
                 }
@@ -91,6 +98,35 @@ struct WelcomeView: View {
             Task { @concurrent in
                 await AudioSessionManager.configure()
             }
+        }
+    }
+
+    // MARK: - Account Choice
+
+    /// Shown in place of "Get started" until the player has picked one. Two
+    /// equal doors rather than a sign-in wall with a small way round it: an
+    /// account is encouraged, never required, and someone who has just set the
+    /// phone up over a gangsa wants to play.
+    private var accountChoice: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 14) {
+                AppleSignInButton { token, nonce, name in
+                    music.stop()
+                    Task { await app.signInWithApple(idToken: token, nonce: nonce, fullName: name) }
+                } onError: { _ in
+                    app.accountError = "Couldn't sign in with Apple. Try again."
+                }
+
+                PillButton(title: "Continue as guest", style: .outlined, uppercase: false) {
+                    music.stop()
+                    app.continueAsGuest()
+                }
+                .fixedSize()
+            }
+
+            Text(app.accountError ?? "As a guest, your progress stays on this iPhone only.")
+                .font(.sans(12))
+                .foregroundStyle(app.accountError == nil ? Theme.cream.opacity(0.62) : Theme.miss)
         }
     }
 

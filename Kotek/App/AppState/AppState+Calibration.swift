@@ -10,7 +10,14 @@ import Foundation
 extension AppState {
     // MARK: - Setup Flow
 
-    /// Step 1/4: how many keys does this gangsa have, and what is it called?
+    /// Step 1/2: how many keys does this gangsa have, and what is it called?
+    ///
+    /// Goes straight on to the voice (step 2/2). Framing and aligning the
+    /// camera mask were dropped from adding a gangsa: the keys start on the
+    /// default `layout(count:)` from `resize(to:)`, and `realign()` /
+    /// `realignInstrument(_:)` still reach `.aligning` for anyone who wants
+    /// the camera fit. The framing/aligning screens are kept, just unrouted
+    /// from here.
     func keyCountChosen(_ count: Int, name: String, type: GangsaType) {
         var updated = profile
         updated.resize(to: count)
@@ -21,22 +28,25 @@ extension AppState {
         if !isAddingNewInstrument {
             saveProfile()
         }
-        screen = .framing
+        // ponytail: was `screen = .framing`; the camera fit is skipped, so this
+        // is now the same hand-off the aligning step makes when it is done.
+        alignmentConfirmed()
     }
 
-    /// Step 2/4 → 3/4.
+    /// Framing → aligning. No longer reached when adding a gangsa.
     func framingConfirmed() {
         seedMasksFromFraming = true
         screen = .aligning
     }
 
-    /// Step 3/4 leads into the baseline (4/4).
+    /// Aligning done (or skipped by `keyCountChosen`) → the baseline.
     func alignmentConfirmed() {
         if isAddingNewInstrument {
             isAddingNewInstrument = false
             previousProfile = nil
+            offerControllerAfterSetup = true
         }
-        screen = baselineLearned ? .chooseKotekan : .calibrating
+        if baselineLearned { finishSetup() } else { screen = .calibrating }
     }
 
     /// Baseline captured: strikes will now be confirmed by sound.
@@ -44,7 +54,7 @@ extension AppState {
         baselineLearned = true
         requireStrikeSound = true
         saveProfile()
-        screen = .chooseKotekan
+        finishSetup()
     }
 
     /// As above, but awaits the write so the caller can hold a "saving" state over it.
@@ -52,12 +62,24 @@ extension AppState {
         baselineLearned = true
         requireStrikeSound = true
         await saveProfileAsync()
-        screen = .chooseKotekan
+        finishSetup()
     }
 
     /// Left the baseline step without capturing — continue anyway (vision alone).
     func skipCalibration() {
         saveProfile()
-        screen = .chooseKotekan
+        finishSetup()
+    }
+
+    /// The end of setup. A gangsa set up just now is offered a strike
+    /// controller once, as an optional last step (Flow D); everything else
+    /// lands on the kotekan picker as before.
+    private func finishSetup() {
+        guard offerControllerAfterSetup else {
+            screen = .chooseKotekan
+            return
+        }
+        offerControllerAfterSetup = false
+        openControllerSetup(returnTo: .chooseKotekan, offer: true)
     }
 }

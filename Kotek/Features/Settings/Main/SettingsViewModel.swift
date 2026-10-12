@@ -17,9 +17,12 @@ final class SettingsViewModel {
 
     var draftName: String = ""
     var showDeleteConfirm = false
+    var showSignOutConfirm = false
+    var showDeleteAccountConfirm = false
+    @ObservationIgnored private let reauthorization = AppleReauthorization()
 
     var metrics = SectionMetrics()
-    var active: SettingsSection = .instrument
+    var active: SettingsSection = .account
     var tailInset: CGFloat = 22
     var viewport: CGFloat = 0
     var jumpTarget: SettingsSection?
@@ -63,11 +66,24 @@ final class SettingsViewModel {
         app.openChooseInstrument()
     }
 
+    /// Confirmed in the dialog; Apple's sheet is the second confirmation, and
+    /// closing it calls the whole thing off.
+    func deleteAccount() {
+        Task {
+            do {
+                guard let code = try await reauthorization.authorizationCode() else { return }
+                await app.deleteAccount(appleAuthorizationCode: code)
+            } catch {
+                app.accountError = "Couldn't confirm with Apple. Try again."
+            }
+        }
+    }
+
     func spy() {
         let passed = SettingsSection.allCases.filter {
             (metrics.frames[$0]?.minY ?? .greatestFiniteMagnitude) <= Self.activeThreshold
         }
-        let next = passed.last ?? .instrument
+        let next = passed.last ?? .account
         if next != active { active = next }
 
         if let last = SettingsSection.allCases.last,

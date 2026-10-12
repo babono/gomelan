@@ -11,11 +11,12 @@ enum Route: String, Hashable {
     case welcome
     case checkingPermissions
     case permissionsBlocked
+    case profileSetup
     case chooseInstrument // Multi-instrument selection
-    case choosingKeyCount // setup 1/4
-    case framing // setup 2/4
-    case aligning // setup 3/4
-    case calibrating // baseline · learn the voice
+    case choosingKeyCount // setup 1/2
+    case framing // realign only — no longer part of adding a gangsa
+    case aligning // realign only — no longer part of adding a gangsa
+    case calibrating // setup 2/2 · baseline · learn the voice
     case baseline
     case chooseKotekan
     case createKotek
@@ -23,11 +24,14 @@ enum Route: String, Hashable {
     case playing
     case results
     case settings
+    case history
     case malletTest
     case detectionTest
     case audioTest
     case captureTraining
     case sensorTest
+    case controllerSetup // strike controller · Flow D
+    case waterfall // play without the camera: notes fall onto a drawn gangsa
 
     /// Screens whose ground is the live camera feed rather than the pattern.
     var isCameraScreen: Bool {
@@ -50,6 +54,7 @@ nonisolated extension Route: AppEnum {
         .welcome: "Welcome",
         .checkingPermissions: "Checking Permissions",
         .permissionsBlocked: "Permissions Blocked",
+        .profileSetup: "Profile Setup",
         .chooseInstrument: "Choose Instrument",
         .choosingKeyCount: "Choosing Key Count",
         .framing: "Framing",
@@ -62,10 +67,13 @@ nonisolated extension Route: AppEnum {
         .playing: "Playing",
         .results: "Results",
         .settings: "Settings",
+        .history: "Practice History",
         .malletTest: "Mallet Test",
         .detectionTest: "Detection Test",
         .audioTest: "Audio Test",
         .captureTraining: "Capture Training",
         .sensorTest: "Sensor Test",
+        .controllerSetup: "Controller Setup",
+        .waterfall: "Waterfall Practice",
     ]
 }

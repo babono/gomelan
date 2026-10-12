@@ -19,6 +19,7 @@ final class PlayViewModel {
     let camera: CameraController
     let audio: AudioEngineController
     let cue: CuePlayer
+    let sensor: GangsaSensor
 
     let engine = PlayEngine()
     private let displayLink = DisplayLink()
@@ -43,12 +44,14 @@ final class PlayViewModel {
         app: AppState,
         camera: CameraController = Container.shared.cameraService(),
         audio: AudioEngineController = Container.shared.audioService(),
-        cue: CuePlayer = Container.shared.cueService()
+        cue: CuePlayer = Container.shared.cueService(),
+        sensor: GangsaSensor = Container.shared.sensorService()
     ) {
         self.app = app
         self.camera = camera
         self.audio = audio
         self.cue = cue
+        self.sensor = sensor
     }
 
     // MARK: - Computed Properties
@@ -182,6 +185,16 @@ final class PlayViewModel {
             }
         }
 
+        // The strike controller (§3.6): input → this gangsa's key, on the
+        // controller's own clock, already mapped onto `CACurrentMediaTime`.
+        sensor.onHit = { [weak self] hit in
+            guard let self, self.startCue == nil, !self.paused, !self.engine.isFinished,
+                  let key = self.app.profile.keyForInput[hit.input],
+                  self.sensorKeys.contains(key)
+            else { return }
+            self.applyStrike(key: key, hostTime: hit.hostTime, confidence: 1, fromSensor: true)
+        }
+
         if app.hasSeenPracticeCoach {
             runCountdown()
         } else {
@@ -191,6 +204,7 @@ final class PlayViewModel {
 
     func teardown() {
         displayLink.stop()
+        sensor.onHit = nil
         audio.onStrikeDetected = nil
         audio.onConfirmedStrike = nil
 
@@ -292,7 +306,30 @@ final class PlayViewModel {
         }
     }
 
-    private func applyStrike(key: Int, hostTime: Double, confidence: Double) {
+    /// Keys the strike controller answers for right now: connected, a sensor
+    /// on the key, and — on a plug-detect board — that sensor still plugged in.
+    /// Recomputed per strike, so a drop or an unplugged sensor hands the key
+    /// back to camera + mic mid-session without stopping play.
+    private var sensorKeys: Set<Int> {
+        guard app.controllerConnected, let info = sensor.info else { return [] }
+        return Set(app.profile.keys.compactMap { key in
+            guard let input = key.sensorInput,
+                  !info.hasPlugDetect || info.plugged.contains(input)
+            else { return nil }
+            return key.index
+        })
+    }
+
+    /// Camera and microphone strikes on a key with a sensor are dropped: the
+    /// sensor REPLACES them there (§3.6, "Controller in Play"), it does not
+    /// vote alongside them.
+    ///
+    /// ponytail: the camera and mic pipelines keep running even when every key
+    /// has a sensor, and are filtered here. Not starting them would save power,
+    /// but then a controller dropping mid-session has nothing to fall back on
+    /// until the next session.
+    private func applyStrike(key: Int, hostTime: Double, confidence: Double, fromSensor: Bool = false) {
+        if !fromSensor, sensorKeys.contains(key) { return }
         lastKey = key
         lastConfidence = confidence
         unclearAt = nil

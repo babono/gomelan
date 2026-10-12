@@ -70,26 +70,45 @@ final class CreateKotekViewModel {
 
     // MARK: Recording
 
+    /// The app's one controller connection (`Container.sensorService`). A
+    /// gangsa with a controller set up is already being followed by RootView;
+    /// without one, recording takes any controller in reach itself.
     let sensor: GangsaSensor
     private(set) var recording = false
-    /// Which bilah sensor bar 0 is taped to. The prototype has three sensors,
-    /// on three neighbouring bilah.
+    /// Without a controller set up: which bilah input 0 is taped to. The
+    /// prototype has three sensors, on three neighbouring bilah.
     var firstSensorKey = 4
 
-    init(app: AppState, cue: CuePlayer = Container.shared.cueService(), sensor: GangsaSensor? = nil) {
+    init(app: AppState, cue: CuePlayer = Container.shared.cueService(),
+         sensor: GangsaSensor = Container.shared.sensorService()) {
         self.app = app
         self.cue = cue
-        self.sensor = sensor ?? GangsaSensor()
-        firstSensorKey = min(firstSensorKey, max(0, keyCount - GangsaSensor.barCount))
+        self.sensor = sensor
+        firstSensorKey = min(firstSensorKey, max(0, keyCount - GangsaSensor.legacyInputCount))
+    }
+
+    /// The gangsa has its own controller map (§3.6.5), so there is nothing to
+    /// place: every input already knows its bilah.
+    var usesControllerMap: Bool {
+        app.profile.controller != nil
     }
 
     var sensorKeys: ClosedRange<Int> {
-        firstSensorKey ... firstSensorKey + GangsaSensor.barCount - 1
+        firstSensorKey ... firstSensorKey + GangsaSensor.legacyInputCount - 1
     }
 
-    /// Every placement of the three sensors that fits the instrument.
+    /// Every placement of the three prototype sensors that fits the instrument.
     var sensorPlacements: [Int] {
-        Array(0 ... max(0, keyCount - GangsaSensor.barCount))
+        Array(0 ... max(0, keyCount - GangsaSensor.legacyInputCount))
+    }
+
+    /// Controller input → key, the same rule the waterfall plays by: the
+    /// gangsa's own map, or the prototype's three neighbouring bilah. Nil is
+    /// an input with no key on it, and its hits are dropped.
+    func key(forInput input: Int) -> Int? {
+        if usesControllerMap { return app.profile.keyForInput[input] }
+        let key = firstSensorKey + input
+        return key < keyCount ? key : nil
     }
 
     var keyCount: Int {
@@ -128,17 +147,18 @@ final class CreateKotekViewModel {
         pause()
         cue.start()
         sensor.onHit = { [weak self] hit in
-            guard let self else { return }
-            record(key: firstSensorKey + hit.bar)
+            guard let self, let key = key(forInput: hit.input) else { return }
+            record(key: key)
         }
-        sensor.start()
+        if !usesControllerMap { sensor.use(.any) }
         recording = true
     }
 
     func stopRecording() {
         guard recording else { return }
+        // Not `use(.none)`: RootView hands the controller back to the active
+        // gangsa as this screen goes, and may already have.
         sensor.onHit = nil
-        sensor.stop()
         recording = false
     }
 

@@ -13,6 +13,8 @@ struct ChooseKotekanFooter: View {
     @Binding var muted: Bool
     let current: Kotekan?
     let playable: Bool
+    /// One Start: the screen it opens (waterfall or camera top view) is
+    /// `AppState.topView`'s choice, set in Settings, not a second button here.
     let onStart: (Kotekan) -> Void
     let onCreate: () -> Void
 

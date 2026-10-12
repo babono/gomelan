@@ -448,8 +448,10 @@ extension ColotomicInstrument {
     /// to tell them apart at a glance, so they stand out instead.
     var color: Color {
         switch self {
-        case .gong: Theme.rankBrahmana
-        case .kajar: Theme.rankSudra
+        // The gold and green the rank ladder used, kept by value when the
+        // ladder went.
+        case .gong: Color(hex: 0xE8B44A)
+        case .kajar: Color(hex: 0x7FB069)
         case .klentong: Color(hex: 0xE0765A)
         }
     }
@@ -607,7 +609,7 @@ private struct PianoRollTransport: View {
         }
         let count = viewModel.keyCount
         func range(_ first: Int) -> String {
-            "\(bilahLabel(first, count: count))–\(bilahLabel(first + GangsaSensor.barCount - 1, count: count))"
+            "\(bilahLabel(first, count: count))–\(bilahLabel(first + GangsaSensor.legacyInputCount - 1, count: count))"
         }
 
         // The status is a coloured icon, its words only for VoiceOver: the bar
@@ -620,6 +622,18 @@ private struct PianoRollTransport: View {
                 .symbolEffect(.pulse, isActive: viewModel.sensor.status != .connected)
                 .accessibilityLabel("Sensor: \(text)")
 
+            if let link = viewModel.app.profile.controller {
+                // Set up through the controller screen: every input already
+                // knows its bilah, so there is nothing to place here.
+                Text(link.name)
+                    .font(.sans(14, weight: .semibold))
+                    .foregroundStyle(Theme.cream)
+                    .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .frame(height: 32)
+                    .background(Theme.cream.opacity(0.08), in: Capsule())
+                    .accessibilityLabel("Recording from \(link.name)")
+            } else {
             Menu {
                 ForEach(viewModel.sensorPlacements, id: \.self) { first in
                     Button {
@@ -644,6 +658,7 @@ private struct PianoRollTransport: View {
                 .background(Theme.cream.opacity(0.08), in: Capsule())
             }
             .accessibilityLabel("Sensors on bilah \(range(viewModel.firstSensorKey))")
+            }
         }
     }
 

@@ -134,3 +134,5 @@ graphify-out/*
 GEMINI.md
 .gemini
 .claude
+# Supabase CLI link state (project ref, versions) — per machine
+supabase/.temp/

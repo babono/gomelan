@@ -31,7 +31,7 @@ struct InstrumentCardView: View {
 
                 Spacer(minLength: 12)
 
-                grade
+                playedLine
                 statusDot
             }
             .frame(width: 218, height: 200, alignment: .topLeading)
@@ -54,40 +54,15 @@ struct InstrumentCardView: View {
         .accessibilityHint("Plays this gangsa")
     }
 
-    private var grade: some View {
-        let mastery = profile.mastery
+    private var playedLine: some View {
         let played = profile.hasBeenPlayed
-
-        return VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 6) {
-                Text(played ? mastery.rank.title : "Unplayed")
-                    .font(.sans(12, weight: .semibold))
-                    .textCase(.uppercase)
-                    .tracking(2)
-                    .foregroundStyle(played ? mastery.rank.color : Theme.cream.opacity(0.35))
-                    .fixedSize()
-
-                if played {
-                    Text(mastery.rank.gloss)
-                        .font(.sans(12))
-                        .foregroundStyle(Theme.cream.opacity(0.38))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-            }
-
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.cream.opacity(0.12))
-                    if played {
-                        Capsule()
-                            .fill(mastery.rank.color)
-                            .frame(width: max(3, geo.size.width * mastery.progress))
-                    }
-                }
-            }
-            .frame(height: 3)
-        }
+        return Text(played ? "\(profile.notesLanded.formatted()) notes landed" : "Unplayed")
+            .font(.sans(12, weight: .semibold))
+            .textCase(.uppercase)
+            .tracking(2)
+            .foregroundStyle(played ? Theme.gold : Theme.cream.opacity(0.35))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
     }
 
     private var statusDot: some View {
@@ -112,7 +87,7 @@ struct InstrumentCardView: View {
         var parts = ["\(profile.name), \(profile.keyCount) keys"]
         parts.append(
             profile.hasBeenPlayed
-                ? "last played \(lastPlayedText), \(profile.mastery.rank.title)"
+                ? "last played \(lastPlayedText), \(profile.notesLanded) notes landed"
                 : "not played yet"
         )
         parts.append(profile.hasLearnedBaseline ? "voice learned" : "no voice yet")

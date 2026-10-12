@@ -41,11 +41,25 @@ extension AppState {
 
     // MARK: - Session Selection & Flow
 
-    /// Take this figure and advance to countdown.
+    /// Take this figure into whichever play screen is current: the waterfall
+    /// by default, the camera top view when `topView` is on.
+    func playKotekan(_ k: Kotekan) {
+        if topView { chooseKotekan(k) } else { chooseKotekanWaterfall(k) }
+    }
+
+    /// Take this figure and advance to countdown (the camera top view).
     func chooseKotekan(_ k: Kotekan) {
         selectedKotekan = k
         renderHalves()
         screen = .countdown
+    }
+
+    /// Take this figure into the waterfall — the drawn gangsa, played from
+    /// the sensors, no camera. No countdown route: the screen counts itself in.
+    func chooseKotekanWaterfall(_ k: Kotekan) {
+        selectedKotekan = k
+        renderHalves()
+        screen = .waterfall
     }
 
     /// Change sides without leaving the session.
@@ -71,6 +85,7 @@ extension AppState {
         recordSession(landed: result.landedNotes)
         lastResult = result
         screen = .results
+        offerSaveIfDue()
 
         let session = PracticeSession(
             result: result,
@@ -115,7 +130,6 @@ extension AppState {
 
     /// Fold a finished session into the active instrument.
     func recordSession(landed: Int) {
-        previousNotesLanded = profile.notesLanded
         var updated = profile
         updated.lastUsedAt = InstrumentProfile.nowISO()
         updated.sessionCount = updated.sessionsPlayed + 1

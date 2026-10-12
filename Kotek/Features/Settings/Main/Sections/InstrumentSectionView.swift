@@ -53,10 +53,12 @@ struct InstrumentSectionView: View {
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
 
-                Text(gradeLine)
+                Text(playedLine)
                     .font(.sans(14))
                     .foregroundStyle(Theme.cream.opacity(0.62))
             }
+
+            controller
 
             FlowLayout(spacing: 10) {
                 SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") {
@@ -67,6 +69,9 @@ struct InstrumentSectionView: View {
                 }
                 SecondaryButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath") {
                     app.openChooseInstrument()
+                }
+                SecondaryButton(title: "History", systemImage: "clock.arrow.circlepath") {
+                    app.openHistory()
                 }
             }
 
@@ -91,16 +96,50 @@ struct InstrumentSectionView: View {
         }
     }
 
-    private var gradeLine: String {
+    /// The strike controller (§3.6) — this gangsa's only. Others sharing it
+    /// keep their own setup whatever happens here.
+    private var controller: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel("Strike controller")
+            if let link = app.profile.controller {
+                Text(controllerLine(link))
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.62))
+                ControllerStatusChip()
+                FlowLayout(spacing: 10) {
+                    SecondaryButton(title: "Check keys", systemImage: "checklist") {
+                        app.openControllerSetup(recheck: true)
+                    }
+                    SecondaryButton(title: "Change controller", systemImage: "arrow.left.arrow.right") {
+                        app.openControllerSetup()
+                    }
+                    SecondaryButton(title: "Forget controller", systemImage: "xmark.circle") {
+                        app.forgetController()
+                    }
+                }
+            } else {
+                Text("Optional. Piezo sensors on the bilah feel exactly which key you hit and when — no camera or microphone needed.")
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.62))
+                    .frame(maxWidth: 520, alignment: .leading)
+                SecondaryButton(title: "Connect controller", systemImage: "dot.radiowaves.left.and.right") {
+                    app.openControllerSetup()
+                }
+            }
+        }
+    }
+
+    private func controllerLine(_ link: ControllerLink) -> String {
+        let sensors = app.profile.keys.filter { $0.sensorInput != nil }.count
+        var line = "\(link.name) · sensors on \(sensors) of \(app.profile.keyCount) keys"
+        if sensors < app.profile.keyCount { line += " · the rest use camera + mic" }
+        return line
+    }
+
+    private var playedLine: String {
         let p = app.profile
-        guard p.hasBeenPlayed else {
-            return "Unplayed · the grade starts on your first scored session"
-        }
-        let m = p.mastery
-        var line = "\(m.rank.title) — \(m.rank.gloss) · \(m.notes.formatted()) notes landed"
-        if let next = m.next, let togo = m.notesToNext {
-            line += " · \(togo.formatted()) to \(next.title)"
-        }
+        guard p.hasBeenPlayed else { return "Unplayed" }
+        var line = "\(p.notesLanded.formatted()) notes landed in \(p.sessionsPlayed.formatted()) sessions"
         if let played = p.lastPlayedDate {
             line += " · played \(played.formatted(.relative(presentation: .named)))"
         }

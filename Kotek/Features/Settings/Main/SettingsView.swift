@@ -43,6 +43,10 @@ private struct SettingsContentView: View {
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        section(.account) {
+                            AccountSectionView(viewModel: vm)
+                        }
+
                         section(.instrument) {
                             InstrumentSectionView(viewModel: vm)
                         }
@@ -70,6 +74,10 @@ private struct SettingsContentView: View {
                         section(.detection) {
                             DetectionSectionView(app: app)
                         }
+
+                        section(.deprecated) {
+                            DeprecatedSectionView(app: app)
+                        }
                     }
                     .padding(.horizontal, 28)
                     .padding(.top, 22)
@@ -92,6 +100,22 @@ private struct SettingsContentView: View {
             confirmTitle: "Delete \(app.profile.name)"
         ) {
             vm.deleteInstrument()
+        }
+        .confirm(
+            $vm.showDeleteAccountConfirm,
+            title: "Delete your account?",
+            message: "Your gangsa, records and practice history are deleted from every device, and Gomelan stops using your Apple ID. This cannot be undone. Apple will ask you to confirm next.",
+            confirmTitle: "Delete account"
+        ) {
+            vm.deleteAccount()
+        }
+        .confirm(
+            $vm.showSignOutConfirm,
+            title: "Sign out?",
+            message: "Your gangsa and records will be removed from this iPhone.",
+            confirmTitle: "Sign out"
+        ) {
+            app.signOut()
         }
     }
 

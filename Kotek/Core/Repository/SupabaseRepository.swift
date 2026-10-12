@@ -84,6 +84,31 @@ nonisolated struct SupabaseRepository {
         try await client.from(table).select().eq(column, value: value).execute().value
     }
 
+    func read<T: Decodable & Sendable>(
+        from table: String,
+        columns: String,
+        matching column: String,
+        equals value: some PostgrestFilterValue
+    ) async throws -> [T] {
+        try await client.from(table).select(columns).eq(column, value: value).execute().value
+    }
+
+    func read<T: Decodable & Sendable>(
+        from table: String,
+        matching column: String,
+        equals value: some PostgrestFilterValue,
+        newestFirstBy orderColumn: String,
+        limit: Int
+    ) async throws -> [T] {
+        try await client.from(table)
+            .select()
+            .eq(column, value: value)
+            .order(orderColumn, ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+    }
+
     // MARK: - Update
 
     func update(
@@ -123,6 +148,21 @@ nonisolated struct SupabaseRepository {
 
     func upsert(_ value: some Encodable & Sendable, in table: String) async throws {
         try await client.from(table).upsert(value).execute()
+    }
+
+    /// Insert or update on a unique key other than the primary one, and hand
+    /// back the row as stored — for a row whose id the server assigns.
+    func upsert<T: Decodable & Sendable>(
+        _ value: some Encodable & Sendable,
+        in table: String,
+        onConflict: String
+    ) async throws -> T {
+        try await client.from(table)
+            .upsert(value, onConflict: onConflict)
+            .select()
+            .single()
+            .execute()
+            .value
     }
 
     func upsert(_ values: [some Encodable & Sendable], in table: String) async throws {
