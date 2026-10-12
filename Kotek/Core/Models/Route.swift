@@ -32,6 +32,8 @@ enum Route: String, Hashable {
     case sensorTest
     case controllerSetup // strike controller · Flow D
     case waterfall // play without the camera: notes fall onto a drawn gangsa
+    case coopSetup // one-screen coop: two players, their gangsa and halves
+    case coopPlay // one-screen coop: both halves, side by side
 
     /// Screens whose ground is the live camera feed rather than the pattern.
     var isCameraScreen: Bool {
@@ -75,5 +77,7 @@ nonisolated extension Route: AppEnum {
         .sensorTest: "Sensor Test",
         .controllerSetup: "Controller Setup",
         .waterfall: "Waterfall Practice",
+        .coopSetup: "Coop Setup",
+        .coopPlay: "Coop Play",
     ]
 }

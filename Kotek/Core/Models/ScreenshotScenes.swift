@@ -55,6 +55,13 @@ extension AppState {
         case "waterfall":
             renderHalves()
             screen = .waterfall
+        case "coop", "coopSetup":
+            // Babaru: the most unisons of the bundled figures (§6.6.4), so
+            // the bands joining the lanes are on screen in every shot.
+            selectedKotekan = kotekans.first { $0.id == "babaru" } ?? kotekans[0]
+            coop = CoopSetup(playerName: "Wayan", instrumentID: savedProfiles[0].id)
+            coop?.right.name = "Komang"
+            screen = scene == "coop" ? .coopPlay : .coopSetup
         case "guide":
             screen = .chooseKotekan
             visibleGuide = .kotekan

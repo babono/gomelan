@@ -73,6 +73,13 @@ final class WaterfallPlayViewModel {
         return voicedKeys.lowerBound + input
     }
 
+    /// The bar a sensor just fired on, before any judging — so a dead piezo is
+    /// obvious on the drawn gangsa.
+    func sensedKey(now: Double) -> Int? {
+        guard let hit = sensor.hits.first, now - hit.hostTime < 0.2 else { return nil }
+        return key(forInput: hit.input)
+    }
+
     // MARK: - Lifecycle
 
     func setup() {

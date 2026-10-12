@@ -66,7 +66,8 @@ private struct WaterfallContentView: View {
                     .frame(width: lanesWidth)
                     .frame(maxHeight: .infinity)
 
-                    GangsaStage(vm: vm, layout: layout, framePad: framePad)
+                    GangsaStage(engine: vm.engine, layout: layout, voiced: vm.voicedKeys,
+                                tilted: vm.tilted, framePad: framePad, sensedKey: vm.sensedKey)
                         .frame(width: lanesWidth + framePad * 2, height: gangsaHeight)
                         .contentShape(Rectangle())
                         .gesture(swipeToTilt)
@@ -165,70 +166,9 @@ private struct WaterfallContentView: View {
     }
 }
 
-/// The instrument plus what to light on it this frame. Its own view so the
-/// per-frame cue rebuild redraws the gangsa and nothing around it.
-private struct GangsaStage: View {
-    let vm: WaterfallPlayViewModel
-    let layout: GangsaLayout
-    let framePad: CGFloat
-
-    var body: some View {
-        GangsaView(layout: layout, voiced: vm.voicedKeys, cues: cues,
-                   tilted: vm.tilted, framePad: framePad)
-    }
-
-    private var cues: [Int: BilahCue] {
-        let engine = vm.engine
-        var cues: [Int: BilahCue] = [:]
-        for (key, state) in engine.renderStates {
-            cues[key, default: BilahCue()].approach = state.fill
-            cues[key, default: BilahCue()].strikeNow = state.strikeNow
-            cues[key, default: BilahCue()].hit = state.hit
-        }
-
-        // Damp: on in the SAME frame as the strike cue — when the paired stroke
-        // is due — and held for the span the engine holds that cue
-        // (`tickUserTurnCue`: 55% of the gap to the next stroke, 90…400 ms).
-        // "Hit this, pinch that" is one instruction, so it lights as one.
-        //
-        // It used to fade in a full beat early and out over 0.6 of one after,
-        // peaking at the due instant. With strokes a slot apart that window
-        // reached back to the previous stroke, so the red was always already
-        // up before the strike cue appeared, slid onto the next bar early, lit
-        // during rests, and could turn a bar red while it was still the one to
-        // strike. The falling cue already gives the warning; the bar only has
-        // to say "now".
-        //
-        // Unlike the strike cue it does not vanish when you hit: the moment
-        // after the stroke is exactly when the left hand is pinching.
-        let beat = engine.beatLengthMs
-        if beat > 0 {
-            let yours = engine.fallingNotes(aheadMs: beat * 4, behindMs: 400)
-                .filter { $0.voice == .yours }
-                .sorted { $0.msAhead < $1.msAhead }
-            if let i = yours.lastIndex(where: { $0.msAhead <= 0 }),
-               let key = yours[i].dampKey {
-                let gap = i + 1 < yours.count ? yours[i + 1].msAhead - yours[i].msAhead : beat
-                let hold = min(max(gap * 0.55, 90), 400)
-                if -yours[i].msAhead < hold {
-                    cues[key, default: BilahCue()].damp = 1
-                }
-            }
-        }
-
-        // The raw sensor, before any judging — so a dead piezo is obvious.
-        if let hit = vm.sensor.hits.first, engine.renderNow - hit.hostTime < 0.2,
-           let key = vm.key(forInput: hit.input)
-        {
-            cues[key, default: BilahCue()].sensed = true
-        }
-        return cues
-    }
-}
-
 /// "Get ready…" then 3, 2, 1 — written over the empty waterfall rather than
 /// dimming it, because the first pass is already falling in behind it.
-private struct StartCaption: View {
+struct StartCaption: View {
     let engine: PlayEngine
 
     var body: some View {
@@ -268,9 +208,10 @@ private struct SensorDot: View {
     }
 }
 
-private struct WaterfallPauseOverlay: View {
+struct WaterfallPauseOverlay: View {
     let onResume: () -> Void
-    let onEnd: () -> Void
+    /// Nil where there is nothing to score, so nothing to end — coop's play-along.
+    let onEnd: (() -> Void)?
     let onLeave: () -> Void
 
     var body: some View {
@@ -280,7 +221,9 @@ private struct WaterfallPauseOverlay: View {
                 Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
                     PillButton(title: "Resume", style: .filled, action: onResume)
-                    PillButton(title: "End practice", style: .outlined, tint: Theme.copper, action: onEnd)
+                    if let onEnd {
+                        PillButton(title: "End practice", style: .outlined, tint: Theme.copper, action: onEnd)
+                    }
                     PillButton(title: "Leave", style: .outlined, tint: Theme.copper, action: onLeave)
                 }
             }

@@ -155,6 +155,11 @@ final class ChooseKotekanViewModel {
         app.openCreateKotek()
     }
 
+    func coop(_ k: Kotekan) {
+        stopPreview()
+        app.openCoop(k)
+    }
+
     func edit(_ k: Kotekan) {
         stopPreview()
         app.openEditKotek(k)

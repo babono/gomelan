@@ -406,6 +406,9 @@ final class AppState {
     /// The figure Create Kotek opens on, or nil for a new one. Read once, when
     /// the screen builds its draft.
     var editingKotekan: Kotekan?
+    /// One-screen coop's players. Kept between sessions, so a pair who play
+    /// again do not type their names twice; nil until coop is first opened.
+    var coop: CoopSetup?
 
     @ObservationIgnored let instrumentRemote = Container.shared
         .instrumentRemoteRepository()
