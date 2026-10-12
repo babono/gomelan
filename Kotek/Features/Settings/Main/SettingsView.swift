@@ -74,6 +74,10 @@ private struct SettingsContentView: View {
                         section(.detection) {
                             DetectionSectionView(app: app)
                         }
+
+                        section(.deprecated) {
+                            DeprecatedSectionView(app: app)
+                        }
                     }
                     .padding(.horizontal, 28)
                     .padding(.top, 22)

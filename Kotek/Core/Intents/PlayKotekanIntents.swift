@@ -70,7 +70,7 @@ struct PlayKotekanIntents: AppIntent {
         else {
             throw $kotekan.needsValueError()
         }
-        app.chooseKotekan(full)
+        app.playKotekan(full)
         return .result()
     }
 }

@@ -172,6 +172,15 @@ final class AppState {
         didSet { Defaults.set("audioTriggers", audioTriggersStrikes) }
     }
 
+    /// Whether a chosen kotekan plays in the top view — the camera looking down
+    /// on the real bilah — instead of the waterfall. Off by default: adding a
+    /// gangsa no longer frames or aligns the keys, so the camera overlay would
+    /// sit on the default layout rather than the instrument. Kept behind the
+    /// Settings "Deprecated" card for anyone who still realigns by hand.
+    var topView: Bool = Defaults.bool("topView", false) {
+        didSet { Defaults.set("topView", topView) }
+    }
+
     /// The three ways the two sensors can be arranged, as one choice instead of
     /// two booleans whose interaction nobody could predict from their names.
     enum DetectionMode: String, CaseIterable, Identifiable {
@@ -433,8 +442,10 @@ final class AppState {
 
     // MARK: - Screen Navigation
 
+    /// Same figure again, on whichever play screen `topView` picks — the
+    /// waterfall counts itself in, so it has no countdown route.
     func retry() {
-        screen = .countdown
+        screen = topView ? .countdown : .waterfall
     }
 
     func backToKotekan() {

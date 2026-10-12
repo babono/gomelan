@@ -27,7 +27,13 @@ extension AppState {
 
     // MARK: - Session Selection & Flow
 
-    /// Take this figure and advance to countdown.
+    /// Take this figure into whichever play screen is current: the waterfall
+    /// by default, the camera top view when `topView` is on.
+    func playKotekan(_ k: Kotekan) {
+        if topView { chooseKotekan(k) } else { chooseKotekanWaterfall(k) }
+    }
+
+    /// Take this figure and advance to countdown (the camera top view).
     func chooseKotekan(_ k: Kotekan) {
         selectedKotekan = k
         renderHalves()
