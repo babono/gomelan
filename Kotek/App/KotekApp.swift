@@ -37,8 +37,12 @@ struct KotekApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(app)
+            // Around everything, overlays included, so the splash and the
+            // guides scale with the screens they sit over.
+            PadScale {
+                RootView()
+                    .environment(app)
+            }
         }
     }
 }
