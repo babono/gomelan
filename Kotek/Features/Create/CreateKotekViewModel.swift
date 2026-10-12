@@ -19,6 +19,7 @@
 import FactoryKit
 import Foundation
 import Observation
+import OSLog
 import SwiftUI
 
 enum PianoRollTool: Equatable {
@@ -303,6 +304,7 @@ final class CreateKotekViewModel {
             do {
                 try await app.saveKotekan(k)
             } catch {
+                app.log.error("kotekan save failed: \(String(describing: error), privacy: .public)")
                 saveError = "Couldn't save — check your connection and try again."
             }
         }
