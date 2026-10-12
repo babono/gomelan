@@ -24,6 +24,7 @@ struct RootView: View {
     @Environment(AppState.self) private var app
     @State private var preloader = Container.shared.preloaderService()
     @Environment(\.scenePhase) private var scenePhase
+    @State private var splashGone = false
 
     var body: some View {
         ZStack {
@@ -31,7 +32,8 @@ struct RootView: View {
             // a pattern that is about to be completely covered is wasted work on
             // exactly the screens with the least headroom to spare.
             if !app.screen.isCameraScreen {
-                PatternBackground()
+                // Held back until the splash has opened — see `shown`.
+                PatternBackground(shown: splashGone)
             } else {
                 Theme.ground.ignoresSafeArea()
             }
@@ -81,17 +83,22 @@ struct RootView: View {
             guard let pending else { return }
             Task { await app.confirmSwitch(pending) }
         }
-        // BELOW both, so a first run shows the splash finish and hand over to
-        // the introduction rather than the introduction appearing behind it.
+        // ABOVE both, so a first run shows the splash open and hand over to
+        // the introduction rather than the introduction appearing over it.
+        // The splash removes itself once its curtains are off screen, rather
+        // than fading out when loading ends — see `SplashView`.
         .overlay {
-            if !preloader.isFinished {
-                SplashView(progress: preloader.progress)
-                    .transition(.opacity)
+            if !splashGone {
+                SplashView(
+                    progress: preloader.progress,
+                    finished: preloader.isFinished,
+                    onOpen: { app.splashCovering = false },
+                    onDone: { splashGone = true }
+                )
             }
         }
         .animation(.easeInOut(duration: 0.2), value: app.visibleGuide)
         .animation(.easeInOut(duration: 0.3), value: app.showingOnboarding)
-        .animation(.easeInOut(duration: 0.55), value: preloader.isFinished)
         .task {
             await preloader.warm(camera: Container.shared.cameraService())
             // Raised BEFORE the splash finishes fading, deliberately: the

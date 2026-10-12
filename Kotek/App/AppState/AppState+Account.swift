@@ -35,6 +35,7 @@ extension AppState {
         guard Defaults.int("dataEpoch", 1) < Self.dataEpoch else { return }
         ProfileStore.reset()
         KotekanStore.reset()
+        InstrumentPhotoStore.reset()
         syncedInstrumentIDs = []
         Defaults.set("dataEpoch", Self.dataEpoch)
         Defaults.set("account", "")
@@ -254,6 +255,7 @@ extension AppState {
     private func wipeLocalData() {
         ProfileStore.reset()
         KotekanStore.reset()
+        InstrumentPhotoStore.reset()
         Self.syncedInstrumentIDs = []
         savedProfiles = []
         profile = ResourceLoader.defaultProfile()

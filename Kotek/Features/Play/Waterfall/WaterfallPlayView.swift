@@ -96,7 +96,7 @@ private struct WaterfallContentView: View {
             // from the glass and not from the home indicator's inset.
             .ignoresSafeArea(.container, edges: .bottom)
         }
-        .background(Theme.deep.ignoresSafeArea())
+        .background(Theme.ground.ignoresSafeArea())
         .overlay {
             if vm.paused {
                 WaterfallPauseOverlay(onResume: vm.resume, onEnd: vm.end, onLeave: vm.leave)

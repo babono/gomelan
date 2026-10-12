@@ -55,7 +55,7 @@ private struct CoopPlayContentView: View {
             // of each gangsa is measured from the edge of the screen.
             .ignoresSafeArea(.container, edges: .bottom)
         }
-        .background(Theme.deep.ignoresSafeArea())
+        .background(Theme.ground.ignoresSafeArea())
         .overlay {
             if vm.paused {
                 WaterfallPauseOverlay(onResume: vm.resume, onEnd: nil, onLeave: vm.leave)
