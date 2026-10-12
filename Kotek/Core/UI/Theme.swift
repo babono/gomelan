@@ -11,16 +11,20 @@
 //  are simply the ones where the ground happens to be a live image. Fewer
 //  decisions, and the app stops flashing between light and dark mid-flow.
 //
-//  Palette (from the design spec):
-//    #3D322C ground · #2A211C deep · #F0DDA8 cream
-//    #C9A063 gold   · #8B5A32 wood · #C9A876 bronze
+//  Palette (the October 2026 revamp) lives in the asset catalog, so the
+//  designers can change a colour without a code edit:
+//    Background #2A211C · PatternBackground #312721 · Card #3D322C
+//    TitleText #C29A59  · DescriptionText #7A5E4E   · LoadingBar #EE6161
+//  The revamp is one family — gold on brown. There is no cream any more: text
+//  that was cream is the title gold, and supporting text is the description
+//  brown. Cards are a step LIGHTER than the ground now, not darker.
 //
-//  Type: Dream Orphans for titles and headings — bundled, see UIAppFonts in
+//  Type: Katibeh for titles and headings — bundled, see UIAppFonts in
 //  Info.plist, and falling back to the nearest system serif if a build ever
-//  ships without it. Everything else is San Francisco at the system weights,
-//  which is what the Human Interface Guidelines ask for and what every iOS
-//  reader's eye is already calibrated to. Nothing else is bundled: the body
-//  face can no longer go missing.
+//  ships without it. It comes in one weight. Everything else is San
+//  Francisco at the system weights, which is what the Human Interface
+//  Guidelines ask for and what every iOS reader's eye is already calibrated
+//  to.
 //
 //  Geometry: radius 14, primary buttons 56pt tall.
 //
@@ -35,13 +39,24 @@ enum Theme {
     // MARK: - Palette
 
     /// The ground. Every screen sits on this.
-    static let ground = Color(hex: 0x3D322C)
-    /// A step darker — card fills, wells, anything recessed into the ground.
-    static let deep = Color(hex: 0x2A211C)
-    /// Warm cream. Primary text, and the fill of the primary button.
-    static let cream = Color(hex: 0xF0DDA8)
-    /// Gold. Outlines, eyebrows, accents, the tracked uppercase labels.
-    static let gold = Color(hex: 0xC9A063)
+    static let ground = Color("Background")
+    /// The motif drawn over the ground — see `PatternBackground`.
+    static let pattern = Color("PatternBackground")
+    /// Cards, panels and wells. The name is older than the revamp, which made
+    /// cards a step lighter than the ground rather than a step darker.
+    static let deep = Color("Card")
+    /// Primary text. Named for the colour it used to be; it is the title gold
+    /// now — the revamp has no light text, only gold on brown.
+    static let cream = Color("TitleText")
+    /// Outlines, eyebrows, accents, the tracked uppercase labels — and titles.
+    static let gold = Color("TitleText")
+    /// Supporting text: descriptions, metadata, captions.
+    static let description = Color("DescriptionText")
+    /// Progress — the splash's loading bar.
+    static let progress = Color("LoadingBar")
+    /// A bilah as it is struck, on the splash's gangsa. Read off the
+    /// mockup — not on the palette sheet yet.
+    static let keyHighlight = Color("KeyHighlight")
     /// Carved teak, for the pelawah and anything standing in for wood.
     static let wood = Color(hex: 0x8B5A32)
     /// Struck bronze — the bilah themselves.
@@ -56,23 +71,21 @@ enum Theme {
     // worth preserving.
 
     static let ink = ground
-    static let inkRaised = Color(hex: 0x342A22)
+    static let inkRaised = deep
     static let background = ground
-    static let creamSunken = Color(hex: 0x342A22)
+    static let creamSunken = deep
     static let terracotta = gold
     static let accent = gold
     static let copper = gold
     /// Strong body text.
     static let charcoal = cream
-    /// Supporting text — cream held back rather than a separate grey, so the
-    /// page stays in one family.
-    static let stone = Color(hex: 0xF0DDA8).opacity(0.62)
-    static let inkStone = Color(hex: 0xC9A063).opacity(0.78)
+    /// Supporting text.
+    static let stone = description
+    static let inkStone = description
 
-    /// Dark text for use ON a cream fill — the primary button's label, and
-    /// anything else sitting on `cream`. The one place a dark ink is still
-    /// correct, which is why it is named for the job rather than the colour.
-    static let onCream = Color(hex: 0x3D322C)
+    /// Dark text for use ON a gold fill — anything sitting on `cream`. Named
+    /// for the job rather than the colour.
+    static let onCream = ground
 
     // MARK: - Button colours
 
@@ -104,28 +117,10 @@ enum Theme {
     /// from setting solid.
     static let buttonWeight: Font.Weight = .black
     static let buttonTracking: CGFloat = 1.5
-    /// Opacity the background pattern is laid in at, on top of whatever the tile
-    /// already carries.
-    ///
-    /// It is 1 because the fade now lives in the artwork. Two earlier versions
-    /// of this number are worth keeping in view, because both were about where
-    /// the fade lived rather than how strong it should be:
-    ///
-    /// The first tile was a full-bleed #FDDC8A field with the motif cut out of
-    /// it as DARKER shapes, so this one number tinted the whole ground and set
-    /// the motif contrast at the same time and could not separate them — at 8%
-    /// the ground read #4C4034 rather than #3D322C, which is what made the
-    /// pattern look heavier than the mockup. It was dropped to 4% to compensate.
-    ///
-    /// The second was motif-on-transparency in a cream LIGHTER than the ground,
-    /// drawn at full alpha, so 8% here governed the motif alone and the ground
-    /// stayed exactly #3D322C.
-    ///
-    /// `bg-pattern-gamelan.png` is motif-on-transparency too, but pre-faded: its
-    /// cream peaks at alpha 18/255, i.e. the design's 7%. Multiplying that by
-    /// another 8% would leave the pattern invisible, so the view lays the tile
-    /// in as drawn. To make the pattern lighter or heavier now, re-export the
-    /// PNG — or set this below 1, which still scales it the way it always did.
+    /// Opacity the background pattern is laid in at. 1: the motif is drawn in
+    /// `pattern`, a colour already chosen to sit just off the ground, so there
+    /// is nothing left to fade. Below 1 still scales it, for the camera
+    /// screens' overlay.
     static let patternOpacity: Double = 1.0
 
     // MARK: - Overlay play colours (§13.5)
@@ -195,11 +190,7 @@ enum Theme {
 /// instead, which is the thing we actually depend on.
 enum KotekFonts {
     static let displayRegular: String? = [
-        "DreamOrphans-Regular", "DreamOrphans"
-    ].first { UIFont(name: $0, size: 12) != nil }
-
-    static let displayBold: String? = [
-        "DreamOrphans-Bold", "DreamOrphans-Regular"
+        "Katibeh-Regular", "Katibeh"
     ].first { UIFont(name: $0, size: 12) != nil }
 
     /// What the app actually resolved, for the diagnostics screen — so "is the
@@ -211,14 +202,14 @@ enum KotekFonts {
 }
 
 extension Font {
-    /// Dream Orphans — the display face, for titles, headings and big numerals.
+    /// Katibeh — the display face, for titles, headings and big numerals.
     ///
-    /// The family ships Regular/Bold/Italic/BoldItalic only, so anything
-    /// semibold or above maps to Bold and everything else to Regular.
+    /// One weight only, so `weight` is honoured by the system fallback alone.
+    /// It replaced Dream Orphans, which shipped Regular and Bold.
     static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        let heavy: Set<Font.Weight> = [.semibold, .bold, .heavy, .black]
-        let name = heavy.contains(weight) ? KotekFonts.displayBold : KotekFonts.displayRegular
-        guard let name else { return .system(size: size, weight: weight, design: .serif) }
+        guard let name = KotekFonts.displayRegular else {
+            return .system(size: size, weight: weight, design: .serif)
+        }
         return .custom(name, size: size)
     }
 
@@ -241,8 +232,11 @@ extension Font {
     ///
     /// The name stays `sans` rather than becoming `sf`: ~250 call sites say
     /// "the body face", which is still exactly what they mean.
+    ///
+    /// Never below 11pt — the smallest size the Human Interface Guidelines
+    /// allow (Caption 2). A handful of labels were drawn at 9 and 10.
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .default)
+        .system(size: max(11, size), weight: weight, design: .default)
     }
 
     /// A system font for SF Symbols, so glyphs take the symbol metrics rather

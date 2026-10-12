@@ -43,10 +43,7 @@
 
 	<key>UIAppFonts</key>
 	<array>
-		<string>Dream Orphans.otf</string>
-		<string>Dream Orphans Bd.otf</string>
-		<string>Dream Orphans It.otf</string>
-		<string>Dream Orphans Bd It.otf</string>
+		<string>Katibeh-Regular.ttf</string>
 	</array>
 </dict>
 </plist>

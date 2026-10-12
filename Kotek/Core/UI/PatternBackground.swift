@@ -2,144 +2,140 @@
 //  PatternBackground.swift
 //  Kotek
 //
-//  The ground every screen sits on: warm brown, with the gamelan pattern tiled
-//  over it faintly — see `Theme.patternOpacity` — and drifting diagonally,
-//  forever.
+//  The ground every screen sits on: warm brown, and across it one row of the
+//  carved-leaf motif — each 90% of the screen tall, every other one turned
+//  upside down, so they interlock like a row of teeth — running slowly to the
+//  right, forever, like a marquee.
 //
-//  The tile is a raster (`bg-pattern-gamelan.png`) where it used to be a vector
-//  (`bg-pattern.svg`). Nothing about the drift changes; the two differences that
-//  do matter are recorded on `tileSize` (the artwork is now drawn at 1:1, so it
-//  is no longer halved) and on `Theme.patternOpacity` (the fade is baked into
-//  the PNG's alpha, so the view lays it in at full strength).
+//  The motif (`bg-motif`, from the October 2026 revamp) is ONE outline leaf,
+//  wide at the top and tapering to a point. Hanging from the top edge it
+//  points down; flipped and standing on the bottom edge it points up; half a
+//  leaf apart, each fills the gap the other's taper leaves. It is a template
+//  image, so its colour is `Theme.pattern` — the asset catalog's.
 //
-//  Drawn in a single `Canvas` rather than a stack of `Image` views. The pattern
-//  is one tile repeated across the whole screen — at 724x402 that is a dozen or
-//  so copies in landscape — and as a ForEach of Images it would be a dozen view
-//  identities to diff. One draw pass costs the same whether it paints one tile
-//  or thirty.
-//
-//  IT DRAWS ONCE. The canvas used to live inside a `TimelineView(.animation)`
-//  and repaint at 30fps forever, with the phase folded into the tile origins.
-//  That is a full-screen fill plus nine large blits, thirty times a second, on
-//  every non-camera screen in the app — and it measured on device at GPU 54% /
-//  CPU 32% with the phone sitting on the landing screen doing nothing at all.
-//  Ambient decoration was the most expensive thing running.
-//
-//  So the drift is a Core Animation translation of a canvas that never
-//  repaints: one tile larger than the screen on each axis, slid from -tile to 0
-//  by a `repeatForever` linear animation. The render server interpolates the
-//  transform and the app process does no work per frame. The loop is seamless
-//  for the same reason it always was — the pattern is periodic in one tile, so
-//  offset 0 and offset -tile are the same picture and the wrap is invisible.
+//  Core Animation, not SwiftUI: each row's period is drawn into a bitmap
+//  once, and a `Marquee` repeats that texture across the screen and slides it
+//  on the render server. This used to be a Canvas moved
+//  by a SwiftUI `repeatForever` offset, on the belief that the render server
+//  interpolated it. It does not: SwiftUI computes each frame of its own
+//  animations on the main thread, so the "free" background was a per-frame
+//  cost on every screen, and stuttered whenever the main thread was busy.
 
 import SwiftUI
 
 struct PatternBackground: View {
-    /// Tile size in points: the artwork's own size, which is the density the
-    /// motif was drawn to read at.
-    ///
-    /// READ FROM THE ASSET, not typed in. This number has been wrong twice
-    /// already: the old vector tile was re-exported 1448x720 → 2083x1036 →
-    /// 1448x720, and a hardcoded fraction of the wrong one renders every motif
-    /// at 69% or 144% of its intended size — which looks like a design problem
-    /// rather than a stale constant, since the aspect ratio is unchanged and
-    /// nothing is distorted. Asking the image how big it is cannot go stale.
-    ///
-    /// No halving any more. The vector tile was drawn at 2x and displayed at
-    /// half size (1448x720 → 724x360); the gamelan raster is already drawn at
-    /// the size it is meant to be seen at, and the imageset declares it single
-    /// scale, so its intrinsic size in points *is* the tile — 724x402, near
-    /// enough the same field as before.
-    static let tileSize: CGSize = {
-        guard let intrinsic = UIImage(named: assetName)?.size, intrinsic.width > 0 else {
-            // Only reachable if the asset is missing, in which case there is
-            // nothing to draw and the size does not matter.
-            return CGSize(width: 724, height: 402)
-        }
-        return intrinsic
+    /// One name, used by both the size probe and the draw. They must not drift.
+    static let assetName = "bg-motif"
+
+    /// The artwork's proportions, read from the asset rather than typed in —
+    /// a hardcoded size has gone stale in this file twice before.
+    private static let motifAspect: CGFloat = {
+        guard let size = UIImage(named: assetName)?.size, size.height > 0 else { return 212.0 / 364.0 }
+        return size.width / size.height
     }()
 
-    /// One name, used by both the size probe and the draw. They must not drift.
-    static let assetName = "bg-pattern-gamelan"
+    /// Each leaf's height, as a share of the screen's.
+    private static let heightFraction: CGFloat = 0.9
 
-    var tile = PatternBackground.tileSize
-    /// Points per second, travelling down-right.
+    /// Points per second, travelling right.
     var speed: Double = 9
     var opacity: Double = Theme.patternOpacity
     /// Set false for screens where the ground is a live camera image.
     var showsGround = true
 
-    /// Flipped once, on appear. Everything after that happens on the render
-    /// server: `repeatForever` keeps the transform moving with no further help
-    /// from SwiftUI, so leaving a screen up costs nothing.
-    @State private var drifted = false
+    /// False keeps the leaves off screen. Turned true, they arrive — the
+    /// hanging ones down from the top, the upturned ones up from the bottom —
+    /// and only then start to move across. Launch holds them back until the
+    /// splash's curtains are gone, which is both the grander entrance and two
+    /// fewer things to draw behind the splash.
+    private let shown: Bool
+    @State private var entered: Bool
+    @State private var running = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(speed: Double = 9, opacity: Double = Theme.patternOpacity, showsGround: Bool = true, shown: Bool = true) {
+        self.speed = speed
+        self.opacity = opacity
+        self.showsGround = showsGround
+        self.shown = shown
+        _entered = State(initialValue: shown)
+    }
+
+    /// How long the leaves take to come in from the edges.
+    private static let entrance = 0.9
 
     var body: some View {
         GeometryReader { geo in
+            let height = geo.size.height
+            let period = height * Self.heightFraction * Self.motifAspect
+            let count = Int((geo.size.width / period).rounded(.up)) + 2
             ZStack {
                 if showsGround { Theme.ground }
-
-                // R One tile of slack on each axis, so the visible window stays
-                // R covered at both ends of the travel: at offset 0 by the tiles
-                // R starting at the origin, and at -tile by the ones after them.
-                tiles
-                    .frame(
-                        width: geo.size.width + tile.width,
-                        height: geo.size.height + tile.height,
-                        alignment: .topLeading
-                    )
+                if height > 0 {
+                    // Two rows, one texture each, sliding on one clock: they
+                    // start in the same transaction with the same duration, so
+                    // the teeth stay interlocked however long the screen is up.
+                    ForEach([true, false], id: \.self) { hanging in
+                        Marquee(
+                            image: Self.row(hanging: hanging, height: height),
+                            origin: .zero,
+                            spacing: CGVector(dx: period, dy: 0),
+                            count: count,
+                            travel: CGVector(dx: period, dy: 0),
+                            duration: period / speed,
+                            // Still, with Reduce Motion on: ambient movement is
+                            // exactly what that setting asks apps to leave out.
+                            running: running && !reduceMotion,
+                            placement: entered
+                                ? CATransform3DIdentity
+                                : Marquee.shifted(CGVector(dx: 0, dy: hanging ? -height : height)),
+                            placementDuration: Self.entrance
+                        )
+                    }
                     .opacity(opacity)
-                    .offset(
-                        x: drifted ? 0 : -tile.width,
-                        y: drifted ? 0 : -tile.height
-                    )
-                    // R Both axes wrap on ONE duration, so a single value drives
-                    // R the whole drift. The tile is wider than it is tall, so
-                    // R this travels at a shallower angle than the old
-                    // R equal-speed diagonal — on decoration moving nine points
-                    // R a second, past caring.
-                    .animation(
-                        .linear(duration: tile.width / speed)
-                            .repeatForever(autoreverses: false),
-                        value: drifted
-                    )
+                }
             }
-            .clipped()
-            .onAppear { drifted = true }
         }
         .allowsHitTesting(false)
         .ignoresSafeArea()
-    }
-
-    /// The tiled field, painted once. No phase in here: the drift is a transform
-    /// applied to the result, which is exactly what keeps this closure from
-    /// being called again.
-    private var tiles: some View {
-        Canvas(opaque: false, rendersAsynchronously: false) { context, size in
-            guard let symbol = context.resolveSymbol(id: 0) else { return }
-            var y: CGFloat = 0
-            while y < size.height {
-                var x: CGFloat = 0
-                while x < size.width {
-                    context.draw(
-                        symbol,
-                        in: CGRect(
-                            x: x,
-                            y: y,
-                            width: tile.width,
-                            height: tile.height
-                        )
-                    )
-                    x += tile.width
-                }
-                y += tile.height
+        .onAppear { if entered { running = true } }
+        .onChange(of: shown) { _, now in
+            guard now, !entered else { return }
+            entered = true
+            Task {
+                try? await Task.sleep(for: .seconds(Self.entrance))
+                running = true
             }
-        } symbols: {
-            Image(PatternBackground.assetName)
-                .resizable()
-                .tag(0)
         }
     }
+
+    /// One period of one row, for a screen this tall. The hanging row is a
+    /// leaf from the top at the left edge; the standing row is the upturned
+    /// leaves either side of it, cut at the edges so the copies join without
+    /// a seam. Drawn once per height.
+    private static func row(hanging: Bool, height: CGFloat) -> UIImage {
+        let key = "\(hanging)-\(height)"
+        if let cached = cache[key] { return cached }
+        let motif = CGSize(width: height * heightFraction * motifAspect, height: height * heightFraction)
+        let leaf = UIImage(named: assetName)?
+            .withTintColor(UIColor(named: "PatternBackground") ?? .brown, renderingMode: .alwaysOriginal)
+        let image = Marquee.render(size: CGSize(width: motif.width, height: height)) { cg in
+            if hanging {
+                leaf?.draw(in: CGRect(origin: .zero, size: motif))
+            } else {
+                // Turned over and stood on the bottom edge, half a leaf either side.
+                cg.translateBy(x: 0, y: height)
+                cg.scaleBy(x: 1, y: -1)
+                for x in [-motif.width / 2, motif.width / 2] {
+                    leaf?.draw(in: CGRect(origin: CGPoint(x: x, y: 0), size: motif))
+                }
+            }
+        }
+        cache[key] = image
+        return image
+    }
+
+    nonisolated(unsafe) private static var cache: [String: UIImage] = [:]
 }
 
 // MARK: - Convenience
