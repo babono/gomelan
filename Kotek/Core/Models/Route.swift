@@ -28,6 +28,7 @@ enum Route: String, Hashable {
     case detectionTest
     case audioTest
     case captureTraining
+    case noteCapture
     case sensorTest
 
     /// Screens whose ground is the live camera feed rather than the pattern.
@@ -68,6 +69,7 @@ nonisolated extension Route: AppEnum {
         .detectionTest: "Detection Test",
         .audioTest: "Audio Test",
         .captureTraining: "Capture Training",
+        .noteCapture: "Capture Note Clips",
         .sensorTest: "Sensor Test",
     ]
 }

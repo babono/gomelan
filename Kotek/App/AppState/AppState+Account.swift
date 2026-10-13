@@ -252,6 +252,7 @@ extension AppState {
     /// tuning are left alone: they belong to the phone, not the account.
     private func wipeLocalData() {
         ProfileStore.reset()
+        NoteClipCapture.deleteAll()
         Self.syncedInstrumentIDs = []
         savedProfiles = []
         profile = ResourceLoader.defaultProfile()

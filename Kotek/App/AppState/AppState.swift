@@ -482,6 +482,14 @@ final class AppState {
         screen = .settings
     }
 
+    func openNoteCapture() {
+        screen = .noteCapture
+    }
+
+    func closeNoteCapture() {
+        screen = .settings
+    }
+
     func openAudioTest() {
         screen = .audioTest
     }

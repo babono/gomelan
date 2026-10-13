@@ -67,6 +67,7 @@ extension AppState {
     /// Delete an instrument, including the last one.
     func deleteInstrument(_ profileID: String) {
         ProfileStore.delete(profileID)
+        NoteClipCapture.deleteInstrument(instrumentID: profileID)
         savedProfiles = ProfileStore.loadAll()
         Task { [instrumentRemote, log] in
             do { try await instrumentRemote.deleteInstrument(id: profileID) } catch {
@@ -190,6 +191,11 @@ extension AppState {
         }
 
         ProfileStore.saveAll(merged)
+        // Deleted on another device: its note clips go with it.
+        let keptIDs = Set(merged.map(\.id))
+        for gone in local where !keptIDs.contains(gone.id) {
+            NoteClipCapture.deleteInstrument(instrumentID: gone.id)
+        }
         savedProfiles = ProfileStore.loadAll()
         adoptSyncedActiveProfile()
 
