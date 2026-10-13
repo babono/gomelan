@@ -13,25 +13,26 @@ import SwiftUI
 struct GangsaStage: View {
     let engine: PlayEngine
     let layout: GangsaLayout
-    let voiced: ClosedRange<Int>
     let tilted: Bool
-    let framePad: CGFloat
-    /// The bar a sensor fired on, given the engine's `renderNow` — nil when
-    /// none did in the last moment. A closure, evaluated in this body, so the
-    /// per-frame read stays in here too.
-    var sensedKey: (Double) -> Int? = { _ in nil }
+    /// The bar a sensor fired on and how long ago, given the engine's
+    /// `renderNow` — nil when none did in the last moment. A closure,
+    /// evaluated in this body, so the per-frame read stays in here too.
+    var sensedStrike: (Double) -> (key: Int, age: Double)? = { _ in nil }
 
     var body: some View {
-        GangsaView(layout: layout, voiced: voiced, cues: cues,
-                   tilted: tilted, framePad: framePad)
+        GangsaView(layout: layout, cues: cues, tilted: tilted)
     }
 
     private var cues: [Int: BilahCue] {
         var cues: [Int: BilahCue] = [:]
-        for (key, state) in engine.renderStates {
-            cues[key, default: BilahCue()].approach = state.fill
-            cues[key, default: BilahCue()].strikeNow = state.strikeNow
-            cues[key, default: BilahCue()].hit = state.hit
+        func struck(_ key: Int, age: Double) {
+            let earlier = cues[key]?.struckAge ?? .infinity
+            cues[key, default: BilahCue()].struckAge = min(earlier, age)
+        }
+        // A hit rings its bar even without a sensor behind it (coop). The
+        // verdict itself glows in the lane above, not on the bar.
+        for (key, flash) in engine.keyFlashes where flash.result.isHit {
+            struck(key, age: flash.age)
         }
 
         // Damp: on in the SAME frame as the strike cue — when the paired stroke
@@ -58,15 +59,19 @@ struct GangsaStage: View {
                let key = yours[i].dampKey {
                 let gap = i + 1 < yours.count ? yours[i + 1].msAhead - yours[i].msAhead : beat
                 let hold = min(max(gap * 0.55, 90), 400)
-                if -yours[i].msAhead < hold {
-                    cues[key, default: BilahCue()].damp = 1
+                // Eased over 60 ms each way so the bar visibly shrinks
+                // into the pinch and back, instead of popping.
+                let held = -yours[i].msAhead
+                let damp = min(1, held / 60, (hold - held) / 60)
+                if damp > 0 {
+                    cues[key, default: BilahCue()].damp = damp
                 }
             }
         }
 
         // The raw sensor, before any judging — so a dead piezo is obvious.
-        if let key = sensedKey(engine.renderNow) {
-            cues[key, default: BilahCue()].sensed = true
+        if let sensed = sensedStrike(engine.renderNow) {
+            struck(sensed.key, age: sensed.age)
         }
         return cues
     }

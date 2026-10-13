@@ -76,9 +76,8 @@ private struct CoopPlayContentView: View {
             WaterfallCanvas(engine: lane.engine, layout: layout,
                             voiced: vm.voicedKeys, yourHalf: lane.player.half)
                 .frame(width: layout.width, height: stage.canvasHeight)
-            GangsaStage(engine: lane.engine, layout: layout, voiced: vm.voicedKeys,
-                        tilted: false, framePad: CoopStageLayout.framePad)
-                .frame(width: layout.width + CoopStageLayout.framePad * 2, height: stage.gangsaHeight)
+            GangsaStage(engine: lane.engine, layout: layout, tilted: false)
+                .frame(width: layout.frameWidth, height: stage.gangsaHeight)
         }
         // Taller than the stage by the sunk half of the gangsa; aligned to the
         // top, that half hangs off the bottom of the screen.
@@ -147,7 +146,6 @@ private struct CoopStageLayout {
     static let outerPad: CGFloat = 20
     /// Wide enough to read as a gap the bands cross, not a seam.
     static let gap: CGFloat = 36
-    static let framePad: CGFloat = 14
     static let header: CGFloat = 40
     /// How much of each gangsa sits below the screen edge, as in solo.
     static let sunkFraction: CGFloat = 0.5
@@ -169,9 +167,9 @@ private struct CoopStageLayout {
     /// room one has alone.
     func layout(_ lane: Int) -> GangsaLayout {
         let keys = keyCounts[lane]
-        let width = min(columnWidth - Self.framePad * 2,
-                        GangsaLayout.lane(forHeight: gangsaHeight) * CGFloat(keys))
-        return GangsaLayout(keyCount: keys, width: width)
+        return GangsaLayout(keyCount: keys,
+                            width: GangsaLayout.width(keyCount: keys, height: gangsaHeight,
+                                                      fitting: columnWidth))
     }
 
     /// The left edge of a lane's waterfall, in stage coordinates.
