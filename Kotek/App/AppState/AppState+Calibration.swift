@@ -78,15 +78,16 @@ extension AppState {
         finishSetup()
     }
 
-    /// The end of setup. A gangsa set up just now is offered a strike
-    /// controller once, as an optional last step (Flow D); everything else
-    /// lands on the kotekan picker as before.
+    /// The end of setup. A gangsa set up just now is offered, once each and
+    /// both skippable, a recording of its own keys and then a strike
+    /// controller (Flow D); everything else lands on the kotekan picker as
+    /// before. `closeNoteCapture` hands on to the controller offer.
     private func finishSetup() {
         guard offerControllerAfterSetup else {
             screen = .chooseKotekan
             return
         }
         offerControllerAfterSetup = false
-        openControllerSetup(returnTo: .chooseKotekan, offer: true)
+        openNoteCapture(setup: true)
     }
 }

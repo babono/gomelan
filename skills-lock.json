@@ -32,6 +32,42 @@
       "sourceType": "github",
       "skillPath": "skills/write-swift/SKILL.md",
       "computedHash": "f20bb9cf51dbee1900b264820a12f1d3d378dc4d23ac758e7ba9e644c49a2459"
+    },
+    "app-intents": {
+      "source": "n0an/App-Intents-Agent-Skill",
+      "sourceType": "github",
+      "skillPath": "app-intents/SKILL.md",
+      "computedHash": "344eb99f9696a5d930dc8bfb52bc49df19300ddf1d97f24c0af1c9c286b4b259"
+    },
+    "observability": {
+      "source": "n0an/Observability-Agent-Skill",
+      "sourceType": "github",
+      "skillPath": "observability/SKILL.md",
+      "computedHash": "92f3019ff1a0ccfc5adb4cfa45e13ea1f77b94da30454c67df12413c8779bae9"
+    },
+    "swift-architecture-skill": {
+      "source": "efremidze/swift-architecture-skill",
+      "sourceType": "github",
+      "skillPath": "swift-architecture-skill/SKILL.md",
+      "computedHash": "407bd56e1f48e57e445780f1d0c54cd4e858acd2fc7736e725b039f79efc04d3"
+    },
+    "swift-concurrency-pro": {
+      "source": "twostraws/swift-concurrency-agent-skill",
+      "sourceType": "github",
+      "skillPath": "swift-concurrency-pro/SKILL.md",
+      "computedHash": "db6c88d8da1a264188a2ad826a0ed73d227384315b27e47f3bb6b78ca1a3df40"
+    },
+    "swiftdata-pro": {
+      "source": "twostraws/swiftdata-agent-skill",
+      "sourceType": "github",
+      "skillPath": "swiftdata-pro/SKILL.md",
+      "computedHash": "2f979bad98ea3a6744084c5f93e27897f02e8d0ffe15dd03042e88aaae4da14c"
+    },
+    "swiftui-pro": {
+      "source": "twostraws/swiftui-agent-skill",
+      "sourceType": "github",
+      "skillPath": "swiftui-pro/SKILL.md",
+      "computedHash": "e0edf9a937bbb8c86c170b130ff825f158cc286f07ec477b67835e9c1b20267e"
     }
   }
 }

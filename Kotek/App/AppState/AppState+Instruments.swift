@@ -69,6 +69,7 @@ extension AppState {
         let photo = savedProfiles.first { $0.id == profileID }?.photoVersion
         ProfileStore.delete(profileID)
         InstrumentPhotoStore.delete(id: profileID)
+        NoteClipCapture.deleteInstrument(instrumentID: profileID)
         savedProfiles = ProfileStore.loadAll()
         Task { [instrumentRemote, log] in
             do {
@@ -110,6 +111,7 @@ extension AppState {
         do {
             try await instrumentRemote.saveInstrument(p)
             await uploadPhotoIfNeeded(p)
+            await uploadSoundsIfNeeded(p)
             return true
         } catch {
             log.error("instrument sync failed: \(error.localizedDescription)")
@@ -196,9 +198,15 @@ extension AppState {
         }
 
         ProfileStore.saveAll(merged)
+        // Deleted on another device: its note clips go with it.
+        let keptIDs = Set(merged.map(\.id))
+        for gone in local where !keptIDs.contains(gone.id) {
+            NoteClipCapture.deleteInstrument(instrumentID: gone.id)
+        }
         savedProfiles = ProfileStore.loadAll()
         adoptSyncedActiveProfile()
         await downloadMissingPhotos(merged)
+        await downloadMissingSounds(merged)
 
         var confirmed = remoteIDs
         for p in toPush {
@@ -315,6 +323,71 @@ extension AppState {
         }
         // Redraw the cards with what arrived.
         savedProfiles = ProfileStore.loadAll()
+    }
+
+    // MARK: - Recorded key sounds
+
+    /// This key now plays the recording `file`, or the bundled sample for nil.
+    /// Saving the profile pushes it, and the push uploads the clip.
+    func setSound(_ file: String?, forKey index: Int) {
+        guard let at = profile.keys.firstIndex(where: { $0.index == index }) else { return }
+        let previous = profile.keys[at].soundFile
+        profile.keys[at].soundFile = file
+        saveProfile()
+        // A replaced take is cleaned up by the upload; only a removal needs it here.
+        guard file == nil, let previous, UUID(uuidString: profile.id) != nil else { return }
+        let id = profile.id
+        Task { [instrumentRemote, log] in
+            do {
+                try await instrumentRemote.deleteSound(instrumentID: id, file: previous)
+            } catch {
+                log.error("sound delete failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// The take last uploaded for each key, so a push sends a clip once and a
+    /// failed upload is tried again on the next push.
+    private static func uploadedSound(_ id: String, key: Int) -> String? {
+        Defaults.string("uploadedSound.\(id.lowercased()).\(key)")
+    }
+
+    private func uploadSoundsIfNeeded(_ p: InstrumentProfile) async {
+        guard UUID(uuidString: p.id) != nil else { return }
+        // One key at a time: at most ten ~265 kB clips, and a failure on one
+        // should not stop the rest.
+        for key in p.keys {
+            guard let file = key.soundFile, Self.uploadedSound(p.id, key: key.index) != file,
+                  let wav = await NoteClipCapture.data(instrumentID: p.id, keyIndex: key.index, file: file)
+            else { continue }
+            let previous = Self.uploadedSound(p.id, key: key.index)
+            do {
+                try await instrumentRemote.uploadSound(wav, instrumentID: p.id, file: file)
+                Defaults.set("uploadedSound.\(p.id.lowercased()).\(key.index)", file)
+                // The old take is unreachable now — no profile names it.
+                if let previous { try? await instrumentRemote.deleteSound(instrumentID: p.id, file: previous) }
+            } catch {
+                log.error("sound upload failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Recordings another phone made. A miss is simply tried on the next sync.
+    private func downloadMissingSounds(_ profiles: [InstrumentProfile]) async {
+        for p in profiles {
+            for key in p.keys {
+                guard let file = key.soundFile,
+                      !NoteClipCapture.hasClip(instrumentID: p.id, keyIndex: key.index, file: file)
+                else { continue }
+                do {
+                    let wav = try await instrumentRemote.downloadSound(instrumentID: p.id, file: file)
+                    try await NoteClipCapture.install(wav, instrumentID: p.id, keyIndex: key.index, file: file)
+                    Defaults.set("uploadedSound.\(p.id.lowercased()).\(key.index)", file)
+                } catch {
+                    log.error("sound download failed: \(error.localizedDescription)")
+                }
+            }
+        }
     }
 
     /// Kotekan this instrument has enough keys for.

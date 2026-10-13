@@ -256,6 +256,7 @@ extension AppState {
         ProfileStore.reset()
         KotekanStore.reset()
         InstrumentPhotoStore.reset()
+        NoteClipCapture.deleteAll()
         Self.syncedInstrumentIDs = []
         savedProfiles = []
         profile = ResourceLoader.defaultProfile()
