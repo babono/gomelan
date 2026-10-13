@@ -18,7 +18,9 @@ import os
 
 @Generable
 nonisolated struct SessionOverview {
-    @Guide(description: "One or two sentences on how the session went: the overall accuracy, and which part of the gong cycle was strongest and which needs work.")
+    @Guide(
+        description: "One or two sentences on how the session went: the overall accuracy, and which part of the gong cycle was strongest and which needs work."
+    )
     var summary: String
 
     @Guide(description: "One or two sentences giving one specific way to practise the weakest part next time.")
@@ -83,14 +85,14 @@ final class SessionOverviewModel {
     @ObservationIgnored private let log = Logger(subsystem: "Kotek", category: "overview")
 
     private static let instructions = """
-        You are a patient Balinese gamelan teacher. A student has just practised \
-        one half of a kotekan, an interlocking pattern, on a gangsa, and you are \
-        given the measured results of the session.
-        Write in plain, encouraging English, speaking to the student as "you".
-        Use only the numbers you are given and never change them.
-        Base your advice on the teaching notes when they are relevant; otherwise \
-        give general practice advice. Never mention the notes, a book or passages.
-        """
+    You are a patient Balinese gamelan teacher. A student has just practised \
+    one half of a kotekan, an interlocking pattern, on a gangsa, and you are \
+    given the measured results of the session.
+    Write in plain, encouraging English, speaking to the student as "you".
+    Use only the numbers you are given and never change them.
+    Base your advice on the teaching notes when they are relevant; otherwise \
+    give general practice advice. Never mention the notes, a book or passages.
+    """
 
     func run(facts: SessionFacts) async {
         switch SystemLanguageModel.default.availability {

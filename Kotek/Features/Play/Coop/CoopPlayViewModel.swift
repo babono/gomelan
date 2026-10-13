@@ -27,7 +27,9 @@ final class CoopPlayViewModel {
         let profile: InstrumentProfile
         let engine = PlayEngine()
 
-        var keyCount: Int { max(1, profile.keys.count) }
+        var keyCount: Int {
+            max(1, profile.keys.count)
+        }
     }
 
     let app: AppState
@@ -55,7 +57,9 @@ final class CoopPlayViewModel {
     }
 
     /// The first lane's engine — the one with the gong — speaks for both.
-    var clock: PlayEngine { lanes[0].engine }
+    var clock: PlayEngine {
+        lanes[0].engine
+    }
 
     // MARK: - Lifecycle
 
@@ -74,19 +78,26 @@ final class CoopPlayViewModel {
             engine.yourPan = lane.player.half == .polos ? -0.32 : 0.32
             // No partner half in either lane: the partner is the other lane,
             // drawn in full beside it, not a ghost inside this one.
-            engine.configure(song: kotekan.makeSong(half: lane.player.half, cycles: 1),
-                             profile: lane.profile, tempoScale: app.tempoScale,
-                             judging: false)
+            engine.configure(
+                song: kotekan.makeSong(half: lane.player.half, cycles: 1),
+                profile: lane.profile,
+                tempoScale: app.tempoScale,
+                judging: false
+            )
         }
 
         // One stamp for both — see `PlayEngine.start(at:)`. The cue player
         // goes up first, as `start()` does, so its boot is not on the clock.
         cue.start()
         let now = CACurrentMediaTime()
-        for lane in lanes { lane.engine.start(at: now) }
+        for lane in lanes {
+            lane.engine.start(at: now)
+        }
         displayLink.onFrame = { [weak self] now in
             guard let self else { return }
-            for lane in self.lanes { lane.engine.tick(now: now) }
+            for lane in lanes {
+                lane.engine.tick(now: now)
+            }
         }
         displayLink.start()
     }
@@ -109,7 +120,9 @@ final class CoopPlayViewModel {
     func resume() {
         guard paused else { return }
         let seconds = CACurrentMediaTime() - pauseStartedAt
-        for lane in lanes { lane.engine.resumeAfterPause(seconds: seconds) }
+        for lane in lanes {
+            lane.engine.resumeAfterPause(seconds: seconds)
+        }
         displayLink.start()
         paused = false
     }
@@ -117,7 +130,9 @@ final class CoopPlayViewModel {
     /// Both lanes at once, on one instant — see `PlayEngine.setTempoScale`.
     func tempoChanged(_ scale: Double) {
         let now = CACurrentMediaTime()
-        for lane in lanes { lane.engine.setTempoScale(scale, now: now) }
+        for lane in lanes {
+            lane.engine.setTempoScale(scale, now: now)
+        }
     }
 
     var guideVoices: Bool {
@@ -126,7 +141,9 @@ final class CoopPlayViewModel {
 
     func setGuideVoices(_ on: Bool) {
         app.coop?.guideVoices = on
-        for lane in lanes { lane.engine.yourVoiceAudible = on }
+        for lane in lanes {
+            lane.engine.yourVoiceAudible = on
+        }
         if !on { cue.stopKeySamples() }
     }
 

@@ -17,7 +17,7 @@ nonisolated struct InstrumentKey: Codable, Identifiable, Equatable {
     /// bottom-right, bottom-left). When present it's the editable shape; `rect`
     /// is kept as its bounding box so overlay/detection stay rect-based. nil ⇒
     /// the key is a plain axis-aligned rect.
-    var corners: [NormalizedPoint]? = nil
+    var corners: [NormalizedPoint]?
     var fundamentalHz: Double
     var harmonics: [Double]
     var decayMs: Int
@@ -163,14 +163,14 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
     /// No longer asked for: the photo (`photoVersion`) says which gangsa it
     /// is better than a word did. Kept because the `instruments.type` column
     /// is NOT NULL.
-    var gangsaType: GangsaType? = nil
+    var gangsaType: GangsaType?
     var createdAt: String
     var keys: [InstrumentKey]
     /// Generic gangsa-strike baseline template (L2-normalised float vector).
-    var strikeBaseline: [Float]? = nil
+    var strikeBaseline: [Float]?
     /// Timestamp when this profile was last PLAYED — written when a session
     /// ends, not when the card is tapped. It is what orders the rail.
-    var lastUsedAt: String? = nil
+    var lastUsedAt: String?
 
     /// Sessions finished on this instrument, and the notes in them that landed
     /// (right key, near enough the beat) — shown on the card and in Settings.
@@ -182,28 +182,28 @@ nonisolated struct InstrumentProfile: Codable, Identifiable, Equatable {
     /// saved before this build throw, and take the player's entire instrument
     /// list down with it. Same reason `strikeBaseline` and `fingerprint` are
     /// optional.
-    var sessionCount: Int? = nil
-    var accurateNotes: Int? = nil
+    var sessionCount: Int?
+    var accurateNotes: Int?
 
     /// Personal bests per figure. Optional for the same decoding reason as the
     /// counters above.
-    var records: [PatternRecord]? = nil
+    var records: [PatternRecord]?
 
     /// Stamped by `ProfileStore.save` on every write — calibration, a rename,
     /// a finished session. What sync compares when two phones disagree.
     /// `lastUsedAt` cannot do it: realigning the keys is a change worth
     /// keeping, but it is not playing.
-    var updatedAt: String? = nil
+    var updatedAt: String?
 
     /// The strike controller set up on this gangsa, if any.
-    var controller: ControllerLink? = nil
+    var controller: ControllerLink?
 
     /// The photo of this gangsa, if one was added: a fresh id each time it
     /// changes. The image itself is not in the profile — it is a file on the
     /// phone (`InstrumentPhotoStore`) and an object in Storage, both named by
     /// this — so a profile stays small enough to sync on every save, and a
     /// phone can tell whether its copy of the photo is the current one.
-    var photoVersion: String? = nil
+    var photoVersion: String?
 
     /// Controller input → key index, for the keys that have a sensor.
     var keyForInput: [Int: Int] {

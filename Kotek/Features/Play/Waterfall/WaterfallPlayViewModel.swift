@@ -31,9 +31,11 @@ final class WaterfallPlayViewModel {
         didSet { UserDefaults.standard.set(tilted, forKey: "waterfallTilted") }
     }
 
-    init(app: AppState,
-         cue: CuePlayer = Container.shared.cueService(),
-         sensor: GangsaSensor = Container.shared.sensorService()) {
+    init(
+        app: AppState,
+        cue: CuePlayer = Container.shared.cueService(),
+        sensor: GangsaSensor = Container.shared.sensorService()
+    ) {
         self.app = app
         self.cue = cue
         self.sensor = sensor
@@ -48,11 +50,16 @@ final class WaterfallPlayViewModel {
 
     var record: Double? {
         guard let k = app.selectedKotekan else { return nil }
-        return app.profile.record(kotekanId: k.id, half: app.chosenHalf.rawValue,
-                                  tempo: app.tempoScale)?.accuracy
+        return app.profile.record(
+            kotekanId: k.id,
+            half: app.chosenHalf.rawValue,
+            tempo: app.tempoScale
+        )?.accuracy
     }
 
-    var keyCount: Int { max(1, app.profile.keys.count) }
+    var keyCount: Int {
+        max(1, app.profile.keys.count)
+    }
 
     /// The bilah the figure touches — drawn at full strength; the rest dim.
     var voicedKeys: ClosedRange<Int> {
@@ -100,13 +107,17 @@ final class WaterfallPlayViewModel {
             }
         }
         if let song = app.selectedSong {
-            engine.configure(song: song, partner: app.partnerSong,
-                             profile: app.profile, tempoScale: app.tempoScale)
+            engine.configure(
+                song: song,
+                partner: app.partnerSong,
+                profile: app.profile,
+                tempoScale: app.tempoScale
+            )
         }
 
         sensor.onHit = { [weak self] hit in
-            guard let self, !self.paused, let key = self.key(forInput: hit.input) else { return }
-            self.engine.registerStrike(keyIndex: key, hostTime: hit.hostTime, confidence: 1)
+            guard let self, !self.paused, let key = key(forInput: hit.input) else { return }
+            engine.registerStrike(keyIndex: key, hostTime: hit.hostTime, confidence: 1)
         }
         // A gangsa with a controller is already being followed by RootView
         // (`AppState.sensorTarget`); without one, take any controller in reach.

@@ -369,8 +369,11 @@ final class CuePlayer {
         for i in 0 ..< n {
             let phase = 2 * Double.pi * frequency * Double(i) / sampleRate
             var env: Double = 1
-            if i < attack { env = Double(i) / Double(max(attack, 1)) }
-            else if i > n - release { env = Double(n - i) / Double(max(release, 1)) }
+            if i < attack {
+                env = Double(i) / Double(max(attack, 1))
+            } else if i > n - release {
+                env = Double(n - i) / Double(max(release, 1))
+            }
             samples[i] = Float(sin(phase) * env) * gain
         }
         return buffer

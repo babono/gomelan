@@ -75,7 +75,7 @@ private struct ControllerSetupContent: View {
 
     @ViewBuilder
     private var problem: some View {
-        if case .unavailable(let why) = sensor.status {
+        if case let .unavailable(why) = sensor.status {
             VStack(alignment: .leading, spacing: 10) {
                 Label(why, systemImage: "exclamationmark.triangle")
                     .font(.sans(16, weight: .semibold))
@@ -106,10 +106,12 @@ private struct ControllerSetupContent: View {
                 Text(vm.app.controllerSetupIsOffer ? "Got a strike controller?" : "Connect a controller")
                     .font(.serif(34))
                     .foregroundStyle(Theme.cream)
-                Text("Switch the controller on, clip a sensor onto each bilah, and plug them in. It talks to this iPhone over Bluetooth — no Wi‑Fi, no pairing in Settings.")
-                    .font(.sans(15))
-                    .foregroundStyle(Theme.cream.opacity(0.7))
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(
+                    "Switch the controller on, clip a sensor onto each bilah, and plug them in. It talks to this iPhone over Bluetooth — no Wi‑Fi, no pairing in Settings."
+                )
+                .font(.sans(15))
+                .foregroundStyle(Theme.cream.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
                 Text("You do this once for each gangsa. One controller can be set up on as many gangsa as you like.")
                     .font(.sans(13))
                     .foregroundStyle(Theme.cream.opacity(0.5))
@@ -122,10 +124,12 @@ private struct ControllerSetupContent: View {
                 SectionLabel("Nearby")
                 if sensor.found.isEmpty {
                     if quietTooLong {
-                        Text("Nothing yet. Is it switched on? Is another phone connected to it? A controller stops showing up while it is connected to something else.")
-                            .font(.sans(14))
-                            .foregroundStyle(Theme.cream.opacity(0.65))
-                            .fixedSize(horizontal: false, vertical: true)
+                        Text(
+                            "Nothing yet. Is it switched on? Is another phone connected to it? A controller stops showing up while it is connected to something else."
+                        )
+                        .font(.sans(14))
+                        .foregroundStyle(Theme.cream.opacity(0.65))
+                        .fixedSize(horizontal: false, vertical: true)
                     } else {
                         connectingLine
                     }
@@ -206,7 +210,11 @@ private struct ControllerSetupContent: View {
                     if info.hasPlugDetect {
                         stat("Sensors plugged in", "\(info.plugged.count)", detail: inputsText(info.plugged.sorted()))
                     } else {
-                        stat("Sensors plugged in", "—", detail: "This controller can't tell. You'll mark any key without a sensor.")
+                        stat(
+                            "Sensors plugged in",
+                            "—",
+                            detail: "This controller can't tell. You'll mark any key without a sensor."
+                        )
                     }
                     stat("Instrument keys", "\(vm.keyCount)", detail: vm.app.profile.name)
                 }

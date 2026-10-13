@@ -15,6 +15,10 @@ read it alongside the code rather than after it.
 The `.xcodeproj` is **generated and gitignored**. After changing `project.yml`, or on a fresh
 clone, regenerate before building:
 
+On a fresh clone, also run `scripts/bootstrap.sh` first. It resolves BuildTools and installs the
+Claude Code hook (format, then `scripts/check.sh`, after every `xcodegen generate`) into
+`.claude/settings.json` if it's missing. That folder is gitignored, so the hook can't be committed.
+
 ```sh
 cp Config.xcconfig.template Config.xcconfig   # fresh clone only; fill in team + bundle ID
 xcodegen generate

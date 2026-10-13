@@ -31,7 +31,7 @@ nonisolated enum InstrumentPhotoStore {
 
     /// Decoded images, so a card redrawing does not read and decode the file
     /// again. Keyed by file name, which changes with every new photo.
-    nonisolated(unsafe) private static let cache = NSCache<NSString, UIImage>()
+    private nonisolated(unsafe) static let cache = NSCache<NSString, UIImage>()
 
     static func image(for profile: InstrumentProfile) -> UIImage? {
         guard let version = profile.photoVersion else { return nil }

@@ -81,7 +81,8 @@ final class MarqueeView: UIView {
         place(next, from: previous)
         if let previous, previous.image === next.image, previous.origin == next.origin,
            previous.spacing == next.spacing, previous.count == next.count,
-           previous.travel == next.travel, previous.running == next.running {
+           previous.travel == next.travel, previous.running == next.running
+        {
             return
         }
         CATransaction.begin()
@@ -155,8 +156,13 @@ extension Marquee {
 
     /// Turned by `degrees` (clockwise on screen) and grown by `scale` about
     /// `pivot` — a point in a view of `size` — then moved by `offset`.
-    static func swung(about pivot: CGPoint, in size: CGSize, degrees: Double, scale: CGFloat,
-                      then offset: CGVector) -> CATransform3D {
+    static func swung(
+        about pivot: CGPoint,
+        in size: CGSize,
+        degrees: Double,
+        scale: CGFloat,
+        then offset: CGVector
+    ) -> CATransform3D {
         // A layer transforms about its centre; this is about the pivot.
         let p = CGPoint(x: pivot.x - size.width / 2, y: pivot.y - size.height / 2)
         var t = CATransform3DMakeTranslation(-p.x, -p.y, 0)

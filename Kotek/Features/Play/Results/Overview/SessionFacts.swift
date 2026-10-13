@@ -13,7 +13,7 @@
 
 import Foundation
 
-nonisolated struct SessionFacts: Sendable, Equatable {
+nonisolated struct SessionFacts: Equatable {
     /// The facts, one per line, as the model reads them.
     let text: String
     /// What the book is searched with: the problem, in the words a teaching

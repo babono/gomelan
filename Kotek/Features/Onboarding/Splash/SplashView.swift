@@ -119,8 +119,10 @@ private struct CurtainColumn: View {
         let s = screen.height / 402 * 0.87
         let art = CGSize(width: Self.artSize.width * s, height: Self.artSize.height * s)
         let step = CGSize(width: (leading ? Self.stepAcross : -Self.stepAcross) * s, height: -Self.stepUp * s)
-        let period = CGSize(width: step.width * CGFloat(Self.unitsPerFile),
-                            height: step.height * CGFloat(Self.unitsPerFile))
+        let period = CGSize(
+            width: step.width * CGFloat(Self.unitsPerFile),
+            height: step.height * CGFloat(Self.unitsPerFile)
+        )
         let anchor = leading ? Self.leftTop : Self.rightTop
         let target = CGPoint(x: screen.width * (leading ? 0.22 : 0.78), y: screen.height * 0.2)
         let origin = CGPoint(x: target.x - anchor.x * s, y: target.y - anchor.y * s)
@@ -169,5 +171,5 @@ private struct CurtainColumn: View {
         return image
     }
 
-    nonisolated(unsafe) private static var cache: [String: UIImage] = [:]
+    private nonisolated(unsafe) static var cache: [String: UIImage] = [:]
 }

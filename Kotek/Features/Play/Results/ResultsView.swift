@@ -132,8 +132,10 @@ struct ResultsView: View {
 
             Group {
                 if let worst {
-                    Text("most slips · \(worst.half.title) on bilah \(worst.keyIndex.map { bilahLabel($0, count: app.profile.keyCount) } ?? "–")")
-                        .foregroundStyle(Theme.terracotta)
+                    Text(
+                        "most slips · \(worst.half.title) on bilah \(worst.keyIndex.map { bilahLabel($0, count: app.profile.keyCount) } ?? "–")"
+                    )
+                    .foregroundStyle(Theme.terracotta)
                 } else {
                     Text("no slips")
                         .foregroundStyle(Theme.hit)

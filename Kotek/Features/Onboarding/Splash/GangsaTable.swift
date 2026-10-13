@@ -20,8 +20,8 @@ struct GangsaTable: View {
     /// Whether the bilah play themselves.
     var animated = true
 
-    // The artwork's own units — `gangsa-table.svg` is 642 x 88, and the
-    // geometry below is read off it, so the keys land on the rail exactly.
+    /// The artwork's own units — `gangsa-table.svg` is 642 x 88, and the
+    /// geometry below is read off it, so the keys land on the rail exactly.
     private static let tableSize = CGSize(width: 642, height: 88)
     /// The rail's top edge: where the bilah sit.
     private static let railTop: CGFloat = 56.4

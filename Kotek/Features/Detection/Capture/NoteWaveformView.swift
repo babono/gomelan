@@ -33,7 +33,10 @@ struct NoteWaveformView: View {
                     height: height
                 )
                 let played = progress.map { Double(i) / Double(levels.count) < $0 } ?? true
-                context.fill(Path(roundedRect: rect, cornerRadius: barWidth / 2), with: .color(tint.opacity(played ? 0.95 : 0.35)))
+                context.fill(
+                    Path(roundedRect: rect, cornerRadius: barWidth / 2),
+                    with: .color(tint.opacity(played ? 0.95 : 0.35))
+                )
             }
             if let progress {
                 let x = size.width * CGFloat(progress)

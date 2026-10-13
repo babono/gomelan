@@ -38,7 +38,9 @@ extension AppState {
     /// still the player's, and other gangsa may use it.
     func forgetController() {
         profile.controller = nil
-        for i in profile.keys.indices { profile.keys[i].sensorInput = nil }
+        for i in profile.keys.indices {
+            profile.keys[i].sensorInput = nil
+        }
         saveProfile()
     }
 

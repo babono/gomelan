@@ -62,7 +62,10 @@ final class FramingViewModel {
             let hasFrame = camera.frameBuffer.nearest(to: CACurrentMediaTime()) != nil
             if hasFrame || CACurrentMediaTime() > deadline {
                 // ponytail: temporary, see CameraController's timing logs.
-                if !hasFrame { Logger(subsystem: "me.babono.kotek", category: "camera").error("framing: gave up waiting for a frame after 6s") }
+                if !hasFrame {
+                    Logger(subsystem: "me.babono.kotek", category: "camera")
+                        .error("framing: gave up waiting for a frame after 6s")
+                }
                 cameraReady = true
                 break
             }
