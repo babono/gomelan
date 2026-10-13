@@ -13,10 +13,13 @@ struct ResultsBottomBar: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            PillButton(title: "Choose another kotekan", style: .outlined, tint: Theme.charcoal) {
+            // Compact: the bar shares a half-width column with the feedback
+            // now, and at full size "Choose another kotekan" pushed Retry off
+            // the edge of the screen.
+            PillButton(title: "Other kotekan", style: .outlined, tint: Theme.charcoal, compact: true) {
                 onChooseAnother()
             }
-            PillButton(title: "Retry", style: .filled, tint: Theme.terracotta) {
+            PillButton(title: "Retry", style: .filled, tint: Theme.terracotta, compact: true) {
                 onRetry()
             }
             Spacer()

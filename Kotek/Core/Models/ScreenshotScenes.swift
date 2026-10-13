@@ -106,9 +106,20 @@ extension AppState {
                                      noteCount: song.notes.count, score: score,
                                      onBeat: onBeat, mistakes: mistakes))
         }
+        // A few passes of the other side too, with a wrong-bilah habit, so the
+        // graph shows marks on both halves of the interlock.
+        var partner: [NoteJudgement] = []
+        let other = kotekan.makeSong(half: half.other, cycles: 1)
+        for _ in 0..<4 {
+            for (i, note) in other.notes.enumerated() {
+                let roll = Double.random(in: 0...1, using: &rng)
+                let result: JudgementResult = roll < 0.12 ? .wrongKey : .perfect
+                partner.append(NoteJudgement(keyIndex: note.keyIndex, stroke: i, result: result, timingErrorMs: 0))
+            }
+        }
         return SongResult(songTitle: kotekan.name,
                           subtitle: "\(kotekan.name) · \(half.title) · \(Theme.tempoLabel(tempo))",
-                          judgements: judgements, cycles: cycles,
+                          judgements: judgements, partnerJudgements: partner, cycles: cycles,
                           strokes: song.notes, cycleMs: song.durationMs, landedNotes: landed)
     }
 }
