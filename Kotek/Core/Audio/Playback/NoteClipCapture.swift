@@ -34,9 +34,12 @@ nonisolated enum NoteClipCapture {
         /// Less than a full clip left after the strike. Padding it out would end
         /// a ringing note in room noise, which is just another hard cut.
         case tooLate
+        /// A clip name from outside that is not a plain `.wav` file name.
+        case badFileName
 
         var errorDescription: String? {
             switch self {
+            case .badFileName: "That recording's file name isn't valid."
             case .noNote: "No note detected, try again."
             case .tooLate: "Struck too late, try again right after \"Strike now\"."
             case .noisyLead: "Too much sound before the strike. Stay quiet for the first half second, or move somewhere quieter."
@@ -151,16 +154,54 @@ nonisolated enum NoteClipCapture {
     /// screen shows and plays is always the clip that is on disk.
     static func save(_ clip: Clip, instrumentID: String, keyIndex: Int, sampleRate: Double) throws -> URL {
         let key = String(format: "k%02d", keyIndex)
+        let name = String(format: "%@_a%.2f_%d.wav", key, clip.peak, Int(Date().timeIntervalSince1970))
+        let data = PCMWav.encode(clip.samples, sampleRate: Int(sampleRate.rounded()))
+        return try write(data, instrumentID: instrumentID, keyIndex: keyIndex, file: name)
+    }
+
+    /// A take that came down from Storage, put where `save` would have put it.
+    /// `@concurrent` so the write stays off the main actor, which is where
+    /// the sync that calls it runs.
+    @concurrent
+    static func install(_ wav: Data, instrumentID: String, keyIndex: Int, file: String) async throws {
+        try write(wav, instrumentID: instrumentID, keyIndex: keyIndex, file: file)
+    }
+
+    @discardableResult
+    private static func write(_ wav: Data, instrumentID: String, keyIndex: Int, file: String) throws -> URL {
+        // The name can come from a synced profile, so it must be a bare file
+        // name: anything with a separator in it would write outside the folder.
+        guard isFileName(file) else { throw Failure.badFileName }
         let directory = directory(instrumentID: instrumentID, keyIndex: keyIndex)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let previous = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        let previous = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ??
+            []
 
-        let name = String(format: "%@_a%.2f_%d.wav", key, clip.peak, Int(Date().timeIntervalSince1970))
-        let url = directory.appendingPathComponent(name)
-        let data = PCMWav.encode(clip.samples, sampleRate: Int(sampleRate.rounded()))
-        try data.write(to: url, options: .atomic)
-        for old in previous { try? FileManager.default.removeItem(at: old) }
+        let url = directory.appendingPathComponent(file)
+        try wav.write(to: url, options: .atomic)
+        for old in previous where old != url {
+            try? FileManager.default.removeItem(at: old)
+        }
         return url
+    }
+
+    private static func isFileName(_ file: String) -> Bool {
+        file.hasSuffix(".wav") && file == (file as NSString).lastPathComponent
+    }
+
+    /// Whether this exact take is on the phone.
+    static func hasClip(instrumentID: String, keyIndex: Int, file: String) -> Bool {
+        isFileName(file) && FileManager.default.fileExists(
+            atPath: directory(instrumentID: instrumentID, keyIndex: keyIndex).appendingPathComponent(file).path
+        )
+    }
+
+    /// The bytes of a take, for upload. `@concurrent` for the same reason as `install`.
+    @concurrent
+    static func data(instrumentID: String, keyIndex: Int, file: String) async -> Data? {
+        guard isFileName(file) else { return nil }
+        return try? Data(contentsOf: directory(instrumentID: instrumentID, keyIndex: keyIndex)
+            .appendingPathComponent(file))
     }
 
     /// An instrument is gone: so are its recordings.

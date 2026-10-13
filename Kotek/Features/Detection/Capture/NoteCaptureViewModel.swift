@@ -114,6 +114,7 @@ final class NoteCaptureViewModel {
         guard !isRecording else { return }
         stopPlayback()
         NoteClipCapture.deleteClips(instrumentID: app.profile.id, keyIndex: keyIndex)
+        app.setSound(nil, forKey: keyIndex)
         keysWithClips.remove(keyIndex)
         waveform = []
         message = "Recording deleted."
@@ -223,6 +224,7 @@ final class NoteCaptureViewModel {
         }.value
         switch result {
         case .success(let saved):
+            app.setSound(saved.url.lastPathComponent, forKey: key)
             keysWithClips.insert(key)
             message = saved.endsRinging ? "Saved, but still ringing at the cut. Raise clipSeconds." : "Saved."
             refreshWaveform()

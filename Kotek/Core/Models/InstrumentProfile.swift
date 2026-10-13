@@ -61,6 +61,12 @@ nonisolated struct InstrumentKey: Codable, Identifiable, Equatable {
     /// gangsa, because one controller is shared between several.
     var sensorInput: Int?
 
+    /// File name of this key's recorded sound (`NoteClipCapture`), nil when it
+    /// plays the bundled sample. The name carries the take's timestamp, so it
+    /// is its own version: a phone has the current clip when the file exists,
+    /// and the Storage object is `<user>/<instrument>/<this name>`.
+    var soundFile: String?
+
     /// The learned spectrum with its example count, if there is one.
     ///
     /// A profile from before the count existed is assumed fully trusted: it was
