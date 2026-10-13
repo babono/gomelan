@@ -209,6 +209,9 @@ final class PlayEngine {
         "\(song.id)@\(tempoScale)"
     }
 
+    /// The other half's ledger at this speed — only the results graph reads it.
+    private var partnerSongID: String?
+
     /// Notes that landed anywhere this session, either half — the one number
     /// that feeds the gangsa's total, and the only running total worth putting
     /// in front of the player mid-session.
@@ -378,6 +381,16 @@ final class PlayEngine {
         loadHalves(song: song, partner: partner)
         cycleVoided = true
         recomputeTiming()
+        // R The new half's strokes already behind the playhead are passed over,
+        // R not judged. `loadHalves` resets them to unjudged, and the next tick
+        // R auto-missed every one — the player never had a chance at them, yet
+        // R each switch wrote a column of misses into this half's ledger, which
+        // R the results graph then marked as that half's worst strokes.
+        // R `cycleVoided` only ever kept them out of the pass scores.
+        let patternTime = currentTimeMs - patternOriginMs
+        for i in notes.indices where patternTime > scaledTime(notes[i]) + strokeGap(around: i) {
+            judged[i] = true
+        }
         refreshBestSoFar()
     }
 
@@ -387,6 +400,7 @@ final class PlayEngine {
         outcomes = Array(repeating: nil, count: notes.count)
         guideFired = Array(repeating: false, count: notes.count)
         partnerNotes = (partner?.notes ?? []).sorted { $0.timeMs < $1.timeMs }
+        partnerSongID = partner?.id
         partnerFired = Array(repeating: false, count: partnerNotes.count)
     }
 
@@ -465,6 +479,7 @@ final class PlayEngine {
             songTitle: song.title,
             subtitle: sessionSubtitle,
             judgements: judgementsByPart[partKey] ?? [],
+            partnerJudgements: partnerSongID.flatMap { judgementsByPart["\($0)@\(tempoScale)"] } ?? [],
             cycles: cyclesByPart[partKey] ?? [],
             strokes: notes,
             cycleMs: song.durationMs,
