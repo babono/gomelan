@@ -134,7 +134,7 @@ final nonisolated class CameraController: NSObject, @unchecked Sendable {
                     awaitingFirstFrame = began
                     session.startRunning()
                 }
-                cameraLog.notice("startRunning done +\(Self.ms(since: began))ms running=\(self.session.isRunning)")
+                cameraLog.notice("startRunning done +\(Self.ms(since: began))ms running=\(session.isRunning)")
                 setStatus(.running)
             }
         }
@@ -425,7 +425,12 @@ final nonisolated class CameraController: NSObject, @unchecked Sendable {
     private func configureIfNeeded() {
         guard !isConfigured else { return }
         let began = CACurrentMediaTime()
-        defer { cameraLog.notice("configure \(Self.ms(since: began))ms configured=\(self.isConfigured) auth=\(AVCaptureDevice.authorizationStatus(for: .video).rawValue)") }
+        defer {
+            cameraLog
+                .notice(
+                    "configure \(Self.ms(since: began))ms configured=\(self.isConfigured) auth=\(AVCaptureDevice.authorizationStatus(for: .video).rawValue)"
+                )
+        }
         session.beginConfiguration()
         session.sessionPreset = .high
 
@@ -489,7 +494,7 @@ final nonisolated class CameraController: NSObject, @unchecked Sendable {
     }
 
     private func setStatus(_ new: Status) {
-        if case .failed(let reason) = new { cameraLog.error("camera failed: \(reason)") }
+        if case let .failed(reason) = new { cameraLog.error("camera failed: \(reason)") }
         DispatchQueue.main.async { [weak self] in self?.status = new }
     }
 }

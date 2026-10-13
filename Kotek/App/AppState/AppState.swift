@@ -10,8 +10,8 @@
 
 import AppIntents
 import FactoryKit
-import OSLog
 import Observation
+import OSLog
 import SwiftUI
 
 @MainActor
@@ -22,6 +22,7 @@ final class AppState {
         // The gangsa's own key recordings are what the cue player sounds.
         didSet { cue.instrumentID = profile.id }
     }
+
     var savedProfiles: [InstrumentProfile] = []
 
     // The kotekan session carried through selection → play.
@@ -274,8 +275,7 @@ final class AppState {
     var markerColour: Int = Defaults.int(
         "markerColour",
         MarkerColour.red.rawValue
-    )
-    {
+    ) {
         didSet { Defaults.set("markerColour", markerColour) }
     }
 
@@ -288,14 +288,12 @@ final class AppState {
     var markerSaturationFloor: Double = Defaults.double(
         "markerSaturationFloor",
         60
-    )
-    {
+    ) {
         didSet { Defaults.set("markerSaturationFloor", markerSaturationFloor) }
     }
 
     /// Stops below metered exposure while marker vision is on. Negative.
-    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5)
-    {
+    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5) {
         didSet { Defaults.set("markerExposureBias", markerExposureBias) }
     }
 
@@ -305,8 +303,7 @@ final class AppState {
     }
 
     /// How far past the head marker the striking point sits.
-    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35)
-    {
+    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35) {
         didSet { Defaults.set("markerTipExtension", markerTipExtension) }
     }
 

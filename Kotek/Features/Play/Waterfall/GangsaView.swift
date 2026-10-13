@@ -20,16 +20,21 @@ struct GangsaLayout {
     /// Width of the playing area — the lanes, not the frame around them.
     let width: CGFloat
 
-    var lane: CGFloat { width / CGFloat(max(1, keyCount)) }
+    var lane: CGFloat {
+        width / CGFloat(max(1, keyCount))
+    }
+
     /// Most of the lane, leaving a narrow strip of the dark well between bars
     /// the way the resonators show on the real thing.
-    var barWidth: CGFloat { lane * Self.barFill }
+    var barWidth: CGFloat {
+        lane * Self.barFill
+    }
 
     private static let barFill: CGFloat = 0.9
     /// Long side over short side of a bar. Gangsa bilah are long and narrow;
     /// a squarer bar reads as a xylophone toy.
     private static let barAspect: CGFloat = 2.5
-    static let barInsets: CGFloat = 24   // top + bottom, see GangsaView
+    static let barInsets: CGFloat = 24 // top + bottom, see GangsaView
 
     /// The lane that gives a properly proportioned bar in a gangsa this tall.
     static func lane(forHeight height: CGFloat) -> CGFloat {
@@ -39,7 +44,6 @@ struct GangsaLayout {
     func laneCenter(_ key: Int) -> CGFloat {
         (CGFloat(key) + 0.5) * lane
     }
-
 }
 
 /// Highlights for one bilah this frame, worked out by the caller from the
@@ -66,7 +70,9 @@ struct GangsaView: View {
     // Insets of the bars inside the frame. The bars hang from one straight
     // top line so the waterfall has a single landing edge.
     private let topInset: CGFloat = 10
-    private var bottomInset: CGFloat { GangsaLayout.barInsets - topInset }
+    private var bottomInset: CGFloat {
+        GangsaLayout.barInsets - topInset
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -84,8 +90,12 @@ struct GangsaView: View {
             // Tilted about the TOP edge: points on the rotation axis do not
             // move, so the landing line stays exactly where the waterfall
             // ends while the near end of the instrument swings towards you.
-            .rotation3DEffect(.degrees(tilted ? 48 : 0), axis: (x: 1, y: 0, z: 0),
-                              anchor: .top, perspective: 0.55)
+            .rotation3DEffect(
+                .degrees(tilted ? 48 : 0),
+                axis: (x: 1, y: 0, z: 0),
+                anchor: .top,
+                perspective: 0.55
+            )
             .shadow(color: .black.opacity(tilted ? 0.55 : 0.35), radius: tilted ? 18 : 8, y: tilted ? 14 : 4)
         }
     }
@@ -96,8 +106,11 @@ struct GangsaView: View {
         ZStack {
             // Pelawah: carved wood, lacquered red-brown, gold trim.
             RoundedRectangle(cornerRadius: 10)
-                .fill(LinearGradient(colors: [Color(hex: 0x7A3E26), Color(hex: 0x4E2516)],
-                                     startPoint: .top, endPoint: .bottom))
+                .fill(LinearGradient(
+                    colors: [Color(hex: 0x7A3E26), Color(hex: 0x4E2516)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                ))
             RoundedRectangle(cornerRadius: 7)
                 .strokeBorder(Theme.gold.opacity(0.75), lineWidth: 1.2)
                 .padding(4)
@@ -121,8 +134,11 @@ struct GangsaView: View {
 
     private var endBoard: some View {
         RoundedRectangle(cornerRadius: 6)
-            .fill(LinearGradient(colors: [Color(hex: 0x8C4A2C), Color(hex: 0x5A2C1A)],
-                                 startPoint: .top, endPoint: .bottom))
+            .fill(LinearGradient(
+                colors: [Color(hex: 0x8C4A2C), Color(hex: 0x5A2C1A)],
+                startPoint: .top,
+                endPoint: .bottom
+            ))
             .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.gold.opacity(0.8), lineWidth: 1.2))
             .overlay(
                 Rectangle()
@@ -137,8 +153,12 @@ struct GangsaView: View {
 
     private func barRect(_ key: Int, maxLength: CGFloat) -> CGRect {
         let w = layout.barWidth
-        return CGRect(x: framePad + layout.laneCenter(key) - w / 2, y: topInset,
-                      width: w, height: maxLength)
+        return CGRect(
+            x: framePad + layout.laneCenter(key) - w / 2,
+            y: topInset,
+            width: w,
+            height: maxLength
+        )
     }
 
     /// The two cords the bars hang on, straight across under the pegs.
@@ -152,7 +172,9 @@ struct GangsaView: View {
         }
     }
 
-    private var pegInset: CGFloat { 12 }
+    private var pegInset: CGFloat {
+        12
+    }
 
     private func drawBar(_ ctx: GraphicsContext, key: Int, maxLength: CGFloat) {
         let rect = barRect(key, maxLength: maxLength)
@@ -161,18 +183,27 @@ struct GangsaView: View {
         let isVoiced = voiced.contains(key)
 
         // Drop shadow onto the well.
-        ctx.fill(Path(roundedRect: rect.offsetBy(dx: 1.5, dy: 3), cornerRadius: 4),
-                 with: .color(.black.opacity(0.5)))
+        ctx.fill(
+            Path(roundedRect: rect.offsetBy(dx: 1.5, dy: 3), cornerRadius: 4),
+            with: .color(.black.opacity(0.5))
+        )
 
         // Bronze: lit from the top-left, a soft ridge down the middle.
         ctx.fill(shape, with: .linearGradient(
             Gradient(colors: [Color(hex: 0xEACB92), Color(hex: 0xC9A063), Color(hex: 0x8F6A3A)]),
             startPoint: CGPoint(x: rect.minX, y: rect.minY),
-            endPoint: CGPoint(x: rect.maxX, y: rect.maxY)))
-        let ridge = CGRect(x: rect.midX - rect.width * 0.12, y: rect.minY + 3,
-                           width: rect.width * 0.24, height: rect.height - 6)
-        ctx.fill(Path(roundedRect: ridge, cornerRadius: ridge.width / 2),
-                 with: .color(.white.opacity(0.14)))
+            endPoint: CGPoint(x: rect.maxX, y: rect.maxY)
+        ))
+        let ridge = CGRect(
+            x: rect.midX - rect.width * 0.12,
+            y: rect.minY + 3,
+            width: rect.width * 0.24,
+            height: rect.height - 6
+        )
+        ctx.fill(
+            Path(roundedRect: ridge, cornerRadius: ridge.width / 2),
+            with: .color(.white.opacity(0.14))
+        )
         ctx.stroke(shape, with: .color(Color(hex: 0x5C4022).opacity(0.9)), lineWidth: 1)
 
         // Pegs through the two cord holes.
@@ -184,9 +215,11 @@ struct GangsaView: View {
 
         // Key number, engraved just under the top peg — the only part of the
         // bar sure to be on screen with most of the instrument sunk.
-        ctx.draw(Text("\(key + 1)").font(.sans(11, weight: .bold))
-                    .foregroundStyle(Color(hex: 0x3D2A16).opacity(0.75)),
-                 at: CGPoint(x: rect.midX, y: rect.minY + pegInset + 16))
+        ctx.draw(
+            Text("\(key + 1)").font(.sans(11, weight: .bold))
+                .foregroundStyle(Color(hex: 0x3D2A16).opacity(0.75)),
+            at: CGPoint(x: rect.midX, y: rect.minY + pegInset + 16)
+        )
 
         if !isVoiced {
             ctx.fill(shape, with: .color(Theme.ink.opacity(0.45)))
@@ -200,17 +233,24 @@ struct GangsaView: View {
             // Damp: muted red, dashed, with a pinch. Not a target to strike —
             // the outline is broken on purpose so it never reads as one.
             ctx.fill(shape, with: .color(Self.dampColor.opacity(0.55 * cue.damp)))
-            ctx.stroke(Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: 3),
-                       with: .color(Self.dampColor.opacity(cue.damp)),
-                       style: StrokeStyle(lineWidth: 2.5, dash: [5, 4]))
+            ctx.stroke(
+                Path(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), cornerRadius: 3),
+                with: .color(Self.dampColor.opacity(cue.damp)),
+                style: StrokeStyle(lineWidth: 2.5, dash: [5, 4])
+            )
             // Over the key number, high on the bar — the lower half may be
             // below the screen edge.
             let size = CGSize(width: min(18, rect.width * 0.6), height: min(22, rect.width * 0.75))
-            DampGlyph.draw(in: ctx,
-                           rect: CGRect(x: rect.midX - size.width / 2,
-                                        y: rect.minY + pegInset + 16 - size.height / 2,
-                                        width: size.width, height: size.height),
-                           color: Theme.cream.opacity(cue.damp))
+            DampGlyph.draw(
+                in: ctx,
+                rect: CGRect(
+                    x: rect.midX - size.width / 2,
+                    y: rect.minY + pegInset + 16 - size.height / 2,
+                    width: size.width,
+                    height: size.height
+                ),
+                color: Theme.cream.opacity(cue.damp)
+            )
         }
         if cue.strikeNow {
             ctx.stroke(shape, with: .color(Theme.cream), lineWidth: 3)
@@ -219,8 +259,11 @@ struct GangsaView: View {
             ctx.fill(shape, with: .color(Theme.hit.opacity(0.6)))
         }
         if cue.sensed {
-            ctx.stroke(Path(roundedRect: rect.insetBy(dx: -3, dy: -3), cornerRadius: 6),
-                       with: .color(Theme.cream.opacity(0.9)), lineWidth: 2)
+            ctx.stroke(
+                Path(roundedRect: rect.insetBy(dx: -3, dy: -3), cornerRadius: 6),
+                with: .color(Theme.cream.opacity(0.9)),
+                lineWidth: 2
+            )
         }
     }
 

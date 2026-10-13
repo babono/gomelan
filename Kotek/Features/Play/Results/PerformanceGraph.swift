@@ -101,8 +101,12 @@ struct PerformanceGraph: View {
         let roll = CGRect(origin: .zero, size: size)
         let column = roll.width / CGFloat(columns)
         let rowHeight = roll.height / CGFloat(rows)
-        func rowY(_ key: Int) -> CGFloat { roll.minY + CGFloat(rows - 1 - key) * rowHeight }
-        func colX(_ slot: Int) -> CGFloat { roll.minX + CGFloat(slot) * column }
+        func rowY(_ key: Int) -> CGFloat {
+            roll.minY + CGFloat(rows - 1 - key) * rowHeight
+        }
+        func colX(_ slot: Int) -> CGFloat {
+            roll.minX + CGFloat(slot) * column
+        }
 
         // Rows: alternate bands, top row highest.
         for key in 0 ..< rows where (rows - 1 - key) % 2 == 1 {
@@ -123,9 +127,9 @@ struct PerformanceGraph: View {
         }
         let played = Set(slots.filter { $0.attempts > 0 }.map(\.half))
 
-        // The figure. Unplayed half first, then clean strokes, then slips on
-        // top — a stroke both halves share must never hide the one that
-        // slipped under the one that did not.
+        /// The figure. Unplayed half first, then clean strokes, then slips on
+        /// top — a stroke both halves share must never hide the one that
+        /// slipped under the one that did not.
         func layer(_ s: PatternSlotScore) -> Int {
             !played.contains(s.half) ? 0 : s.slips == 0 ? 1 : 2
         }
@@ -170,7 +174,6 @@ struct PerformanceGraph: View {
                 }
             }
         }
-
     }
 
     /// A count on a backing chip — bare text over the grid lines was unreadable.

@@ -58,8 +58,10 @@ struct GangsaPhotoPicker: View {
             .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.radius)
-                    .strokeBorder(Theme.gold.opacity(image == nil ? 0.4 : 0.2),
-                                  style: StrokeStyle(lineWidth: 1, dash: image == nil ? [4, 3] : []))
+                    .strokeBorder(
+                        Theme.gold.opacity(image == nil ? 0.4 : 0.2),
+                        style: StrokeStyle(lineWidth: 1, dash: image == nil ? [4, 3] : [])
+                    )
             )
         }
         .buttonStyle(.kajar)
@@ -68,7 +70,9 @@ struct GangsaPhotoPicker: View {
             guard let picked else { return }
             loading = true
             Task {
-                defer { loading = false; item = nil }
+                defer { loading = false
+                    item = nil
+                }
                 guard let data = try? await picked.loadTransferable(type: Data.self) else { return }
                 // Off the main actor: decoding and resizing a 12-megapixel
                 // photo is a visible stall.

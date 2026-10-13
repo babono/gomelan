@@ -59,6 +59,7 @@ nonisolated struct PracticeHistoryRow: Decodable, Identifiable {
     var id: String {
         createdAt
     }
+
     var kotekanID: String?
     var half: String
     var tempoScale: Double

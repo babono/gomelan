@@ -41,14 +41,14 @@ nonisolated struct InstrumentRemoteRepository {
             controllerID = saved.id
         }
 
-        let row = InstrumentRow(
+        let row = try InstrumentRow(
             id: id,
             userID: uid,
             name: p.name,
             type: p.type.rawValue,
             keyCount: p.keyCount,
             createdAt: p.createdAt,
-            profile: try JSONDecoder().decode(AnyJSON.self, from: ProfileStore.encoded(Self.withoutController(p))),
+            profile: JSONDecoder().decode(AnyJSON.self, from: ProfileStore.encoded(Self.withoutController(p))),
             controllerID: controllerID,
             controllerInputs: p.controller?.inputs,
             controllerSetUpAt: p.controller?.setUpAt
@@ -111,7 +111,9 @@ nonisolated struct InstrumentRemoteRepository {
     private static func withoutController(_ p: InstrumentProfile) -> InstrumentProfile {
         var stripped = p
         stripped.controller = nil
-        for i in stripped.keys.indices { stripped.keys[i].sensorInput = nil }
+        for i in stripped.keys.indices {
+            stripped.keys[i].sensorInput = nil
+        }
         return stripped
     }
 
@@ -137,7 +139,8 @@ nonisolated struct InstrumentRemoteRepository {
         }
         let byKey = Dictionary(keys.map { ($0.keyIndex, $0.sensorInput) }) { a, _ in a }
         for i in restored.keys.indices {
-            restored.keys[i].sensorInput = restored.controller == nil ? nil : byKey[restored.keys[i].index] ?? nil
+            restored.keys[i].sensorInput = restored.controller == nil ? nil : byKey[restored.keys[i].index]
+                .flatMap { $0 }
         }
         return restored
     }
@@ -170,7 +173,7 @@ nonisolated struct InstrumentRemoteRepository {
 
     func uploadPhoto(_ jpeg: Data, id: String, version: String) async throws {
         try await remote.client.storage.from(Self.photoBucket).upload(
-            try await photoPath(id: id, version: version),
+            photoPath(id: id, version: version),
             data: jpeg,
             options: FileOptions(contentType: "image/jpeg", upsert: true)
         )
@@ -178,12 +181,12 @@ nonisolated struct InstrumentRemoteRepository {
 
     func downloadPhoto(id: String, version: String) async throws -> Data {
         try await remote.client.storage.from(Self.photoBucket)
-            .download(path: try await photoPath(id: id, version: version))
+            .download(path: photoPath(id: id, version: version))
     }
 
     func deletePhoto(id: String, version: String) async throws {
         _ = try await remote.client.storage.from(Self.photoBucket)
-            .remove(paths: [try await photoPath(id: id, version: version)])
+            .remove(paths: [photoPath(id: id, version: version)])
     }
 
     // MARK: - Sounds

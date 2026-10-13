@@ -188,11 +188,11 @@ final class PlayViewModel {
         // The strike controller (§3.6): input → this gangsa's key, on the
         // controller's own clock, already mapped onto `CACurrentMediaTime`.
         sensor.onHit = { [weak self] hit in
-            guard let self, self.startCue == nil, !self.paused, !self.engine.isFinished,
-                  let key = self.app.profile.keyForInput[hit.input],
-                  self.sensorKeys.contains(key)
+            guard let self, startCue == nil, !self.paused, !self.engine.isFinished,
+                  let key = app.profile.keyForInput[hit.input],
+                  sensorKeys.contains(key)
             else { return }
-            self.applyStrike(key: key, hostTime: hit.hostTime, confidence: 1, fromSensor: true)
+            applyStrike(key: key, hostTime: hit.hostTime, confidence: 1, fromSensor: true)
         }
 
         if app.hasSeenPracticeCoach {

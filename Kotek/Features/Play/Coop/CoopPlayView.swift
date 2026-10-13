@@ -70,15 +70,26 @@ private struct CoopPlayContentView: View {
     private func column(_ lane: CoopPlayViewModel.Lane, stage: CoopStageLayout) -> some View {
         let layout = stage.layout(lane.id)
         return VStack(spacing: 0) {
-            LaneHeader(player: lane.player,
-                       gangsa: vm.lanes.allSatisfy { $0.profile.id == lane.profile.id } ? nil : lane.profile.name)
-                .frame(height: CoopStageLayout.header)
-            WaterfallCanvas(engine: lane.engine, layout: layout,
-                            voiced: vm.voicedKeys, yourHalf: lane.player.half)
-                .frame(width: layout.width, height: stage.canvasHeight)
-            GangsaStage(engine: lane.engine, layout: layout, voiced: vm.voicedKeys,
-                        tilted: false, framePad: CoopStageLayout.framePad)
-                .frame(width: layout.width + CoopStageLayout.framePad * 2, height: stage.gangsaHeight)
+            LaneHeader(
+                player: lane.player,
+                gangsa: vm.lanes.allSatisfy { $0.profile.id == lane.profile.id } ? nil : lane.profile.name
+            )
+            .frame(height: CoopStageLayout.header)
+            WaterfallCanvas(
+                engine: lane.engine,
+                layout: layout,
+                voiced: vm.voicedKeys,
+                yourHalf: lane.player.half
+            )
+            .frame(width: layout.width, height: stage.canvasHeight)
+            GangsaStage(
+                engine: lane.engine,
+                layout: layout,
+                voiced: vm.voicedKeys,
+                tilted: false,
+                framePad: CoopStageLayout.framePad
+            )
+            .frame(width: layout.width + CoopStageLayout.framePad * 2, height: stage.gangsaHeight)
         }
         // Taller than the stage by the sunk half of the gangsa; aligned to the
         // top, that half hangs off the bottom of the screen.
@@ -169,8 +180,10 @@ private struct CoopStageLayout {
     /// room one has alone.
     func layout(_ lane: Int) -> GangsaLayout {
         let keys = keyCounts[lane]
-        let width = min(columnWidth - Self.framePad * 2,
-                        GangsaLayout.lane(forHeight: gangsaHeight) * CGFloat(keys))
+        let width = min(
+            columnWidth - Self.framePad * 2,
+            GangsaLayout.lane(forHeight: gangsaHeight) * CGFloat(keys)
+        )
         return GangsaLayout(keyCount: keys, width: width)
     }
 
@@ -221,6 +234,7 @@ private struct UnisonBands: View {
         // Read in body so Observation redraws this on the clock — see
         // `WaterfallCanvas.body`.
         let clock = lanes[0].engine
+        // swiftlint:disable:next redundant_discardable_let - a bare `_ =` is a () expression in a ViewBuilder
         let _ = clock.currentTimeMs
         Canvas { ctx, _ in
             guard lanes.count == 2 else { return }
@@ -246,8 +260,11 @@ private struct UnisonBands: View {
                 var band = Path()
                 band.move(to: CGPoint(x: from, y: y))
                 band.addLine(to: CGPoint(x: to, y: y))
-                ctx.stroke(band, with: .color(sameKey ? Theme.gold.opacity(0.85) : Theme.cream.opacity(0.35)),
-                           style: StrokeStyle(lineWidth: sameKey ? 3 : 2, lineCap: .round))
+                ctx.stroke(
+                    band,
+                    with: .color(sameKey ? Theme.gold.opacity(0.85) : Theme.cream.opacity(0.35)),
+                    style: StrokeStyle(lineWidth: sameKey ? 3 : 2, lineCap: .round)
+                )
             }
         }
         .frame(width: stage.size.width, height: stage.size.height)

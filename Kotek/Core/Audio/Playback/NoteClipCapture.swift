@@ -227,7 +227,10 @@ nonisolated enum NoteClipCapture {
     /// Peak per bin, for drawing a saved clip.
     static func waveform(of url: URL, bins: Int) -> [Float] {
         guard let file = try? AVAudioFile(forReading: url),
-              let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)),
+              let buffer = AVAudioPCMBuffer(
+                  pcmFormat: file.processingFormat,
+                  frameCapacity: AVAudioFrameCount(file.length)
+              ),
               (try? file.read(into: buffer)) != nil,
               let samples = buffer.floatChannelData?[0]
         else { return [] }
@@ -258,8 +261,10 @@ nonisolated enum NoteClipCapture {
         return files?
             .filter { $0.pathExtension == "wav" }
             .max { lhs, rhs in
-                let l = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-                let r = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                let l = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ??
+                    .distantPast
+                let r = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ??
+                    .distantPast
                 return l < r
             }
     }

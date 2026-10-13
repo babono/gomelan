@@ -67,10 +67,12 @@ struct AccountSectionView: View {
                     .font(.sans(16, weight: .medium))
                     .foregroundStyle(Theme.gold)
 
-                Text("Your gangsa and records are only on this iPhone. Link an Apple ID to keep them if you delete the app or change phones.")
-                    .font(.sans(13))
-                    .foregroundStyle(Theme.cream.opacity(0.75))
-                    .frame(maxWidth: 360, alignment: .leading)
+                Text(
+                    "Your gangsa and records are only on this iPhone. Link an Apple ID to keep them if you delete the app or change phones."
+                )
+                .font(.sans(13))
+                .foregroundStyle(Theme.cream.opacity(0.75))
+                .frame(maxWidth: 360, alignment: .leading)
 
                 AppleSignInButton { token, nonce, name in
                     Task { await app.linkApple(idToken: token, nonce: nonce, fullName: name, from: .settings) }

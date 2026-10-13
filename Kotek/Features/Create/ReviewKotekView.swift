@@ -73,8 +73,8 @@ struct ReviewKotekView: View {
                     viewModel.pause()
                     naming = true
                 }
-                    .disabled(!viewModel.canSave)
-                    .opacity(viewModel.canSave ? 1 : 0.45)
+                .disabled(!viewModel.canSave)
+                .opacity(viewModel.canSave ? 1 : 0.45)
             }
         }
         .padding(.horizontal, 40)

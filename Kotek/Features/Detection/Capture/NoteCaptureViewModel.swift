@@ -60,9 +60,13 @@ final class NoteCaptureViewModel {
 
     /// What the user sees as the key's name; `keyIndex` stays 0-based because
     /// that is what the filenames and everything else in the app use.
-    static func number(for keyIndex: Int) -> Int { keyIndex + 1 }
+    static func number(for keyIndex: Int) -> Int {
+        keyIndex + 1
+    }
 
-    var isRecording: Bool { phase != .idle }
+    var isRecording: Bool {
+        phase != .idle
+    }
 
     var statusText: String {
         switch phase {
@@ -76,7 +80,9 @@ final class NoteCaptureViewModel {
         }
     }
 
-    private var keyIndices: [Int] { app.profile.keys.map(\.index) }
+    private var keyIndices: [Int] {
+        app.profile.keys.map(\.index)
+    }
 
     var hasNext: Bool {
         keysWithClips.contains(keyIndex) && keyIndices.last != keyIndex
@@ -223,12 +229,12 @@ final class NoteCaptureViewModel {
             }
         }.value
         switch result {
-        case .success(let saved):
+        case let .success(saved):
             app.setSound(saved.url.lastPathComponent, forKey: key)
             keysWithClips.insert(key)
             message = saved.endsRinging ? "Saved, but still ringing at the cut. Raise clipSeconds." : "Saved."
             refreshWaveform()
-        case .failure(let error):
+        case let .failure(error):
             message = error.localizedDescription
         }
         liveLevels = []

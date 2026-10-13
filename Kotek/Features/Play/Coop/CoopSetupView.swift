@@ -42,8 +42,11 @@ struct CoopSetupView: View {
                 }
 
                 HStack(spacing: 14) {
-                    PlayerCard(player: setup.left, profiles: app.savedProfiles,
-                               profile: app.coopProfile(setup.wrappedValue.left))
+                    PlayerCard(
+                        player: setup.left,
+                        profiles: app.savedProfiles,
+                        profile: app.coopProfile(setup.wrappedValue.left)
+                    )
                     Button {
                         withAnimation(.snappy) { setup.wrappedValue.swapSeats() }
                     } label: {
@@ -56,13 +59,20 @@ struct CoopSetupView: View {
                     }
                     .buttonStyle(.kajar)
                     .accessibilityLabel("Swap seats")
-                    PlayerCard(player: setup.right, profiles: app.savedProfiles,
-                               profile: app.coopProfile(setup.wrappedValue.right))
+                    PlayerCard(
+                        player: setup.right,
+                        profiles: app.savedProfiles,
+                        profile: app.coopProfile(setup.wrappedValue.right)
+                    )
                 }
 
                 HStack(spacing: 14) {
-                    PillButton(title: "Swap halves", systemImage: "arrow.up.arrow.down",
-                               style: .outlined, compact: true) {
+                    PillButton(
+                        title: "Swap halves",
+                        systemImage: "arrow.up.arrow.down",
+                        style: .outlined,
+                        compact: true
+                    ) {
                         withAnimation(.snappy) { setup.wrappedValue.swapHalves() }
                     }
                     TempoPicker(tempoScale: $bindableApp.tempoScale)
@@ -85,13 +95,17 @@ struct CoopSetupView: View {
         let playable = k.map(app.coopPlayable) ?? false
         return HStack(spacing: 14) {
             Text(playable || k == nil
-                 ? "Sensors aren't used together yet. Play along — nothing is scored."
-                 : "\(k!.name) needs \(k!.requiredKeys) bilah on both gangsa.")
+                ? "Sensors aren't used together yet. Play along — nothing is scored."
+                : "\(k!.name) needs \(k!.requiredKeys) bilah on both gangsa.")
                 .font(.sans(13))
                 .foregroundStyle(playable ? Theme.cream.opacity(0.45) : Theme.wrong)
             Spacer()
-            PillButton(title: "Start", trailingSystemImage: "arrow.right",
-                       style: .filled, compact: true) {
+            PillButton(
+                title: "Start",
+                trailingSystemImage: "arrow.right",
+                style: .filled,
+                compact: true
+            ) {
                 app.startCoop()
             }
             .disabled(!playable)
@@ -133,8 +147,10 @@ private struct PlayerCard: View {
                 .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.radius))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.radius)
-                        .strokeBorder(nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
-                                      lineWidth: nameFocused ? 2 : 1)
+                        .strokeBorder(
+                            nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
+                            lineWidth: nameFocused ? 2 : 1
+                        )
                 )
                 .onSubmit { nameFocused = false }
                 .onChange(of: player.name) { _, new in

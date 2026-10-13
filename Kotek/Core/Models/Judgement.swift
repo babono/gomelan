@@ -359,11 +359,17 @@ struct SongResult: Equatable {
             let acc = Double(notes.reduce(0) { $0 + $1.result.score }) / Double(notes.count * 100)
             let drift = notes.map(\.timingErrorMs).reduce(0, +) / Double(notes.count)
             let hasWrong = notes.contains { $0.result == .wrongKey }
-            let note = if acc >= 0.9 { "clean throughout" }
-            else if hasWrong { "wrong key at times" }
-            else if drift < -60 { "ran late" }
-            else if drift > 60 { "ran early" }
-            else { "uneven" }
+            let note = if acc >= 0.9 {
+                "clean throughout"
+            } else if hasWrong {
+                "wrong key at times"
+            } else if drift < -60 {
+                "ran late"
+            } else if drift > 60 {
+                "ran early"
+            } else {
+                "uneven"
+            }
             return KeyBreakdown(keyIndex: key, accuracy: acc, note: note)
         }
         .sorted { $0.accuracy > $1.accuracy }

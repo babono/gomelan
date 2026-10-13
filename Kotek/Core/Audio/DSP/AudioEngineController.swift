@@ -468,7 +468,9 @@ final class AudioEngineController {
         raw.samples.append(contentsOf: UnsafeBufferPointer(start: channel, count: take))
         if let report = onRawLevel {
             var peak: Float = 0
-            for i in 0 ..< take { peak = max(peak, abs(channel[i])) }
+            for i in 0 ..< take {
+                peak = max(peak, abs(channel[i]))
+            }
             let progress = Double(raw.samples.count) / Double(raw.target)
             DispatchQueue.main.async { report(peak, progress) }
         }

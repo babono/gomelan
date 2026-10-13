@@ -31,11 +31,13 @@ struct SaveProgressPrompt: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
-                Text("As a guest, your gangsa and records are only on this iPhone. Link an Apple ID to keep them if you delete the app or change phones.")
-                    .font(.sans(14))
-                    .foregroundStyle(Theme.cream.opacity(0.75))
-                    .lineSpacing(1)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(
+                    "As a guest, your gangsa and records are only on this iPhone. Link an Apple ID to keep them if you delete the app or change phones."
+                )
+                .font(.sans(14))
+                .foregroundStyle(Theme.cream.opacity(0.75))
+                .lineSpacing(1)
+                .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 12) {
                     Spacer(minLength: 0)

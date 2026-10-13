@@ -80,6 +80,6 @@ nonisolated extension Route: AppEnum {
         .controllerSetup: "Controller Setup",
         .waterfall: "Waterfall Practice",
         .coopSetup: "Coop Setup",
-        .coopPlay: "Coop Play",
+        .coopPlay: "Coop Play"
     ]
 }

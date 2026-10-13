@@ -22,8 +22,13 @@ struct GangsaStage: View {
     var sensedKey: (Double) -> Int? = { _ in nil }
 
     var body: some View {
-        GangsaView(layout: layout, voiced: voiced, cues: cues,
-                   tilted: tilted, framePad: framePad)
+        GangsaView(
+            layout: layout,
+            voiced: voiced,
+            cues: cues,
+            tilted: tilted,
+            framePad: framePad
+        )
     }
 
     private var cues: [Int: BilahCue] {
@@ -55,7 +60,8 @@ struct GangsaStage: View {
                 .filter { $0.voice == .yours }
                 .sorted { $0.msAhead < $1.msAhead }
             if let i = yours.lastIndex(where: { $0.msAhead <= 0 }),
-               let key = yours[i].dampKey {
+               let key = yours[i].dampKey
+            {
                 let gap = i + 1 < yours.count ? yours[i + 1].msAhead - yours[i].msAhead : beat
                 let hold = min(max(gap * 0.55, 90), 400)
                 if -yours[i].msAhead < hold {

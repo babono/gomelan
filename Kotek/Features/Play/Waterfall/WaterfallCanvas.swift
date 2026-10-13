@@ -29,13 +29,19 @@ struct WaterfallCanvas: View {
         max(34, height / 6)
     }
 
-    private var yourColor: Color { yourHalf == .polos ? Theme.polosVoice : Theme.sangsihVoice }
-    private var partnerColor: Color { yourHalf == .polos ? Theme.sangsihVoice : Theme.polosVoice }
+    private var yourColor: Color {
+        yourHalf == .polos ? Theme.polosVoice : Theme.sangsihVoice
+    }
+
+    private var partnerColor: Color {
+        yourHalf == .polos ? Theme.sangsihVoice : Theme.polosVoice
+    }
 
     var body: some View {
         // Read here, in body, so Observation ties this view to the clock. The
         // Canvas renderer runs outside body tracking, and without this the
         // waterfall would only move when something else redrew it.
+        // swiftlint:disable:next redundant_discardable_let - a bare `_ =` is a () expression in a ViewBuilder
         let _ = engine.currentTimeMs
         Canvas { ctx, size in
             let beatMs = engine.beatLengthMs
@@ -43,7 +49,9 @@ struct WaterfallCanvas: View {
             let pxPerMs = Self.pxPerBeat(height: size.height) / beatMs
             let aheadMs = Double(size.height) / pxPerMs
             let lineY = size.height
-            func y(_ msAhead: Double) -> CGFloat { lineY - msAhead * pxPerMs }
+            func y(_ msAhead: Double) -> CGFloat {
+                lineY - msAhead * pxPerMs
+            }
 
             drawLanes(ctx, size: size)
 
@@ -52,8 +60,11 @@ struct WaterfallCanvas: View {
                 var rule = Path()
                 rule.move(to: CGPoint(x: 0, y: yy))
                 rule.addLine(to: CGPoint(x: size.width, y: yy))
-                ctx.stroke(rule, with: .color(Theme.cream.opacity(beat.strong ? 0.16 : 0.06)),
-                           lineWidth: beat.strong ? 1 : 0.5)
+                ctx.stroke(
+                    rule,
+                    with: .color(Theme.cream.opacity(beat.strong ? 0.16 : 0.06)),
+                    lineWidth: beat.strong ? 1 : 0.5
+                )
             }
 
             let notes = engine.fallingNotes(aheadMs: aheadMs, behindMs: beatMs)
@@ -81,10 +92,13 @@ struct WaterfallCanvas: View {
         for key in 0 ..< layout.keyCount {
             let x = layout.laneCenter(key) - layout.lane / 2
             if voiced.contains(key) {
-                ctx.fill(Path(CGRect(x: x, y: 0, width: layout.lane, height: size.height)),
-                         with: .linearGradient(
-                             Gradient(colors: [.clear, Theme.cream.opacity(0.05)]),
-                             startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+                ctx.fill(
+                    Path(CGRect(x: x, y: 0, width: layout.lane, height: size.height)),
+                    with: .linearGradient(
+                        Gradient(colors: [.clear, Theme.cream.opacity(0.05)]),
+                        startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)
+                    )
+                )
             }
             if key > 0 {
                 var edge = Path()
@@ -95,26 +109,43 @@ struct WaterfallCanvas: View {
         }
     }
 
-    private func block(_ note: FallingNote, width: CGFloat, y: (Double) -> CGFloat,
-                       pxPerMs: Double, minHeight: CGFloat = 20) -> CGRect {
+    private func block(
+        _ note: FallingNote,
+        width: CGFloat,
+        y: (Double) -> CGFloat,
+        pxPerMs: Double,
+        minHeight: CGFloat = 20
+    ) -> CGRect {
         let bottom = y(note.msAhead)
         let height = max(minHeight, note.durationMs * pxPerMs - 3)
-        return CGRect(x: layout.laneCenter(note.keyIndex) - width / 2, y: bottom - height,
-                      width: width, height: height)
+        return CGRect(
+            x: layout.laneCenter(note.keyIndex) - width / 2,
+            y: bottom - height,
+            width: width,
+            height: height
+        )
     }
 
     /// The other half: a ghost, so the interlock is visible without competing
     /// with what is yours to play.
-    private func drawPartner(_ ctx: GraphicsContext, note: FallingNote,
-                             y: (Double) -> CGFloat, pxPerMs: Double) {
+    private func drawPartner(
+        _ ctx: GraphicsContext,
+        note: FallingNote,
+        y: (Double) -> CGFloat,
+        pxPerMs: Double
+    ) {
         let r = block(note, width: layout.barWidth * 0.62, y: y, pxPerMs: pxPerMs)
         let shape = Path(roundedRect: r, cornerRadius: 5)
         ctx.fill(shape, with: .color(partnerColor.opacity(0.14)))
         ctx.stroke(shape, with: .color(partnerColor.opacity(0.4)), lineWidth: 1)
     }
 
-    private func drawYours(_ ctx: GraphicsContext, note: FallingNote,
-                           y: (Double) -> CGFloat, pxPerMs: Double) {
+    private func drawYours(
+        _ ctx: GraphicsContext,
+        note: FallingNote,
+        y: (Double) -> CGFloat,
+        pxPerMs: Double
+    ) {
         let r = block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs)
         let shape = Path(roundedRect: r, cornerRadius: 6)
         let base: Color = switch note.outcome {
@@ -125,23 +156,34 @@ struct WaterfallCanvas: View {
         let faded = note.outcome == .miss || note.outcome == .wrongKey
         ctx.fill(shape, with: .linearGradient(
             Gradient(colors: [base.opacity(faded ? 0.35 : 0.75), base.opacity(faded ? 0.5 : 1)]),
-            startPoint: CGPoint(x: r.midX, y: r.minY), endPoint: CGPoint(x: r.midX, y: r.maxY)))
+            startPoint: CGPoint(x: r.midX, y: r.minY), endPoint: CGPoint(x: r.midX, y: r.maxY)
+        ))
         ctx.stroke(shape, with: .color(.white.opacity(0.35)), lineWidth: 1)
-        ctx.draw(Text("\(note.keyIndex + 1)").font(.sans(13, weight: .black))
-                    .foregroundStyle(Theme.ink.opacity(faded ? 0.5 : 0.9)),
-                 at: CGPoint(x: r.midX, y: r.maxY - 11))
+        ctx.draw(
+            Text("\(note.keyIndex + 1)").font(.sans(13, weight: .black))
+                .foregroundStyle(Theme.ink.opacity(faded ? 0.5 : 0.9)),
+            at: CGPoint(x: r.midX, y: r.maxY - 11)
+        )
     }
 
     /// Rides beside its stroke, same height, in the lane of the bar to damp.
     /// Narrower, dashed and hatched with a pinch — it is never a target.
-    private func drawDamp(_ ctx: GraphicsContext, note: FallingNote,
-                          y: (Double) -> CGFloat, pxPerMs: Double) {
+    private func drawDamp(
+        _ ctx: GraphicsContext,
+        note: FallingNote,
+        y: (Double) -> CGFloat,
+        pxPerMs: Double
+    ) {
         guard let dampKey = note.dampKey else { return }
         let width = layout.barWidth * 0.66
         let bottom = y(note.msAhead)
         let height = max(18, min(30, note.durationMs * pxPerMs - 3))
-        let r = CGRect(x: layout.laneCenter(dampKey) - width / 2, y: bottom - height,
-                       width: width, height: height)
+        let r = CGRect(
+            x: layout.laneCenter(dampKey) - width / 2,
+            y: bottom - height,
+            width: width,
+            height: height
+        )
         let shape = Path(roundedRect: r, cornerRadius: 5)
         let colour = GangsaView.dampColor
 
@@ -153,25 +195,38 @@ struct WaterfallCanvas: View {
         var tie = Path()
         tie.move(to: CGPoint(x: fromX, y: r.midY))
         tie.addLine(to: CGPoint(x: toX, y: r.midY))
-        ctx.stroke(tie, with: .color(colour.opacity(0.5)),
-                   style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
+        ctx.stroke(
+            tie,
+            with: .color(colour.opacity(0.5)),
+            style: StrokeStyle(lineWidth: 1, dash: [2, 3])
+        )
 
         ctx.fill(shape, with: .color(colour.opacity(0.28)))
-        ctx.stroke(shape, with: .color(colour.opacity(0.9)),
-                   style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+        ctx.stroke(
+            shape,
+            with: .color(colour.opacity(0.9)),
+            style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])
+        )
         let iconH = min(22, r.height - 6)
         let iconW = min(iconH * 0.8, r.width - 6)
-        DampGlyph.draw(in: ctx,
-                       rect: CGRect(x: r.midX - iconW / 2, y: r.midY - iconH / 2,
-                                    width: iconW, height: iconH),
-                       color: Theme.cream.opacity(0.9))
+        DampGlyph.draw(
+            in: ctx,
+            rect: CGRect(
+                x: r.midX - iconW / 2,
+                y: r.midY - iconH / 2,
+                width: iconW,
+                height: iconH
+            ),
+            color: Theme.cream.opacity(0.9)
+        )
     }
 
     private func drawHitLine(_ ctx: GraphicsContext, size: CGSize) {
         let band = CGRect(x: 0, y: size.height - 10, width: size.width, height: 10)
         ctx.fill(Path(band), with: .linearGradient(
             Gradient(colors: [.clear, Theme.gold.opacity(0.35)]),
-            startPoint: CGPoint(x: 0, y: band.minY), endPoint: CGPoint(x: 0, y: band.maxY)))
+            startPoint: CGPoint(x: 0, y: band.minY), endPoint: CGPoint(x: 0, y: band.maxY)
+        ))
         var line = Path()
         line.move(to: CGPoint(x: 0, y: size.height - 1))
         line.addLine(to: CGPoint(x: size.width, y: size.height - 1))
@@ -190,8 +245,10 @@ struct WaterfallCanvas: View {
             }
             var c = ctx
             c.opacity = 1 - age
-            c.draw(Text(f.label.text).font(.sans(12, weight: .black)).foregroundStyle(colour),
-                   at: CGPoint(x: layout.laneCenter(f.keyIndex), y: lineY - 24 - 26 * age))
+            c.draw(
+                Text(f.label.text).font(.sans(12, weight: .black)).foregroundStyle(colour),
+                at: CGPoint(x: layout.laneCenter(f.keyIndex), y: lineY - 24 - 26 * age)
+            )
         }
     }
 }

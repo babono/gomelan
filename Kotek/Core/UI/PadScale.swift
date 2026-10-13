@@ -21,7 +21,9 @@ struct PadScale<Content: View>: View {
     @ViewBuilder var content: Content
 
     /// The iPhone 17's landscape screen, which every layout was tuned on.
-    private static var reference: CGSize { CGSize(width: 874, height: 402) }
+    private static var reference: CGSize {
+        CGSize(width: 874, height: 402)
+    }
 
     var body: some View {
         if UIDevice.current.userInterfaceIdiom == .pad {
@@ -32,8 +34,12 @@ struct PadScale<Content: View>: View {
                     // The screen's safe area, carried into the smaller layout:
                     // ignored, a footer sits under the home indicator; left to
                     // SwiftUI, a frame smaller than the screen gets none.
-                    .safeAreaPadding(EdgeInsets(top: insets.top / s, leading: insets.leading / s,
-                                                bottom: insets.bottom / s, trailing: insets.trailing / s))
+                    .safeAreaPadding(EdgeInsets(
+                        top: insets.top / s,
+                        leading: insets.leading / s,
+                        bottom: insets.bottom / s,
+                        trailing: insets.trailing / s
+                    ))
                     .frame(width: geo.size.width / s, height: geo.size.height / s)
                     .scaleEffect(s)
                     .frame(width: geo.size.width, height: geo.size.height)

@@ -32,12 +32,12 @@ extension AppState {
     /// the keychain — which outlives deleting the app — from quietly signing a
     /// new "guest" back in as whoever used the phone before.
     static func resetLocalDataIfStale() {
-        guard Defaults.int("dataEpoch", 1) < Self.dataEpoch else { return }
+        guard Defaults.int("dataEpoch", 1) < dataEpoch else { return }
         ProfileStore.reset()
         KotekanStore.reset()
         InstrumentPhotoStore.reset()
         syncedInstrumentIDs = []
-        Defaults.set("dataEpoch", Self.dataEpoch)
+        Defaults.set("dataEpoch", dataEpoch)
         Defaults.set("account", "")
         // ponytail: not awaited. The SDK drops the stored session before its
         // first suspension, long before anyone can get past the splash and

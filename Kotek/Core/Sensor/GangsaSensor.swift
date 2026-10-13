@@ -209,10 +209,10 @@ final class GangsaSensor: NSObject {
         switch target {
         case .none: false
         case .any, .browse: true
-        case .picked(let id): p.identifier == id
+        case let .picked(id): p.identifier == id
         // Before INFO is in, an in-flight connection to the cached peripheral
         // counts; INFO settles it either way.
-        case .hardware(let hw): info.map { $0.hardwareID == hw } ?? (p.identifier == Self.cachedPeripheral(for: hw))
+        case let .hardware(hw): info.map { $0.hardwareID == hw } ?? (p.identifier == Self.cachedPeripheral(for: hw))
         }
     }
 
@@ -221,12 +221,12 @@ final class GangsaSensor: NSObject {
         switch target {
         case .none:
             return
-        case .picked(let id):
+        case let .picked(id):
             if let p = central.retrievePeripherals(withIdentifiers: [id]).first {
                 connect(p)
                 return
             }
-        case .hardware(let hw):
+        case let .hardware(hw):
             // The fast path, on a phone that has met this controller: a pending
             // connect never times out, so it lands the moment the controller is
             // powered on or back in range.
@@ -239,10 +239,10 @@ final class GangsaSensor: NSObject {
         case .any, .browse:
             break
         }
-        //R Already connected to the system — by the standalone prototype app,
-        //R or a connection iOS kept up after it closed. The ESP32 stops
-        //R advertising while connected, so a scan alone would wait forever;
-        //R iOS shares the link, so we can simply connect to it as well.
+        // R Already connected to the system — by the standalone prototype app,
+        // R or a connection iOS kept up after it closed. The ESP32 stops
+        // R advertising while connected, so a scan alone would wait forever;
+        // R iOS shares the link, so we can simply connect to it as well.
         let system = central.retrieveConnectedPeripherals(withServices: [Self.service])
         if target == .any, let existing = system.first {
             connect(existing)
@@ -257,17 +257,19 @@ final class GangsaSensor: NSObject {
 
     private func startScan() {
         seenDevices = []
-        //R Unfiltered, matched by hand in `didDiscover`. Filtering on the
-        //R service UUID found nothing: a 128-bit UUID plus the name does not
-        //R fit the 31-byte advertisement, so the ESP32 Arduino stack moves the
-        //R UUID into the scan response, which iOS's service filter can miss.
-        //R The name is in the primary packet.
-        //R
-        //R Duplicates ON: unfiltered, iOS reports each device once, and if that
-        //R one report predates the scan response there is nothing to match and
-        //R the ESP32 is never offered again. Fine for foreground screens.
-        central?.scanForPeripherals(withServices: nil,
-                                   options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
+        // R Unfiltered, matched by hand in `didDiscover`. Filtering on the
+        // R service UUID found nothing: a 128-bit UUID plus the name does not
+        // R fit the 31-byte advertisement, so the ESP32 Arduino stack moves the
+        // R UUID into the scan response, which iOS's service filter can miss.
+        // R The name is in the primary packet.
+        // R
+        // R Duplicates ON: unfiltered, iOS reports each device once, and if that
+        // R one report predates the scan response there is nothing to match and
+        // R the ESP32 is never offered again. Fine for foreground screens.
+        central?.scanForPeripherals(
+            withServices: nil,
+            options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+        )
     }
 
     /// While browsing, the controller we are already connected to is not
@@ -282,7 +284,7 @@ final class GangsaSensor: NSObject {
 
     private func connect(_ p: CBPeripheral) {
         central?.stopScan()
-        peripheral = p   // must be retained or CB drops it
+        peripheral = p // must be retained or CB drops it
         p.delegate = self
         info = nil
         status = .connecting
@@ -292,15 +294,15 @@ final class GangsaSensor: NSObject {
     /// Whether an advertised name could be the controller we are looking for.
     private func matches(name: String?, services: [CBUUID], id: UUID) -> Bool {
         guard !rejected.contains(id) else { return false }
-        //R Loose on the name: firmware gets renamed ("Gangsa-Sensor-3",
-        //R "GangsaSensor") far more often than the service UUID changes.
+        // R Loose on the name: firmware gets renamed ("Gangsa-Sensor-3",
+        // R "GangsaSensor") far more often than the service UUID changes.
         let isController = services.contains(Self.service)
             || name?.localizedCaseInsensitiveContains("gangsa") == true
         guard isController else { return false }
         switch target {
         case .any, .browse: return true
-        case .picked(let picked): return id == picked
-        case .hardware(let hw):
+        case let .picked(picked): return id == picked
+        case let .hardware(hw):
             // The name carries the last 2 bytes of the hardware ID (§3.6.1), so
             // a room full of controllers is narrowed down before connecting.
             // INFO is the real check — this only saves connecting to each.
@@ -366,7 +368,7 @@ final class GangsaSensor: NSObject {
     }
 
     private func ready(_ next: Info, from p: CBPeripheral) {
-        if case .hardware(let hw) = target, next.hardwareID != hw {
+        if case let .hardware(hw) = target, next.hardwareID != hw {
             // Someone else's controller with a matching name suffix.
             rejected.insert(p.identifier)
             disconnect()
@@ -406,9 +408,13 @@ final class GangsaSensor: NSObject {
         let offset = min(clockOffset ?? .infinity, CACurrentMediaTime() - sent)
         clockOffset = offset
 
-        let hit = Hit(input: Int(b[1]), strength: strength, sensorMs: ms,
-                      hostTime: sent + offset,
-                      intervalMs: lastSensorMs.map { Int(ms &- $0) })
+        let hit = Hit(
+            input: Int(b[1]),
+            strength: strength,
+            sensorMs: ms,
+            hostTime: sent + offset,
+            intervalMs: lastSensorMs.map { Int(ms &- $0) }
+        )
         lastSensorMs = ms
         hitCounts[hit.input] += 1
         onHit?(hit)
@@ -439,8 +445,12 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
         }
     }
 
-    nonisolated func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
-                                    advertisementData: [String: Any], rssi RSSI: NSNumber) {
+    nonisolated func centralManager(
+        _ central: CBCentralManager,
+        didDiscover peripheral: CBPeripheral,
+        advertisementData: [String: Any],
+        rssi RSSI: NSNumber
+    ) {
         let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? peripheral.name
         let services = advertisementData[CBAdvertisementDataServiceUUIDsKey] as? [CBUUID] ?? []
         let rssi = RSSI.intValue
@@ -466,9 +476,9 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
                 found.sort { $0.rssi > $1.rssi }
                 return
             }
-            //R Nameless devices are listed by their advertised services, so an
-            //R ESP32 that drops its name — or carries a mistyped UUID — shows up
-            //R here instead of being invisible.
+            // R Nameless devices are listed by their advertised services, so an
+            // R ESP32 that drops its name — or carries a mistyped UUID — shows up
+            // R here instead of being invisible.
             let label = name ?? services.first.map { "? " + $0.uuidString.prefix(8) }
             if let label, !seenDevices.contains(label) { seenDevices.append(label) }
         }
@@ -482,14 +492,22 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
         }
     }
 
-    nonisolated func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+    nonisolated func centralManager(
+        _ central: CBCentralManager,
+        didFailToConnect peripheral: CBPeripheral,
+        error: Error?
+    ) {
         MainActor.assumeIsolated {
             self.peripheral = nil
             search()
         }
     }
 
-    nonisolated func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+    nonisolated func centralManager(
+        _ central: CBCentralManager,
+        didDisconnectPeripheral peripheral: CBPeripheral,
+        error: Error?
+    ) {
         MainActor.assumeIsolated {
             // Our own `disconnect()` already let go of it.
             guard self.peripheral?.identifier == peripheral.identifier else { return }
@@ -507,14 +525,21 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
         MainActor.assumeIsolated {
             guard let service = peripheral.services?.first(where: { $0.uuid == Self.service }) else { return }
             peripheral.discoverCharacteristics(
-                [Self.eventChar, Self.levelChar, Self.infoChar, Self.inputsChar], for: service)
+                [Self.eventChar, Self.levelChar, Self.infoChar, Self.inputsChar], for: service
+            )
         }
     }
 
-    nonisolated func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+    nonisolated func peripheral(
+        _ peripheral: CBPeripheral,
+        didDiscoverCharacteristicsFor service: CBService,
+        error: Error?
+    ) {
         MainActor.assumeIsolated {
             let chars = service.characteristics ?? []
-            for c in chars where c.uuid != Self.infoChar { peripheral.setNotifyValue(true, for: c) }
+            for c in chars where c.uuid != Self.infoChar {
+                peripheral.setNotifyValue(true, for: c)
+            }
             if let infoChar = chars.first(where: { $0.uuid == Self.infoChar }) {
                 peripheral.readValue(for: infoChar)
             } else {
@@ -523,7 +548,11 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
         }
     }
 
-    nonisolated func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+    nonisolated func peripheral(
+        _ peripheral: CBPeripheral,
+        didUpdateValueFor characteristic: CBCharacteristic,
+        error: Error?
+    ) {
         MainActor.assumeIsolated {
             guard let data = characteristic.value else { return }
             switch characteristic.uuid {

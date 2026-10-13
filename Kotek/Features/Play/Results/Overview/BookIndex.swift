@@ -27,7 +27,7 @@ import Foundation
 import NaturalLanguage
 import os
 
-nonisolated struct BookPassage: Sendable, Equatable {
+nonisolated struct BookPassage: Equatable {
     let book: BookInfo
     /// The number printed on the page, which is what a reader can turn to —
     /// not the PDF's page, which counts the cover and front matter too.
@@ -36,7 +36,7 @@ nonisolated struct BookPassage: Sendable, Equatable {
 }
 
 /// A book as the overview credits it.
-nonisolated struct BookInfo: Sendable, Hashable {
+nonisolated struct BookInfo: Hashable {
     let title: String
     let author: String?
     /// Where to get it — a publisher or bookshop page.
@@ -95,7 +95,7 @@ actor BookIndex {
         let keywords: Keywords
     }
 
-    nonisolated private struct File: Decodable {
+    private nonisolated struct File: Decodable {
         let language: String
         /// The `NLContextualEmbedding` every book's vectors came from — the
         /// builder refuses to mix models in one index.
@@ -145,9 +145,9 @@ actor BookIndex {
         let vectors = stored.map { Self.floats(base64: $0.2.vector, count: file.dimension) }
         guard !passages.isEmpty, vectors.allSatisfy({ $0.count == file.dimension }) else { return nil }
 
-        return Loaded(
+        return await Loaded(
             passages: passages,
-            semantic: await semantic(file: file, vectors: vectors),
+            semantic: semantic(file: file, vectors: vectors),
             keywords: Keywords(passages.map(\.text))
         )
     }
@@ -198,7 +198,7 @@ actor BookIndex {
 }
 
 /// Vector similarity against the book.
-nonisolated private struct Semantic {
+private nonisolated struct Semantic {
     let embedding: NLContextualEmbedding
     let language: NLLanguage
     /// The book's average vector, taken off every vector before comparing.
@@ -244,7 +244,9 @@ nonisolated private struct Semantic {
         var sum = [Double](repeating: 0, count: embedding.dimension)
         var count = 0
         result.enumerateTokenVectors(in: text.startIndex ..< text.endIndex) { vector, _ in
-            for i in sum.indices { sum[i] += vector[i] }
+            for i in sum.indices {
+                sum[i] += vector[i]
+            }
             count += 1
             return true
         }
@@ -266,7 +268,7 @@ nonisolated private struct Semantic {
 
 /// BM25 over the passages: how strongly each one uses the query's words,
 /// with rare words counting for more than common ones.
-nonisolated private struct Keywords {
+private nonisolated struct Keywords {
     private let documents: [[String: Int]]
     private let lengths: [Int]
     private let documentFrequency: [String: Int]
@@ -278,7 +280,9 @@ nonisolated private struct Keywords {
         }
         lengths = documents.map { $0.values.reduce(0, +) }
         documentFrequency = documents.reduce(into: [:]) { df, doc in
-            for w in doc.keys { df[w, default: 0] += 1 }
+            for w in doc.keys {
+                df[w, default: 0] += 1
+            }
         }
         averageLength = Double(lengths.reduce(0, +)) / Double(max(1, lengths.count))
     }

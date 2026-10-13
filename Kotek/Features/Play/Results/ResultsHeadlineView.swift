@@ -10,11 +10,11 @@ import SwiftUI
 struct ResultsHeadlineView: View {
     let result: SongResult
 
-    // R The accuracy percentage and the record line under it were taken out:
-    // R the graph below now says WHERE it went wrong, and a single percentage
-    // R above it competed with that for the first look without telling the
-    // R player what to practise. Records are still kept (`PracticeSession`) —
-    // R they are just not this screen's headline any more.
+    /// R The accuracy percentage and the record line under it were taken out:
+    /// R the graph below now says WHERE it went wrong, and a single percentage
+    /// R above it competed with that for the first look without telling the
+    /// R player what to practise. Records are still kept (`PracticeSession`) —
+    /// R they are just not this screen's headline any more.
     var body: some View {
         // R The same three counts `practice_session` files, over the same
         // R span — the whole session — rather than the best window's tallies.

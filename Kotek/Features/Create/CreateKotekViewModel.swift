@@ -66,6 +66,7 @@ final class CreateKotekViewModel {
             if bar != playheadBar { playheadBar = bar }
         }
     }
+
     /// The bar the playhead is in. The grid scrolls to follow this rather than
     /// `playhead`, so it hears about the line once a bar, not once a frame.
     private(set) var playheadBar = 0
@@ -82,8 +83,11 @@ final class CreateKotekViewModel {
     /// prototype has three sensors, on three neighbouring bilah.
     var firstSensorKey = 4
 
-    init(app: AppState, cue: CuePlayer = Container.shared.cueService(),
-         sensor: GangsaSensor = Container.shared.sensorService()) {
+    init(
+        app: AppState,
+        cue: CuePlayer = Container.shared.cueService(),
+        sensor: GangsaSensor = Container.shared.sensorService()
+    ) {
         self.app = app
         self.cue = cue
         self.sensor = sensor
@@ -144,7 +148,11 @@ final class CreateKotekViewModel {
     // MARK: - Recording
 
     func toggleRecording() {
-        recording ? stopRecording() : startRecording()
+        if recording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
     }
 
     func startRecording() {
@@ -200,7 +208,11 @@ final class CreateKotekViewModel {
     // change is heard on the next pass without a restart.
 
     func togglePlay() {
-        playing ? pause() : play()
+        if playing {
+            pause()
+        } else {
+            play()
+        }
     }
 
     func play() {

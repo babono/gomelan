@@ -135,7 +135,7 @@ struct PatternBackground: View {
         return image
     }
 
-    nonisolated(unsafe) private static var cache: [String: UIImage] = [:]
+    private nonisolated(unsafe) static var cache: [String: UIImage] = [:]
 }
 
 // MARK: - Convenience

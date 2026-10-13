@@ -586,9 +586,11 @@ final class PlayEngine {
         let last = Int(((currentTimeMs + aheadMs) / beatMs).rounded(.down))
         guard last >= first else { return [] }
         return (first ... last).map { b in
-            FallingBeat(id: b,
-                        msAhead: Double(b) * beatMs - currentTimeMs,
-                        strong: (b - introBeats) % 4 == 0)
+            FallingBeat(
+                id: b,
+                msAhead: Double(b) * beatMs - currentTimeMs,
+                strong: (b - introBeats) % 4 == 0
+            )
         }
     }
 

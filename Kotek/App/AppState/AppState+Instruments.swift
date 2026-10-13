@@ -155,7 +155,9 @@ extension AppState {
     func syncInstruments() async {
         let local = ProfileStore.loadAll()
         guard account == .apple else {
-            for p in local { await push(p) }
+            for p in local {
+                await push(p)
+            }
             return
         }
         let remote: [(id: String, profile: InstrumentProfile?)]
@@ -165,7 +167,9 @@ extension AppState {
             // Offline, most likely. Do what a guest does; the next launch
             // will reconcile.
             log.error("instrument download failed: \(error.localizedDescription)")
-            for p in local { await push(p) }
+            for p in local {
+                await push(p)
+            }
             return
         }
 
