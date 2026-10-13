@@ -23,6 +23,8 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppState.self) private var app
     @State private var preloader = Container.shared.preloaderService()
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var splashGone = false
 
     var body: some View {
         ZStack {
@@ -30,7 +32,8 @@ struct RootView: View {
             // a pattern that is about to be completely covered is wasted work on
             // exactly the screens with the least headroom to spare.
             if !app.screen.isCameraScreen {
-                PatternBackground()
+                // Held back until the splash has opened — see `shown`.
+                PatternBackground(shown: splashGone)
             } else {
                 Theme.ground.ignoresSafeArea()
             }
@@ -80,17 +83,22 @@ struct RootView: View {
             guard let pending else { return }
             Task { await app.confirmSwitch(pending) }
         }
-        // BELOW both, so a first run shows the splash finish and hand over to
-        // the introduction rather than the introduction appearing behind it.
+        // ABOVE both, so a first run shows the splash open and hand over to
+        // the introduction rather than the introduction appearing over it.
+        // The splash removes itself once its curtains are off screen, rather
+        // than fading out when loading ends — see `SplashView`.
         .overlay {
-            if !preloader.isFinished {
-                SplashView(progress: preloader.progress)
-                    .transition(.opacity)
+            if !splashGone {
+                SplashView(
+                    progress: preloader.progress,
+                    finished: preloader.isFinished,
+                    onOpen: { app.splashCovering = false },
+                    onDone: { splashGone = true }
+                )
             }
         }
         .animation(.easeInOut(duration: 0.2), value: app.visibleGuide)
         .animation(.easeInOut(duration: 0.3), value: app.showingOnboarding)
-        .animation(.easeInOut(duration: 0.55), value: preloader.isFinished)
         .task {
             await preloader.warm(camera: Container.shared.cameraService())
             // Raised BEFORE the splash finishes fading, deliberately: the
@@ -116,6 +124,20 @@ struct RootView: View {
             if !showsCamera {
                 Container.shared.cameraService().stop()
             }
+        }
+        // The strike controller follows the active gangsa (Flow E), from here
+        // for the same reason the camera teardown lives here: this is the one
+        // place that sees every screen and every instrument switch. Gangsa A →
+        // B on the same controller keeps the connection (`GangsaSensor.use`).
+        // The setup screen and the sensor test drive it themselves (nil).
+        .onChange(of: app.sensorTarget, initial: true) { _, target in
+            if let target { app.sensor.use(target) }
+        }
+        // Foreground only: nothing here needs strikes while the app is away,
+        // and coming back reconnects on its own.
+        .onChange(of: scenePhase) { _, phase in
+            guard let target = app.sensorTarget else { return }
+            app.sensor.use(phase == .background ? .none : target)
         }
         // Every switch under here ticks like a kajar when it flips. Buttons get
         // the same treatment one at a time (`.buttonStyle(.kajar)`), because
@@ -149,6 +171,8 @@ struct RootView: View {
             CalibrationView()
         case .chooseKotekan:
             ChooseKotekanView()
+        case .createKotek:
+            CreateKotekView()
         case .countdown, .playing:
             PlayView()
         case .results:
@@ -171,6 +195,14 @@ struct RootView: View {
             NoteCaptureView()
         case .sensorTest:
             SensorPlayView()
+        case .controllerSetup:
+            ControllerSetupView()
+        case .waterfall:
+            WaterfallPlayView()
+        case .coopSetup:
+            CoopSetupView()
+        case .coopPlay:
+            CoopPlayView()
         }
     }
 }

@@ -108,6 +108,10 @@ enum JudgementResult: String, Equatable {
 struct NoteJudgement: Identifiable, Equatable {
     let id = UUID()
     let keyIndex: Int
+    /// Which stroke of the figure this was: its index in ONE cycle of the half,
+    /// the same number on every pass. What lets the results average "the fifth
+    /// stroke" over a whole session instead of only scoring passes end to end.
+    let stroke: Int
     let result: JudgementResult
     /// Signed timing error in ms; positive = struck early, negative = late.
     let timingErrorMs: Double
@@ -167,11 +171,16 @@ struct SongResult: Equatable {
     let judgements: [NoteJudgement]
     /// Every completed pass of the half you finished on, in order.
     let cycles: [CycleScore]
+    /// One cycle of the half you finished on, in time order — what `stroke` on
+    /// a judgement indexes into — and that cycle's length. Unscaled by tempo,
+    /// so a position in the cycle means the same thing at any speed.
+    let strokes: [Note]
+    let cycleMs: Int
     /// Notes that landed across the WHOLE session, both halves — what the
-    /// gangsa's grade is credited with.
+    /// gangsa's landed-note total is credited with.
     ///
     /// Separate from `judgements` on purpose: accuracy is a claim about how well
-    /// you played one half and has to be scoped to it, but the grade measures
+    /// you played one half and has to be scoped to it, but the total measures
     /// how much you have played this instrument, and strokes on the other side
     /// of the kotekan are just as much playing. Switching sides costs you the
     /// accuracy history for the half you left; it never costs you the notes.
@@ -214,6 +223,63 @@ struct SongResult: Equatable {
         let hits = judgements.filter { $0.result != .miss && $0.result != .wrongKey }
         guard !hits.isEmpty else { return 0 }
         return hits.map(\.timingErrorMs).reduce(0, +) / Double(hits.count)
+    }
+
+    /// How each stroke of the figure went, averaged over the whole session.
+    ///
+    /// Replaces a pass-by-pass accuracy line, which answered "did I get better
+    /// as I went" — a question practice that loops until you stop it answers
+    /// itself. This answers the one a player can act on: WHERE in the figure it
+    /// keeps going wrong. Strokes never judged (a pass cut short) are left out
+    /// rather than read as zero.
+    var strokeAverages: [StrokeAverage] {
+        let byStroke = Dictionary(grouping: judgements, by: \.stroke)
+        return strokes.indices.compactMap { i in
+            guard let js = byStroke[i], !js.isEmpty else { return nil }
+            let hits = js.filter(\.result.isHit)
+            return StrokeAverage(
+                stroke: i,
+                keyIndex: strokes[i].keyIndex,
+                timeMs: strokes[i].timeMs,
+                played: js.count,
+                accuracy: Double(js.reduce(0) { $0 + $1.result.score }) / Double(js.count * 100),
+                driftMs: hits.isEmpty ? nil : hits.map(\.timingErrorMs).reduce(0, +) / Double(hits.count),
+                misses: js.filter { $0.result == .miss }.count,
+                wrongKeys: js.filter { $0.result == .wrongKey }.count
+            )
+        }
+    }
+
+    /// The same averages pooled into quarters of the gong cycle — the coarse
+    /// "where" a person can hold in their head, and what the AI overview is
+    /// told about. Quarters with no strokes in them (a sparse figure) are
+    /// left out.
+    var partAverages: [CyclePartAverage] {
+        guard cycleMs > 0 else { return [] }
+        let byPart = Dictionary(grouping: strokeAverages) { s in
+            min(CyclePart.allCases.count - 1, s.timeMs * CyclePart.allCases.count / cycleMs)
+        }
+        return CyclePart.allCases.compactMap { part in
+            guard let ss = byPart[part.rawValue], !ss.isEmpty else { return nil }
+            // R Weighted by how often each stroke was judged, so a stroke that
+            // R only came round once does not count as much as one that came
+            // R round forty times.
+            let played = ss.reduce(0) { $0 + $1.played }
+            let acc = ss.reduce(0) { $0 + $1.accuracy * Double($1.played) } / Double(played)
+            return CyclePartAverage(part: part, accuracy: acc, strokes: ss.map(\.stroke))
+        }
+    }
+
+    /// The quarter with the lowest average, if the gap to the best one is
+    /// worth pointing at. Under five points apart, every quarter went about
+    /// the same, and naming one as "weakest" would invent a problem.
+    var weakestPart: CyclePartAverage? {
+        let parts = partAverages
+        guard let low = parts.min(by: { $0.accuracy < $1.accuracy }),
+              let high = parts.max(by: { $0.accuracy < $1.accuracy }),
+              high.accuracy - low.accuracy >= 0.05
+        else { return nil }
+        return low
     }
 
     /// How many consecutive passes the headline score is measured over.
@@ -282,4 +348,54 @@ struct SongResult: Equatable {
         }
         .sorted { $0.accuracy > $1.accuracy }
     }
+}
+
+/// One stroke of the figure, averaged over every pass it was judged on.
+struct StrokeAverage: Identifiable, Equatable {
+    let stroke: Int
+    let keyIndex: Int
+    /// Where it falls in the cycle, unscaled — the chart's x axis.
+    let timeMs: Int
+    /// How many times it was judged.
+    let played: Int
+    let accuracy: Double // 0…1
+    /// Mean signed timing error of the strokes that landed; positive = early.
+    let driftMs: Double?
+    let misses: Int
+    let wrongKeys: Int
+
+    var id: Int {
+        stroke
+    }
+}
+
+/// A quarter of the gong cycle.
+enum CyclePart: Int, CaseIterable {
+    case opening, second, third, closing
+
+    /// Short, for under the chart.
+    var label: String {
+        switch self {
+        case .opening: "Opening"
+        case .second: "Second"
+        case .third: "Third"
+        case .closing: "Closing"
+        }
+    }
+
+    /// In a sentence — "you lose it in the closing quarter".
+    var phrase: String {
+        switch self {
+        case .opening: "the opening quarter"
+        case .second: "the second quarter"
+        case .third: "the third quarter"
+        case .closing: "the closing quarter, into the gong"
+        }
+    }
+}
+
+struct CyclePartAverage: Equatable {
+    let part: CyclePart
+    let accuracy: Double
+    let strokes: [Int]
 }

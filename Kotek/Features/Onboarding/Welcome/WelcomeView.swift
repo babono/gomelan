@@ -3,8 +3,9 @@
 //  Kotek
 //
 //  Entry screen (PRD §8), built to the Kotek design: the wordmark over the
-//  drifting pattern, one cream key to press, and a pelawah rising from the
-//  bottom edge.
+//  drifting pattern, the account choice, and the gangsa table along the foot
+//  (`LaunchStage`, shared with the splash). Behind it, as behind every
+//  screen, the row of carved leaves running right (`PatternBackground`).
 //
 
 import SwiftUI
@@ -22,24 +23,9 @@ struct WelcomeView: View {
     private static let cornerHeight: CGFloat = 40
 
     var body: some View {
-        GeometryReader { proxy in
-            let h = proxy.size.height
-
+        GeometryReader { _ in
             ZStack {
-                // Ornaments() — held out, see OrnamentsView.swift
-
-                VStack(spacing: 0) {
-                    Spacer().frame(height: KotekWordmark.topInset(in: h))
-
-                    KotekWordmark(
-                        width: KotekWordmark.width(in: proxy.size.width)
-                    )
-
-                    // Half the gap while the choice is up: its hint line
-                    // has to clear the pelawah, which rises to a fixed height
-                    // whatever the screen.
-                    Spacer().frame(height: h * (app.account == nil ? 0.03 : 0.07))
-
+                LaunchStage(animated: !app.splashCovering) {
                     if app.account == nil {
                         accountChoice
                     } else {
@@ -53,8 +39,6 @@ struct WelcomeView: View {
                         }
                         .fixedSize()
                     }
-
-                    Spacer()
                 }
 
                 // Corner affordances: help and collaborator colophon
@@ -68,17 +52,6 @@ struct WelcomeView: View {
                 }
                 .padding(.top, 14)
                 .padding(.trailing, 22)
-
-                // Pelawah rising from bottom edge
-                VStack {
-                    Spacer()
-                    Pelawah()
-                        .frame(
-                            width: min(470, proxy.size.width * 0.54),
-                            height: 142
-                        )
-                        .offset(y: 16)
-                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

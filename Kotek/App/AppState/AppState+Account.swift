@@ -34,6 +34,8 @@ extension AppState {
     static func resetLocalDataIfStale() {
         guard Defaults.int("dataEpoch", 1) < Self.dataEpoch else { return }
         ProfileStore.reset()
+        KotekanStore.reset()
+        InstrumentPhotoStore.reset()
         syncedInstrumentIDs = []
         Defaults.set("dataEpoch", Self.dataEpoch)
         Defaults.set("account", "")
@@ -252,6 +254,8 @@ extension AppState {
     /// tuning are left alone: they belong to the phone, not the account.
     private func wipeLocalData() {
         ProfileStore.reset()
+        KotekanStore.reset()
+        InstrumentPhotoStore.reset()
         NoteClipCapture.deleteAll()
         Self.syncedInstrumentIDs = []
         savedProfiles = []
@@ -261,6 +265,7 @@ extension AppState {
         requireStrikeSound = false
         kotekans = Kotekan.bundled
         selectedKotekan = nil
+        coop = nil
         lastResult = nil
         playerName = nil
         playerAvatar = nil

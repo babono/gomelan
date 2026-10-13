@@ -210,7 +210,7 @@ final class PlayEngine {
     }
 
     /// Notes that landed anywhere this session, either half — the one number
-    /// that feeds the gangsa's grade, and the only running total worth putting
+    /// that feeds the gangsa's total, and the only running total worth putting
     /// in front of the player mid-session.
     private(set) var landedNotes = 0
     /// When each bilah last had a strike accepted, so one physical hit reported
@@ -243,8 +243,13 @@ final class PlayEngine {
     /// makes becomes meaningless.
     var partnerAudible = false
     var yourVoiceAudible = true
-    /// Stereo placement of the two halves, so they read as two players.
-    private let yourPan: Float = -0.32
+    /// Whether this engine sounds the gong, kempur, kajar and metronome. Off
+    /// only for the second engine of one-screen coop: two engines on one clock
+    /// would strike every gong twice, a hair apart, and it would ring flanged.
+    var colotomicAudible = true
+    /// Stereo placement of the two halves, so they read as two players. Coop
+    /// sets it per lane, so each player's guide comes from their own side.
+    var yourPan: Float = -0.32
     private let partnerPan: Float = 0.32
 
     /// Transient flash bookkeeping: keyIndex -> (kind, expiry host time)
@@ -385,12 +390,16 @@ final class PlayEngine {
         partnerFired = Array(repeating: false, count: partnerNotes.count)
     }
 
-    func start() {
+    /// `hostTime` is for engines that must share one clock — the two lanes of
+    /// one-screen coop. Two plain `start()`s a line apart would put them a few
+    /// microseconds out, harmless now, but every pause and resume would then
+    /// have to keep that gap exactly; one stamp keeps it zero by construction.
+    func start(at hostTime: Double? = nil) {
         // R Booting the audio engine loads and decodes 13 samples, which took
         // R long enough that the clock had already run on without the cues.
         // R Start the cue player first, then stamp the clock.
         cue?.start()
-        startHostTime = CACurrentMediaTime()
+        startHostTime = hostTime ?? CACurrentMediaTime()
     }
 
     /// Change speed mid-session without the music jumping.
@@ -408,13 +417,17 @@ final class PlayEngine {
     /// fractional part carries too, so nothing re-triggers and nothing is
     /// skipped — the next beat simply arrives sooner or later than the last one
     /// did.
-    func setTempoScale(_ scale: Double) {
+    ///
+    /// `now` lets coop's two engines rebase on one instant: each reading the
+    /// clock for itself would land them microseconds apart, and every later
+    /// change would add to the gap.
+    func setTempoScale(_ scale: Double, now: Double = CACurrentMediaTime()) {
         let next = min(2, max(0.25, scale))
         guard abs(next - tempoScale) > 0.001 else { return }
         let beatsElapsed = currentTimeMs / beatMs
         tempoScale = next
         recomputeTiming()
-        startHostTime = CACurrentMediaTime() - beatsElapsed * beatMs / 1000
+        startHostTime = now - beatsElapsed * beatMs / 1000
         // R The pass in progress spans two speeds, so it is not a fair reading of
         // R either. Same reasoning as a mid-pass change of half.
         cycleVoided = true
@@ -453,6 +466,8 @@ final class PlayEngine {
             subtitle: sessionSubtitle,
             judgements: judgementsByPart[partKey] ?? [],
             cycles: cyclesByPart[partKey] ?? [],
+            strokes: notes,
+            cycleMs: song.durationMs,
             landedNotes: landedNotes
         ))
     }
@@ -497,6 +512,75 @@ final class PlayEngine {
     /// not a coincidence — see `scorePage`. The `case 0` / `case 16` labels that
     /// read this index are gong and kempur, positions inside this cycle.
     static let colotomicBeats = 32
+
+    // MARK: - Waterfall
+
+    /// The strokes of both halves inside a time window around now, for the
+    /// waterfall. Built from the same note arrays, clock and loop origin the
+    /// judge uses, so a block reaches the bilah at the exact moment the note
+    /// is due — the river's page coordinates cannot say that, they wrap.
+    ///
+    /// Walks every loop the window touches rather than only the current one:
+    /// the next pass has to be visible falling in before this one ends, and
+    /// the first pass has to fall in during the count-in.
+    func fallingNotes(aheadMs: Double, behindMs: Double) -> [FallingNote] {
+        guard patternMs > 0 else { return [] }
+        let from = currentTimeMs - behindMs
+        let to = currentTimeMs + aheadMs
+        let firstLoop = max(0, Int(((from - introMs) / patternMs).rounded(.down)))
+        let lastLoop = Int(((to - introMs) / patternMs).rounded(.down))
+        guard lastLoop >= firstLoop else { return [] }
+
+        var out: [FallingNote] = []
+        func add(_ list: [Note], voice: NoteVoice) {
+            for loop in firstLoop ... lastLoop {
+                let origin = introMs + Double(loop) * patternMs
+                for (i, note) in list.enumerated() {
+                    let at = origin + scaledTime(note)
+                    let duration = Double(note.durationMs) / tempoScale
+                    guard at + duration >= from, at <= to else { continue }
+                    // The stroke before the first one of a pass is the last one
+                    // of the pass before — the figure goes round without a seam.
+                    let previous = i > 0 ? list[i - 1] : (loop > 0 ? list.last : nil)
+                    let damp = voice == .yours
+                        ? previous.map(\.keyIndex).flatMap { $0 == note.keyIndex ? nil : $0 }
+                        : nil
+                    let outcome = voice == .yours && loop == loopIndex && phase == .userTurn
+                        && outcomes.indices.contains(i) ? outcomes[i] : nil
+                    out.append(FallingNote(
+                        id: "\(voice == .yours ? "y" : "p")-\(loop)-\(i)",
+                        keyIndex: note.keyIndex,
+                        voice: voice,
+                        msAhead: at - currentTimeMs,
+                        durationMs: duration,
+                        outcome: outcome,
+                        dampKey: damp
+                    ))
+                }
+            }
+        }
+        add(partnerNotes, voice: .partner)
+        add(notes, voice: .yours)
+        return out
+    }
+
+    /// Beat rules for the same window, counted from the figure's first slot so
+    /// the strong rule lands on the kajar.
+    func fallingBeats(aheadMs: Double, behindMs: Double) -> [FallingBeat] {
+        let first = Int(((currentTimeMs - behindMs) / beatMs).rounded(.up))
+        let last = Int(((currentTimeMs + aheadMs) / beatMs).rounded(.down))
+        guard last >= first else { return [] }
+        return (first ... last).map { b in
+            FallingBeat(id: b,
+                        msAhead: Double(b) * beatMs - currentTimeMs,
+                        strong: (b - introBeats) % 4 == 0)
+        }
+    }
+
+    /// One beat, in ms at the current tempo — the waterfall's unit of height.
+    var beatLengthMs: Double {
+        beatMs
+    }
 
     // MARK: - Frame tick
 
@@ -565,28 +649,11 @@ final class PlayEngine {
         currentBeatIndex = max(0, beatIndex)
         if beatIndex != lastBeatIndex, currentTimeMs >= 0 {
             lastBeatIndex = beatIndex
-            // R Unconditional. The colotomic frame is what everything else is
-            // R measured against — silence it and the figure floats free, with
-            // R nothing to be early or late against.
-            switch colotomicIndex(forBeat: beatIndex) {
-            case 0:
-                cue?.playGong()
-                cue?.playKajar()
-
-            case 4, 8, 12:
-                cue?.playKajar()
-
-            case 16:
-                cue?.playKempur()
-                cue?.playKajar()
-
-            case 20, 24, 28:
-                cue?.playKajar()
-
-            default:
-                break
-            }
-            if metronomeEnabled { cue?.playClick() }
+            // R Unconditional — but for coop's second engine, see
+            // R `colotomicAudible`. The colotomic frame is what everything else
+            // R is measured against — silence it and the figure floats free,
+            // R with nothing to be early or late against.
+            if colotomicAudible { soundColotomic(beat: beatIndex) }
         }
 
         let patternTime = currentTimeMs - patternOriginMs
@@ -615,6 +682,30 @@ final class PlayEngine {
             ? min(1, max(0, (patternTime - Double(scorePage) * pageMs) / pageMs))
             : 0
         rebuildTrack(patternTime: patternTime, beatMs: beatMs)
+    }
+
+    /// The gong, kempur and kajar of one beat of the 32-beat cycle, and the
+    /// metronome under them.
+    private func soundColotomic(beat: Int) {
+        switch colotomicIndex(forBeat: beat) {
+        case 0:
+            cue?.playGong()
+            cue?.playKajar()
+
+        case 4, 8, 12:
+            cue?.playKajar()
+
+        case 16:
+            cue?.playKempur()
+            cue?.playKajar()
+
+        case 20, 24, 28:
+            cue?.playKajar()
+
+        default:
+            break
+        }
+        if metronomeEnabled { cue?.playClick() }
     }
 
     /// Bank the pass that just ended.
@@ -840,7 +931,7 @@ final class PlayEngine {
             if patternTime > scaledTime(notes[i]) + strokeGap(around: i) {
                 judged[i] = true
                 outcomes[i] = .miss
-                record(.miss, at: notes[i].keyIndex, now: now, playSound: true)
+                record(.miss, at: notes[i].keyIndex, stroke: i, now: now, playSound: true)
             }
         }
         // Upcoming fills + strike-now, plus reference-tone one beat ahead.
@@ -964,11 +1055,11 @@ final class PlayEngine {
                 leniency: leniency
             )
             outcomes[i] = result
-            record(result, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
+            record(result, at: keyIndex, stroke: i, now: hostTime, playSound: true, timingErrorMs: err)
         } else {
             // Correct timing, wrong key: amber on struck key, correct stays lit.
             outcomes[i] = .wrongKey
-            record(.wrongKey, at: keyIndex, now: hostTime, playSound: true, timingErrorMs: err)
+            record(.wrongKey, at: keyIndex, stroke: i, now: hostTime, playSound: true, timingErrorMs: err)
         }
     }
 
@@ -1078,15 +1169,16 @@ final class PlayEngine {
     private func record(
         _ result: JudgementResult,
         at key: Int,
+        stroke: Int,
         now: Double,
         playSound: Bool,
         timingErrorMs: Double = 0,
         storeResult: Bool = true
     ) {
-        let judgement = NoteJudgement(keyIndex: key, result: result, timingErrorMs: timingErrorMs)
+        let judgement = NoteJudgement(keyIndex: key, stroke: stroke, result: result, timingErrorMs: timingErrorMs)
         if storeResult {
             judgementsByPart[partKey, default: []].append(judgement)
-            // R `isHit`, not `onBeat`: the grade counts how much of this gangsa
+            // R `isHit`, not `onBeat`: the total counts how much of this gangsa
             // R you have actually played, and a stroke that found the right bar
             // R late is playing. Accuracy already docks it — see `score`.
             if result.isHit { landedNotes += 1 }

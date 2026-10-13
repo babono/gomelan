@@ -56,6 +56,13 @@ extension Container {
         self { MainActor.assumeIsolated { CuePlayer() } }.singleton
     }
 
+    /// One Bluetooth central for the strike controller. RootView, the setup
+    /// screen and Play all take turns with it (`GangsaSensor.use`), so a
+    /// connection survives moving between them.
+    nonisolated var sensorService: Factory<GangsaSensor> {
+        self { MainActor.assumeIsolated { GangsaSensor() } }.singleton
+    }
+
     nonisolated var preloaderService: Factory<Preloader> {
         self { MainActor.assumeIsolated { Preloader() } }.singleton
     }

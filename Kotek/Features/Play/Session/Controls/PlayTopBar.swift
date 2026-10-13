@@ -30,6 +30,9 @@ struct PlayTopBar: View {
 
             Spacer()
 
+            ControllerStatusChip(compact: true)
+                .padding(.trailing, 10)
+
             // Bring the score and controls up. Down by default.
             Button {
                 bottomBarVisible.toggle()

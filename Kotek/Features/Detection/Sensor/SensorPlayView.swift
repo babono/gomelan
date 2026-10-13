@@ -167,7 +167,7 @@ struct SensorPlayView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(sensor.hits) { h in
                         HStack {
-                            Text("bar \(h.bar + 1)")
+                            Text("input \(h.input + 1)")
                             Spacer()
                             Text("\(h.strength)")
                             Text(h.intervalMs.map { "+\($0)ms" } ?? "—")
@@ -194,7 +194,7 @@ private struct SensorBars: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ForEach(0..<GangsaSensor.barCount, id: \.self) { bar in
+            ForEach(0..<SensorPlayViewModel.bars, id: \.self) { bar in
                 tile(bar: bar, key: keys.lowerBound + bar)
             }
         }
@@ -205,7 +205,9 @@ private struct SensorBars: View {
         let floater = engine.floaters.last {
             $0.keyIndex == key && engine.renderNow - $0.bornAt < engine.floaterDuration
         }
-        let lastHit = sensor.hits.first { $0.bar == bar }
+        let lastHit = sensor.hits.first { $0.input == bar }
+        let level = bar < sensor.levels.count ? sensor.levels[bar] : 0
+        let count = bar < sensor.hitCounts.count ? sensor.hitCounts[bar] : 0
 
         return VStack(spacing: 8) {
             Text(floater?.label.text ?? " ")
@@ -235,14 +237,14 @@ private struct SensorBars: View {
             GeometryReader { g in
                 ZStack(alignment: .leading) {
                     Capsule().fill(.white.opacity(0.1))
-                    Capsule().fill(Theme.gold).frame(width: g.size.width * sensor.levels[bar])
+                    Capsule().fill(Theme.gold).frame(width: g.size.width * level)
                 }
             }
             .frame(height: 8)
             Text("Sensor \(bar + 1) · bilah \(key + 1)")
                 .font(.sans(12, weight: .semibold))
                 .foregroundStyle(Theme.cream.opacity(0.7))
-            Text("\(sensor.hitCounts[bar]) hits · last \(lastHit.map { "\($0.strength)" } ?? "—")")
+            Text("\(count) hits · last \(lastHit.map { "\($0.strength)" } ?? "—")")
                 .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(Theme.cream.opacity(0.5))
         }

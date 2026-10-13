@@ -17,21 +17,76 @@ extension AppState {
             let fetched = try await Kotekan.catalogue(from: kotekanRepo.catalogue())
             guard !fetched.isEmpty else { return }
             kotekans = fetched
+            KotekanStore.save(fetched)
             if let id = selectedKotekan?.id {
                 selectedKotekan = fetched.first { $0.id == id } ?? selectedKotekan
             }
         } catch {
-            log.error("catalogue fetch failed, keeping bundled: \(error.localizedDescription)")
+            log.error("catalogue fetch failed, keeping the last one: \(error.localizedDescription)")
         }
+    }
+
+    /// File a figure from Create Kotek and land on it in the picker.
+    ///
+    /// Waits for the database rather than adding it locally and syncing behind:
+    /// the catalogue is REPLACED by whatever Supabase holds on the next launch,
+    /// so a figure that never reached it would vanish without a word. Throwing
+    /// lets the review screen keep the work and say so.
+    ///
+    /// An edit has the same id as the figure it came from, so it replaces that
+    /// figure — on the server (`saveKotekan` upserts) and in the rail.
+    func saveKotekan(_ k: Kotekan) async throws {
+        let instrument = profile
+        let instrumentID = UUID(uuidString: instrument.id) == nil ? nil : instrument.id
+        // R The instrument goes up first, as it does before a practice
+        // R session: `kotekan.instrument_id` points at `instruments`, and a
+        // R player who writes a figure before ever finishing a session has
+        // R never uploaded this gangsa — the save failed on the foreign key.
+        if instrumentID != nil { try await instrumentRemote.saveInstrument(instrument) }
+        try await kotekanRepo.saveKotekan(RemoteKotekan(k, source: k.source, instrumentID: instrumentID))
+        if let i = kotekans.firstIndex(where: { $0.id == k.id }) {
+            kotekans[i] = k
+        } else {
+            kotekans.append(k)
+        }
+        KotekanStore.save(kotekans)
+        editingKotekan = nil
+        selectedKotekan = k
+        screen = .chooseKotekan
+    }
+
+    /// One of the player's own figures, from the server and the rail. Its
+    /// records stay on the gangsa: harmless, and a figure re-made under a new
+    /// id starts its own.
+    func deleteKotekan(_ k: Kotekan) async throws {
+        guard k.source != .builtin else { return }
+        try await kotekanRepo.deleteKotekan(id: k.id)
+        kotekans.removeAll { $0.id == k.id }
+        KotekanStore.save(kotekans)
+        if selectedKotekan?.id == k.id { selectedKotekan = nil }
     }
 
     // MARK: - Session Selection & Flow
 
-    /// Take this figure and advance to countdown.
+    /// Take this figure into whichever play screen is current: the waterfall
+    /// by default, the camera top view when `topView` is on.
+    func playKotekan(_ k: Kotekan) {
+        if topView { chooseKotekan(k) } else { chooseKotekanWaterfall(k) }
+    }
+
+    /// Take this figure and advance to countdown (the camera top view).
     func chooseKotekan(_ k: Kotekan) {
         selectedKotekan = k
         renderHalves()
         screen = .countdown
+    }
+
+    /// Take this figure into the waterfall — the drawn gangsa, played from
+    /// the sensors, no camera. No countdown route: the screen counts itself in.
+    func chooseKotekanWaterfall(_ k: Kotekan) {
+        selectedKotekan = k
+        renderHalves()
+        screen = .waterfall
     }
 
     /// Change sides without leaving the session.
@@ -102,7 +157,6 @@ extension AppState {
 
     /// Fold a finished session into the active instrument.
     func recordSession(landed: Int) {
-        previousNotesLanded = profile.notesLanded
         var updated = profile
         updated.lastUsedAt = InstrumentProfile.nowISO()
         updated.sessionCount = updated.sessionsPlayed + 1

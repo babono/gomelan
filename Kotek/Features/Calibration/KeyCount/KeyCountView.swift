@@ -2,9 +2,9 @@
 //  KeyCountView.swift
 //  Kotek
 //
-//  Setup step 1/4, and the only screen a new gangsa is created from. Two facts
+//  Setup step 1/2, and the only screen a new gangsa is created from. Two facts
 //  the app cannot work out for itself: what to call it, and how many keys it
-//  has. The count is asked before framing because it decides how many bilah the
+//  has. The count decides how many bilah the default key layout holds and the
 //  later steps draw.
 //
 
@@ -17,7 +17,8 @@ struct KeyCountView: View {
     /// Held locally and committed on Next — nothing is written to disk until
     /// the whole step is done.
     @State private var name: String = ""
-    @State private var type: GangsaType = .pemade
+    /// Picked here, kept only on Next — like the name.
+    @State private var photo: Data?
     @FocusState private var nameFocused: Bool
     private let range = 1 ... 14
 
@@ -27,7 +28,7 @@ struct KeyCountView: View {
                 title: "Set up your gangsa",
                 backTitle: "Back",
                 onBack: { app.cancelInstrumentSetup() },
-                trailingText: "1 / 4"
+                trailingText: "1 / 2"
             )
 
             HStack(alignment: .center, spacing: 0) {
@@ -39,7 +40,10 @@ struct KeyCountView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     InstrumentNameField(name: $name, isFocused: $nameFocused)
-                    GangsaTypePicker(selectedType: $type)
+                    GangsaPhotoPicker(
+                        image: photo.flatMap(UIImage.init) ?? InstrumentPhotoStore.image(for: app.profile),
+                        onPick: { photo = $0 }
+                    )
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.trailing, 32)
@@ -67,7 +71,7 @@ struct KeyCountView: View {
                         // directly rather than trusting an onSubmit that never
                         // fired.
                         nameFocused = false
-                        app.keyCountChosen(count, name: name, type: type)
+                        app.keyCountChosen(count, name: name, photo: photo)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -86,7 +90,6 @@ struct KeyCountView: View {
             // placeholder: it is a real, usable answer, and it shows the naming
             // pattern to anyone who would rather not think about it.
             name = app.profile.name
-            type = app.profile.type
         }
     }
 }

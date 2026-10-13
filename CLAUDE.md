@@ -185,7 +185,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
 
 - `Assets.xcassets` — colors, ornaments, photos, wordmark, and logo.
 - Audio: `gong.wav`, `kajar.wav`, `kempur.wav`, `key0.wav`–`key9.wav`, `bgm.m4a`.
-- Fonts: `Dream Orphans` font family (headers/titles; body uses SF).
+- Fonts: `Katibeh` (headers/titles, one weight; body uses SF). Colours are in the asset catalog (`Background`, `PatternBackground`, `Card`, `TitleText`, `DescriptionText`, `LoadingBar`), read by `Theme`.
 - Lottie: `polos.lottie`, `sangsih.lottie` (interlocking figure visualizers).
 - App Icon: `logo-kotek.icon`.
 

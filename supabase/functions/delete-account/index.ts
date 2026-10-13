@@ -76,12 +76,29 @@ Deno.serve(async (req) => {
     admin.from("kotekan").delete().eq("user_id", uid),
     instrumentIds.length && admin.from("instrument_keys").delete().in("instrument_id", instrumentIds),
     admin.from("instruments").delete().eq("user_id", uid),
+    admin.from("controllers").delete().eq("user_id", uid),
   ];
   for (const step of steps) {
     if (!step) continue;
     const { error } = await step;
     if (error) {
       console.error("row delete failed", error);
+      return json({ error: "could not delete data" }, 500);
+    }
+  }
+
+  // Gangsa photos: everything in the user's folder. Storage cannot be
+  // emptied by deleting rows, only through its own API.
+  const photos = admin.storage.from("instrument-photos");
+  const { data: files, error: listError } = await photos.list(uid, { limit: 1000 });
+  if (listError) {
+    console.error("photo list failed", listError);
+    return json({ error: "could not delete data" }, 500);
+  }
+  if (files && files.length) {
+    const { error: removeError } = await photos.remove(files.map((f) => `${uid}/${f.name}`));
+    if (removeError) {
+      console.error("photo delete failed", removeError);
       return json({ error: "could not delete data" }, 500);
     }
   }

@@ -136,6 +136,10 @@ targets:
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        # Without it iPadOS treats the app as resizable and ignores the
+        # landscape lock — which is how v1 came up in portrait on iPad.
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         LD_RUNPATH_SEARCH_PATHS:
           - "$(inherited)"
@@ -148,9 +152,8 @@ targets:
         SWIFT_EMIT_LOC_STRINGS: YES
         SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
         SWIFT_VERSION: 5.0
-        # iPhone only. The app is a phone on a stand over the instrument, laid
-        # out for a landscape phone; on iPad it came up in portrait with that
-        # layout stretched across a mostly empty screen — and declaring iPad
-        # makes App Store Connect require 13" iPad screenshots of it. iPads
-        # can still run it in iPhone compatibility mode.
-        TARGETED_DEVICE_FAMILY: "1"
+        # iPhone and iPad. v1 shipped universal (an upload from before this
+        # was briefly set to iPhone only), and an App Store update cannot drop
+        # a device family the app already supports. iPad is also where
+        # one-screen coop belongs: two gangsa, one screen between them.
+        TARGETED_DEVICE_FAMILY: "1,2"

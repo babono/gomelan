@@ -44,11 +44,15 @@ final class SensorPlayViewModel {
         displayLink: DisplayLink? = nil
     ) {
         self.cue = cue
-        self.sensor = sensor ?? GangsaSensor()
+        self.sensor = sensor ?? Container.shared.sensorService()
         self.engine = engine ?? PlayEngine()
         self.displayLink = displayLink ?? DisplayLink()
         self.figure = Kotekan.bundled.first { $0.id == "ubitannyendok" }!
     }
+
+    /// Ubitan Nyendok's three bilah, on inputs 1–3 — this screen predates the
+    /// per-gangsa key map and keeps its fixed wiring on purpose.
+    static let bars = 3
 
     func key(forBar bar: Int) -> Int {
         keys.lowerBound + bar
@@ -60,18 +64,19 @@ final class SensorPlayViewModel {
         sensor.onHit = { [weak self] hit in
             guard let self, self.running else { return }
             self.engine.registerStrike(
-                keyIndex: self.key(forBar: hit.bar),
+                keyIndex: self.key(forBar: hit.input),
                 hostTime: hit.hostTime,
                 confidence: 1
             )
         }
-        sensor.start()
+        sensor.use(.any)
     }
 
     func onDisappear() {
         stopSession()
         sensor.onHit = nil
-        sensor.stop()
+        // Not `use(.none)`: RootView hands the controller back to the active
+        // gangsa as this screen goes, and may already have.
     }
 
     // MARK: - Actions

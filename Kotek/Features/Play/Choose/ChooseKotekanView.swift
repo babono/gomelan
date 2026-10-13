@@ -38,6 +38,7 @@ private struct ChooseKotekanContentView: View {
                 settingsAction: { app.openSettings() },
                 infoAction: { app.openGuide(.kotekan) }
             )
+            ControllerStatusChip()
 
             carousel
                 .frame(maxHeight: .infinity)
@@ -47,8 +48,32 @@ private struct ChooseKotekanContentView: View {
                 muted: $vm.muted,
                 current: vm.current,
                 playable: vm.playable,
-                onStart: { vm.start($0) }
+                onStart: { vm.start($0) },
+                onCreate: { vm.create() },
+                onEdit: { vm.edit($0) },
+                onDelete: { vm.pendingDelete = $0 },
+                onCoop: { vm.coop($0) }
             )
+        }
+        .confirm(
+            Binding(get: { vm.pendingDelete != nil }, set: { if !$0 { vm.pendingDelete = nil } }),
+            title: "Delete this kotekan?",
+            message: "\(vm.pendingDelete?.name ?? "It") will be removed from this account on every device. Its records on your gangsa stay.",
+            confirmTitle: "Delete"
+        ) {
+            if let k = vm.pendingDelete { vm.delete(k) }
+        }
+        .overlay(alignment: .top) {
+            if let error = vm.deleteError {
+                Text(error)
+                    .font(.sans(13, weight: .medium))
+                    .foregroundStyle(Theme.cream)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Theme.miss.opacity(0.9), in: Capsule())
+                    .padding(.top, 60)
+                    .onTapGesture { vm.deleteError = nil }
+            }
         }
         .onAppear { vm.onAppear() }
         .onDisappear { vm.onDisappear() }
@@ -67,15 +92,20 @@ private struct ChooseKotekanContentView: View {
             ZStack {
                 ForEach(first ... last, id: \.self) { slot in
                     let offset = Double(slot) - viewModel.position
-                    let k = viewModel.kotekans[viewModel.wrap(slot)]
-                    KotekanCardView(
-                        kotekan: k,
-                        isPlaying: slot == viewModel.focusedSlot,
-                        offset: offset,
-                        canPlay: viewModel.isPlayable(k),
-                        engine: viewModel.engine,
-                        bestRecord: viewModel.bestRecord(k)
-                    )
+                    Group {
+                        if let k = viewModel.kotekan(atSlot: slot) {
+                            KotekanCardView(
+                                kotekan: k,
+                                isPlaying: slot == viewModel.focusedSlot,
+                                offset: offset,
+                                canPlay: viewModel.isPlayable(k),
+                                engine: viewModel.engine,
+                                bestRecord: viewModel.bestRecord(k)
+                            )
+                        } else {
+                            CreateKotekanCardView(offset: offset)
+                        }
+                    }
                     .position(
                         x: geo.size.width / 2 + CGFloat(offset) * ChooseKotekanViewModel.step,
                         y: geo.size.height / 2

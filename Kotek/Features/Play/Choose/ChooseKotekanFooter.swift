@@ -13,7 +13,16 @@ struct ChooseKotekanFooter: View {
     @Binding var muted: Bool
     let current: Kotekan?
     let playable: Bool
+    /// One Start: the screen it opens (waterfall or camera top view) is
+    /// `AppState.topView`'s choice, set in Settings, not a second button here.
     let onStart: (Kotekan) -> Void
+    let onCreate: () -> Void
+    /// Only offered on the player's own figures; the built-ins are the app's.
+    let onEdit: (Kotekan) -> Void
+    let onDelete: (Kotekan) -> Void
+    /// Two players, one screen (§6.6.3). Its own setup screen checks the
+    /// figure fits both gangsa; here it only has to fit this one.
+    let onCoop: (Kotekan) -> Void
 
     var body: some View {
         HStack(spacing: 14) {
@@ -43,7 +52,32 @@ struct ChooseKotekanFooter: View {
 
             Spacer()
 
+            if let current, current.source != .builtin {
+                Button {
+                    onDelete(current)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.symbol(14, weight: .semibold))
+                        .foregroundStyle(Theme.cream.opacity(0.7))
+                        .frame(width: 38, height: 38)
+                        .overlay(Circle().strokeBorder(Theme.cream.opacity(0.22), lineWidth: 1))
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.kajar)
+                .accessibilityLabel("Delete \(current.name)")
+
+                PillButton(title: "Edit", style: .outlined, compact: true) {
+                    onEdit(current)
+                }
+            }
+
             if let current {
+                PillButton(title: "Coop", systemImage: "person.2.fill", style: .outlined, compact: true) {
+                    onCoop(current)
+                }
+                .disabled(!playable)
+                .opacity(playable ? 1 : 0.4)
+
                 PillButton(
                     title: "Start",
                     trailingSystemImage: "arrow.right",
@@ -54,6 +88,14 @@ struct ChooseKotekanFooter: View {
                 }
                 .disabled(!playable)
                 .opacity(playable ? 1 : 0.4)
+            } else {
+                PillButton(
+                    title: "Create",
+                    trailingSystemImage: "arrow.right",
+                    style: .filled,
+                    compact: true,
+                    action: onCreate
+                )
             }
         }
         .padding(.horizontal, 28)

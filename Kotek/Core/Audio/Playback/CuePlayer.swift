@@ -45,7 +45,7 @@ final class CuePlayer {
     // R Now every cue takes the next free node out of a pool and starts it
     // R immediately, so a cue always sounds on the frame it was asked for.
     // R --------------------------------------------------------------------
-    private enum Voice: Hashable { case key(Int), gong, kempur, kajar } // R
+    private enum Voice: Hashable { case key(Int), gong, kempur, kajar, kempli } // R
     private let voiceCount = 12 // R
     private var voices: [AVAudioPlayerNode] = [] // R
 
@@ -225,6 +225,14 @@ final class CuePlayer {
     func playKempur() {
         guard ensureLive(), let buf = kempurBuffer else { return }
         fire(buf, as: .kempur) // R
+    }
+
+    /// The beat itself, under the Create Kotek piano roll. There is no kempli
+    /// sample, so it is the kajar's, softer and on a voice of its own — a kajar
+    /// written on the same beat then rings over it instead of damping it.
+    func playKempli() {
+        guard ensureLive(), let buf = kajarBuffer else { return }
+        fire(buf, as: .kempli, volume: 0.45) // R
     }
 
     func playKajar() {

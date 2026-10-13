@@ -66,11 +66,16 @@ extension AppState {
 
     /// Delete an instrument, including the last one.
     func deleteInstrument(_ profileID: String) {
+        let photo = savedProfiles.first { $0.id == profileID }?.photoVersion
         ProfileStore.delete(profileID)
+        InstrumentPhotoStore.delete(id: profileID)
         NoteClipCapture.deleteInstrument(instrumentID: profileID)
         savedProfiles = ProfileStore.loadAll()
         Task { [instrumentRemote, log] in
-            do { try await instrumentRemote.deleteInstrument(id: profileID) } catch {
+            do {
+                try await instrumentRemote.deleteInstrument(id: profileID)
+                if let photo { try await instrumentRemote.deletePhoto(id: profileID, version: photo) }
+            } catch {
                 log.error("instrument delete failed: \(error.localizedDescription)")
             }
         }
@@ -105,6 +110,7 @@ extension AppState {
     func push(_ p: InstrumentProfile) async -> Bool {
         do {
             try await instrumentRemote.saveInstrument(p)
+            await uploadPhotoIfNeeded(p)
             return true
         } catch {
             log.error("instrument sync failed: \(error.localizedDescription)")
@@ -198,6 +204,7 @@ extension AppState {
         }
         savedProfiles = ProfileStore.loadAll()
         adoptSyncedActiveProfile()
+        await downloadMissingPhotos(merged)
 
         var confirmed = remoteIDs
         for p in toPush {
@@ -253,6 +260,67 @@ extension AppState {
         savedProfiles = all
         profile = saved
         pushInBackground(saved)
+    }
+
+    // MARK: - Photos
+
+    /// A new photo for a gangsa: on this phone at once, up to the server with
+    /// the profile it belongs to.
+    func setPhoto(_ jpeg: Data, for id: String) {
+        let version = UUID().uuidString.lowercased()
+        do {
+            try InstrumentPhotoStore.save(jpeg, id: id, version: version)
+        } catch {
+            log.error("photo save failed: \(error.localizedDescription)")
+            return
+        }
+        if profile.id == id {
+            profile.photoVersion = version
+            saveProfile()
+        } else if var other = savedProfiles.first(where: { $0.id == id }) {
+            other.photoVersion = version
+            saveInstrument(other)
+        }
+    }
+
+    /// The version last uploaded for each gangsa, so a push re-sends the photo
+    /// only when it has changed — and a failed upload is tried again on the
+    /// next push, because nothing was recorded for it.
+    private static func uploadedPhoto(_ id: String) -> String? {
+        Defaults.string("uploadedPhoto.\(id.lowercased())")
+    }
+
+    private func uploadPhotoIfNeeded(_ p: InstrumentProfile) async {
+        guard let version = p.photoVersion, UUID(uuidString: p.id) != nil,
+              Self.uploadedPhoto(p.id) != version,
+              let jpeg = InstrumentPhotoStore.data(id: p.id, version: version)
+        else { return }
+        let previous = Self.uploadedPhoto(p.id)
+        do {
+            try await instrumentRemote.uploadPhoto(jpeg, id: p.id, version: version)
+            Defaults.set("uploadedPhoto.\(p.id.lowercased())", version)
+            // The old one is unreachable now — no profile names it.
+            if let previous { try? await instrumentRemote.deletePhoto(id: p.id, version: previous) }
+        } catch {
+            log.error("photo upload failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Photos another phone added or changed. A miss — offline, or the other
+    /// phone has not finished uploading — is simply tried on the next sync.
+    private func downloadMissingPhotos(_ profiles: [InstrumentProfile]) async {
+        for p in profiles {
+            guard let version = p.photoVersion, !InstrumentPhotoStore.has(id: p.id, version: version) else { continue }
+            do {
+                let jpeg = try await instrumentRemote.downloadPhoto(id: p.id, version: version)
+                try InstrumentPhotoStore.save(jpeg, id: p.id, version: version)
+                Defaults.set("uploadedPhoto.\(p.id.lowercased())", version)
+            } catch {
+                log.error("photo download failed: \(error.localizedDescription)")
+            }
+        }
+        // Redraw the cards with what arrived.
+        savedProfiles = ProfileStore.loadAll()
     }
 
     /// Kotekan this instrument has enough keys for.

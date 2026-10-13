@@ -17,33 +17,40 @@ struct InstrumentSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Name")
-                    .font(.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.cream.opacity(0.62))
+            HStack(alignment: .bottom, spacing: 16) {
+                GangsaPhotoPicker(
+                    image: InstrumentPhotoStore.image(for: app.profile),
+                    onPick: { app.setPhoto($0, for: app.profile.id) },
+                    width: 120, height: 76
+                )
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Name")
+                        .font(.sans(13, weight: .medium))
+                        .foregroundStyle(Theme.cream.opacity(0.62))
 
-                TextField("Gangsa name", text: $viewModel.draftName)
-                    .textFieldStyle(.plain)
-                    .font(.serif(22))
-                    .foregroundStyle(Theme.cream)
-                    .focused($nameFocused)
-                    .submitLabel(.done)
-                    .autocorrectionDisabled()
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: 360, alignment: .leading)
-                    .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.radius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.radius)
-                            .strokeBorder(
-                                nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
-                                lineWidth: nameFocused ? 2 : 1
-                            )
-                    )
-                    .onSubmit { viewModel.commitName() }
-                    .onChange(of: nameFocused) { _, focused in
-                        if !focused { viewModel.commitName() }
-                    }
+                    TextField("Gangsa name", text: $viewModel.draftName)
+                        .textFieldStyle(.plain)
+                        .font(.serif(22))
+                        .foregroundStyle(Theme.cream)
+                        .focused($nameFocused)
+                        .submitLabel(.done)
+                        .autocorrectionDisabled()
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: 360, alignment: .leading)
+                        .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.radius))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.radius)
+                                .strokeBorder(
+                                    nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
+                                    lineWidth: nameFocused ? 2 : 1
+                                )
+                        )
+                        .onSubmit { viewModel.commitName() }
+                        .onChange(of: nameFocused) { _, focused in
+                            if !focused { viewModel.commitName() }
+                        }
+                }
             }
 
             VStack(alignment: .leading, spacing: 5) {
@@ -53,10 +60,12 @@ struct InstrumentSectionView: View {
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
 
-                Text(gradeLine)
+                Text(playedLine)
                     .font(.sans(14))
                     .foregroundStyle(Theme.cream.opacity(0.62))
             }
+
+            controller
 
             FlowLayout(spacing: 10) {
                 SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") {
@@ -94,16 +103,50 @@ struct InstrumentSectionView: View {
         }
     }
 
-    private var gradeLine: String {
+    /// The strike controller (§3.6) — this gangsa's only. Others sharing it
+    /// keep their own setup whatever happens here.
+    private var controller: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel("Strike controller")
+            if let link = app.profile.controller {
+                Text(controllerLine(link))
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.62))
+                ControllerStatusChip()
+                FlowLayout(spacing: 10) {
+                    SecondaryButton(title: "Check keys", systemImage: "checklist") {
+                        app.openControllerSetup(recheck: true)
+                    }
+                    SecondaryButton(title: "Change controller", systemImage: "arrow.left.arrow.right") {
+                        app.openControllerSetup()
+                    }
+                    SecondaryButton(title: "Forget controller", systemImage: "xmark.circle") {
+                        app.forgetController()
+                    }
+                }
+            } else {
+                Text("Optional. Piezo sensors on the bilah feel exactly which key you hit and when — no camera or microphone needed.")
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.62))
+                    .frame(maxWidth: 520, alignment: .leading)
+                SecondaryButton(title: "Connect controller", systemImage: "dot.radiowaves.left.and.right") {
+                    app.openControllerSetup()
+                }
+            }
+        }
+    }
+
+    private func controllerLine(_ link: ControllerLink) -> String {
+        let sensors = app.profile.keys.filter { $0.sensorInput != nil }.count
+        var line = "\(link.name) · sensors on \(sensors) of \(app.profile.keyCount) keys"
+        if sensors < app.profile.keyCount { line += " · the rest use camera + mic" }
+        return line
+    }
+
+    private var playedLine: String {
         let p = app.profile
-        guard p.hasBeenPlayed else {
-            return "Unplayed · the grade starts on your first scored session"
-        }
-        let m = p.mastery
-        var line = "\(m.rank.title) — \(m.rank.gloss) · \(m.notes.formatted()) notes landed"
-        if let next = m.next, let togo = m.notesToNext {
-            line += " · \(togo.formatted()) to \(next.title)"
-        }
+        guard p.hasBeenPlayed else { return "Unplayed" }
+        var line = "\(p.notesLanded.formatted()) notes landed in \(p.sessionsPlayed.formatted()) sessions"
         if let played = p.lastPlayedDate {
             line += " · played \(played.formatted(.relative(presentation: .named)))"
         }

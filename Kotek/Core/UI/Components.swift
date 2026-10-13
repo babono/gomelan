@@ -37,27 +37,27 @@ struct KotekWordmark: View {
     /// so one number governs the whole mark.
     let width: CGFloat
 
-    /// The artwork's own proportions (230 x 86), so the height follows from the
+    /// The artwork's own proportions (287 x 83), so the height follows from the
     /// width and the two screens cannot drift apart.
-    static let aspectRatio: CGFloat = 230.0 / 86.0
-    /// The Sanskrit mark's own proportions (186 x 73).
-    static let sanskritAspectRatio: CGFloat = 186.0 / 73.0
+    static let aspectRatio: CGFloat = 287.0 / 83.0
+    /// The Sanskrit mark's own proportions (176 x 59).
+    static let sanskritAspectRatio: CGFloat = 176.0 / 59.0
 
     /// How wide the Sanskrit sits under the wordmark, as a fraction of it.
     /// Narrower on purpose: it is the second mark, and matching the width would
     /// read as two logos stacked rather than one with its script beneath.
-    private static let sanskritScale: CGFloat = 0.46
-    private static let gapScale: CGFloat = 0.02
+    private static let sanskritScale: CGFloat = 0.58
+    private static let gapScale: CGFloat = 0.06
 
     /// The width the wordmark takes in a container this wide.
     static func width(in containerWidth: CGFloat) -> CGFloat {
-        min(300, containerWidth * 0.26)
+        min(280, containerWidth * 0.25)
     }
 
     /// Where the top of the wordmark sits in a container this tall. Shared for
     /// the same reason as the width.
     static func topInset(in containerHeight: CGFloat) -> CGFloat {
-        containerHeight * 0.11
+        containerHeight * 0.17
     }
 
     /// The whole mark's height, script included — what a screen laying out
@@ -82,11 +82,14 @@ struct KotekWordmark: View {
             // `logo-kotek`.
             image("wordmark-kotek", width: width, aspect: Self.aspectRatio)
 
+            // A template image, tinted here: the export carries a gold a shade
+            // off the palette's, and the script should be the title colour.
             image(
                 "logo-sanskrit",
                 width: width * Self.sanskritScale,
                 aspect: Self.sanskritAspectRatio
             )
+            .foregroundStyle(Theme.gold)
         }
         // One accessibility element: VoiceOver reading two undescribed images
         // in a row is worse than reading the name once.
@@ -361,7 +364,7 @@ struct SecondaryButton: View {
 /// title, optional trailing status text. `tint` is the strong text colour for
 /// the surface; supporting text is derived from it.
 ///
-/// The title is set in Dream Orphans — this is the app's voice, and a screen
+/// The title is set in Katibeh — this is the app's voice, and a screen
 /// title is the one piece of chrome big enough to carry it. Everything else in
 /// the bar stays San Francisco, because back affordances and step counters are
 /// interface rather than voice.

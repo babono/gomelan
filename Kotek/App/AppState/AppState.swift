@@ -22,9 +22,10 @@ final class AppState {
     var savedProfiles: [InstrumentProfile] = []
 
     // The kotekan session carried through selection → play.
-    /// The bundled catalogue until Supabase answers, then whatever it holds —
-    /// see `refreshCatalogue`. Starting from the bundled copy is what keeps the
-    /// picker full offline and on a first launch before the network is up.
+    /// The last catalogue Supabase sent (`KotekanStore`) until it answers
+    /// again, then whatever it holds — see `refreshCatalogue`. The bundled copy
+    /// is the floor under both: it keeps the picker full on a first launch
+    /// before the network is up.
     var kotekans: [Kotekan] = Kotekan.bundled
     var selectedKotekan: Kotekan?
     /// Which half you are taking. Live: it is a toggle on the practice screen
@@ -70,11 +71,6 @@ final class AppState {
     /// record destroys the old one.
     var previousRecord: Double?
     var lastSetRecord = false
-    /// The gangsa's landed-note total BEFORE the session that just ended, so
-    /// the results screen can animate from it to where it is now. Captured for
-    /// the same reason as `previousRecord`: crediting the session destroys the
-    /// number the animation has to start from.
-    var previousNotesLanded: Int?
 
     /// Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
@@ -175,6 +171,15 @@ final class AppState {
     /// impulsive and has no such problem.
     var audioTriggersStrikes: Bool = Defaults.bool("audioTriggers", true) {
         didSet { Defaults.set("audioTriggers", audioTriggersStrikes) }
+    }
+
+    /// Whether a chosen kotekan plays in the top view — the camera looking down
+    /// on the real bilah — instead of the waterfall. Off by default: adding a
+    /// gangsa no longer frames or aligns the keys, so the camera overlay would
+    /// sit on the default layout rather than the instrument. Kept behind the
+    /// Settings "Deprecated" card for anyone who still realigns by hand.
+    var topView: Bool = Defaults.bool("topView", false) {
+        didSet { Defaults.set("topView", topView) }
     }
 
     /// The three ways the two sensors can be arranged, as one choice instead of
@@ -357,6 +362,21 @@ final class AppState {
     var framedRegion = NormalizedRect(x: 0, y: 0.17, w: 1, h: 0.68)
     var seedMasksFromFraming = false
 
+    // MARK: - Strike controller (§3.6)
+
+    /// Where the controller setup goes back to: Settings, or the kotekan
+    /// picker when it was offered at the end of setting up a new gangsa.
+    var controllerSetupReturn: Route = .settings
+    /// Opened as the optional last step of a new gangsa — "Skip" rather than
+    /// "Back", and nothing is lost by taking it.
+    var controllerSetupIsOffer = false
+    /// Opened straight onto the key check (Settings → "Check keys", or the
+    /// re-check banner) instead of the scan.
+    var controllerSetupRecheck = false
+    /// Set when a new gangsa's alignment is confirmed, spent when its setup
+    /// lands — see `finishSetup`.
+    var offerControllerAfterSetup = false
+
     // MARK: - Account
 
     /// Nil until the welcome screen's choice is made. Persisted, so the choice
@@ -383,17 +403,30 @@ final class AppState {
     // MARK: - Remote Repositories
 
     @ObservationIgnored let auth = Container.shared.authRepository()
+    /// The figure Create Kotek opens on, or nil for a new one. Read once, when
+    /// the screen builds its draft.
+    var editingKotekan: Kotekan?
+    /// One-screen coop's players. Kept between sessions, so a pair who play
+    /// again do not type their names twice; nil until coop is first opened.
+    var coop: CoopSetup?
+    /// The splash is up and drawing its own gangsa over the landing screen's.
+    /// The landing screen holds its copy still meanwhile — two animated
+    /// gangsa, one hidden, on the busiest seconds of launch.
+    var splashCovering = true
+
     @ObservationIgnored let instrumentRemote = Container.shared
         .instrumentRemoteRepository()
     @ObservationIgnored let kotekanRepo = Container.shared.kotekanRepository()
     @ObservationIgnored let sessionRepo = Container.shared
         .practiceSessionRepository()
     @ObservationIgnored let log = Logger(subsystem: "Kotek", category: "remote")
+    @ObservationIgnored let sensor = Container.shared.sensorService()
 
     // MARK: - Initialization
 
     init() {
         Self.resetLocalDataIfStale()
+        if let cached = KotekanStore.load(), !cached.isEmpty { kotekans = cached }
         let all = ProfileStore.loadAll()
         MalletHitClassifier.applyCropScale(
             mode: Defaults.int("cropScaleMode", 1)
@@ -422,12 +455,27 @@ final class AppState {
 
     // MARK: - Screen Navigation
 
+    /// Same figure again, on whichever play screen `topView` picks — the
+    /// waterfall counts itself in, so it has no countdown route.
     func retry() {
-        screen = .countdown
+        screen = topView ? .countdown : .waterfall
     }
 
     func backToKotekan() {
         screen = .chooseKotekan
+    }
+
+    func openCreateKotek() {
+        editingKotekan = nil
+        screen = .createKotek
+    }
+
+    /// Create Kotek, opened on one of the player's own figures. Saving keeps
+    /// its id, so the row is updated in place rather than duplicated.
+    func openEditKotek(_ k: Kotekan) {
+        guard k.source != .builtin else { return }
+        editingKotekan = k
+        screen = .createKotek
     }
 
     func openSettings() {
