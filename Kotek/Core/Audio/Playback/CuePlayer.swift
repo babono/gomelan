@@ -23,6 +23,9 @@ final class CuePlayer {
     private let sampleRate: Double = 44100
     private lazy var format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
     private var started = false
+    /// The gangsa whose recorded keys `start()` should sound; nil or a key
+    /// without a recording keeps the bundled sample.
+    var instrumentID: String?
 
     // Recorded-sample playback (demo pattern, colotomic layer)
     private var keyBuffers: [Int: AVAudioPCMBuffer] = [:]
@@ -99,12 +102,26 @@ final class CuePlayer {
         kempurBuffer = samples.buffer("kempur")
         kajarBuffer = samples.buffer("kajar")
 
+        // R All bundled samples share one processing format, so one pool serves
+        // R every recorded cue. Taken BEFORE the player's own recordings go in:
+        // R they are written at the mic's rate, and the pool stays wired for
+        // R the bundled one.
+        let sampleFormat = keyBuffers[0]?.format ?? gongBuffer?.format ?? format
+        // ponytail: decoded here on the main actor, ten short clips; move into
+        // SampleLibrary's warm-up if the pause before the first cue is audible.
+        if let instrumentID {
+            for i in 0 ..< 10 {
+                if let clip = NoteClipCapture.latestClip(instrumentID: instrumentID, keyIndex: i),
+                   let buffer = SampleLibrary.decodeRecording(clip, as: sampleFormat)
+                {
+                    keyBuffers[i] = buffer
+                }
+            }
+        }
+
         engine.attach(player)
         engine.connect(player, to: engine.mainMixerNode, format: format)
 
-        // R All bundled samples share one processing format, so one pool serves
-        // R every recorded cue.
-        let sampleFormat = keyBuffers[0]?.format ?? gongBuffer?.format ?? format
         // R The pool sums in the submix, and only that one signal hits the limiter.
         engine.attach(submix) // R
         engine.attach(limiter) // R

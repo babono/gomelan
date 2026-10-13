@@ -29,8 +29,10 @@ private struct NoteCaptureContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             TopBar(
-                title: "Capture note clips",
-                backTitle: "Back",
+                title: app.noteCaptureIsSetup ? "Record your keys" : "Capture note clips",
+                backTitle: app.noteCaptureIsSetup
+                    ? (viewModel.keysWithClips.isEmpty ? "Skip" : "Done")
+                    : "Back",
                 onBack: { app.closeNoteCapture() },
                 trailingText: "\(viewModel.keysWithClips.count) / \(app.profile.keys.count)",
                 tint: Theme.cream,
