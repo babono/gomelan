@@ -9,6 +9,7 @@ import CoreGraphics
 import FactoryKit
 import Foundation
 import Observation
+import os
 import QuartzCore
 
 @Observable
@@ -58,9 +59,10 @@ final class FramingViewModel {
     func waitForCamera() async {
         let deadline = CACurrentMediaTime() + 6
         while !cameraReady, !Task.isCancelled {
-            if camera.frameBuffer.nearest(to: CACurrentMediaTime()) != nil
-                || CACurrentMediaTime() > deadline
-            {
+            let hasFrame = camera.frameBuffer.nearest(to: CACurrentMediaTime()) != nil
+            if hasFrame || CACurrentMediaTime() > deadline {
+                // ponytail: temporary, see CameraController's timing logs.
+                if !hasFrame { Logger(subsystem: "me.babono.kotek", category: "camera").error("framing: gave up waiting for a frame after 6s") }
                 cameraReady = true
                 break
             }

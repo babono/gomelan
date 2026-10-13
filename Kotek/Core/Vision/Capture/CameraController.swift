@@ -12,6 +12,10 @@
 
 import AVFoundation
 import Observation
+import os
+import QuartzCore
+
+private let cameraLog = Logger(subsystem: "me.babono.kotek", category: "camera")
 
 @Observable
 final nonisolated class CameraController: NSObject, @unchecked Sendable {
@@ -104,14 +108,35 @@ final nonisolated class CameraController: NSObject, @unchecked Sendable {
 
     // MARK: - Lifecycle
 
+    /// Goes through `prepare()` every time rather than straight to the session
+    /// queue. Preloading skips `prepare()` on a first launch (no permission yet),
+    /// and it is the ONLY place the preview layer gets its session — so a first
+    /// run used to deliver frames to the detector while the preview stayed black
+    /// until the app was relaunched. `prepare()` is idempotent, so on a warm
+    /// launch this costs one queue hop.
+    ///
+    /// No `status != .running` guard: `stop()` publishes `.idle` only after
+    /// `stopRunning()` returns, so coming straight back to a camera screen found
+    /// the status still `.running`, returned early, and the queued stop then
+    /// switched the camera off underneath it. `wantsRunning` is set synchronously
+    /// instead, and the session queue honours whichever call came last.
     func start() {
-        guard status != .running else { return }
+        setWantsRunning(true)
         setStatus(.configuring)
-        sessionQueue.async { [weak self] in
+        let began = CACurrentMediaTime()
+        Task { [weak self] in
             guard let self else { return }
-            configureIfNeeded()
-            if !session.isRunning { session.startRunning() }
-            setStatus(.running)
+            await prepare()
+            cameraLog.notice("prepare done +\(Self.ms(since: began))ms")
+            sessionQueue.async { [weak self] in
+                guard let self, wantsRunning else { return }
+                if !session.isRunning {
+                    awaitingFirstFrame = began
+                    session.startRunning()
+                }
+                cameraLog.notice("startRunning done +\(Self.ms(since: began))ms running=\(self.session.isRunning)")
+                setStatus(.running)
+            }
         }
     }
 
@@ -151,11 +176,36 @@ final nonisolated class CameraController: NSObject, @unchecked Sendable {
     }
 
     func stop() {
+        setWantsRunning(false)
         sessionQueue.async { [weak self] in
-            guard let self, session.isRunning else { return }
+            // A start() issued after this stop() has already flipped the flag
+            // back; stopping now would undo it.
+            guard let self, !wantsRunning, session.isRunning else { return }
             session.stopRunning()
+            // Old frames would make the next screen's "is the camera up yet"
+            // check pass instantly, before this session delivers anything.
+            frameBuffer.clear()
             setStatus(.idle)
         }
+    }
+
+    /// Written on the main thread by start/stop, read on the session queue.
+    @ObservationIgnored private let wantsRunningLock = NSLock()
+    @ObservationIgnored private var _wantsRunning = false
+    private var wantsRunning: Bool {
+        wantsRunningLock.withLock { _wantsRunning }
+    }
+
+    private func setWantsRunning(_ value: Bool) {
+        wantsRunningLock.withLock { _wantsRunning = value }
+    }
+
+    // ponytail: temporary timing for the "Starting the camera…" hang. Read with
+    // Console.app filtered to subsystem me.babono.kotek; remove once found.
+    @ObservationIgnored private var awaitingFirstFrame: CFTimeInterval?
+
+    private static func ms(since start: CFTimeInterval) -> Int {
+        Int((CACurrentMediaTime() - start) * 1000)
     }
 
     // MARK: - Focus / exposure lock (§6.2)
@@ -374,6 +424,8 @@ final nonisolated class CameraController: NSObject, @unchecked Sendable {
 
     private func configureIfNeeded() {
         guard !isConfigured else { return }
+        let began = CACurrentMediaTime()
+        defer { cameraLog.notice("configure \(Self.ms(since: began))ms configured=\(self.isConfigured) auth=\(AVCaptureDevice.authorizationStatus(for: .video).rawValue)") }
         session.beginConfiguration()
         session.sessionPreset = .high
 
@@ -437,6 +489,7 @@ final nonisolated class CameraController: NSObject, @unchecked Sendable {
     }
 
     private func setStatus(_ new: Status) {
+        if case .failed(let reason) = new { cameraLog.error("camera failed: \(reason)") }
         DispatchQueue.main.async { [weak self] in self?.status = new }
     }
 }
@@ -449,6 +502,10 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
+        if let began = awaitingFirstFrame {
+            awaitingFirstFrame = nil
+            cameraLog.notice("first frame +\(Self.ms(since: began))ms")
+        }
         // Cheapest possible bail-out: rendering a frame nobody will read is the
         // most expensive thing this app does per unit of value.
         guard wantsFrames,
