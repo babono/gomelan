@@ -57,6 +57,14 @@
 //  Comparing a query against all of them is one dot product each, and a JSON
 //  file in the bundle needs no server, no download and no account.
 //
+//  Two files: `BookIndex.json` holds the books and their passages' text, and
+//  `BookIndex.vectors` every passage's vector, in the same order, as raw
+//  little-endian Float16. They were base64 Float32 inside the JSON, three
+//  quarters of a 7.5 MB file; half precision changes a cosine by around
+//  1e-4, far below any gap between passages that decides a ranking, and raw
+//  bytes need no decoding on the phone. An index from before the split is
+//  read as it was, and written back in two files.
+//
 
 import AppKit
 import Foundation
@@ -69,8 +77,42 @@ import Vision
 struct StoredPassage: Codable {
     let page: Int
     let text: String
-    /// Float32, little-endian, base64, unit length.
-    let vector: String
+    /// Unit length. Lives in the vectors file, not the JSON; read from the
+    /// JSON (base64 Float32) only in an index from before the split.
+    var vector: [Float] = []
+
+    enum CodingKeys: String, CodingKey { case page, text, vector }
+
+    init(page: Int, text: String, vector: [Float]) {
+        self.page = page
+        self.text = text
+        self.vector = vector
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        page = try c.decode(Int.self, forKey: .page)
+        text = try c.decode(String.self, forKey: .text)
+        vector = try c.decodeIfPresent(String.self, forKey: .vector).map(floats(base64:)) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(page, forKey: .page)
+        try c.encode(text, forKey: .text)
+    }
+}
+
+func floats(base64: String) -> [Float] {
+    guard let data = Data(base64Encoded: base64) else { return [] }
+    var out = [Float](repeating: 0, count: data.count / MemoryLayout<Float>.size)
+    _ = out.withUnsafeMutableBytes { data.copyBytes(to: $0) }
+    return out
+}
+
+/// `BookIndex.json` → `BookIndex.vectors`.
+func vectorsURL(_ index: URL) -> URL {
+    index.deletingPathExtension().appendingPathExtension("vectors")
 }
 
 struct Book: Codable {
@@ -82,7 +124,7 @@ struct Book: Codable {
     /// wrong offset is fixed with `set` instead of a re-scan. 0 for a book
     /// added with `--spreads`, whose passages store the printed page.
     var pageOffset: Int?
-    let passages: [StoredPassage]
+    var passages: [StoredPassage]
 }
 
 struct Index: Codable {
@@ -109,20 +151,47 @@ func fail(_ message: String) -> Never {
 
 func readIndex(_ url: URL) -> Index? {
     guard let data = try? Data(contentsOf: url) else { return nil }
-    if let index = try? JSONDecoder().decode(Index.self, from: data) { return index }
-    if let old = try? JSONDecoder().decode(LegacyIndex.self, from: data) {
-        return Index(language: old.language, model: old.model, dimension: old.dimension,
-                     books: [Book(title: old.title, passages: old.chunks)])
+    var index: Index
+    if let read = try? JSONDecoder().decode(Index.self, from: data) {
+        index = read
+    } else if let old = try? JSONDecoder().decode(LegacyIndex.self, from: data) {
+        index = Index(language: old.language, model: old.model, dimension: old.dimension,
+                      books: [Book(title: old.title, passages: old.chunks)])
+    } else {
+        fail("\(url.path) is not a book index")
     }
-    fail("\(url.path) is not a book index")
+    let count = index.books.reduce(0) { $0 + $1.passages.count }
+    // R Vectors came inside the JSON: an index from before the split.
+    if index.books.allSatisfy({ $0.passages.allSatisfy { $0.vector.count == index.dimension } }) {
+        return index
+    }
+    guard let raw = try? Data(contentsOf: vectorsURL(url)),
+          raw.count == count * index.dimension * MemoryLayout<Float16>.size
+    else { fail("\(vectorsURL(url).path) is missing or does not match \(url.lastPathComponent)") }
+    var halves = [Float16](repeating: 0, count: count * index.dimension)
+    _ = halves.withUnsafeMutableBytes { raw.copyBytes(to: $0) }
+    var at = 0
+    for b in index.books.indices {
+        for p in index.books[b].passages.indices {
+            index.books[b].passages[p].vector = halves[at ..< at + index.dimension].map(Float.init)
+            at += index.dimension
+        }
+    }
+    return index
 }
 
 func writeIndex(_ index: Index, to url: URL) throws {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
     try encoder.encode(index).write(to: url)
-    let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
-    print("wrote \(url.path) (\(size / 1024) KB)")
+    // R Same order as the JSON, book by book: the order is the only link
+    // R between a passage and its vector.
+    let halves = index.books.flatMap { $0.passages.flatMap { $0.vector.map(Float16.init) } }
+    try halves.withUnsafeBytes { Data($0) }.write(to: vectorsURL(url))
+    for file in [url, vectorsURL(url)] {
+        let size = (try? FileManager.default.attributesOfItem(atPath: file.path)[.size] as? Int) ?? 0
+        print("wrote \(file.path) (\(size / 1024) KB)")
+    }
 }
 
 func describe(_ index: Index) {
@@ -514,15 +583,10 @@ func embed(_ text: String) -> [Float]? {
     return sum.map { Float($0 / max(norm, 1e-12)) }
 }
 
-/// Float32 in base64: a quarter the size of the same numbers as JSON text.
-func encode(_ v: [Float]) -> String {
-    v.withUnsafeBufferPointer { Data(buffer: $0) }.base64EncodedString()
-}
-
 var stored: [StoredPassage] = []
 for (n, p) in passages.enumerated() {
     guard let v = embed(p.text) else { continue }
-    stored.append(StoredPassage(page: p.page, text: p.text, vector: encode(v)))
+    stored.append(StoredPassage(page: p.page, text: p.text, vector: v))
     if n % 200 == 0 { print("embedded \(n) / \(passages.count)") }
 }
 
