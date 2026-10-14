@@ -29,6 +29,7 @@ enum Route: String, Hashable {
     case detectionTest
     case audioTest
     case captureTraining
+    case noteCapture
     case sensorTest
     case controllerSetup // strike controller · Flow D
     case waterfall // play without the camera: notes fall onto a drawn gangsa
@@ -74,10 +75,11 @@ nonisolated extension Route: AppEnum {
         .detectionTest: "Detection Test",
         .audioTest: "Audio Test",
         .captureTraining: "Capture Training",
+        .noteCapture: "Capture Note Clips",
         .sensorTest: "Sensor Test",
         .controllerSetup: "Controller Setup",
         .waterfall: "Waterfall Practice",
         .coopSetup: "Coop Setup",
-        .coopPlay: "Coop Play",
+        .coopPlay: "Coop Play"
     ]
 }

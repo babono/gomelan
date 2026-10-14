@@ -22,8 +22,11 @@ enum DampGlyph {
         func p(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
             CGPoint(x: rect.minX + x * rect.width, y: rect.minY + y * rect.height)
         }
-        let line = StrokeStyle(lineWidth: max(1.2, rect.width * 0.075),
-                               lineCap: .round, lineJoin: .round)
+        let line = StrokeStyle(
+            lineWidth: max(1.2, rect.width * 0.075),
+            lineCap: .round,
+            lineJoin: .round
+        )
 
         // Back of the hand up from the wrist, over into the thumb, out to its
         // tip and back along its underside.

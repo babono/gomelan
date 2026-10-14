@@ -59,7 +59,9 @@ private struct PianoRollControls: View {
             HalfPicker(
                 half: Binding(
                     get: { viewModel.writing },
-                    set: { viewModel.writing = $0; viewModel.tool = .notes }
+                    set: { viewModel.writing = $0
+                        viewModel.tool = .notes
+                    }
                 ),
                 active: viewModel.tool == .notes
             )
@@ -301,7 +303,7 @@ private struct PianoRollGrid: View {
         let draft = viewModel.draft
 
         switch viewModel.tool {
-        case .colotomic(let instrument):
+        case let .colotomic(instrument):
             // An armed instrument writes wherever the finger lands — the lane
             // is where it is drawn, not the only place to aim.
             let before = draft.colotomic.count
@@ -605,7 +607,7 @@ private struct PianoRollTransport: View {
         case .scanning: ("Searching…", Theme.gold)
         case .connecting: ("Connecting…", Theme.gold)
         case .connected: ("Connected", Theme.hit)
-        case .unavailable(let why): (why, Theme.miss)
+        case let .unavailable(why): (why, Theme.miss)
         }
         let count = viewModel.keyCount
         func range(_ first: Int) -> String {
@@ -634,30 +636,30 @@ private struct PianoRollTransport: View {
                     .background(Theme.cream.opacity(0.08), in: Capsule())
                     .accessibilityLabel("Recording from \(link.name)")
             } else {
-            Menu {
-                ForEach(viewModel.sensorPlacements, id: \.self) { first in
-                    Button {
-                        viewModel.firstSensorKey = first
-                    } label: {
-                        if first == viewModel.firstSensorKey {
-                            Label("Bilah \(range(first))", systemImage: "checkmark")
-                        } else {
-                            Text("Bilah \(range(first))")
+                Menu {
+                    ForEach(viewModel.sensorPlacements, id: \.self) { first in
+                        Button {
+                            viewModel.firstSensorKey = first
+                        } label: {
+                            if first == viewModel.firstSensorKey {
+                                Label("Bilah \(range(first))", systemImage: "checkmark")
+                            } else {
+                                Text("Bilah \(range(first))")
+                            }
                         }
                     }
+                } label: {
+                    HStack(spacing: 5) {
+                        Text("Bilah \(range(viewModel.firstSensorKey))").font(.sans(14, weight: .semibold))
+                        Image(systemName: "chevron.up.chevron.down").font(.symbol(10))
+                    }
+                    .fixedSize()
+                    .foregroundStyle(Theme.cream)
+                    .padding(.horizontal, 12)
+                    .frame(height: 32)
+                    .background(Theme.cream.opacity(0.08), in: Capsule())
                 }
-            } label: {
-                HStack(spacing: 5) {
-                    Text("Bilah \(range(viewModel.firstSensorKey))").font(.sans(14, weight: .semibold))
-                    Image(systemName: "chevron.up.chevron.down").font(.symbol(10))
-                }
-                .fixedSize()
-                .foregroundStyle(Theme.cream)
-                .padding(.horizontal, 12)
-                .frame(height: 32)
-                .background(Theme.cream.opacity(0.08), in: Capsule())
-            }
-            .accessibilityLabel("Sensors on bilah \(range(viewModel.firstSensorKey))")
+                .accessibilityLabel("Sensors on bilah \(range(viewModel.firstSensorKey))")
             }
         }
     }

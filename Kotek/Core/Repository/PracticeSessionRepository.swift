@@ -26,7 +26,7 @@ nonisolated struct PracticeSessionRepository {
         try await instrumentRepository.saveInstrument(instrument)
         let uid = try await remote.userID()
 
-        var validKotekanID: String? = nil
+        var validKotekanID: String?
         if let kid = s.kotekanID {
             let matches: [KotekanRow] = await (try? remote.read(from: "kotekan", matching: "id", equals: kid)) ?? []
             if !matches.isEmpty {

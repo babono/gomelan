@@ -81,9 +81,9 @@ extension PracticeSession {
             // R The headline number — the best window, as the results screen
             // R shows it — and NULL rather than 0 when no pass completed.
             accuracy: result.best?.accuracy,
-            onTimeCount: judged.filter(\.onBeat).count,
-            wrongKeyCount: judged.filter { $0 == .wrongKey }.count,
-            missedCount: judged.filter { $0 == .miss }.count,
+            onTimeCount: result.onBeatCount,
+            wrongKeyCount: result.wrongKeyCount,
+            missedCount: result.missedCount,
             landedNotes: result.landedNotes,
             bestStreak: best,
             driftMs: hits.isEmpty ? nil : result.driftMs

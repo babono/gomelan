@@ -104,7 +104,7 @@ struct SensorPlayView: View {
         case .scanning: ("Searching for Gangsa-Sensor…", Theme.gold)
         case .connecting: ("Connecting…", Theme.gold)
         case .connected: ("Sensor connected", Theme.hit)
-        case .unavailable(let why): (why, Theme.miss)
+        case let .unavailable(why): (why, Theme.miss)
         }
         return HStack(spacing: 8) {
             Circle().fill(color).frame(width: 10, height: 10)
@@ -147,7 +147,9 @@ struct SensorPlayView: View {
             } else if let r = vm.lastResult {
                 Text("Last run · \(r.landedNotes) notes landed")
             } else {
-                Text("\(vm.figure.name) on bilah \(vm.keys.lowerBound + 1)–\(vm.keys.upperBound + 1). Press Play, then strike along.")
+                Text(
+                    "\(vm.figure.name) on bilah \(vm.keys.lowerBound + 1)–\(vm.keys.upperBound + 1). Press Play, then strike along."
+                )
             }
         }
         .font(.sans(13, weight: .semibold))
@@ -194,7 +196,7 @@ private struct SensorBars: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ForEach(0..<SensorPlayViewModel.bars, id: \.self) { bar in
+            ForEach(0 ..< SensorPlayViewModel.bars, id: \.self) { bar in
                 tile(bar: bar, key: keys.lowerBound + bar)
             }
         }

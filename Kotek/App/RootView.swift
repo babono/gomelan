@@ -191,6 +191,8 @@ struct RootView: View {
             AudioTestView()
         case .captureTraining:
             CaptureTrainingView()
+        case .noteCapture:
+            NoteCaptureView()
         case .sensorTest:
             SensorPlayView()
         case .controllerSetup:

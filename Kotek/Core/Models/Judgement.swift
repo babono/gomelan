@@ -169,6 +169,14 @@ struct SongResult: Equatable {
     /// which would average a bilah you play well in polos against the same
     /// bilah in sangsih if it spanned both.
     let judgements: [NoteJudgement]
+    /// The OTHER half's notes at the same speed, if the player switched over to
+    /// it at some point this session; empty if they never did.
+    ///
+    /// Kept apart from `judgements` for the reason above — everything that
+    /// scores still reads only the half you finished on. This exists for the
+    /// results graph, which draws the whole interlocking figure and wants to
+    /// mark slips on both sides of it, not dim half of it as unplayed.
+    var partnerJudgements: [NoteJudgement] = []
     /// Every completed pass of the half you finished on, in order.
     let cycles: [CycleScore]
     /// One cycle of the half you finished on, in time order — what `stroke` on
@@ -207,8 +215,20 @@ struct SongResult: Equatable {
         judgements.filter { $0.result == .good }.count
     }
 
-    var missCount: Int {
-        judgements.filter { $0.result == .miss || $0.result == .wrongKey }.count
+    /// The three counts the results screen shows and `practice_session` files
+    /// (`on_time_count`, `wrong_key_count`, `missed_count`) — one definition,
+    /// so the screen and the database can never disagree. Whole session, not
+    /// the best window: a slip outside the best eight still happened.
+    var onBeatCount: Int {
+        judgements.filter(\.result.onBeat).count
+    }
+
+    var wrongKeyCount: Int {
+        judgements.filter { $0.result == .wrongKey }.count
+    }
+
+    var missedCount: Int {
+        judgements.filter { $0.result == .miss }.count
     }
 
     /// Fraction of notes struck on the correct key and reasonably on time.
@@ -339,11 +359,17 @@ struct SongResult: Equatable {
             let acc = Double(notes.reduce(0) { $0 + $1.result.score }) / Double(notes.count * 100)
             let drift = notes.map(\.timingErrorMs).reduce(0, +) / Double(notes.count)
             let hasWrong = notes.contains { $0.result == .wrongKey }
-            let note = if acc >= 0.9 { "clean throughout" }
-            else if hasWrong { "wrong key at times" }
-            else if drift < -60 { "ran late" }
-            else if drift > 60 { "ran early" }
-            else { "uneven" }
+            let note = if acc >= 0.9 {
+                "clean throughout"
+            } else if hasWrong {
+                "wrong key at times"
+            } else if drift < -60 {
+                "ran late"
+            } else if drift > 60 {
+                "ran early"
+            } else {
+                "uneven"
+            }
             return KeyBreakdown(keyIndex: key, accuracy: acc, note: note)
         }
         .sorted { $0.accuracy > $1.accuracy }

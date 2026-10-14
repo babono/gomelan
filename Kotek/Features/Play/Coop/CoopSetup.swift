@@ -33,7 +33,9 @@ struct CoopSetup: Equatable {
         right = CoopPlayer(name: "Player 2", instrumentID: instrumentID, half: .sangsih)
     }
 
-    var players: [CoopPlayer] { [left, right] }
+    var players: [CoopPlayer] {
+        [left, right]
+    }
 
     mutating func swapHalves() {
         (left.half, right.half) = (right.half, left.half)

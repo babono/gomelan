@@ -49,6 +49,7 @@ struct WaterfallCanvas: View {
         // Read here, in body, so Observation ties this view to the clock. The
         // Canvas renderer runs outside body tracking, and without this the
         // waterfall would only move when something else redrew it.
+        // swiftlint:disable:next redundant_discardable_let - a bare `_ =` is a () expression in a ViewBuilder
         let _ = engine.currentTimeMs
         Canvas { ctx, size in
             let beatMs = engine.beatLengthMs

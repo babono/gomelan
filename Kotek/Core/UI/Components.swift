@@ -129,9 +129,13 @@ struct KotekWordmark: View {
 /// `.disabled()` being applied outside the style, and is the behaviour we want:
 /// the stepper at its limit should feel like nothing happened, because nothing did.
 struct KajarButtonStyle: PrimitiveButtonStyle {
+    /// False for a button whose own sound must not be spoiled by a tick, e.g.
+    /// one that starts the mic or plays a recording back.
+    var ticks = true
+
     func makeBody(configuration: Configuration) -> some View {
         Button(role: configuration.role) {
-            KajarTick.strike()
+            if ticks { KajarTick.strike() }
             configuration.trigger()
         } label: {
             configuration.label
@@ -210,6 +214,8 @@ struct PillButton: View {
     var uppercase: Bool = true
     var fullWidth: Bool = false
     var compact: Bool = false
+    /// No kajar tick on press, for buttons that record or play audio.
+    var silent: Bool = false
     let action: () -> Void
 
     var body: some View {
@@ -261,7 +267,7 @@ struct PillButton: View {
             .frame(minHeight: 44)
             .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(KajarButtonStyle(ticks: !silent))
     }
 
     private var foreground: Color {

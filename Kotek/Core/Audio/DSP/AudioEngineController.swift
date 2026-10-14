@@ -46,6 +46,10 @@ final class AudioEngineController {
 
     var onOnsetDebug: ((OnsetDebug) -> Void)?
 
+    /// Main queue; the peak of each buffer and how far through the take it is
+    /// (0…1), while `captureRawSamples` runs. Drives the live waveform.
+    var onRawLevel: ((_ peak: Float, _ progress: Double) -> Void)?
+
     /// Called on the main queue when a strike is confirmed as a real gangsa hit:
     /// it passed the amplitude gate AND its spectrum matched the learned baseline
     /// above `baselineThreshold`. This is the play trigger when a baseline exists —
@@ -97,6 +101,16 @@ final class AudioEngineController {
     }
 
     private var capture: Capture?
+
+    /// A plain sample grab for the note-clip tool. Kept out of the ring: the ring
+    /// holds ~2 s and a clip needs silence + onset + the full decay.
+    private struct RawCapture {
+        let target: Int
+        var samples: [Float]
+        let completion: ([Float], Double) -> Void
+    }
+
+    private var rawCapture: RawCapture?
 
     private let engine = AVAudioEngine()
     private let queue = DispatchQueue(label: "me.babono.kotek.audio.dsp")
@@ -340,9 +354,31 @@ final class AudioEngineController {
         }
     }
 
+    /// Record `duration` seconds of raw mic samples, then report them with the
+    /// sample rate they were taken at (the hardware input rate, not a fixed
+    /// 44100). Don't overlap with `captureStrongestStrike`; `cancelCapture` ends
+    /// either one.
+    func captureRawSamples(
+        duration: TimeInterval,
+        completion: @escaping (_ samples: [Float], _ sampleRate: Double) -> Void
+    ) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            let rate = config.sampleRate
+            let target = Int(duration * rate)
+            var samples: [Float] = []
+            samples.reserveCapacity(target)
+            rawCapture = RawCapture(target: target, samples: samples) { samples, _ in
+                DispatchQueue.main.async { completion(samples, rate) }
+            }
+        }
+    }
+
     func cancelCapture() {
         queue.async { [weak self] in
-            guard let self, let capture else { return }
+            guard let self else { return }
+            rawCapture = nil
+            guard let capture else { return }
             self.capture = nil
             DispatchQueue.main.async { capture.completion(nil) }
         }
@@ -420,9 +456,30 @@ final class AudioEngineController {
         }
 
         ring.write(channel, count: frames)
+        appendRawCapture(channel, frames: frames)
         processAvailableWindows()
         drainPending()
         finishCaptureIfDue()
+    }
+
+    private func appendRawCapture(_ channel: UnsafePointer<Float>, frames: Int) {
+        guard var raw = rawCapture else { return }
+        let take = min(frames, raw.target - raw.samples.count)
+        raw.samples.append(contentsOf: UnsafeBufferPointer(start: channel, count: take))
+        if let report = onRawLevel {
+            var peak: Float = 0
+            for i in 0 ..< take {
+                peak = max(peak, abs(channel[i]))
+            }
+            let progress = Double(raw.samples.count) / Double(raw.target)
+            DispatchQueue.main.async { report(peak, progress) }
+        }
+        if raw.samples.count >= raw.target {
+            rawCapture = nil
+            raw.completion(raw.samples, config.sampleRate)
+        } else {
+            rawCapture = raw
+        }
     }
 
     /// Close the capture window once the last strike inside it has had time to be

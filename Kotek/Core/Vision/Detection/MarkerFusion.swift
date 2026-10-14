@@ -258,7 +258,7 @@ actor MarkerFusion {
             return nil
         case .front:
             let edges = bandEdges()
-            guard keys.count > 0, edges.count == keys.count + 1 else { return nil }
+            guard !keys.isEmpty, edges.count == keys.count + 1 else { return nil }
             for i in 0 ..< keys.count where p.x >= edges[i] && p.x < edges[i + 1] {
                 return keys[bandFlip ? keys.count - 1 - i : i].index
             }
@@ -294,7 +294,7 @@ actor MarkerFusion {
             return box.contains(tip) ? .allow : .elsewhere(keyContaining(tip))
         case .front:
             let edges = bandEdges()
-            guard keys.count > 0, edges.count == keys.count + 1,
+            guard !keys.isEmpty, edges.count == keys.count + 1,
                   let slot = (0 ..< keys.count).first(where: {
                       keys[bandFlip ? keys.count - 1 - $0 : $0].index == keyIndex
                   }) else { return .allow }

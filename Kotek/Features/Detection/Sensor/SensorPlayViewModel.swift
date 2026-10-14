@@ -33,7 +33,9 @@ final class SensorPlayViewModel {
     var lastResult: SongResult?
 
     let figure: Kotekan
-    var keys: ClosedRange<Int> { figure.voicedKeyRange }
+    var keys: ClosedRange<Int> {
+        figure.voicedKeyRange
+    }
 
     // MARK: - Initialization
 
@@ -47,7 +49,7 @@ final class SensorPlayViewModel {
         self.sensor = sensor ?? Container.shared.sensorService()
         self.engine = engine ?? PlayEngine()
         self.displayLink = displayLink ?? DisplayLink()
-        self.figure = Kotekan.bundled.first { $0.id == "ubitannyendok" }!
+        figure = Kotekan.bundled.first { $0.id == "ubitannyendok" }!
     }
 
     /// Ubitan Nyendok's three bilah, on inputs 1–3 — this screen predates the
@@ -62,9 +64,9 @@ final class SensorPlayViewModel {
 
     func onAppear() {
         sensor.onHit = { [weak self] hit in
-            guard let self, self.running else { return }
-            self.engine.registerStrike(
-                keyIndex: self.key(forBar: hit.input),
+            guard let self, running else { return }
+            engine.registerStrike(
+                keyIndex: key(forBar: hit.input),
                 hostTime: hit.hostTime,
                 confidence: 1
             )

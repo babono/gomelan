@@ -41,14 +41,14 @@ nonisolated struct InstrumentRemoteRepository {
             controllerID = saved.id
         }
 
-        let row = InstrumentRow(
+        let row = try InstrumentRow(
             id: id,
             userID: uid,
             name: p.name,
             type: p.type.rawValue,
             keyCount: p.keyCount,
             createdAt: p.createdAt,
-            profile: try JSONDecoder().decode(AnyJSON.self, from: ProfileStore.encoded(Self.withoutController(p))),
+            profile: JSONDecoder().decode(AnyJSON.self, from: ProfileStore.encoded(Self.withoutController(p))),
             controllerID: controllerID,
             controllerInputs: p.controller?.inputs,
             controllerSetUpAt: p.controller?.setUpAt
@@ -111,7 +111,9 @@ nonisolated struct InstrumentRemoteRepository {
     private static func withoutController(_ p: InstrumentProfile) -> InstrumentProfile {
         var stripped = p
         stripped.controller = nil
-        for i in stripped.keys.indices { stripped.keys[i].sensorInput = nil }
+        for i in stripped.keys.indices {
+            stripped.keys[i].sensorInput = nil
+        }
         return stripped
     }
 
@@ -137,7 +139,8 @@ nonisolated struct InstrumentRemoteRepository {
         }
         let byKey = Dictionary(keys.map { ($0.keyIndex, $0.sensorInput) }) { a, _ in a }
         for i in restored.keys.indices {
-            restored.keys[i].sensorInput = restored.controller == nil ? nil : byKey[restored.keys[i].index] ?? nil
+            restored.keys[i].sensorInput = restored.controller == nil ? nil : byKey[restored.keys[i].index]
+                .flatMap { $0 }
         }
         return restored
     }
@@ -149,6 +152,9 @@ nonisolated struct InstrumentRemoteRepository {
         // R they can no longer be reached to delete.
         try await remote.delete(from: "instrument_keys", matching: "instrument_id", equals: id)
         try await remote.delete(from: "instruments", matching: "id", equals: id)
+        // ponytail: best effort. A storage hiccup must not undo a delete the
+        // row already made; the orphaned clips only cost a few hundred kB.
+        try? await deleteSounds(instrumentID: id.uuidString)
     }
 
     // MARK: - Photos
@@ -167,7 +173,7 @@ nonisolated struct InstrumentRemoteRepository {
 
     func uploadPhoto(_ jpeg: Data, id: String, version: String) async throws {
         try await remote.client.storage.from(Self.photoBucket).upload(
-            try await photoPath(id: id, version: version),
+            photoPath(id: id, version: version),
             data: jpeg,
             options: FileOptions(contentType: "image/jpeg", upsert: true)
         )
@@ -175,11 +181,52 @@ nonisolated struct InstrumentRemoteRepository {
 
     func downloadPhoto(id: String, version: String) async throws -> Data {
         try await remote.client.storage.from(Self.photoBucket)
-            .download(path: try await photoPath(id: id, version: version))
+            .download(path: photoPath(id: id, version: version))
     }
 
     func deletePhoto(id: String, version: String) async throws {
         _ = try await remote.client.storage.from(Self.photoBucket)
-            .remove(paths: [try await photoPath(id: id, version: version)])
+            .remove(paths: [photoPath(id: id, version: version)])
+    }
+
+    // MARK: - Sounds
+
+    /// Private bucket, same own-folder policy as the photos
+    /// (supabase/migrations/20261013030000_instrument_sounds.sql).
+    private static let soundBucket = "instrument-sounds"
+
+    /// `<user id>/<instrument id>`; the take's file name goes under it. The
+    /// name carries the take's timestamp, so a phone can only ever fetch the
+    /// clip the profile names.
+    private func soundFolder(instrumentID: String) async throws -> String {
+        let uid = try await remote.userID()
+        return "\(uid.uuidString.lowercased())/\(instrumentID.lowercased())"
+    }
+
+    func uploadSound(_ wav: Data, instrumentID: String, file: String) async throws {
+        try await remote.client.storage.from(Self.soundBucket).upload(
+            "\(soundFolder(instrumentID: instrumentID))/\(file)",
+            data: wav,
+            options: FileOptions(contentType: "audio/wav", upsert: true)
+        )
+    }
+
+    func downloadSound(instrumentID: String, file: String) async throws -> Data {
+        try await remote.client.storage.from(Self.soundBucket)
+            .download(path: "\(soundFolder(instrumentID: instrumentID))/\(file)")
+    }
+
+    func deleteSound(instrumentID: String, file: String) async throws {
+        _ = try await remote.client.storage.from(Self.soundBucket)
+            .remove(paths: ["\(soundFolder(instrumentID: instrumentID))/\(file)"])
+    }
+
+    /// Every clip of one instrument, for when the instrument itself is deleted.
+    func deleteSounds(instrumentID: String) async throws {
+        let folder = try await soundFolder(instrumentID: instrumentID)
+        let objects = try await remote.client.storage.from(Self.soundBucket).list(path: folder)
+        guard !objects.isEmpty else { return }
+        _ = try await remote.client.storage.from(Self.soundBucket)
+            .remove(paths: objects.map { "\(folder)/\($0.name)" })
     }
 }

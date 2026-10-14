@@ -248,7 +248,10 @@ final class KotekanDraft {
         let slot = candidates.first { ticks in
             Self.bpmRange.contains(Self.bpm(strokeMs: k.strokeMs, slotTicks: ticks))
         } ?? Subdivision.sixteenth.ticks
-        bpm = min(max(Self.bpm(strokeMs: k.strokeMs, slotTicks: slot), Self.bpmRange.lowerBound), Self.bpmRange.upperBound)
+        bpm = min(
+            max(Self.bpm(strokeMs: k.strokeMs, slotTicks: slot), Self.bpmRange.lowerBound),
+            Self.bpmRange.upperBound
+        )
         notes = [(KotekanHalf.polos, k.polos), (.sangsih, k.sangsih)].flatMap { half, grid in
             grid.enumerated().compactMap { i, key in
                 key.map { DraftNote(half: half, key: $0, tick: i * slot, length: slot) }

@@ -10,15 +10,19 @@
 
 import AppIntents
 import FactoryKit
-import OSLog
 import Observation
+import OSLog
 import SwiftUI
 
 @MainActor
 @Observable
 final class AppState {
     var screen: Route = .welcome
-    var profile: InstrumentProfile
+    var profile: InstrumentProfile {
+        // The gangsa's own key recordings are what the cue player sounds.
+        didSet { cue.instrumentID = profile.id }
+    }
+
     var savedProfiles: [InstrumentProfile] = []
 
     // The kotekan session carried through selection → play.
@@ -271,8 +275,7 @@ final class AppState {
     var markerColour: Int = Defaults.int(
         "markerColour",
         MarkerColour.red.rawValue
-    )
-    {
+    ) {
         didSet { Defaults.set("markerColour", markerColour) }
     }
 
@@ -285,14 +288,12 @@ final class AppState {
     var markerSaturationFloor: Double = Defaults.double(
         "markerSaturationFloor",
         60
-    )
-    {
+    ) {
         didSet { Defaults.set("markerSaturationFloor", markerSaturationFloor) }
     }
 
     /// Stops below metered exposure while marker vision is on. Negative.
-    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5)
-    {
+    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5) {
         didSet { Defaults.set("markerExposureBias", markerExposureBias) }
     }
 
@@ -302,8 +303,7 @@ final class AppState {
     }
 
     /// How far past the head marker the striking point sits.
-    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35)
-    {
+    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35) {
         didSet { Defaults.set("markerTipExtension", markerTipExtension) }
     }
 
@@ -376,6 +376,9 @@ final class AppState {
     /// Set when a new gangsa's alignment is confirmed, spent when its setup
     /// lands — see `finishSetup`.
     var offerControllerAfterSetup = false
+    /// Note capture opened as the step before the controller offer: "Skip"
+    /// rather than "Back", and closing it moves on instead of to Settings.
+    var noteCaptureIsSetup = false
 
     // MARK: - Account
 
@@ -421,6 +424,7 @@ final class AppState {
         .practiceSessionRepository()
     @ObservationIgnored let log = Logger(subsystem: "Kotek", category: "remote")
     @ObservationIgnored let sensor = Container.shared.sensorService()
+    @ObservationIgnored let cue = Container.shared.cueService()
 
     // MARK: - Initialization
 
@@ -444,6 +448,7 @@ final class AppState {
             profile = ResourceLoader.defaultProfile()
         }
         screen = .welcome
+        cue.instrumentID = profile.id // didSet does not fire inside init
 
         account = Defaults.string("account").flatMap(Account.init)
         if account == .apple { loadPlayer() }
@@ -528,6 +533,20 @@ final class AppState {
 
     func closeDetectionTest() {
         screen = .settings
+    }
+
+    func openNoteCapture(setup: Bool = false) {
+        noteCaptureIsSetup = setup
+        screen = .noteCapture
+    }
+
+    func closeNoteCapture() {
+        guard noteCaptureIsSetup else {
+            screen = .settings
+            return
+        }
+        noteCaptureIsSetup = false
+        openControllerSetup(returnTo: .chooseKotekan, offer: true)
     }
 
     func openAudioTest() {

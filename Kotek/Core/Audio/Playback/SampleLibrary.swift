@@ -74,6 +74,43 @@ final nonisolated class SampleLibrary {
         return cache[name] != nil
     }
 
+    /// A player's recorded note clip (`NoteClipCapture`), in `format`.
+    ///
+    /// Not cached and not trimmed: a clip changes whenever the key is
+    /// re-recorded, and it already starts at the attack. Clips carry the
+    /// mic's rate (44.1 or 48 kHz) and a node fed a rate other than the one
+    /// it was connected with plays at the wrong pitch, so it is converted.
+    static func decodeRecording(_ url: URL, as format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        guard let file = try? AVAudioFile(forReading: url),
+              let source = AVAudioPCMBuffer(
+                  pcmFormat: file.processingFormat,
+                  frameCapacity: AVAudioFrameCount(file.length)
+              ),
+              (try? file.read(into: source)) != nil
+        else { return nil }
+        if source.format == format { return source }
+
+        let ratio = format.sampleRate / source.format.sampleRate
+        guard let converter = AVAudioConverter(from: source.format, to: format),
+              let converted = AVAudioPCMBuffer(
+                  pcmFormat: format,
+                  frameCapacity: AVAudioFrameCount(Double(source.frameLength) * ratio) + 1024
+              )
+        else { return nil }
+        nonisolated(unsafe) var handedOver = false
+        var failure: NSError?
+        converter.convert(to: converted, error: &failure) { _, status in
+            guard !handedOver else {
+                status.pointee = .endOfStream
+                return nil
+            }
+            handedOver = true
+            status.pointee = .haveData
+            return source
+        }
+        return failure == nil ? converted : nil
+    }
+
     // MARK: - Decoding
 
     private static func decode(_ name: String) -> AVAudioPCMBuffer? {

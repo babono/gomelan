@@ -125,10 +125,12 @@ struct InstrumentSectionView: View {
                     }
                 }
             } else {
-                Text("Optional. Piezo sensors on the bilah feel exactly which key you hit and when — no camera or microphone needed.")
-                    .font(.sans(14))
-                    .foregroundStyle(Theme.cream.opacity(0.62))
-                    .frame(maxWidth: 520, alignment: .leading)
+                Text(
+                    "Optional. Piezo sensors on the bilah feel exactly which key you hit and when — no camera or microphone needed."
+                )
+                .font(.sans(14))
+                .foregroundStyle(Theme.cream.opacity(0.62))
+                .frame(maxWidth: 520, alignment: .leading)
                 SecondaryButton(title: "Connect controller", systemImage: "dot.radiowaves.left.and.right") {
                     app.openControllerSetup()
                 }

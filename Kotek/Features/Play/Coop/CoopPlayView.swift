@@ -219,6 +219,7 @@ private struct UnisonBands: View {
         // Read in body so Observation redraws this on the clock — see
         // `WaterfallCanvas.body`.
         let clock = lanes[0].engine
+        // swiftlint:disable:next redundant_discardable_let - a bare `_ =` is a () expression in a ViewBuilder
         let _ = clock.currentTimeMs
         Canvas { ctx, _ in
             guard lanes.count == 2 else { return }
