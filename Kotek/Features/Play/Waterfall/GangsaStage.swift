@@ -56,7 +56,8 @@ struct GangsaStage: View {
                 .filter { $0.voice == .yours }
                 .sorted { $0.msAhead < $1.msAhead }
             if let i = yours.lastIndex(where: { $0.msAhead <= 0 }),
-               let key = yours[i].dampKey {
+               let key = yours[i].dampKey
+            {
                 let gap = i + 1 < yours.count ? yours[i + 1].msAhead - yours[i].msAhead : beat
                 let hold = min(max(gap * 0.55, 90), 400)
                 // Eased over 60 ms each way so the bar visibly shrinks

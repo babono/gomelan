@@ -25,17 +25,34 @@ struct GangsaLayout {
     /// Width of the playing area — the lanes, not the frame around them.
     let width: CGFloat
 
-    var lane: CGFloat { width / CGFloat(max(1, keyCount)) }
+    var lane: CGFloat {
+        width / CGFloat(max(1, keyCount))
+    }
+
     /// Most of the lane, leaving a strip of the ground between bars where the
     /// cord shows through.
-    var barWidth: CGFloat { lane * Self.barFill }
+    var barWidth: CGFloat {
+        lane * Self.barFill
+    }
+
     /// One unit of the design drawing, where a bar is 110 wide.
-    var unit: CGFloat { barWidth / 110 }
+    var unit: CGFloat {
+        barWidth / 110
+    }
+
     /// Wood either side of the lanes: an end post and the gap to the first bar.
-    var framePad: CGFloat { unit * Self.framePadUnits }
-    var frameWidth: CGFloat { width + framePad * 2 }
+    var framePad: CGFloat {
+        unit * Self.framePadUnits
+    }
+
+    var frameWidth: CGFloat {
+        width + framePad * 2
+    }
+
     /// How far the end posts stand above the rail, i.e. above the view's top.
-    var postRise: CGFloat { unit * 35.3 }
+    var postRise: CGFloat {
+        unit * 35.3
+    }
 
     /// 110 of a 134-unit lane in the drawing.
     private static let barFill: CGFloat = 0.82
@@ -76,7 +93,9 @@ struct GangsaView: View {
     let cues: [Int: BilahCue]
     let tilted: Bool
 
-    private var u: CGFloat { layout.unit }
+    private var u: CGFloat {
+        layout.unit
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -98,8 +117,12 @@ struct GangsaView: View {
             // Tilted about the TOP edge: points on the rotation axis do not
             // move, so the landing line stays exactly where the waterfall
             // ends while the near end of the instrument swings towards you.
-            .rotation3DEffect(.degrees(tilted ? 48 : 0), axis: (x: 1, y: 0, z: 0),
-                              anchor: .top, perspective: 0.55)
+            .rotation3DEffect(
+                .degrees(tilted ? 48 : 0),
+                axis: (x: 1, y: 0, z: 0),
+                anchor: .top,
+                perspective: 0.55
+            )
             .shadow(color: .black.opacity(tilted ? 0.55 : 0), radius: 18, y: 14)
         }
     }
@@ -148,14 +171,19 @@ struct GangsaView: View {
         var line = Path()
         line.move(to: CGPoint(x: layout.framePad + layout.laneCenter(0), y: y))
         line.addLine(to: CGPoint(x: layout.framePad + layout.laneCenter(layout.keyCount - 1), y: y))
-        ctx.stroke(line, with: .color(Color(hex: 0x8D3021)),
-                   style: StrokeStyle(lineWidth: u * 12.5, lineCap: .round))
+        ctx.stroke(
+            line,
+            with: .color(Color(hex: 0x8D3021)),
+            style: StrokeStyle(lineWidth: u * 12.5, lineCap: .round)
+        )
     }
 
     // MARK: - Bars
 
     /// Bars hang a little below the rail, clear of it even with a halo on.
-    private var barTop: CGFloat { u * 33.7 }
+    private var barTop: CGFloat {
+        u * 33.7
+    }
 
     /// The three looks of a bar from the drawings: at rest, pinched (dimmed),
     /// and struck, which also carries a rim and a glow around the bar.
@@ -163,39 +191,63 @@ struct GangsaView: View {
         var top: Color
         var bottom: Color
         var ridge: Color
-        var ridgeWidth: CGFloat     // units
+        var ridgeWidth: CGFloat // units
         var pegs: Color
         var number: Color
         var rim: Color = .clear
         var glow: Color = .clear
 
-        static let rest = Skin(top: Color(hex: 0xC09354), bottom: Color(hex: 0x8E682F),
-                               ridge: Color(hex: 0xC2975A), ridgeWidth: 42.3,
-                               pegs: Color(hex: 0x2B211C), number: Color(hex: 0x72572D))
-        static let dimmed = Skin(top: Color(hex: 0x59482E), bottom: Color(hex: 0x59482E),
-                                 ridge: Color(hex: 0x7B5F39), ridgeWidth: 42.3,
-                                 pegs: Color(hex: 0x2B211C), number: Color(hex: 0x2B211C))
-        static let struck = Skin(top: Color(hex: 0xEBB164), bottom: Color(hex: 0xEBB164),
-                                 ridge: Color(hex: 0xC2975A), ridgeWidth: 56.3,
-                                 pegs: Color(hex: 0x2B211C), number: Color(hex: 0x72572D),
-                                 rim: Color(hex: 0xFFE2B6), glow: Color(hex: 0xFFE2B6, alpha: 0.3))
+        static let rest = Skin(
+            top: Color(hex: 0xC09354),
+            bottom: Color(hex: 0x8E682F),
+            ridge: Color(hex: 0xC2975A),
+            ridgeWidth: 42.3,
+            pegs: Color(hex: 0x2B211C),
+            number: Color(hex: 0x72572D)
+        )
+        static let dimmed = Skin(
+            top: Color(hex: 0x59482E),
+            bottom: Color(hex: 0x59482E),
+            ridge: Color(hex: 0x7B5F39),
+            ridgeWidth: 42.3,
+            pegs: Color(hex: 0x2B211C),
+            number: Color(hex: 0x2B211C)
+        )
+        static let struck = Skin(
+            top: Color(hex: 0xEBB164),
+            bottom: Color(hex: 0xEBB164),
+            ridge: Color(hex: 0xC2975A),
+            ridgeWidth: 56.3,
+            pegs: Color(hex: 0x2B211C),
+            number: Color(hex: 0x72572D),
+            rim: Color(hex: 0xFFE2B6),
+            glow: Color(hex: 0xFFE2B6, alpha: 0.3)
+        )
     }
 
     private func drawBar(_ ctx: GraphicsContext, key: Int, height: CGFloat) {
         let cue = cues[key] ?? BilahCue()
         let w = layout.barWidth
-        var rect = CGRect(x: layout.framePad + layout.laneCenter(key) - w / 2, y: barTop,
-                          width: w, height: max(0, height - barTop))
+        var rect = CGRect(
+            x: layout.framePad + layout.laneCenter(key) - w / 2,
+            y: barTop,
+            width: w,
+            height: max(0, height - barTop)
+        )
 
         if let age = cue.struckAge {
             // Struck: the bar rings. A sideways shake that dies away fast,
             // like the bronze settling after the mallet.
             rect.origin.x += Self.ring(age: age) * w
             let skin = Skin.struck
-            ctx.fill(Path(roundedRect: rect.insetBy(dx: -u * 13, dy: -u * 13), cornerRadius: u * 34.9),
-                     with: .color(skin.glow))
-            ctx.fill(Path(roundedRect: rect.insetBy(dx: -u * 8.3, dy: -u * 8.3), cornerRadius: u * 30.2),
-                     with: .color(skin.rim))
+            ctx.fill(
+                Path(roundedRect: rect.insetBy(dx: -u * 13, dy: -u * 13), cornerRadius: u * 34.9),
+                with: .color(skin.glow)
+            )
+            ctx.fill(
+                Path(roundedRect: rect.insetBy(dx: -u * 8.3, dy: -u * 8.3), cornerRadius: u * 30.2),
+                with: .color(skin.rim)
+            )
             drawSkin(ctx, skin, rect: rect, key: key)
             return
         }
@@ -203,12 +255,18 @@ struct GangsaView: View {
         // Pinched: the bar shrinks a little and goes dark, as a damped bar
         // falls silent. `damp` eases in and out, so both blend.
         let d = CGFloat(cue.damp)
-        rect = CGRect(x: rect.minX + d * w * 0.055, y: rect.minY + d * u * 6,
-                      width: rect.width - d * w * 0.11, height: rect.height - d * u * 6)
+        rect = CGRect(
+            x: rect.minX + d * w * 0.055,
+            y: rect.minY + d * u * 6,
+            width: rect.width - d * w * 0.11,
+            height: rect.height - d * u * 6
+        )
         // The ground-coloured edge from the drawing, which also cuts the cord
         // short of each bar.
-        ctx.fill(Path(roundedRect: rect.insetBy(dx: -u * 4.2, dy: -u * 4.2), cornerRadius: u * 26),
-                 with: .color(Theme.ground))
+        ctx.fill(
+            Path(roundedRect: rect.insetBy(dx: -u * 4.2, dy: -u * 4.2), cornerRadius: u * 26),
+            with: .color(Theme.ground)
+        )
         drawSkin(ctx, .rest, rect: rect, key: key)
         if d > 0 {
             var c = ctx
@@ -221,25 +279,34 @@ struct GangsaView: View {
         ctx.fill(Path(roundedRect: rect, cornerRadius: u * 21.9), with: .linearGradient(
             Gradient(colors: [skin.top, skin.bottom]),
             startPoint: CGPoint(x: rect.midX, y: rect.minY + u * 20),
-            endPoint: CGPoint(x: rect.midX, y: rect.minY + u * 210)))
+            endPoint: CGPoint(x: rect.midX, y: rect.minY + u * 210)
+        ))
 
         let ridgeW = u * skin.ridgeWidth * rect.width / layout.barWidth
-        let ridge = CGRect(x: rect.midX - ridgeW / 2, y: rect.minY + u * 10.4,
-                           width: ridgeW, height: rect.height - u * 20.8)
+        let ridge = CGRect(
+            x: rect.midX - ridgeW / 2,
+            y: rect.minY + u * 10.4,
+            width: ridgeW,
+            height: rect.height - u * 20.8
+        )
         ctx.fill(Path(roundedRect: ridge, cornerRadius: ridgeW * 0.345), with: .color(skin.ridge))
 
         // Pegs through the two cord holes.
         let r = u * 9.07
         for y in [rect.minY + u * 40.2, rect.maxY - u * 40.2] {
-            ctx.fill(Path(ellipseIn: CGRect(x: rect.midX - r, y: y - r, width: r * 2, height: r * 2)),
-                     with: .color(skin.pegs))
+            ctx.fill(
+                Path(ellipseIn: CGRect(x: rect.midX - r, y: y - r, width: r * 2, height: r * 2)),
+                with: .color(skin.pegs)
+            )
         }
 
         // Key number, high on the bar — the near end is below the screen edge.
-        ctx.draw(Text("\(key + 1)")
-                    .font(.system(size: max(11, layout.barWidth * 0.36), weight: .bold, design: .default))
-                    .foregroundStyle(skin.number),
-                 at: CGPoint(x: rect.midX, y: rect.minY + u * 100))
+        ctx.draw(
+            Text("\(key + 1)")
+                .font(.system(size: max(11, layout.barWidth * 0.36), weight: .bold, design: .default))
+                .foregroundStyle(skin.number),
+            at: CGPoint(x: rect.midX, y: rect.minY + u * 100)
+        )
     }
 
     /// Sideways offset of a ringing bar, as a fraction of its width.

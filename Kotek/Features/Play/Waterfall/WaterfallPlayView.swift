@@ -53,44 +53,58 @@ private struct WaterfallContentView: View {
                 let sunk = gangsaHeight * Self.sunkFraction
                 let layout = GangsaLayout(
                     keyCount: vm.keyCount,
-                    width: GangsaLayout.width(keyCount: vm.keyCount, height: gangsaHeight,
-                                              fitting: geo.size.width - 40))
+                    width: GangsaLayout.width(
+                        keyCount: vm.keyCount,
+                        height: gangsaHeight,
+                        fitting: geo.size.width - 40
+                    )
+                )
                 let lanesWidth = layout.width
 
                 VStack(spacing: 0) {
                     ZStack(alignment: .top) {
-                        WaterfallCanvas(engine: vm.engine, layout: layout,
-                                        voiced: vm.voicedKeys, yourHalf: app.chosenHalf)
+                        WaterfallCanvas(
+                            engine: vm.engine,
+                            layout: layout,
+                            voiced: vm.voicedKeys,
+                            yourHalf: app.chosenHalf
+                        )
                         StartCaption(engine: vm.engine)
                             .padding(.top, 18)
                     }
                     .frame(width: lanesWidth)
                     .frame(maxHeight: .infinity)
 
-                    GangsaStage(engine: vm.engine, layout: layout,
-                                tilted: vm.tilted, sensedStrike: vm.sensedStrike)
-                        .frame(width: layout.frameWidth, height: gangsaHeight)
-                        .contentShape(Rectangle())
-                        .gesture(swipeToTilt)
-                        .accessibilityElement()
-                        .accessibilityLabel(vm.tilted ? "Gangsa, tilted view" : "Gangsa, flat view")
-                        .accessibilityHint("Swipe up to change the view")
-                        .accessibilityAction(named: vm.tilted ? "Flat view" : "Tilted view") {
-                            toggleTilt()
-                        }
-                        .padding(.bottom, -sunk)
+                    GangsaStage(
+                        engine: vm.engine,
+                        layout: layout,
+                        tilted: vm.tilted,
+                        sensedStrike: vm.sensedStrike
+                    )
+                    .frame(width: layout.frameWidth, height: gangsaHeight)
+                    .contentShape(Rectangle())
+                    .gesture(swipeToTilt)
+                    .accessibilityElement()
+                    .accessibilityLabel(vm.tilted ? "Gangsa, tilted view" : "Gangsa, flat view")
+                    .accessibilityHint("Swipe up to change the view")
+                    .accessibilityAction(named: vm.tilted ? "Flat view" : "Tilted view") {
+                        toggleTilt()
+                    }
+                    .padding(.bottom, -sunk)
                 }
                 .frame(maxWidth: .infinity)
                 // The hint can no longer sit under the gangsa — that is off the
                 // screen now — so it sits in the empty corner just above it,
                 // clear of the frame in both views (the tilt widens the frame).
                 .overlay(alignment: .bottomTrailing) {
-                    Label(vm.tilted ? "Swipe up for flat" : "Swipe up to tilt",
-                          systemImage: "chevron.up")
-                        .font(.sans(11, weight: .medium))
-                        .foregroundStyle(Theme.cream.opacity(0.35))
-                        .padding(.trailing, 24)
-                        .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
+                    Label(
+                        vm.tilted ? "Swipe up for flat" : "Swipe up to tilt",
+                        systemImage: "chevron.up"
+                    )
+                    .font(.sans(11, weight: .medium))
+                    .foregroundStyle(Theme.cream.opacity(0.35))
+                    .padding(.trailing, 24)
+                    .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
                 }
             }
             // Down to the physical edge of the screen, so "sunk" is measured

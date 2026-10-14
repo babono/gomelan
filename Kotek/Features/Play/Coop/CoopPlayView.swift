@@ -70,12 +70,18 @@ private struct CoopPlayContentView: View {
     private func column(_ lane: CoopPlayViewModel.Lane, stage: CoopStageLayout) -> some View {
         let layout = stage.layout(lane.id)
         return VStack(spacing: 0) {
-            LaneHeader(player: lane.player,
-                       gangsa: vm.lanes.allSatisfy { $0.profile.id == lane.profile.id } ? nil : lane.profile.name)
-                .frame(height: CoopStageLayout.header)
-            WaterfallCanvas(engine: lane.engine, layout: layout,
-                            voiced: vm.voicedKeys, yourHalf: lane.player.half)
-                .frame(width: layout.width, height: stage.canvasHeight)
+            LaneHeader(
+                player: lane.player,
+                gangsa: vm.lanes.allSatisfy { $0.profile.id == lane.profile.id } ? nil : lane.profile.name
+            )
+            .frame(height: CoopStageLayout.header)
+            WaterfallCanvas(
+                engine: lane.engine,
+                layout: layout,
+                voiced: vm.voicedKeys,
+                yourHalf: lane.player.half
+            )
+            .frame(width: layout.width, height: stage.canvasHeight)
             GangsaStage(engine: lane.engine, layout: layout, tilted: false)
                 .frame(width: layout.frameWidth, height: stage.gangsaHeight)
         }
@@ -167,9 +173,14 @@ private struct CoopStageLayout {
     /// room one has alone.
     func layout(_ lane: Int) -> GangsaLayout {
         let keys = keyCounts[lane]
-        return GangsaLayout(keyCount: keys,
-                            width: GangsaLayout.width(keyCount: keys, height: gangsaHeight,
-                                                      fitting: columnWidth))
+        return GangsaLayout(
+            keyCount: keys,
+            width: GangsaLayout.width(
+                keyCount: keys,
+                height: gangsaHeight,
+                fitting: columnWidth
+            )
+        )
     }
 
     /// The left edge of a lane's waterfall, in stage coordinates.
@@ -245,8 +256,11 @@ private struct UnisonBands: View {
                 var band = Path()
                 band.move(to: CGPoint(x: from, y: y))
                 band.addLine(to: CGPoint(x: to, y: y))
-                ctx.stroke(band, with: .color(sameKey ? Theme.gold.opacity(0.85) : Theme.cream.opacity(0.35)),
-                           style: StrokeStyle(lineWidth: sameKey ? 3 : 2, lineCap: .round))
+                ctx.stroke(
+                    band,
+                    with: .color(sameKey ? Theme.gold.opacity(0.85) : Theme.cream.opacity(0.35)),
+                    style: StrokeStyle(lineWidth: sameKey ? 3 : 2, lineCap: .round)
+                )
             }
         }
         .frame(width: stage.size.width, height: stage.size.height)
