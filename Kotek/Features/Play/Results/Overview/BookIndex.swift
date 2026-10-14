@@ -6,8 +6,9 @@
 //  find the passages of the teaching book that speak to it.
 //
 //  The book is indexed on a Mac by `scripts/build-book-index.swift` into
-//  `Resources/BookIndex.json` — passages plus one vector each, from Apple's
-//  contextual embedding. Here the query is embedded with the same model and
+//  `Resources/BookIndex.json` (the passages) and `BookIndex.vectors` (one
+//  vector each, from Apple's contextual embedding, as raw Float16 — half the
+//  size of Float32 and no decoding, for a ranking that came out identical). Here the query is embedded with the same model and
 //  compared against every passage. No vector database: a book is a couple of
 //  thousand passages, and a dot product against each takes well under a
 //  millisecond.
@@ -115,8 +116,6 @@ actor BookIndex {
         nonisolated struct Passage: Decodable {
             let page: Int
             let text: String
-            /// Float32, little-endian, base64.
-            let vector: String
         }
     }
 
@@ -142,12 +141,23 @@ actor BookIndex {
             return book.passages.map { (info, $0.page + (book.pageOffset ?? 0), $0) }
         }
         let passages = stored.map { BookPassage(book: $0.0, page: $0.1, text: $0.2.text) }
-        let vectors = stored.map { Self.floats(base64: $0.2.vector, count: file.dimension) }
-        guard !passages.isEmpty, vectors.allSatisfy({ $0.count == file.dimension }) else { return nil }
+        guard !passages.isEmpty else { return nil }
+        // R No vectors, or the wrong number of them: keywords alone. A
+        // R mismatch means the two files came from different builds, and
+        // R pairing vectors with the wrong passages would rank nonsense.
+        let vectors = Bundle.main.url(forResource: resource, withExtension: "vectors")
+            .flatMap { try? Data(contentsOf: $0) }
+            .flatMap { Self.floats(float16: $0, rows: passages.count, dimension: file.dimension) }
+        var semantic: Semantic?
+        if let vectors {
+            semantic = await self.semantic(file: file, vectors: vectors)
+        } else {
+            log.error("book vectors missing or mismatched; keyword retrieval only")
+        }
 
-        return await Loaded(
+        return Loaded(
             passages: passages,
-            semantic: semantic(file: file, vectors: vectors),
+            semantic: semantic,
             keywords: Keywords(passages.map(\.text))
         )
     }
@@ -180,14 +190,17 @@ actor BookIndex {
         return Semantic(embedding: embedding, language: language, vectors: vectors)
     }
 
-    private static func floats(base64: String, count: Int) -> [Float] {
-        guard let data = Data(base64Encoded: base64), data.count == count * MemoryLayout<Float>.size
-        else { return [] }
+    /// `rows` vectors of `dimension` little-endian Float16 each, widened to
+    /// Float for vDSP; nil if the file is not exactly that size.
+    private static func floats(float16 data: Data, rows: Int, dimension: Int) -> [[Float]]? {
+        guard data.count == rows * dimension * MemoryLayout<Float16>.size else { return nil }
         // R Copied rather than rebound: a Data's bytes carry no alignment
-        // R promise, and reading Floats through a misaligned pointer traps.
-        var out = [Float](repeating: 0, count: count)
-        _ = out.withUnsafeMutableBytes { data.copyBytes(to: $0) }
-        return out
+        // R promise, and reading through a misaligned pointer traps.
+        var halves = [Float16](repeating: 0, count: rows * dimension)
+        _ = halves.withUnsafeMutableBytes { data.copyBytes(to: $0) }
+        return (0 ..< rows).map { r in
+            halves[r * dimension ..< (r + 1) * dimension].map(Float.init)
+        }
     }
 
     /// Min–max to 0…1, so two unrelated scores can be mixed by weight.
