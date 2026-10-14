@@ -39,11 +39,11 @@ private struct WaterfallContentView: View {
             topBar(tempo: $bindableApp.tempoScale)
 
             GeometryReader { geo in
-                let framePad: CGFloat = 22
                 // The instrument is sized from its HEIGHT and the lane width
                 // follows from a bronze bar's own proportions (`GangsaLayout`),
                 // so the gangsa keeps its shape on every phone instead of
-                // stretching to fill the width.
+                // stretching to fill the width. The frame scales with the bars,
+                // so its length follows the key count.
                 //
                 // More than half of it hangs off the bottom of the screen. The near
                 // ends of the bars carry nothing — notes land on the top edge —
@@ -51,59 +51,46 @@ private struct WaterfallContentView: View {
                 // bars any smaller.
                 let gangsaHeight = min(150, geo.size.height * 0.44)
                 let sunk = gangsaHeight * Self.sunkFraction
-                let lane = GangsaLayout.lane(forHeight: gangsaHeight)
-                let lanesWidth = min(
-                    geo.size.width - framePad * 2 - 40,
-                    lane * CGFloat(vm.keyCount)
-                )
-                let layout = GangsaLayout(keyCount: vm.keyCount, width: lanesWidth)
+                let layout = GangsaLayout(
+                    keyCount: vm.keyCount,
+                    width: GangsaLayout.width(keyCount: vm.keyCount, height: gangsaHeight,
+                                              fitting: geo.size.width - 40))
+                let lanesWidth = layout.width
 
                 VStack(spacing: 0) {
                     ZStack(alignment: .top) {
-                        WaterfallCanvas(
-                            engine: vm.engine,
-                            layout: layout,
-                            voiced: vm.voicedKeys,
-                            yourHalf: app.chosenHalf
-                        )
+                        WaterfallCanvas(engine: vm.engine, layout: layout,
+                                        voiced: vm.voicedKeys, yourHalf: app.chosenHalf)
                         StartCaption(engine: vm.engine)
                             .padding(.top, 18)
                     }
                     .frame(width: lanesWidth)
                     .frame(maxHeight: .infinity)
 
-                    GangsaStage(
-                        engine: vm.engine,
-                        layout: layout,
-                        voiced: vm.voicedKeys,
-                        tilted: vm.tilted,
-                        framePad: framePad,
-                        sensedKey: vm.sensedKey
-                    )
-                    .frame(width: lanesWidth + framePad * 2, height: gangsaHeight)
-                    .contentShape(Rectangle())
-                    .gesture(swipeToTilt)
-                    .accessibilityElement()
-                    .accessibilityLabel(vm.tilted ? "Gangsa, tilted view" : "Gangsa, flat view")
-                    .accessibilityHint("Swipe up to change the view")
-                    .accessibilityAction(named: vm.tilted ? "Flat view" : "Tilted view") {
-                        toggleTilt()
-                    }
-                    .padding(.bottom, -sunk)
+                    GangsaStage(engine: vm.engine, layout: layout,
+                                tilted: vm.tilted, sensedStrike: vm.sensedStrike)
+                        .frame(width: layout.frameWidth, height: gangsaHeight)
+                        .contentShape(Rectangle())
+                        .gesture(swipeToTilt)
+                        .accessibilityElement()
+                        .accessibilityLabel(vm.tilted ? "Gangsa, tilted view" : "Gangsa, flat view")
+                        .accessibilityHint("Swipe up to change the view")
+                        .accessibilityAction(named: vm.tilted ? "Flat view" : "Tilted view") {
+                            toggleTilt()
+                        }
+                        .padding(.bottom, -sunk)
                 }
                 .frame(maxWidth: .infinity)
                 // The hint can no longer sit under the gangsa — that is off the
                 // screen now — so it sits in the empty corner just above it,
                 // clear of the frame in both views (the tilt widens the frame).
                 .overlay(alignment: .bottomTrailing) {
-                    Label(
-                        vm.tilted ? "Swipe up for flat" : "Swipe up to tilt",
-                        systemImage: "chevron.up"
-                    )
-                    .font(.sans(11, weight: .medium))
-                    .foregroundStyle(Theme.cream.opacity(0.35))
-                    .padding(.trailing, 24)
-                    .padding(.bottom, gangsaHeight - sunk + 10)
+                    Label(vm.tilted ? "Swipe up for flat" : "Swipe up to tilt",
+                          systemImage: "chevron.up")
+                        .font(.sans(11, weight: .medium))
+                        .foregroundStyle(Theme.cream.opacity(0.35))
+                        .padding(.trailing, 24)
+                        .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
                 }
             }
             // Down to the physical edge of the screen, so "sunk" is measured

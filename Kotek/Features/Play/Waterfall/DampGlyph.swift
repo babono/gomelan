@@ -10,8 +10,8 @@
 //  from the front, which reads as a zoom gesture. This is line art in the
 //  style of the reference the team picked: the back of the hand rising from
 //  the wrist into the thumb, the index finger as a loop beneath it, the other
-//  fingers tucked in, and the palm edge falling back to the wrist. Shared by
-//  the falling damp cue and the bar on the instrument.
+//  fingers tucked in, and the palm edge falling back to the wrist. Drawn on
+//  the falling damp cue; the bar itself just dims and shrinks.
 //
 
 import SwiftUI

@@ -256,8 +256,15 @@ final class PlayEngine {
     private let partnerPan: Float = 0.32
 
     /// Transient flash bookkeeping: keyIndex -> (kind, expiry host time)
-    /// Key -> when its flash expires.
-    private var flashes: [Int: Double] = [:]
+    /// Key -> when its flash expires, and the judgement it shows.
+    private var flashes: [Int: (expiry: Double, result: JudgementResult)] = [:]
+
+    /// Each bar's live flash for the waterfall: seconds since it began and the
+    /// judgement — a green glow over the bar for a hit, red for a missed note.
+    var keyFlashes: [Int: (age: Double, result: JudgementResult)] {
+        flashes.filter { renderNow <= $0.value.expiry }
+            .mapValues { (renderNow - ($0.expiry - flashDuration), $0.result) }
+    }
 
     private var startHostTime: Double = 0
 
@@ -285,7 +292,7 @@ final class PlayEngine {
     /// note, and the longest an unplayed note is ever left open. Both are
     /// really `strokeGap(around:)`; this is only the cap for a sparse figure.
     private let maxWindowMs: Double = 500
-    private let flashDuration: Double = 0.3
+    let flashDuration: Double = 0.3
 
     /// The count-in, in beats.
     ///
@@ -655,12 +662,12 @@ final class PlayEngine {
 
         var states: [Int: KeyRenderState] = [:]
 
-        for (key, expiry) in flashes where now <= expiry {
+        for (key, flash) in flashes where now <= flash.expiry && flash.result.isHit {
             var s = states[key] ?? KeyRenderState()
             s.hit = true
             states[key] = s
         }
-        flashes = flashes.filter { now <= $0.value }
+        flashes = flashes.filter { now <= $0.value.expiry }
 
         let beatIndex = Int(currentTimeMs / beatMs)
         currentBeatIndex = max(0, beatIndex)
@@ -1074,7 +1081,7 @@ final class PlayEngine {
             outcomes[i] = result
             record(result, at: keyIndex, stroke: i, now: hostTime, playSound: true, timingErrorMs: err)
         } else {
-            // Correct timing, wrong key: amber on struck key, correct stays lit.
+            // Correct timing, wrong key: no verdict on the bar (see `record`).
             outcomes[i] = .wrongKey
             record(.wrongKey, at: keyIndex, stroke: i, now: hostTime, playSound: true, timingErrorMs: err)
         }
@@ -1210,13 +1217,21 @@ final class PlayEngine {
         lastJudgement = judgement
         call(FloaterLabel.from(result, timingErrorMs: timingErrorMs), at: key, now: now)
 
-        // R The instrument flashes for a HIT and stays dark otherwise. A wrong
-        // R bar and a missed note both say the same thing — that was not the
-        // R note — and neither is worth lighting up the wrong bilah to say. The
-        // R miss cue still sounds, so being wrong is not silent; it just is not
-        // R painted onto the instrument you are trying to read.
+        // R A hit glows green in its lane on the waterfall and a missed note
+        // R glows red over the bar it was due on (`WaterfallCanvas`). The
+        // R camera overlay still lights HITS only (`KeyRenderState.hit`):
+        // R painting red onto a real bilah in the feed hid the bar you were
+        // R trying to read. The falling notes used to turn green or grey
+        // R instead, but the eye is at the bar at the moment of the stroke,
+        // R not on the block that has already landed. Recolouring the drawn
+        // R bar itself was tried too, and hid the damp cue — see there.
+        // R
+        // R A wrong bar gets no verdict colour: it briefly went red too, and
+        // R a red bar under the mallet read as "that bar is broken" rather
+        // R than "the note was elsewhere". The sensor's struck look is all it
+        // R gets; the miss cue and the floater carry the rest.
+        if result != .wrongKey { flash(at: key, result: result, now: now) }
         if result.isHit {
-            flash(at: key, now: now)
             if playSound { cue?.playHit() }
         } else if playSound {
             cue?.playMiss()
@@ -1232,7 +1247,7 @@ final class PlayEngine {
         if floaters.count > 6 { floaters.removeFirst(floaters.count - 6) }
     }
 
-    private func flash(at key: Int, now: Double) {
-        flashes[key] = now + flashDuration
+    private func flash(at key: Int, result: JudgementResult, now: Double) {
+        flashes[key] = (now + flashDuration, result)
     }
 }
