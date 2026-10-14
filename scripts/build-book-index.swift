@@ -6,7 +6,7 @@
 //  `Kotek/Resources/BookIndex.json`, one book at a time:
 //
 //      swift scripts/build-book-index.swift add book.pdf "Book title" [--pages 29-469] [--ocr]
-//          [--author "Name"] [--url https://…] [--page-offset -27]
+//          [--spreads] [--author "Name"] [--url https://…] [--page-offset -27]
 //      swift scripts/build-book-index.swift set "Book title" [--title …] [--author …] [--url …] [--page-offset …]
 //      swift scripts/build-book-index.swift remove "Book title"
 //      swift scripts/build-book-index.swift list
@@ -25,6 +25,17 @@
 //  `--pages` keeps only the main text (PDF page numbers, not printed ones).
 //  Worth setting: a glossary is dense with exactly the terms a query uses, so
 //  left in, it wins every search with a definition instead of an explanation.
+//
+//  `--pages` also takes a list, `4-48,50-83`, to drop a page photographed
+//  twice.
+//
+//  `--spreads` is for a book photographed open, two printed pages to each PDF
+//  page. Every page is read with text recognition, the lines are split into
+//  the left and right page by where they sit, and each side's printed number
+//  is read off its running header or footer instead of worked out from an
+//  offset — such scans skip pages and slip in photo inserts, so the numbers
+//  stop being a fixed distance from the PDF's. Passages then store the
+//  printed page itself, and the offset is 0.
 //
 //  Scans work. A page with no text layer — a photo of a page, which is what
 //  the iPhone's document scanner produces — is read with Apple's Vision text
@@ -47,6 +58,7 @@
 //  file in the bundle needs no server, no download and no account.
 //
 
+import AppKit
 import Foundation
 import NaturalLanguage
 import PDFKit
@@ -67,7 +79,8 @@ struct Book: Codable {
     /// Where to get the book — a publisher or bookshop page.
     var url: String?
     /// Printed page = PDF page + this. Passages store the PDF page, so a
-    /// wrong offset is fixed with `set` instead of a re-scan.
+    /// wrong offset is fixed with `set` instead of a re-scan. 0 for a book
+    /// added with `--spreads`, whose passages store the printed page.
     var pageOffset: Int?
     let passages: [StoredPassage]
 }
@@ -142,19 +155,21 @@ func flag(_ name: String) -> Bool {
 
 let indexURL = URL(fileURLWithPath: option("--index") ?? "Kotek/Resources/BookIndex.json")
 let pagesArg = option("--pages")
-let forceOCR = flag("--ocr")
+let spreads = flag("--spreads")
+let forceOCR = flag("--ocr") || spreads
 let newTitle = option("--title")
 let author = option("--author")
 let link = option("--url")
 let offsetArg = option("--page-offset")
 let pageOffset = offsetArg.flatMap { Int($0) }
 if offsetArg != nil, pageOffset == nil { fail("--page-offset wants a whole number, e.g. -27") }
+if spreads, pageOffset != nil { fail("--spreads reads the printed page numbers; it takes no --page-offset") }
 if let link, URL(string: link)?.scheme?.hasPrefix("http") != true { fail("--url wants an http(s) link") }
 
 let usage = """
     usage:
-      swift scripts/build-book-index.swift add book.pdf "Book title" [--pages first-last] [--ocr]
-          [--author "Name"] [--url https://…] [--page-offset n]
+      swift scripts/build-book-index.swift add book.pdf "Book title" [--pages first-last[,first-last…]] [--ocr]
+          [--spreads] [--author "Name"] [--url https://…] [--page-offset n]
       swift scripts/build-book-index.swift set "Book title" [--title …] [--author …] [--url …] [--page-offset n]
       swift scripts/build-book-index.swift remove "Book title"
       swift scripts/build-book-index.swift list
@@ -197,11 +212,13 @@ default:
 
 let pdfURL = URL(fileURLWithPath: args[1])
 let title = args[2]
-var pageRange: ClosedRange<Int>?
+var pageRanges: [ClosedRange<Int>]?
 if let pagesArg {
-    let bounds = pagesArg.split(separator: "-").compactMap { Int($0) }
-    guard bounds.count == 2, bounds[0] <= bounds[1] else { fail("--pages wants first-last, e.g. 29-469") }
-    pageRange = bounds[0] ... bounds[1]
+    pageRanges = pagesArg.split(separator: ",").map { part in
+        let bounds = part.split(separator: "-").compactMap { Int($0) }
+        guard bounds.count == 2, bounds[0] <= bounds[1] else { fail("--pages wants first-last, e.g. 29-469 or 4-48,50-83") }
+        return bounds[0] ... bounds[1]
+    }
 }
 
 guard let pdf = PDFDocument(url: pdfURL) else { fail("could not open \(pdfURL.path)") }
@@ -223,8 +240,21 @@ let gamelanWords = [
 
 /// The page drawn at three times its point size — about 216 dpi for a
 /// letter-size page, enough for body text without slowing recognition down.
-func render(_ page: PDFPage, scale: CGFloat = 3) -> CGImage? {
+/// A photographed spread is already a large page; twice is plenty.
+///
+/// Upright, whatever the page's `/Rotate`: a phone scan can store every page
+/// on its side, and Vision reads sideways text as nothing.
+func render(_ page: PDFPage, scale: CGFloat = spreads ? 2 : 3) -> CGImage? {
     let box = page.bounds(for: .mediaBox)
+    guard page.rotation % 360 == 0 else {
+        // R `thumbnail` is the one PDFKit drawing call that turns the page
+        // R upright; `draw(with:to:)` ignores `/Rotate`, and concatenating
+        // R `transform(for:)` before it turned these pages the wrong way.
+        let turned = page.rotation % 180 != 0
+        let size = NSSize(width: (turned ? box.height : box.width) * scale,
+                          height: (turned ? box.width : box.height) * scale)
+        return page.thumbnail(of: size, for: .mediaBox).cgImage(forProposedRect: nil, context: nil, hints: nil)
+    }
     let width = Int(box.width * scale), height = Int(box.height * scale)
     guard width > 0, height > 0,
           let ctx = CGContext(
@@ -245,7 +275,13 @@ func render(_ page: PDFPage, scale: CGFloat = 3) -> CGImage? {
 /// reading order for a single column. A two-column book would interleave its
 /// columns; none of ours is one.
 func recognise(_ page: PDFPage) -> String {
-    guard let image = render(page) else { return "" }
+    recogniseLines(page).map(\.string).joined(separator: "\n")
+}
+
+/// Each recognised line with where it sits on the page (Vision's normalised
+/// box, origin bottom left).
+func recogniseLines(_ page: PDFPage) -> [(string: String, box: CGRect)] {
+    guard let image = render(page) else { return [] }
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
     request.usesLanguageCorrection = true
@@ -255,11 +291,83 @@ func recognise(_ page: PDFPage) -> String {
         try VNImageRequestHandler(cgImage: image).perform([request])
     } catch {
         print("  page \(page.label ?? "?"): recognition failed, \(error.localizedDescription)")
-        return ""
+        return []
     }
-    return (request.results ?? [])
-        .compactMap { $0.topCandidates(1).first?.string }
-        .joined(separator: "\n")
+    return (request.results ?? []).compactMap { line in
+        line.topCandidates(1).first.map { ($0.string, line.boundingBox) }
+    }
+}
+
+/// One side of a spread: its lines top to bottom, and the number printed on
+/// it, if its header or footer has one.
+struct Side {
+    let lines: [String]
+    let number: Int?
+}
+
+/// A spread's lines split at the middle into the left and right page. By
+/// line, not by cutting the image: a cut at the middle would slice through
+/// any word near a gutter that is never quite centred.
+func sides(_ page: PDFPage) -> [Side] {
+    let lines = recogniseLines(page)
+    return [true, false].map { left in
+        var side = lines.filter { ($0.box.midX < 0.5) == left }
+            .sorted { $0.box.maxY > $1.box.maxY }
+            .map(\.string)
+        let header = printedNumber(side)
+        // R The running header is the same few words on every page; left in,
+        // R it would be a little of every passage.
+        if let header { side.remove(at: header.line) }
+        return Side(lines: side, number: header?.number)
+    }
+}
+
+/// "48 BALINESE GAMELAN MUSIC" or "BASIC PRINCIPLES OF GAMELAN MUSIC 49": a
+/// number of up to three digits at either end of one of the first or last two
+/// lines. A chapter opener or a photo has none.
+func printedNumber(_ lines: [String]) -> (number: Int, line: Int)? {
+    let edges = Array(lines.indices.prefix(2)) + lines.indices.suffix(2)
+    for i in edges {
+        let words = lines[i].split(separator: " ")
+        for word in [words.first, words.last].compactMap({ $0 }) {
+            if word.count <= 3, let n = Int(word), n > 0 { return (n, i) }
+        }
+    }
+    return nil
+}
+
+/// The numbers read off each side in order, with the misreads dropped and the
+/// gaps filled. A read is kept only if it climbs from the last kept one by no
+/// more than the spreads between them hold (two pages each, counting any
+/// left out with `--pages`), plus a few pages the scan skipped.
+/// An unnumbered side is the next kept number counted back, or, where that
+/// would not climb (a photo insert between numbered pages), the last kept
+/// number again. Past the last number read, it counts on.
+func resolvePageNumbers(_ read: [Int?], spreads sheet: [Int]) -> [Int] {
+    var kept = [Int?](repeating: nil, count: read.count)
+    var last: (at: Int, number: Int)?
+    for (i, n) in read.enumerated() {
+        guard let n else { continue }
+        if let last, n <= last.number || n > last.number + 2 * (sheet[i] - sheet[last.at]) + 7 { continue }
+        kept[i] = n
+        last = (i, n)
+    }
+    var out = [Int](repeating: 0, count: read.count)
+    var previous: (at: Int, number: Int)?
+    for i in read.indices {
+        if let n = kept[i] {
+            out[i] = n
+            previous = (i, n)
+            continue
+        }
+        guard let next = kept[(i + 1)...].enumerated().first(where: { $0.element != nil }) else {
+            out[i] = previous.map { $0.number + i - $0.at } ?? 1
+            continue
+        }
+        let back = next.element! - (next.offset + 1)
+        out[i] = back > (previous?.number ?? 0) ? back : previous?.number ?? 1
+    }
+    return out
 }
 
 /// A page with fewer characters than this in its text layer is treated as a
@@ -286,8 +394,41 @@ struct Sentence {
 var sentences: [Sentence] = []
 var recognised = 0
 let tokenizer = NLTokenizer(unit: .sentence)
-for i in 0 ..< pdf.pageCount {
-    if let pageRange, !pageRange.contains(i + 1) { continue }
+func addSentences(_ text: String, page: Int) {
+    tokenizer.string = text
+    tokenizer.enumerateTokens(in: text.startIndex ..< text.endIndex) { range, _ in
+        let s = text[range].trimmingCharacters(in: .whitespaces)
+        if !s.isEmpty { sentences.append(Sentence(page: page, text: s)) }
+        return true
+    }
+}
+let wantedPages = (0 ..< pdf.pageCount).filter { i in
+    pageRanges.map { $0.contains { $0.contains(i + 1) } } ?? true
+}
+
+if spreads {
+    var read: [(pdfPage: Int, side: Side)] = []
+    for i in wantedPages {
+        guard let page = pdf.page(at: i) else { continue }
+        for side in sides(page) {
+            read.append((i + 1, side))
+        }
+        recognised += 1
+        if recognised % 10 == 0 { print("recognised \(recognised) spreads…") }
+    }
+    let numbers = resolvePageNumbers(read.map(\.side.number), spreads: read.map(\.pdfPage))
+    // R Printed so a wrong number is caught here, not in a citation.
+    for k in stride(from: 0, to: read.count, by: 2) {
+        let marks = [k, k + 1].filter { $0 < read.count }
+            .map { "\(numbers[$0])\(read[$0].side.number == nil ? "?" : "")" }
+        print("  PDF \(read[k].pdfPage): \(marks.joined(separator: " | "))")
+    }
+    for (k, entry) in read.enumerated() {
+        addSentences(clean(entry.side.lines.joined(separator: "\n")), page: numbers[k])
+    }
+}
+
+for i in spreads ? [] : wantedPages {
     guard let page = pdf.page(at: i) else { continue }
     var raw = forceOCR ? "" : (page.string ?? "")
     if raw.trimmingCharacters(in: .whitespacesAndNewlines).count < textLayerMinimum {
@@ -295,13 +436,7 @@ for i in 0 ..< pdf.pageCount {
         recognised += 1
         if recognised % 25 == 0 { print("recognised \(recognised) pages…") }
     }
-    let text = clean(raw)
-    tokenizer.string = text
-    tokenizer.enumerateTokens(in: text.startIndex ..< text.endIndex) { range, _ in
-        let s = text[range].trimmingCharacters(in: .whitespaces)
-        if !s.isEmpty { sentences.append(Sentence(page: i + 1, text: s)) }
-        return true
-    }
+    addSentences(clean(raw), page: i + 1)
 }
 
 // MARK: - Passages
@@ -399,7 +534,7 @@ index.books.append(Book(
     title: title,
     author: author ?? previous?.author,
     url: link ?? previous?.url,
-    pageOffset: pageOffset ?? previous?.pageOffset,
+    pageOffset: spreads ? 0 : pageOffset ?? previous?.pageOffset,
     passages: stored
 ))
 
