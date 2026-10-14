@@ -16,7 +16,7 @@
 //   APPLE_PRIVATE_KEY   contents of AuthKey_<KEY_ID>.p8, BEGIN/END lines included
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
 
-import { createClient } from "npm:@supabase/supabase-js@2.45.4";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.45.4";
 import { importPKCS8, SignJWT } from "npm:jose@5.9.6";
 
 const json = (body: unknown, status = 200) =>
@@ -87,18 +87,14 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Gangsa photos: everything in the user's folder. Storage cannot be
-  // emptied by deleting rows, only through its own API.
-  const photos = admin.storage.from("instrument-photos");
-  const { data: files, error: listError } = await photos.list(uid, { limit: 1000 });
-  if (listError) {
-    console.error("photo list failed", listError);
-    return json({ error: "could not delete data" }, 500);
-  }
-  if (files && files.length) {
-    const { error: removeError } = await photos.remove(files.map((f) => `${uid}/${f.name}`));
-    if (removeError) {
-      console.error("photo delete failed", removeError);
+  // Gangsa photos and recorded key sounds: everything in the user's folder
+  // of each bucket. Storage cannot be emptied by deleting rows, only through
+  // its own API.
+  for (const bucket of ["instrument-photos", "instrument-sounds"]) {
+    try {
+      await emptyFolder(admin.storage.from(bucket), uid);
+    } catch (e) {
+      console.error(`${bucket} delete failed`, e);
       return json({ error: "could not delete data" }, 500);
     }
   }
@@ -111,6 +107,34 @@ Deno.serve(async (req) => {
 
   return json({ deleted: true, revoked });
 });
+
+/// Every object under `folder`, however deep. Sounds sit one level further
+/// down than photos (`<user>/<instrument>/<take>.wav`), and `list` is not
+/// recursive: a sub-folder comes back as an entry with no id, to be listed
+/// in turn. Paged, because `list` and `remove` both stop at 1000.
+async function emptyFolder(
+  store: ReturnType<SupabaseClient["storage"]["from"]>,
+  folder: string,
+) {
+  const page = 1000;
+  const files: string[] = [];
+  const folders = [folder];
+  while (folders.length) {
+    const dir = folders.pop()!;
+    for (let offset = 0; ; offset += page) {
+      const { data, error } = await store.list(dir, { limit: page, offset });
+      if (error) throw error;
+      for (const entry of data ?? []) {
+        (entry.id ? files : folders).push(`${dir}/${entry.name}`);
+      }
+      if (!data || data.length < page) break;
+    }
+  }
+  for (let i = 0; i < files.length; i += page) {
+    const { error } = await store.remove(files.slice(i, i + page));
+    if (error) throw error;
+  }
+}
 
 /// Exchange the one-time authorization code for a refresh token, then revoke
 /// it — which ends the app's access to the Apple ID entirely, as if the
