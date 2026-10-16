@@ -2,16 +2,19 @@
 //  PatternBackground.swift
 //  Kotek
 //
-//  The ground every screen sits on: warm brown, and across it one row of the
-//  carved-leaf motif — each 90% of the screen tall, every other one turned
-//  upside down, so they interlock like a row of teeth — running slowly to the
+//  The ground every screen sits on: warm brown, and across it two rows of the
+//  carved motif — one hanging from the top edge, one standing on the bottom,
+//  half a motif apart so they interlock like teeth — running slowly to the
 //  right, forever, like a marquee.
 //
-//  The motif (`bg-motif`, from the October 2026 revamp) is ONE outline leaf,
-//  wide at the top and tapering to a point. Hanging from the top edge it
-//  points down; flipped and standing on the bottom edge it points up; half a
-//  leaf apart, each fills the gap the other's taper leaves. It is a template
-//  image, so its colour is `Theme.pattern` — the asset catalog's.
+//  The motif (`bg-motif`, the designer's second pass, October 2026) is ONE
+//  outline unit standing up: a fan at the foot rising to a flame-shaped tip.
+//  The hanging row is the same file turned over. It is a template image, so
+//  its colour is `Theme.pattern` — the asset catalog's.
+//
+//  The proportions are the design's: each motif is 1/1.2 of the band, so the
+//  rows overlap by all but a fifth of a motif, and neighbours sit 6.5% of a
+//  motif's width apart rather than touching.
 //
 //  Core Animation, not SwiftUI: each row's period is drawn into a bitmap
 //  once, and a `Marquee` repeats that texture across the screen and slides it
@@ -30,12 +33,14 @@ struct PatternBackground: View {
     /// The artwork's proportions, read from the asset rather than typed in —
     /// a hardcoded size has gone stale in this file twice before.
     private static let motifAspect: CGFloat = {
-        guard let size = UIImage(named: assetName)?.size, size.height > 0 else { return 212.0 / 364.0 }
+        guard let size = UIImage(named: assetName)?.size, size.height > 0 else { return 342.0 / 424.0 }
         return size.width / size.height
     }()
 
-    /// Each leaf's height, as a share of the screen's.
-    private static let heightFraction: CGFloat = 0.9
+    /// Each motif's height, as a share of the screen's.
+    private static let heightFraction: CGFloat = 1 / 1.2
+    /// From one motif to the next, as a share of a motif's width.
+    private static let pitch: CGFloat = 1.065
 
     /// Points per second, travelling right.
     var speed: Double = 9
@@ -67,7 +72,7 @@ struct PatternBackground: View {
     var body: some View {
         GeometryReader { geo in
             let height = geo.size.height
-            let period = height * Self.heightFraction * Self.motifAspect
+            let period = height * Self.heightFraction * Self.motifAspect * Self.pitch
             let count = Int((geo.size.width / period).rounded(.up)) + 2
             ZStack {
                 if showsGround { Theme.ground }
@@ -110,24 +115,27 @@ struct PatternBackground: View {
     }
 
     /// One period of one row, for a screen this tall. The hanging row is a
-    /// leaf from the top at the left edge; the standing row is the upturned
-    /// leaves either side of it, cut at the edges so the copies join without
-    /// a seam. Drawn once per height.
+    /// motif turned over, from the top, in the middle; the standing row is the
+    /// upright motifs either side of it, cut at the edges so the copies join
+    /// without a seam. Drawn once per height.
     private static func row(hanging: Bool, height: CGFloat) -> UIImage {
         let key = "\(hanging)-\(height)"
         if let cached = cache[key] { return cached }
         let motif = CGSize(width: height * heightFraction * motifAspect, height: height * heightFraction)
+        let period = motif.width * pitch
         let leaf = UIImage(named: assetName)?
             .withTintColor(UIColor(named: "PatternBackground") ?? .brown, renderingMode: .alwaysOriginal)
-        let image = Marquee.render(size: CGSize(width: motif.width, height: height)) { cg in
+        let image = Marquee.render(size: CGSize(width: period, height: height)) { cg in
             if hanging {
-                leaf?.draw(in: CGRect(origin: .zero, size: motif))
-            } else {
-                // Turned over and stood on the bottom edge, half a leaf either side.
-                cg.translateBy(x: 0, y: height)
+                // Turned over, from the top edge, centred in the period.
+                cg.translateBy(x: 0, y: motif.height)
                 cg.scaleBy(x: 1, y: -1)
-                for x in [-motif.width / 2, motif.width / 2] {
-                    leaf?.draw(in: CGRect(origin: CGPoint(x: x, y: 0), size: motif))
+                leaf?.draw(in: CGRect(origin: CGPoint(x: (period - motif.width) / 2, y: 0), size: motif))
+            } else {
+                // Upright on the bottom edge, half a period either side.
+                for x in [-period / 2, period / 2] {
+                    let origin = CGPoint(x: x + (period - motif.width) / 2, y: height - motif.height)
+                    leaf?.draw(in: CGRect(origin: origin, size: motif))
                 }
             }
         }

@@ -14,7 +14,7 @@
 //  Palette (the October 2026 revamp) lives in the asset catalog, so the
 //  designers can change a colour without a code edit:
 //    Background #2A211C · PatternBackground #312721 · Card #3D322C
-//    TitleText #C29A59  · DescriptionText #7A5E4E   · LoadingBar #EE6161
+//    TitleText #C29A59  · DescriptionText #7A5E4E   · LoadingBar #8D3021
 //  The revamp is one family — gold on brown. There is no cream any more: text
 //  that was cream is the title gold, and supporting text is the description
 //  brown. Cards are a step LIGHTER than the ground now, not darker.
@@ -57,6 +57,9 @@ enum Theme {
     /// A bilah as it is struck, on the splash's gangsa. Read off the
     /// mockup — not on the palette sheet yet.
     static let keyHighlight = Color("KeyHighlight")
+    /// A bilah the player's hand has just stopped ringing — see
+    /// `GangsaTable`. Read off the mockup, like `keyHighlight`.
+    static let keyDampened = Color("KeyDampened")
     /// Carved teak, for the pelawah and anything standing in for wood.
     static let wood = Color(hex: 0x8B5A32)
     /// Struck bronze — the bilah themselves.
