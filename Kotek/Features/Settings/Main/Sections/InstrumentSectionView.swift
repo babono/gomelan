@@ -4,6 +4,11 @@
 //
 //  Settings card for renaming, recalibrating, and deleting the active gangsa.
 //
+//  The strike controller and the note clips come first: this version plays on
+//  the waterfall, hears strikes from the sensors and sounds your own recorded
+//  bilah. Re-align keys and Calibrate voice only serve the camera mode, so
+//  they moved to Deprecated.
+//
 
 import SwiftUI
 
@@ -54,9 +59,7 @@ struct InstrumentSectionView: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(
-                    "\(app.profile.keyCount) keys · \(app.profile.calibratedKeyCount) tuned · \(app.profile.hasLearnedBaseline ? "voice learned" : "no voice yet")"
-                )
+                Text("\(app.profile.keyCount) keys · \(recordedClips) of \(app.profile.keyCount) note clips")
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
 
@@ -67,13 +70,9 @@ struct InstrumentSectionView: View {
 
             controller
 
+            noteClips
+
             FlowLayout(spacing: 10) {
-                SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") {
-                    app.realign()
-                }
-                SecondaryButton(title: "Calibrate voice", systemImage: "waveform") {
-                    app.openCalibration()
-                }
                 SecondaryButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath") {
                     app.openChooseInstrument()
                 }
@@ -136,6 +135,25 @@ struct InstrumentSectionView: View {
                 }
             }
         }
+    }
+
+    /// This gangsa's own recorded bilah (`NoteClipCapture`). A key without a
+    /// clip plays the bundled sample, so this is optional too.
+    private var noteClips: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel("Note clips")
+            Text("Record each bilah so the guide and partner sound like your gangsa.")
+                .font(.sans(14))
+                .foregroundStyle(Theme.cream.opacity(0.62))
+                .frame(maxWidth: 520, alignment: .leading)
+            SecondaryButton(title: "Capture note clips", systemImage: "waveform.badge.mic") {
+                app.openNoteCapture()
+            }
+        }
+    }
+
+    private var recordedClips: Int {
+        app.profile.keys.filter { $0.soundFile != nil }.count
     }
 
     private func controllerLine(_ link: ControllerLink) -> String {
