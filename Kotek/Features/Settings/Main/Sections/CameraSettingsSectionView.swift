@@ -2,7 +2,7 @@
 //  CameraSettingsSectionView.swift
 //  Kotek
 //
-//  Settings card for camera mount focus and exposure locking.
+//  Camera mount focus and exposure locking, inside the Deprecated card.
 //
 
 import SwiftUI
@@ -16,8 +16,8 @@ struct CameraSettingsSectionView: View {
                 .tint(Theme.terracotta).frame(maxWidth: 360).foregroundStyle(Theme.cream)
             Text(
                 app.fixedMount
-                    ? "Focus and exposure lock once the scene is set. Steadier image, and the keys stay where you aligned them — the right choice on a stand."
-                    : "Focus and exposure follow the scene, for a handheld phone. On a stand this hunts every time a hand crosses the keys."
+                    ? "Focus and exposure lock once set. Best on a stand."
+                    : "Focus and exposure follow the scene, for a handheld phone."
             )
             .font(.sans(13)).foregroundStyle(Theme.cream.opacity(0.75)).frame(maxWidth: 360)
         }

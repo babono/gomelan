@@ -99,8 +99,6 @@ final class PlayViewModel {
         engine.leniency = app.judgementLeniency
         engine.callsStrokes = app.callsStrokes
         engine.scoresWrongBar = app.scoresWrongBar
-        engine.metronomeEnabled = app.metronomeEnabled
-        engine.referenceToneEnabled = app.referenceToneEnabled
         engine.sessionSubtitle = sessionSubtitle
         engine.onComplete = { [weak self] result in
             Task { @MainActor in

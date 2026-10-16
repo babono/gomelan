@@ -68,7 +68,7 @@ struct AccountSectionView: View {
                     .foregroundStyle(Theme.gold)
 
                 Text(
-                    "Your gangsa and records are only on this iPhone. Link an Apple ID to keep them if you delete the app or change phones."
+                    "Saved on this device only. Link an Apple ID to keep your gangsa and records."
                 )
                 .font(.sans(13))
                 .foregroundStyle(Theme.cream.opacity(0.75))

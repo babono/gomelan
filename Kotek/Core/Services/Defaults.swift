@@ -3,9 +3,9 @@
 //  Kotek
 //
 //  Tiny UserDefaults wrapper for the handful of settings that must survive a
-//  relaunch. Deliberately not a general preferences system: only detection
-//  tuning uses it, because only detection tuning is calibrated against a
-//  specific model and instrument and is expensive to rediscover.
+//  relaunch: detection tuning (calibrated against a specific model and
+//  instrument, expensive to rediscover), judging, and the practice voices.
+//  Deliberately not a general preferences system.
 //
 //  `nonisolated` so it can be read from AppState's property initialisers, which
 //  run before the main actor is established.

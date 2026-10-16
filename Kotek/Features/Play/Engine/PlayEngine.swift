@@ -158,8 +158,10 @@ final class PlayEngine {
 
     // Dependencies set before start
     var cue: CuePlayer?
+    /// Always on in a session; off only for the picker's preview. The
+    /// Settings switch went with the Audio card: one click per beat is the
+    /// pulse a learner holds on to, and nobody turned it off.
     var metronomeEnabled = true
-    var referenceToneEnabled = true
     var onComplete: ((SongResult?) -> Void)?
     /// "Kotekan Telu · Polos" — shown on the results screen.
     var sessionSubtitle = ""

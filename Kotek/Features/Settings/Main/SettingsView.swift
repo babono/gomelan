@@ -2,7 +2,9 @@
 //  SettingsView.swift
 //  Kotek
 //
-//  Settings (PRD §8): recalibrate, tempo, audio cues, detection, and dev test screens.
+//  Settings (PRD §8): account, the gangsa, judging, the old camera mode, and
+//  the dev test screens. Tempo and the guide and partner voices are not here:
+//  they are on the practice screen, where they change without stopping.
 //
 
 import SwiftUI
@@ -51,32 +53,16 @@ private struct SettingsContentView: View {
                             InstrumentSectionView(viewModel: vm)
                         }
 
-                        section(.debug) {
-                            DebugSectionView(app: app)
-                        }
-
-                        section(.tempo) {
-                            TempoSectionView(app: app)
-                        }
-
-                        section(.audio) {
-                            AudioSectionView(app: app)
-                        }
-
                         section(.judging) {
                             JudgingSectionView(app: app)
                         }
 
-                        section(.camera) {
-                            CameraSettingsSectionView(app: app)
-                        }
-
-                        section(.detection) {
-                            DetectionSectionView(app: app)
-                        }
-
                         section(.deprecated) {
                             DeprecatedSectionView(app: app)
+                        }
+
+                        section(.debug) {
+                            DebugSectionView(app: app)
                         }
                     }
                     .padding(.horizontal, 28)
