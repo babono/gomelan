@@ -95,8 +95,6 @@ final class WaterfallPlayViewModel {
         engine.leniency = app.judgementLeniency
         engine.callsStrokes = app.callsStrokes
         engine.scoresWrongBar = app.scoresWrongBar
-        engine.metronomeEnabled = app.metronomeEnabled
-        engine.referenceToneEnabled = app.referenceToneEnabled
         engine.partnerAudible = app.partnerAudible
         engine.yourVoiceAudible = app.yourVoiceAudible
         engine.sessionSubtitle = title

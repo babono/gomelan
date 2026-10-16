@@ -69,7 +69,6 @@ final class CoopPlayViewModel {
         for lane in lanes {
             let engine = lane.engine
             engine.cue = cue
-            engine.metronomeEnabled = app.metronomeEnabled
             engine.colotomicAudible = lane.id == 0
             engine.partnerAudible = false
             engine.yourVoiceAudible = guideVoices

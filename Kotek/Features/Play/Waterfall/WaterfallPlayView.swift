@@ -129,7 +129,8 @@ private struct WaterfallContentView: View {
     // MARK: - Chrome
 
     private func topBar(tempo: Binding<Double>) -> some View {
-        HStack(spacing: 12) {
+        @Bindable var bindableApp = app
+        return HStack(spacing: 12) {
             Button(action: vm.pause) {
                 Image(systemName: "pause.fill")
                     .font(.symbol(14, weight: .semibold))
@@ -156,6 +157,8 @@ private struct WaterfallContentView: View {
             Spacer()
 
             HalfSwitch(chosenHalf: app.chosenHalf) { app.setHalf($0) }
+                .fixedSize()
+            VoicesMenu(guide: $bindableApp.yourVoiceAudible, partner: $bindableApp.partnerAudible)
                 .fixedSize()
             TempoPicker(tempoScale: tempo)
                 .fixedSize()

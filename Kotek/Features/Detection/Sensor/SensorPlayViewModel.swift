@@ -116,8 +116,6 @@ final class SensorPlayViewModel {
         engine.leniency = app.judgementLeniency
         engine.callsStrokes = true
         engine.scoresWrongBar = app.scoresWrongBar
-        engine.metronomeEnabled = app.metronomeEnabled
-        engine.referenceToneEnabled = app.referenceToneEnabled
         // Partner on: you are playing one half of an interlocking figure, and
         // without the other half there is nothing to lock into.
         engine.partnerAudible = true

@@ -12,7 +12,7 @@ import Foundation
 /// `allCases` IS the running order — the rail reads "where am I" as the last
 /// case whose card has passed the top of the screen.
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case account, instrument, debug, tempo, audio, judging, camera, detection, deprecated
+    case account, instrument, judging, deprecated, debug
 
     var id: String {
         rawValue
@@ -24,24 +24,15 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .account: "Account"
         case .instrument: ""
-        case .debug: "Debug"
-        case .tempo: "Practice tempo"
-        case .audio: "Audio cues"
         case .judging: "Judging"
-        case .camera: "Camera"
-        case .detection: "Detection"
         case .deprecated: "Deprecated"
+        case .debug: "Debug"
         }
     }
 
-    /// The rail label — shorter than the heading where the heading has room to
-    /// be a sentence and the chip does not.
+    /// The rail label. The same as the heading now every heading is one word.
     var chip: String {
-        switch self {
-        case .tempo: "Tempo"
-        case .audio: "Audio"
-        default: title
-        }
+        title
     }
 }
 

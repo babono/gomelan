@@ -2,7 +2,7 @@
 //  DetectionSectionView.swift
 //  Kotek
 //
-//  Settings card for selecting detection mode (camera, heardOnly, corroborated).
+//  Detection mode (camera, heardOnly, corroborated), inside the Deprecated card.
 //
 
 import SwiftUI
@@ -35,8 +35,8 @@ struct DetectionSectionView: View {
             if app.profile.controller != nil {
                 Text(
                     app.controllerConnected
-                        ? "The strike controller is connected: keys with a sensor are judged by it alone, and this setting covers the rest."
-                        : "When the strike controller connects, keys with a sensor are judged by it alone. Until then, this setting covers every key."
+                        ? "Keys with a sensor use the controller; this covers the rest."
+                        : "Covers every key until the strike controller connects."
                 )
                 .font(.sans(13))
                 .foregroundStyle(Theme.cream.opacity(0.75))
@@ -45,7 +45,7 @@ struct DetectionSectionView: View {
 
             if app.detectionMode == .heardOnly, app.yourVoiceAudible {
                 Text(
-                    "Your half is playing through the speaker on the same keys you strike, which raises the bar an attack has to clear. Mute it under Audio cues if strikes start going missing."
+                    "The guide voice makes strokes harder to hear. Turn Guide off if strikes go missing."
                 )
                 .font(.sans(13))
                 .foregroundStyle(Theme.miss)

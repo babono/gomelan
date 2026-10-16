@@ -57,8 +57,17 @@ final class AppState {
     ///
     /// The gong is on neither list. It is the frame everything is judged
     /// against, so it is never optional.
-    var partnerAudible: Bool = false
-    var yourVoiceAudible: Bool = true
+    ///
+    /// Remembered across launches, like the judging settings: they are toggled
+    /// from the practice screen's Voices menu now, and a choice that quietly
+    /// reset every launch read as the menu not working.
+    var partnerAudible: Bool = Defaults.bool("partnerAudible", false) {
+        didSet { Defaults.set("partnerAudible", partnerAudible) }
+    }
+
+    var yourVoiceAudible: Bool = Defaults.bool("yourVoiceAudible", true) {
+        didSet { Defaults.set("yourVoiceAudible", yourVoiceAudible) }
+    }
 
     /// Whether the practice screen's bottom panel — the half switch, the tempo,
     /// the voice chips and the score — is up.
@@ -78,9 +87,6 @@ final class AppState {
 
     /// Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
-    // Audio cue toggles (§5.4)
-    var metronomeEnabled: Bool = true
-    var referenceToneEnabled: Bool = true
 
     /// Whether a stroke on a bilah nothing is due on may take the note that is
     /// due, scored as a wrong bar. See `PlayEngine.scoresWrongBar` for why this
@@ -208,11 +214,11 @@ final class AppState {
         var detail: String {
             switch self {
             case .cameraOnly:
-                "The microphone is ignored, so nothing in the room can trigger a stroke or block one. Use this in a loud hall — a mallet that hovers over a bar can still register."
+                "Camera only. Best in a loud room."
             case .cameraAndMic:
-                "Either can register a stroke. The most willing of the three, and the microphone is what catches a bar struck twice in a row, which the camera cannot see."
+                "Either can register a stroke. Catches repeated strokes best."
             case .heardOnly:
-                "A stroke counts only where the camera sees one and the microphone hears the attack. Use this when strokes register that you did not play."
+                "Both must agree. Use this if strokes register that you didn't play."
             }
         }
     }
