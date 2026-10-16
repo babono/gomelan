@@ -78,7 +78,7 @@ struct GangsaTable: View {
 
     private func drawKeys(_ context: GraphicsContext, scale s: CGFloat, at t: Double) {
         for i in 0 ..< keyCount {
-            let state = animated ? state(bar: i, at: t) : BarState(glow: 0, dip: 0)
+            let state = animated ? state(bar: i, at: t) : BarState()
             let rect = CGRect(
                 x: (keyCenter(i) - keyWidth / 2) * s,
                 y: Self.keyTop * s + state.dip,
@@ -88,7 +88,13 @@ struct GangsaTable: View {
             // Rounded on top only: the foot sits flat on the rail.
             let shape = UnevenRoundedRectangle(topLeadingRadius: 5 * s, topTrailingRadius: 5 * s)
                 .path(in: rect)
-            let face = state.glow <= 0 ? Theme.gold : Theme.gold.mix(with: Theme.keyHighlight, by: state.glow)
+            let face = if state.glow > 0 {
+                Theme.gold.mix(with: Theme.keyHighlight, by: state.glow)
+            } else if state.damp > 0 {
+                Theme.gold.mix(with: Theme.keyDampened, by: state.damp)
+            } else {
+                Theme.gold
+            }
             context.fill(shape, with: .color(face))
         }
     }
@@ -144,7 +150,9 @@ struct GangsaTable: View {
     // stroke N comes from hashing N, so nothing is stored, nothing drifts out of
     // sync, and the row can be drawn in one Canvas pass with no per-bar views to
     // diff. Bronze rings for about a second after it is hit, so the glow decays
-    // rather than switching.
+    // rather than switching — until the next stroke, when the free hand stops
+    // it, as a gangsa player damps each key as they strike the next. A damped
+    // bar goes dull (`Theme.keyDampened`) and eases back to bronze.
 
     /// Seconds per stroke — roughly a brisk kotekan.
     private let stroke = 0.26
@@ -158,11 +166,17 @@ struct GangsaTable: View {
     /// mallet deflects the bar for an instant and it recovers, but the tone
     /// rings on for a second afterwards.
     private let dipDecay = 0.09
+    /// How long a damped bar takes to brighten back to bronze. It holds
+    /// dull for most of a stroke first, so the damp reads as a beat of its
+    /// own rather than a flicker.
+    private let dampFade = 0.45
 
-    /// How lit a bar is, and how far it has been pushed down.
+    /// How lit a bar is, how far it has been pushed down, and how dull it is
+    /// from being damped.
     private struct BarState {
-        var glow: Double
-        var dip: CGFloat
+        var glow: Double = 0
+        var dip: CGFloat = 0
+        var damp: Double = 0
     }
 
     /// Both derived from the age of the most recent strike on this bar.
@@ -172,12 +186,13 @@ struct GangsaTable: View {
             let n = currentStroke - back
             guard n >= 0, struckBar(stroke: n) == bar else { continue }
             let age = t - Double(n) * stroke // most recent hit wins
-            return BarState(
-                glow: max(0, 1 - age / decay),
-                dip: maxDip * CGFloat(exp(-age / dipDecay))
-            )
+            let dip = maxDip * CGFloat(exp(-age / dipDecay))
+            guard back > 0 else { return BarState(glow: max(0, 1 - age / decay), dip: dip) }
+            // Damped the moment the next stroke landed.
+            let since = age - stroke
+            return BarState(dip: dip, damp: max(0, 1 - pow(since / dampFade, 2)))
         }
-        return BarState(glow: 0, dip: 0)
+        return BarState()
     }
 
     /// Which bar the Nth stroke lands on.
