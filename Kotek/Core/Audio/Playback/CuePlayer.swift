@@ -5,7 +5,6 @@
 //  The audio cue layer (PRD §5.4). Because the screen is small and the player
 //  stands over the instrument, audio carries as much guidance as vision:
 //
-//   - metronome click on the beat (toggleable)
 //   - reference tone: the upcoming key, played quietly one beat ahead — the
 //     closest digital equivalent to learning by ear
 //   - short distinct hit/miss feedback sounds
@@ -205,11 +204,6 @@ final class CuePlayer {
     }
 
     // MARK: - Cues
-
-    /// A subtle metronome click on the beat.
-    func playClick() {
-        schedule(tone(frequency: 1600, durationMs: 25, gain: 0.15))
-    }
 
     /// The calibrated pitch of the upcoming key, played quietly one beat ahead.
     func playReference(hz: Double) {

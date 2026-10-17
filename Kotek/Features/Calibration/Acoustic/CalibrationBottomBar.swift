@@ -63,7 +63,6 @@ struct CalibrationBottomBar: View {
 
             PillButton(
                 title: learned ? "Continue" : "Listening…",
-                trailingSystemImage: learned ? "arrow.right" : nil,
                 style: learned ? .filled : .outlined,
                 tint: Theme.copper,
                 compact: true

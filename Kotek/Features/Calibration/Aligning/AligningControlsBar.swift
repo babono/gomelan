@@ -70,7 +70,6 @@ struct AligningBottomBar: View {
 
             PillButton(
                 title: "Next",
-                trailingSystemImage: "arrow.right",
                 style: .filled,
                 tint: Theme.copper,
                 compact: true

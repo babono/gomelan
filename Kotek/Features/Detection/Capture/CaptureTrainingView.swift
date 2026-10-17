@@ -90,7 +90,7 @@ struct CaptureTrainingView: View {
                     .overlay(alignment: .top) {
                         Text(isTarget ? "\(key.index) · \(intent.title.uppercased())"
                             : (neighbour ? "\(key.index) · NEIGHBOUR" : "\(key.index)"))
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.sans(10, weight: .bold).monospacedDigit())
                             .foregroundStyle(isTarget ? Theme.terracotta
                                 : (neighbour ? Theme.copper : .white.opacity(0.6)))
                             .padding(.horizontal, 5).padding(.vertical, 2)
@@ -130,7 +130,7 @@ struct CaptureTrainingView: View {
                 }
                 Spacer()
                 Text(totalLabel)
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.sans(12, weight: .bold).monospacedDigit())
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12).padding(.vertical, 7)
                     .background(.black.opacity(0.6), in: Capsule())
@@ -152,16 +152,16 @@ struct CaptureTrainingView: View {
     private var tallyPanel: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text("CAPTURED")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(.sans(10, weight: .bold).monospacedDigit())
                 .foregroundStyle(Theme.copper)
             ForEach(["strike", "hover", "damp", "neighbour", "empty", "idle"], id: \.self) { prefix in
                 HStack {
                     Text(prefix)
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.sans(10).monospacedDigit())
                         .foregroundStyle(.white.opacity(0.6))
                     Spacer()
                     Text("\(counts[prefix] ?? 0)")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .font(.sans(11, weight: .semibold).monospacedDigit())
                         .foregroundStyle(prefix == "strike" ? Theme.hit : .white)
                 }
             }

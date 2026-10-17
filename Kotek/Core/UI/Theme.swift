@@ -99,6 +99,8 @@ enum Theme {
     static let buttonFill = Color("Tertiary")
     /// Type sitting on that slab.
     static let onButtonFill = Color("LaunchBackground")
+    /// Type on the gold-tinted glass of the main action (`glassButton(filled:)`).
+    static let onGlassFill = onButtonFill
 
     // MARK: - Geometry
 
@@ -163,8 +165,10 @@ enum Theme {
     static let keyCornerRadius: CGFloat = 6
     /// Practice speeds, slowest first. 1× is the tempo the figure is notated
     /// at; below it is for getting a shape into the hands, above it is for
-    /// proving it is actually there.
-    static let tempoScales: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5]
+    /// proving it is actually there. 1.75× and 2× because a gangsa section
+    /// really does play kotekan that fast — 1.5× stopped short of performance
+    /// speed.
+    static let tempoScales: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
 
     /// "0.75×". Trailing zeroes trimmed — "1.0×" beside "0.75×" reads as a
     /// precision the setting does not have.

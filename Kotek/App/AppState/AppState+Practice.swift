@@ -119,7 +119,7 @@ extension AppState {
             kotekan: selectedKotekan,
             half: chosenHalf,
             tempoScale: tempoScale,
-            leniency: judgementLeniency
+            leniency: PlayEngine.standardLeniency
         )
         let instrument = profile
         Task { [sessionRepo, log] in

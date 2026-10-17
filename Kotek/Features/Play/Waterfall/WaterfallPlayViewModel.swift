@@ -24,6 +24,11 @@ final class WaterfallPlayViewModel {
     private let displayLink = DisplayLink()
 
     var paused = false
+    /// 3, 2, 1 between pressing Resume and the clock running again — nil
+    /// otherwise. Resuming straight away dropped the player back into a
+    /// falling figure with their hands still off the bilah.
+    private(set) var resumeCount: Int?
+    private var resumeTask: Task<Void, Never>?
     private var pauseStartedAt: Double = 0
     /// Flat (top-down) or tilted towards the player. Remembered, because the
     /// view you like is the one you want next time.
@@ -46,15 +51,6 @@ final class WaterfallPlayViewModel {
     var title: String {
         let name = app.selectedKotekan?.name ?? ""
         return "\(name) · \(app.chosenHalf.title) · \(Theme.tempoLabel(app.tempoScale))"
-    }
-
-    var record: Double? {
-        guard let k = app.selectedKotekan else { return nil }
-        return app.profile.record(
-            kotekanId: k.id,
-            half: app.chosenHalf.rawValue,
-            tempo: app.tempoScale
-        )?.accuracy
     }
 
     var keyCount: Int {
@@ -92,9 +88,6 @@ final class WaterfallPlayViewModel {
 
     func setup() {
         engine.cue = cue
-        engine.leniency = app.judgementLeniency
-        engine.callsStrokes = app.callsStrokes
-        engine.scoresWrongBar = app.scoresWrongBar
         engine.partnerAudible = app.partnerAudible
         engine.yourVoiceAudible = app.yourVoiceAudible
         engine.sessionSubtitle = title
@@ -130,6 +123,7 @@ final class WaterfallPlayViewModel {
     }
 
     func teardown() {
+        resumeTask?.cancel()
         displayLink.stop()
         sensor.onHit = nil
         // Not `use(.none)`: RootView hands the controller back to the active
@@ -147,21 +141,39 @@ final class WaterfallPlayViewModel {
         cue.stopKeySamples()
     }
 
+    /// Count 3, 2, 1, then run. Still paused while it counts — the countdown
+    /// is part of the pause, so `resumeAfterPause` shifts the clock past it.
     func resume() {
+        guard paused, resumeCount == nil else { return }
+        resumeTask = Task { [weak self] in
+            for n in [3, 2, 1] {
+                self?.resumeCount = n
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
+            }
+            self?.finishResume()
+        }
+    }
+
+    private func finishResume() {
+        resumeCount = nil
         guard paused else { return }
         engine.resumeAfterPause(seconds: CACurrentMediaTime() - pauseStartedAt)
         displayLink.start()
         paused = false
     }
 
-    func end() {
-        displayLink.stop()
-        engine.end()
+    /// Backgrounded mid-count: stay paused, and ask for Resume again.
+    private func cancelResume() {
+        resumeTask?.cancel()
+        resumeTask = nil
+        resumeCount = nil
     }
 
-    func leave() {
-        teardown()
-        app.backToKotekan()
+    func end() {
+        cancelResume()
+        displayLink.stop()
+        engine.end()
     }
 
     func halfChanged() {
@@ -171,11 +183,17 @@ final class WaterfallPlayViewModel {
     }
 
     func tempoChanged(_ scale: Double) {
-        engine.setTempoScale(scale)
+        // Tempo is set from the pause screen now. The clock is frozen at the
+        // moment of pausing, so anchor the change there: anchored to "now",
+        // `resumeAfterPause` then added the whole pause on top and the
+        // playhead jumped back by however long the menu took.
+        engine.setTempoScale(scale, now: paused ? pauseStartedAt : CACurrentMediaTime())
         engine.sessionSubtitle = title
     }
 
     func handleScenePhase(_ phase: ScenePhase) {
-        if phase != .active { pause() }
+        guard phase != .active else { return }
+        cancelResume()
+        pause()
     }
 }

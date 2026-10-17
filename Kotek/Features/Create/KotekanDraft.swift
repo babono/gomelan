@@ -7,7 +7,7 @@
 //  corrects it, and Save turns it into a `Kotekan`.
 //
 //  Positions are TICKS, 96 to the quarter, not grid slots. The piano roll snaps
-//  to anything from 1/2 to 1/32 including triplets and dots, and 96 is the
+//  to anything from a whole bar to 1/32 including triplets and dots, and 96 is the
 //  smallest count that puts every one of those on a whole number (a 1/32
 //  triplet is 8, a dotted 1/32 is 18). A slot grid would have to pick its
 //  resolution before the player had written a note.
@@ -29,7 +29,14 @@ struct Subdivision: Hashable, Identifiable {
     var denominator: Int
     var feel: Feel = .straight
 
-    static let denominators = [2, 4, 8, 16, 32]
+    /// 1 is a whole bar, offered straight only: a whole-bar triplet or a
+    /// dotted one runs past the bar it starts in.
+    static let denominators = [1, 2, 4, 8, 16, 32]
+
+    static func denominators(_ feel: Feel) -> [Int] {
+        feel == .straight ? denominators : denominators.filter { $0 > 1 }
+    }
+
     static let sixteenth = Subdivision(denominator: 16)
 
     var id: String {
@@ -47,15 +54,16 @@ struct Subdivision: Hashable, Identifiable {
 
     var label: String {
         switch feel {
-        case .straight: "1/\(denominator)"
+        case .straight: denominator == 1 ? "1" : "1/\(denominator)"
         case .triplet: "1/\(denominator) T"
         case .dotted: "1/\(denominator) ·"
         }
     }
 }
 
-/// One stroke. `length` is only how wide the piano roll draws it — a bilah
-/// rings until it is damped, so the engine only ever reads `tick`.
+/// One stroke. `length` is how long the player means it to ring — written at
+/// the snap value, then dragged longer or shorter on the piano roll. The
+/// engine only reads `tick`: a bilah rings until it is damped.
 struct DraftNote: Hashable, Identifiable {
     var id = UUID()
     var half: KotekanHalf
@@ -99,7 +107,9 @@ final class KotekanDraft {
     /// was one more control for something the notes already say, and it cut
     /// notes off when stepped down.
     var bars: Int {
-        let last = (notes.map(\.tick) + colotomic.map(\.tick)).max() ?? 0
+        // A note's end counts too, so one dragged across a bar line takes the
+        // figure with it.
+        let last = (notes.map { $0.tick + $0.length - 1 } + colotomic.map(\.tick)).max() ?? 0
         return last / Self.ticksPerBar + 1
     }
 
@@ -146,6 +156,22 @@ final class KotekanDraft {
         notes.removeAll { $0.half == half && $0.tick == tick }
         guard let key else { return }
         notes.append(DraftNote(half: half, key: key, tick: tick, length: length ?? slotTicks))
+    }
+
+    /// Stretch or shorten a stroke, from the handle on its end. Never past the
+    /// next stroke of the same half — a half is one mallet, so its next stroke
+    /// is where this one is damped — nor past the end of the timeline.
+    func resize(_ id: DraftNote.ID, length: Int) {
+        guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        let note = notes[i]
+        let next = notes
+            .filter { $0.half == note.half && $0.tick > note.tick }
+            .map(\.tick).min() ?? Self.timelineTicks
+        notes[i].length = length.clamped(to: 1, next - note.tick)
+    }
+
+    func length(of id: DraftNote.ID) -> Int? {
+        notes.first { $0.id == id }?.length
     }
 
     /// Add or take out a colotomic stroke. It snaps to the NEAREST line rather

@@ -96,9 +96,6 @@ final class PlayViewModel {
         }
 
         engine.cue = cue
-        engine.leniency = app.judgementLeniency
-        engine.callsStrokes = app.callsStrokes
-        engine.scoresWrongBar = app.scoresWrongBar
         engine.sessionSubtitle = sessionSubtitle
         engine.onComplete = { [weak self] result in
             Task { @MainActor in

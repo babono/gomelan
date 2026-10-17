@@ -88,32 +88,10 @@ final class AppState {
     /// Practice-mode tempo (§5.3): 0.5, 0.75, 1.0
     var tempoScale: Double = 1.0
 
-    /// Whether a stroke on a bilah nothing is due on may take the note that is
-    /// due, scored as a wrong bar. See `PlayEngine.scoresWrongBar` for why this
-    /// defaults off — in camera-only mode it is how a travelling mallet destroys
-    /// a note the player then plays correctly.
-    var scoresWrongBar: Bool = Defaults.bool("scoresWrongBar", false) {
-        didSet { Defaults.set("scoresWrongBar", scoresWrongBar) }
-    }
-
-    /// Whether each stroke's verdict is called on the bilah as it happens.
-    ///
-    /// On by default because without it a miss is INVISIBLE on the instrument —
-    /// see `PlayEngine.Floater`. Off restores the wordless overlay the guidance
-    /// layer was designed around.
-    var callsStrokes: Bool = Defaults.bool("callsStrokes", true) {
-        didSet { Defaults.set("callsStrokes", callsStrokes) }
-    }
-
-    /// How forgiving the timing grades are. 1.0 is the figure as notated.
-    ///
-    /// Deliberately affects the GRADE and not whether a stroke registers. When
-    /// notes go missing entirely that is a matching problem, not a strictness
-    /// one, and reaching for this dial to fix it only hides it — see the note
-    /// on the matcher in `PlayEngine.registerPlayStrike`.
-    var judgementLeniency: Double = Defaults.double("judgementLeniency", 1.25) {
-        didSet { Defaults.set("judgementLeniency", judgementLeniency) }
-    }
+    // R Judging settings (timing leniency, score wrong bars, call each stroke)
+    // R lived here, set from a Judging card in Settings. The card went: the
+    // R session counts the beat in and the kajar keeps it, and nobody tuned
+    // R them. Their defaults are now fixed on `PlayEngine`.
 
     /// A sighting the microphone did not hear is discarded. See `DetectionMode`.
     ///

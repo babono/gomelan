@@ -1,0 +1,88 @@
+//
+//  SearchAndCreateBar.swift
+//  Kotek
+//
+//  The row above a picker's rail on Choose your gangsa and Choose your
+//  kotekan: finding one by name, and adding a new one. Shared so the two
+//  pickers stay one design — they were drawn separately and drifted.
+//
+//  The magnifying glass grows sideways into the field, right where it was
+//  tapped, beside the create button. It used to open a bar at the bottom over
+//  the keyboard, iOS-style, which put the field a screen away from the button
+//  that opened it.
+//
+
+import SwiftUI
+
+struct SearchAndCreateBar: View {
+    @Binding var query: String
+    let prompt: String
+    let createTitle: String
+    let onCreate: () -> Void
+
+    /// The magnifying glass opened into a field.
+    @State private var searching = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Spacer(minLength: 0)
+            if searching {
+                field
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.2, anchor: .trailing).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+            } else {
+                CircleIconButton(systemImage: "magnifyingglass", label: prompt, glass: true) {
+                    setSearching(true)
+                }
+                .transition(.opacity)
+            }
+            CapsuleButton(title: createTitle, trailingSystemImage: "plus", glass: true, action: onCreate)
+        }
+        .padding(.horizontal, 28)
+        .padding(.bottom, 4)
+    }
+
+    private var field: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.symbol(14, weight: .medium))
+                .foregroundStyle(Theme.stone)
+            TextField(prompt, text: $query)
+                .font(.sans(15))
+                .foregroundStyle(Theme.cream)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .focused($focused)
+                // Focused once it exists — set in the same tick as
+                // `searching`, the field wasn't there yet to take it.
+                .onAppear { focused = true }
+            Button { setSearching(false) } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.symbol(16))
+                    .foregroundStyle(Theme.stone)
+                    .frame(width: 32, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.kajar)
+            .accessibilityLabel("Close search")
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, 6)
+        .frame(width: 280, height: 44)
+        .glassButton()
+    }
+
+    /// Closing clears the query too — a hidden filter would leave the rail
+    /// mysteriously short.
+    private func setSearching(_ on: Bool) {
+        if !on { focused = false }
+        withAnimation(.snappy(duration: 0.25)) {
+            searching = on
+            if !on { query = "" }
+        }
+    }
+}

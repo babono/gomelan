@@ -5,7 +5,8 @@
 //  The Create Kotek editor: a piano roll with bilah for rows, modelled on a
 //  DAW's editor (Signal, CapCut's timeline). Tap to write a stroke, tap it
 //  again to take it out. The grid scrolls sideways and pinches to zoom; the
-//  snap value sets the width of a new stroke and where it lands.
+//  snap value sets the width of a new stroke and where it lands, and the grip
+//  on a stroke's end drags it longer or shorter from there.
 //
 //  Record turns the sensors on and makes the line a cursor: it waits for a
 //  hit, writes it there for the half being written, and steps on by the snap
@@ -33,7 +34,7 @@ struct PianoRollView: View {
                 CircleIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
             } trailing: {
                 RecordButton(recording: viewModel.recording) { viewModel.toggleRecording() }
-                CreateCapsuleButton(title: "Next", filled: true) { viewModel.review() }
+                CapsuleButton(title: "Next", filled: true) { viewModel.review() }
                     .disabled(draft.isEmpty)
                     .opacity(draft.isEmpty ? 0.4 : 1)
             }
@@ -134,7 +135,7 @@ private struct PianoRollControls: View {
         Menu {
             ForEach(Subdivision.Feel.allCases, id: \.self) { feel in
                 Section(feel.rawValue.capitalized) {
-                    ForEach(Subdivision.denominators, id: \.self) { d in
+                    ForEach(Subdivision.denominators(feel), id: \.self) { d in
                         let s = Subdivision(denominator: d, feel: feel)
                         Button {
                             viewModel.snap = s
@@ -239,6 +240,21 @@ private struct PianoRollGrid: View {
                             pxPerTick: pxPerTick
                         )
                         .frame(height: rowHeight * CGFloat(rows) + laneHeight)
+                        // Inside the tap below, so a tap on a grip still
+                        // reaches it and takes the stroke out.
+                        .overlay(alignment: .topLeading) {
+                            if viewModel.tool == .notes {
+                                NoteLengthHandles(
+                                    draft: draft,
+                                    notes: notes.filter { $0.half == writing },
+                                    rows: rows,
+                                    rowHeight: rowHeight,
+                                    lead: lead,
+                                    pxPerTick: pxPerTick,
+                                    snapTicks: snap.ticks
+                                )
+                            }
+                        }
                         .contentShape(Rectangle())
                         .onTapGesture { location in
                             tap(
@@ -329,6 +345,72 @@ private struct PianoRollGrid: View {
             // Sound what was written, not what was taken out.
             if draft.notes.count >= before { viewModel.audition(key) }
         }
+    }
+}
+
+/// The grip on the end of each stroke of the half being written: drag it to
+/// make the stroke longer or shorter, in steps of the snap value. Grips rather
+/// than a drag anywhere on a stroke, because a drag on the grid is how the roll
+/// scrolls.
+private struct NoteLengthHandles: View {
+    let draft: KotekanDraft
+    let notes: [DraftNote]
+    let rows: Int
+    let rowHeight: CGFloat
+    let lead: CGFloat
+    let pxPerTick: CGFloat
+    let snapTicks: Int
+
+    /// The stroke being dragged, and its length when the drag began.
+    @State private var dragging: (id: DraftNote.ID, from: Int)?
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(notes) { note in
+                let row = rows - 1 - note.key
+                if row >= 0 {
+                    Capsule()
+                        .fill(Theme.cream.opacity(0.85))
+                        .frame(width: 3, height: max(6, rowHeight * 0.45))
+                        .frame(width: 20, height: rowHeight)
+                        .contentShape(Rectangle())
+                        .gesture(drag(note))
+                        .accessibilityElement()
+                        .accessibilityLabel("Stroke length")
+                        .accessibilityAdjustableAction { direction in
+                            let step = direction == .increment ? snapTicks : -snapTicks
+                            draft.edit { draft.resize(note.id, length: max(snapTicks, note.length + step)) }
+                        }
+                        .position(
+                            x: lead + CGFloat(note.tick + note.length) * pxPerTick - 6,
+                            y: (CGFloat(row) + 0.5) * rowHeight
+                        )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func drag(_ note: DraftNote) -> some Gesture {
+        // Global space: the grip moves as the stroke grows, and a translation
+        // measured in its own space would chase it.
+        DragGesture(minimumDistance: 1, coordinateSpace: .global)
+            .onChanged { value in
+                let from = dragging?.from ?? note.length
+                if dragging == nil { dragging = (note.id, from) }
+                let raw = Double(from) + Double(value.translation.width / pxPerTick)
+                let length = max(snapTicks, Int((raw / Double(snapTicks)).rounded()) * snapTicks)
+                draft.resize(note.id, length: length)
+            }
+            .onEnded { _ in
+                guard let d = dragging else { return }
+                dragging = nil
+                // One undo step for the whole drag, not one per frame: put the
+                // old length back, then write the new one through `edit`.
+                let final = draft.length(of: d.id) ?? d.from
+                draft.resize(d.id, length: d.from)
+                draft.edit { draft.resize(d.id, length: final) }
+            }
     }
 }
 
@@ -561,17 +643,19 @@ private struct PianoRollTransport: View {
             divider
 
             HStack(spacing: 10) {
-                CircleIconButton(systemImage: "stop.fill", label: "Back to start") { viewModel.stopPreview() }
+                CircleIconButton(systemImage: "stop.fill", label: "Back to start") {
+                    viewModel.stopPreview()
+                }
                 if viewModel.recording {
-                    CreateCapsuleButton(title: "Rest") { viewModel.recordRest() }
+                    CapsuleButton(title: "Rest") { viewModel.recordRest() }
                         .accessibilityHint("Steps the line on without writing a note")
                 } else {
                     Button { viewModel.togglePlay() } label: {
                         Image(systemName: viewModel.playing ? "pause.fill" : "play.fill")
                             .font(.symbol(18, weight: .bold))
-                            .foregroundStyle(Theme.onButtonFill)
+                            .foregroundStyle(Theme.onGlassFill)
                             .frame(width: 50, height: 50)
-                            .background(Theme.buttonFill, in: Circle())
+                            .glassButton(filled: true, in: Circle())
                             .contentShape(Circle())
                     }
                     .buttonStyle(.kajar)
@@ -682,7 +766,7 @@ struct PlayheadClock: View {
             Text("/ \(Self.format(draft.ms(atTick: Double(draft.lengthTicks))))")
                 .foregroundStyle(Theme.stone)
         }
-        .font(.system(size: 14, weight: .medium, design: .monospaced))
+        .font(.sans(14, weight: .medium).monospacedDigit())
         .fixedSize()
         .accessibilityElement(children: .combine)
     }
@@ -807,9 +891,8 @@ private struct RecordButton: View {
             .fixedSize()
             .padding(.horizontal, 20)
             .frame(minHeight: 44)
-            .background(recording ? Theme.miss : Theme.cream.opacity(0.08), in: Capsule())
-            .background(.ultraThinMaterial, in: Capsule())
-            .overlay(Capsule().strokeBorder(recording ? .clear : Theme.miss.opacity(0.6), lineWidth: 1))
+            .background(recording ? Theme.miss : .clear, in: Capsule())
+            .tintedButton(Theme.miss)
             .contentShape(Capsule())
         }
         .buttonStyle(.kajar)

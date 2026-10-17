@@ -96,10 +96,9 @@ private struct CoopPlayContentView: View {
                 Image(systemName: "pause.fill")
                     .font(.symbol(14, weight: .semibold))
                     .foregroundStyle(Theme.cream)
-                    .frame(width: 40, height: 34)
-                    .overlay(RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Theme.cream.opacity(0.45), lineWidth: 1))
-                    .contentShape(RoundedRectangle(cornerRadius: 8))
+                    .frame(width: 44, height: 34)
+                    .tintedButton()
+                    .contentShape(Capsule())
             }
             .buttonStyle(.kajar)
             .accessibilityLabel("Pause")

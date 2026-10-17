@@ -52,7 +52,7 @@ struct MalletTestView: View {
                         )
                         .overlay(alignment: .top) {
                             Text("\(key.index) · \(Int(prob * 100))%")
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .font(.sans(11, weight: .bold).monospacedDigit())
                                 .foregroundStyle(isHit ? .green : .white.opacity(0.7))
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
@@ -83,7 +83,7 @@ struct MalletTestView: View {
                             .shadow(color: classifier != nil ? .green : .orange, radius: 4)
 
                         Text(classifier != nil ? "MODEL LOADED" : "NO MODEL")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .font(.sans(12, weight: .bold))
                             .foregroundStyle(.white)
                     }
                     .padding(.horizontal, 14)
@@ -117,7 +117,7 @@ struct MalletTestView: View {
                                         .frame(width: 44, height: 72)
                                 }
                                 Text("\(key.index) · \(Int((scores[key.index] ?? 0) * 100))%")
-                                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                    .font(.sans(9, weight: .semibold).monospacedDigit())
                                     .foregroundStyle(.white.opacity(0.8))
                             }
                         }

@@ -88,7 +88,7 @@ private struct StrikeBaselineContentView: View {
             Button(action: { viewModel.toggleCapture() }) {
                 HStack(spacing: 10) {
                     Image(systemName: viewModel.capturing ? "checkmark" : "waveform.badge.plus")
-                        .font(.title2)
+                        .font(.symbol(22))
                     Text(viewModel.recordTitle)
                 }
                 .font(.sans(17))

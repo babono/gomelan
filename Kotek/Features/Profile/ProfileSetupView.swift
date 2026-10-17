@@ -105,7 +105,6 @@ struct ProfileSetupView: View {
 
                         PillButton(
                             title: isEditing ? "Save" : "Continue",
-                            trailingSystemImage: isEditing ? nil : "arrow.right",
                             style: .filled
                         ) {
                             nameFocused = false

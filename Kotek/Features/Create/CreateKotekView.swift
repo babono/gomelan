@@ -71,54 +71,6 @@ struct CreateTopBar<Leading: View, Trailing: View>: View {
     }
 }
 
-/// A round 44pt glass button holding one symbol — back, play, stop.
-struct CircleIconButton: View {
-    let systemImage: String
-    let label: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.symbol(17, weight: .semibold))
-                .foregroundStyle(Theme.cream)
-                .frame(width: 44, height: 44)
-                .background(Theme.cream.opacity(0.08), in: Circle())
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(Theme.gold.opacity(0.35), lineWidth: 1))
-                .contentShape(Circle())
-        }
-        .buttonStyle(.kajar)
-        .accessibilityLabel(label)
-    }
-}
-
-/// A capsule button with a sentence-case label. `filled` is the step's main
-/// action.
-struct CreateCapsuleButton: View {
-    let title: String
-    var filled = false
-    var fullWidth = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.sans(16, weight: .semibold))
-                .foregroundStyle(filled ? Theme.onButtonFill : Theme.cream)
-                .lineLimit(1)
-                .fixedSize(horizontal: !fullWidth, vertical: false)
-                .padding(.horizontal, 24)
-                .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 44)
-                .background(filled ? Theme.buttonFill : Theme.cream.opacity(0.08), in: Capsule())
-                .background(filled ? AnyShapeStyle(.clear) : AnyShapeStyle(.ultraThinMaterial), in: Capsule())
-                .overlay(Capsule().strokeBorder(filled ? .clear : Theme.gold.opacity(0.35), lineWidth: 1))
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.kajar)
-    }
-}
-
 /// Polos / Sangsih as two pills — which half the grid writes and the sensors
 /// record.
 struct HalfPicker: View {

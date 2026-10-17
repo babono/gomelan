@@ -26,44 +26,52 @@ struct KeyCountView: View {
         VStack(spacing: 0) {
             TopBar(
                 title: "Set up your gangsa",
-                backTitle: "Back",
                 onBack: { app.cancelInstrumentSetup() },
-                trailingText: "1 / 2"
+                trailingText: "1 / 2",
+                // Slim: at full size the header alone took a fifth of a
+                // landscape phone and pushed Next off the bottom.
+                compact: true
             )
 
             HStack(alignment: .center, spacing: 0) {
-                // Question + name
-                VStack(alignment: .leading, spacing: 22) {
+                // Question + name. The photo sits beside the name rather than
+                // under it: stacked, the column ran past the bottom of a
+                // landscape phone.
+                VStack(alignment: .leading, spacing: 14) {
                     Text("How many keys does your gangsa have?")
-                        .font(.serif(38))
+                        .font(.serif(28))
                         .foregroundStyle(Theme.charcoal)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    InstrumentNameField(name: $name, isFocused: $nameFocused)
-                    GangsaPhotoPicker(
-                        image: photo.flatMap(UIImage.init) ?? InstrumentPhotoStore.image(for: app.profile),
-                        onPick: { photo = $0 }
-                    )
+                    HStack(alignment: .bottom, spacing: 14) {
+                        InstrumentNameField(name: $name, isFocused: $nameFocused)
+                        GangsaPhotoPicker(
+                            image: photo.flatMap(UIImage.init) ?? InstrumentPhotoStore.image(for: app.profile),
+                            onPick: { photo = $0 },
+                            width: 104,
+                            height: 66
+                        )
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.trailing, 32)
 
                 Rectangle()
                     .fill(Theme.charcoal.opacity(0.15))
-                    .frame(width: 1, height: 220)
+                    .frame(width: 1, height: 170)
 
                 // Stepper + bilah preview + next
-                VStack(spacing: 26) {
-                    CountStepper(value: $count, range: range, numberSize: 76)
+                VStack(spacing: 14) {
+                    CountStepper(value: $count, range: range, numberSize: 52, buttonSize: 48)
 
-                    BilahBarsView(count: count)
-                        .frame(height: 72)
+                    BilahBarsView(count: count, height: 44)
+                        .frame(height: 44)
                         .frame(maxWidth: 260)
 
                     PillButton(
                         title: "Next",
-                        trailingSystemImage: "arrow.right",
-                        style: .outlined
+                        style: .filled,
+                        compact: true
                     ) {
                         // Landscape keyboards cover most of the screen, so this
                         // button can be tapped while the field still holds an
@@ -78,6 +86,7 @@ struct KeyCountView: View {
                 .padding(.leading, 32)
             }
             .padding(.horizontal, 40)
+            .padding(.bottom, 8)
             .frame(maxHeight: .infinity)
         }
         // The keyboard eats half a landscape phone and has no Done key of its
