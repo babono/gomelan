@@ -174,8 +174,9 @@ final class PlayEngine {
     )
     private var profile: InstrumentProfile?
     private var tempoScale: Double = 1
-    /// Whether strokes are scored. See `configure`.
-    private var judging = true
+    /// Whether strokes are scored. See `configure`. Views read it to drop the
+    /// score from the screen when a session is guidance only.
+    private(set) var judging = true
 
     // Play-mode state
     private var notes: [Note] = []
@@ -476,11 +477,15 @@ final class PlayEngine {
     /// hits stop is discarded: it is a fragment of a figure, it would score as
     /// near-total failure on the notes it never reached, and it would land in
     /// the graph as a cliff at the end of every single session.
+    ///
+    /// A session that was not judged (no sensor: guidance only) reports nil,
+    /// which the screens already take as "back to the picker" — an empty
+    /// result would file a record and a PracticeSession for nothing.
     func end() {
         guard !isFinished else { return }
         isFinished = true
         cue?.stop()
-        onComplete?(SongResult(
+        onComplete?(judging ? SongResult(
             songTitle: song.title,
             subtitle: sessionSubtitle,
             judgements: judgementsByPart[partKey] ?? [],
@@ -489,7 +494,7 @@ final class PlayEngine {
             strokes: notes,
             cycleMs: song.durationMs,
             landedNotes: landedNotes
-        ))
+        ) : nil)
     }
 
     private func recomputeTiming() {

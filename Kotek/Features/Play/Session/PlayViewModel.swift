@@ -116,7 +116,10 @@ final class PlayViewModel {
                 song: song,
                 partner: app.partnerSong,
                 profile: app.profile,
-                tempoScale: app.tempoScale
+                tempoScale: app.tempoScale,
+                // Snapshot at the start: the sensor is what scores a session,
+                // and without it the screen is guidance only.
+                judging: app.controllerConnected
             )
         }
 
@@ -225,7 +228,9 @@ final class PlayViewModel {
 
     func advanceCoach() {
         guard let coachStep else { return }
-        guard let next = CoachStep(rawValue: coachStep.rawValue + 1) else {
+        // Nothing to point at on a guidance-only session.
+        let skipsScore = !engine.judging && coachStep == .session
+        guard let next = CoachStep(rawValue: coachStep.rawValue + (skipsScore ? 2 : 1)) else {
             finishCoach()
             return
         }

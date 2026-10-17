@@ -40,7 +40,8 @@ private struct ChooseKotekanContentView: View {
             TopBar(
                 title: "Choose your kotekan",
                 onBack: { app.openChooseInstrument() },
-                settingsAction: { app.openSettings() }
+                settingsAction: { app.openSettings() },
+                showsSensor: true
             )
             SearchAndCreateBar(
                 query: $vm.query,
@@ -48,7 +49,6 @@ private struct ChooseKotekanContentView: View {
                 createTitle: "Create kotek",
                 onCreate: { vm.create() }
             )
-            ControllerStatusChip()
 
             Group {
                 if vm.kotekans.isEmpty {
@@ -132,7 +132,8 @@ private struct ChooseKotekanContentView: View {
                             offset: offset,
                             canPlay: viewModel.isPlayable(k),
                             engine: viewModel.engine,
-                            bestRecord: viewModel.bestRecord(k)
+                            // Nothing is scored without the sensor, so a record would be a number nobody can beat.
+                            bestRecord: app.controllerConnected ? viewModel.bestRecord(k) : nil
                         )
                         .position(
                             x: geo.size.width / 2 + CGFloat(offset) * ChooseKotekanViewModel.step,

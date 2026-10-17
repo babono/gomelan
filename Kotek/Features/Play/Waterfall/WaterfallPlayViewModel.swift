@@ -103,7 +103,10 @@ final class WaterfallPlayViewModel {
                 song: song,
                 partner: app.partnerSong,
                 profile: app.profile,
-                tempoScale: app.tempoScale
+                tempoScale: app.tempoScale,
+                // Snapshot at the start: the sensor is what scores a session,
+                // and without it the screen is guidance only.
+                judging: app.controllerConnected
             )
         }
 

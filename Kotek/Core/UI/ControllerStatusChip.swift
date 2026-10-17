@@ -55,12 +55,12 @@ struct ControllerStatusChip: View {
     }
 
     private var shortText: String {
-        app.controllerConnected ? "Sensors" : "Camera"
+        app.controllerConnected ? "Sensors" : "Guidance"
     }
 
     private func longText(_ link: ControllerLink) -> String {
         if app.controllerConnected { return "\(link.name) connected" }
         if case let .unavailable(why) = app.sensor.status { return why }
-        return "Looking for \(link.name)… camera + mic until then"
+        return "Looking for \(link.name)… guidance only until then"
     }
 }

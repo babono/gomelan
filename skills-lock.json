@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "app-intents": {
+      "source": "n0an/App-Intents-Agent-Skill",
+      "sourceType": "github",
+      "skillPath": "app-intents/SKILL.md",
+      "computedHash": "344eb99f9696a5d930dc8bfb52bc49df19300ddf1d97f24c0af1c9c286b4b259"
+    },
     "apple-hig": {
       "source": "nexu-io/open-design",
       "sourceType": "github",
@@ -13,31 +19,6 @@
       "sourceType": "well-known",
       "computedHash": "6b92ffbe225bdd877e1245e843c5b79f1e37f7ab40d3f802937044f6aee29d20",
       "wellKnownDigest": "sha256:b117db775a77c436d7e46c2eeb1602de40f5f0256214cf6a9dc2bb056ddffd9d"
-    },
-    "swiftui-expert-skill": {
-      "source": "avdlee/swiftui-agent-skill",
-      "sourceType": "github",
-      "skillPath": "skills/swiftui-expert-skill/SKILL.md",
-      "computedHash": "5388cd2368b525d2906798ac313c70415e971da35670e571e98baf8a7140505f"
-    },
-    "ui-taste": {
-      "source": "uizze.sh",
-      "sourceUrl": "https://uizze.sh/",
-      "sourceType": "well-known",
-      "computedHash": "9b73951ae54b7d1eb81e69bb2f47d1622b3813bbefbd6c0aaa36dfcf938f1f27",
-      "wellKnownDigest": "sha256:3b88468608bc7ceec66b8333fab1729590e7af62487fcdbdf79ef60ff626def7"
-    },
-    "write-swift": {
-      "source": "emilkowalski/skills",
-      "sourceType": "github",
-      "skillPath": "skills/write-swift/SKILL.md",
-      "computedHash": "f20bb9cf51dbee1900b264820a12f1d3d378dc4d23ac758e7ba9e644c49a2459"
-    },
-    "app-intents": {
-      "source": "n0an/App-Intents-Agent-Skill",
-      "sourceType": "github",
-      "skillPath": "app-intents/SKILL.md",
-      "computedHash": "344eb99f9696a5d930dc8bfb52bc49df19300ddf1d97f24c0af1c9c286b4b259"
     },
     "observability": {
       "source": "n0an/Observability-Agent-Skill",
@@ -63,11 +44,36 @@
       "skillPath": "swiftdata-pro/SKILL.md",
       "computedHash": "2f979bad98ea3a6744084c5f93e27897f02e8d0ffe15dd03042e88aaae4da14c"
     },
+    "swiftui-expert-skill": {
+      "source": "avdlee/swiftui-agent-skill",
+      "sourceType": "github",
+      "skillPath": "skills/swiftui-expert-skill/SKILL.md",
+      "computedHash": "5388cd2368b525d2906798ac313c70415e971da35670e571e98baf8a7140505f"
+    },
     "swiftui-pro": {
       "source": "twostraws/swiftui-agent-skill",
       "sourceType": "github",
       "skillPath": "swiftui-pro/SKILL.md",
       "computedHash": "e0edf9a937bbb8c86c170b130ff825f158cc286f07ec477b67835e9c1b20267e"
+    },
+    "ui-taste": {
+      "source": "uizze.sh",
+      "sourceUrl": "https://uizze.sh/",
+      "sourceType": "well-known",
+      "computedHash": "9b73951ae54b7d1eb81e69bb2f47d1622b3813bbefbd6c0aaa36dfcf938f1f27",
+      "wellKnownDigest": "sha256:3b88468608bc7ceec66b8333fab1729590e7af62487fcdbdf79ef60ff626def7"
+    },
+    "write-swift": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/write-swift/SKILL.md",
+      "computedHash": "f20bb9cf51dbee1900b264820a12f1d3d378dc4d23ac758e7ba9e644c49a2459"
+    },
+    "writing-for-interfaces": {
+      "source": "andrewgleave/skills",
+      "sourceType": "github",
+      "skillPath": "writing-for-interfaces/SKILL.md",
+      "computedHash": "fff061810c3e63b97fea546da1b86d88629f422a5d38d4ac13497b689a18419e"
     }
   }
 }

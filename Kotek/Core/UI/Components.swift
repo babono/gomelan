@@ -470,6 +470,8 @@ struct TopBar: View {
     var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
     var compact: Bool = false
+    /// The strike-controller icon, beside the gear: whether this session is scored.
+    var showsSensor: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -500,6 +502,7 @@ struct TopBar: View {
                             .font(.sans(13, weight: .medium))
                             .foregroundStyle(accent)
                     }
+                    if showsSensor { SensorIndicator() }
                     if let infoAction {
                         Button(action: infoAction) {
                             Image(systemName: "questionmark.circle")
