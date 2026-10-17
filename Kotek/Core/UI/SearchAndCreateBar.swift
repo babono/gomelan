@@ -34,12 +34,12 @@ struct SearchAndCreateBar: View {
                         removal: .opacity
                     ))
             } else {
-                CircleIconButton(systemImage: "magnifyingglass", label: prompt, glass: true) {
+                AppIconButton(systemImage: "magnifyingglass", label: prompt) {
                     setSearching(true)
                 }
                 .transition(.opacity)
             }
-            CapsuleButton(title: createTitle, trailingSystemImage: "plus", glass: true, action: onCreate)
+            AppButton(createTitle, systemImage: "plus", action: onCreate)
         }
         // No side padding: flush to the safe-area edge, where the top bar's
         // buttons, the footer's and the carousel's outer cards all end.
@@ -65,7 +65,7 @@ struct SearchAndCreateBar: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.symbol(16))
                     .foregroundStyle(Theme.stone)
-                    .frame(width: 32, height: 44)
+                    .frame(width: Theme.tapTarget, height: Theme.tapTarget)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.kajar)
@@ -73,8 +73,9 @@ struct SearchAndCreateBar: View {
         }
         .padding(.leading, 14)
         .padding(.trailing, 6)
-        .frame(width: 280, height: 44)
-        .glassButton()
+        .frame(width: 280, height: Theme.tapTarget)
+        // The same flat wash as the buttons beside it.
+        .flatGlass()
     }
 
     /// Closing clears the query too — a hidden filter would leave the rail

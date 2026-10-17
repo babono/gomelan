@@ -75,7 +75,7 @@ struct SensorPlayView: View {
         @Bindable var bindableVM = vm
 
         return HStack(spacing: 12) {
-            SecondaryButton(title: "Back", systemImage: "chevron.left") {
+            AppButton("Back", systemImage: "chevron.left") {
                 app.closeSensorTest()
             }
             statusPill(sensor: vm.sensor)
@@ -89,8 +89,8 @@ struct SensorPlayView: View {
                 ForEach(Theme.tempoScales, id: \.self) { Text(Theme.tempoLabel($0)).tag($0) }
             }
             .tint(Theme.gold)
-            SecondaryButton(
-                title: vm.running ? "Stop" : "Play",
+            AppButton(
+                vm.running ? "Stop" : "Play",
                 systemImage: vm.running ? "stop.fill" : "play.fill"
             ) {
                 vm.toggleSession(app: app)
@@ -161,9 +161,7 @@ struct SensorPlayView: View {
             HStack {
                 SectionLabel("Hits")
                 Spacer()
-                Button("Clear") { sensor.clearHits() }
-                    .font(.sans(12, weight: .semibold))
-                    .foregroundStyle(Theme.gold)
+                AppButton("Clear") { sensor.clearHits() }
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 4) {

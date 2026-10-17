@@ -68,10 +68,9 @@ struct KeyCountView: View {
                         .frame(height: 44)
                         .frame(maxWidth: 260)
 
-                    PillButton(
-                        title: "Next",
-                        style: .filled,
-                        compact: true
+                    AppButton(
+                        "Next",
+                        prominence: .primary
                     ) {
                         // Landscape keyboards cover most of the screen, so this
                         // button can be tapped while the field still holds an

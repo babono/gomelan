@@ -20,7 +20,6 @@ struct WelcomeView: View {
 
     /// Where the gamelan bed sits while the opening kempur is ringing.
     private static let duckedMusicLevel: Float = 0.4
-    private static let cornerHeight: CGFloat = 40
 
     var body: some View {
         GeometryReader { _ in
@@ -29,9 +28,10 @@ struct WelcomeView: View {
                     if app.account == nil {
                         accountChoice
                     } else {
-                        PillButton(
-                            title: "Get started",
-                            style: .filled
+                        AppButton(
+                            "Get started",
+                            prominence: .primary,
+                            size: .large
                         ) {
                             music.stop()
                             app.begin()
@@ -42,7 +42,7 @@ struct WelcomeView: View {
 
                 // Corner affordances: help and collaborator colophon
                 VStack {
-                    HStack(spacing: 2) {
+                    HStack(spacing: Theme.controlSpacing) {
                         Spacer()
                         howItWorks
                         collaborator
@@ -89,7 +89,7 @@ struct WelcomeView: View {
                     app.accountError = "Couldn't sign in with Apple. Try again."
                 }
 
-                PillButton(title: "Continue as guest", style: .outlined, uppercase: false) {
+                AppButton("Continue as guest") {
                     music.stop()
                     app.continueAsGuest()
                 }
@@ -110,24 +110,9 @@ struct WelcomeView: View {
         action: @escaping () -> Void,
         @ViewBuilder content: () -> some View
     ) -> some View {
-        Button(action: action) {
-            content()
-                .padding(.horizontal, 12)
-                .frame(height: Self.cornerHeight)
-                .background(
-                    Theme.cream.opacity(0.05),
-                    in: RoundedRectangle(cornerRadius: Theme.radius)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.radius)
-                        .strokeBorder(Theme.cream.opacity(0.2), lineWidth: 1)
-                )
-                .frame(minHeight: 44)
-                .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
-        }
-        .buttonStyle(.kajar)
-        .accessibilityLabel(label)
-        .accessibilityHint(hint)
+        AppButton(action: action, label: content)
+            .accessibilityLabel(label)
+            .accessibilityHint(hint)
     }
 
     private var collaborator: some View {
@@ -144,17 +129,9 @@ struct WelcomeView: View {
     }
 
     private var howItWorks: some View {
-        Button {
+        AppIconButton(systemImage: "questionmark", label: "How Kotek works") {
             app.openOnboarding()
-        } label: {
-            Image(systemName: "questionmark.circle")
-                .font(.symbol(19, weight: .medium))
-                .foregroundStyle(Theme.cream.opacity(0.72))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.kajar)
-        .accessibilityLabel("How Kotek works")
         .accessibilityHint("Replays the introduction")
     }
 }

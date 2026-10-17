@@ -96,16 +96,13 @@ struct ProfileSetupView: View {
 
                     HStack(spacing: 18) {
                         if !isEditing {
-                            Button("Skip") { skip() }
-                                .font(.sans(15, weight: Theme.buttonWeight))
-                                .foregroundStyle(Theme.cream.opacity(0.72))
-                                .frame(minHeight: 44)
-                                .buttonStyle(.kajar)
+                            AppButton("Skip") { skip() }
                         }
 
-                        PillButton(
-                            title: isEditing ? "Save" : "Continue",
-                            style: .filled
+                        AppButton(
+                            isEditing ? "Save" : "Continue",
+                            prominence: .primary,
+                            size: .large
                         ) {
                             nameFocused = false
                             Task {

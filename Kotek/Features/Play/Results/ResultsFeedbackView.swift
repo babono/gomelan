@@ -122,12 +122,9 @@ struct ResultsFeedbackView: View {
                     .foregroundStyle(Theme.terracotta)
                 Spacer()
                 if hasMore {
-                    Button(expanded ? "Show less" : "Show more") {
+                    AppButton(expanded ? "Show less" : "Show more") {
                         withAnimation(.snappy(duration: 0.25)) { expanded.toggle() }
                     }
-                    .buttonStyle(.kajar)
-                    .font(.sans(13, weight: .semibold))
-                    .foregroundStyle(Theme.terracotta)
                 }
             }
             content()

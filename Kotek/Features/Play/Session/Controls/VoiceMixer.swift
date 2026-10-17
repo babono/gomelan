@@ -24,7 +24,7 @@ struct VoiceMixer: View {
     @Binding var partnerAudible: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.controlSpacing) {
             chip(
                 color: colour(for: yourHalf),
                 label: "\(yourHalf.title) · you",
@@ -42,11 +42,14 @@ struct VoiceMixer: View {
         half == .polos ? Theme.polosVoice : Theme.sangsihVoice
     }
 
+    /// A button, not a chip: both voices are normally ON, and two selected
+    /// chips side by side would shout. A silenced voice shows as a hollow swatch
+    /// and a dimmed button instead.
     private func chip(color: Color, label: String, isOn: Binding<Bool>) -> some View {
-        Button {
+        AppButton {
             isOn.wrappedValue.toggle()
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 RoundedRectangle(cornerRadius: 2)
                     .fill(color.opacity(isOn.wrappedValue ? 0.95 : 0.15))
                     .overlay(
@@ -54,17 +57,11 @@ struct VoiceMixer: View {
                             .strokeBorder(color.opacity(isOn.wrappedValue ? 0 : 0.6), lineWidth: 1)
                     )
                     .frame(width: 12, height: 8)
-
                 Text(label)
-                    .font(.sans(11, weight: .medium))
-                    .foregroundStyle(isOn.wrappedValue ? Theme.cream : Theme.inkStone.opacity(0.7))
+                    .font(.sans(13, weight: .medium))
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(isOn.wrappedValue ? Theme.ink.opacity(0.55) : .clear, in: Capsule())
-            .overlay(Capsule().strokeBorder(Theme.inkStone.opacity(0.35), lineWidth: 1))
-            .contentShape(Capsule())
+            .opacity(isOn.wrappedValue ? 1 : 0.55)
         }
-        .buttonStyle(.kajar)
+        .accessibilityAddTraits(isOn.wrappedValue ? .isSelected : [])
     }
 }

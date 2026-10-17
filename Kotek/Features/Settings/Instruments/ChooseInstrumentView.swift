@@ -143,7 +143,7 @@ struct ChooseInstrumentView: View {
         let selected = app.savedProfiles.contains { $0.id == app.profile.id }
         return HStack {
             Spacer()
-            PillButton(title: "Next", style: .filled, compact: true) {
+            AppButton("Next", prominence: .primary) {
                 app.selectInstrument(app.profile)
             }
             .disabled(!selected)

@@ -22,12 +22,14 @@ struct ControllerStatusChip: View {
     var body: some View {
         if let link = app.profile.controller {
             if app.controllerNeedsCheck, !compact {
-                Button {
+                AppButton {
                     app.openControllerSetup(recheck: true, returnTo: app.screen)
                 } label: {
-                    chip(color: Theme.wrong, text: "Sensors changed since \(app.profile.name) was set up · Check keys")
+                    chipContent(
+                        color: Theme.wrong,
+                        text: "Sensors changed since \(app.profile.name) was set up · Check keys"
+                    )
                 }
-                .buttonStyle(.kajar)
             } else {
                 chip(color: color, text: compact ? shortText : "\(app.profile.name) · \(longText(link))")
                     .accessibilityElement(children: .combine)
@@ -35,17 +37,23 @@ struct ControllerStatusChip: View {
         }
     }
 
-    private func chip(color: Color, text: String) -> some View {
+    /// The dot and the words. The status chip sets them on its own pill; the
+    /// one that is a button sets them inside a `AppButton` instead.
+    private func chipContent(color: Color, text: String) -> some View {
         HStack(spacing: 8) {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(text)
                 .font(.sans(12, weight: .semibold))
-                .foregroundStyle(Theme.cream.opacity(0.85))
                 .lineLimit(1)
         }
-        .padding(.horizontal, 12)
-        .frame(minHeight: compact ? 34 : 30)
-        .background(.black.opacity(0.3), in: Capsule())
+    }
+
+    private func chip(color: Color, text: String) -> some View {
+        chipContent(color: color, text: text)
+            .foregroundStyle(Theme.cream.opacity(0.85))
+            .padding(.horizontal, 12)
+            .frame(minHeight: compact ? 34 : 30)
+            .background(.black.opacity(0.3), in: Capsule())
     }
 
     private var color: Color {

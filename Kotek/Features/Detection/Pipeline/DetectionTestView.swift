@@ -89,7 +89,7 @@ struct DetectionTestView: View {
         @Bindable var app = app
         return VStack {
             HStack(spacing: 16) {
-                SecondaryButton(title: "Back", systemImage: "chevron.left") {
+                AppButton("Back", systemImage: "chevron.left") {
                     app.closeDetectionTest()
                 }
                 Spacer()
@@ -124,19 +124,9 @@ struct DetectionTestView: View {
     }
 
     private var dictionaryToggle: some View {
-        Button {
+        AppButton("dict", systemImage: "waveform.and.magnifyingglass") {
             viewModel.showDictionary = true
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "waveform.and.magnifyingglass")
-                Text("dict")
-            }
-            .font(.sans(12, weight: .bold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12).padding(.vertical, 8)
-            .background(.black.opacity(0.6), in: Capsule())
         }
-        .buttonStyle(.kajar)
     }
 
     /// Every value `applyMarkerSettings` pushes into the fusion actor, in one

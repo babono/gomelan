@@ -16,10 +16,10 @@ struct ResultsBottomBar: View {
             // Compact: the bar shares a half-width column with the feedback
             // now, and at full size "Choose another kotekan" pushed Retry off
             // the edge of the screen.
-            PillButton(title: "Other kotekan", style: .outlined, tint: Theme.charcoal, compact: true) {
+            AppButton("Other kotekan") {
                 onChooseAnother()
             }
-            PillButton(title: "Retry", style: .filled, tint: Theme.terracotta, compact: true) {
+            AppButton("Retry", prominence: .primary) {
                 onRetry()
             }
             Spacer()

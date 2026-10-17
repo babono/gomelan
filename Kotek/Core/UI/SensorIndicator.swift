@@ -19,43 +19,30 @@ struct SensorIndicator: View {
     @State private var showing = false
 
     var body: some View {
-        Button {
-            showing = true
-        } label: {
-            glyph
+        AppIconButton(label: label, action: { showing = true }) {
+            // The art is 2:1; template-rendered, so the colour tints it. Always
+            // cream, like the gear: the slash says connected or not, and colour
+            // on a header control is kept for what needs the player to act.
+            Image(app.controllerConnected ? "sensor" : "sensor-disabled")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 22)
         }
-        .buttonStyle(.kajar)
-        .accessibilityLabel(label)
+        .overlay(alignment: .topTrailing) {
+            if app.controllerNeedsCheck {
+                Circle()
+                    .fill(Theme.wrong)
+                    .frame(width: 9, height: 9)
+                    .offset(x: -3, y: 3)
+                    .accessibilityHidden(true)
+            }
+        }
         .accessibilityHint("Shows what this means")
         // Compact height (a landscape iPhone) would turn this into a sheet.
         .popover(isPresented: $showing) {
             explanation
                 .presentationCompactAdaptation(.popover)
         }
-    }
-
-    private var glyph: some View {
-        // The art is 2:1; template-rendered, so the colour tints it. Always
-        // cream, like the gear: the slash says connected or not, and colour
-        // on a header control is kept for what needs the player to act.
-        Image(app.controllerConnected ? "sensor" : "sensor-disabled")
-            .resizable()
-            .scaledToFit()
-            .frame(width: 22)
-            .foregroundStyle(Theme.cream)
-            // Same 44pt glass circle as the gear beside it.
-            .frame(width: 44, height: 44)
-            .tintedButton(in: Circle())
-            .contentShape(Circle())
-            .overlay(alignment: .topTrailing) {
-                if app.controllerNeedsCheck {
-                    Circle()
-                        .fill(Theme.wrong)
-                        .frame(width: 9, height: 9)
-                        .offset(x: -3, y: 3)
-                        .accessibilityHidden(true)
-                }
-            }
     }
 
     // MARK: - Words
@@ -99,7 +86,7 @@ struct SensorIndicator: View {
                 .font(.sans(13))
                 .foregroundStyle(.secondary)
             if let actionTitle {
-                PillButton(title: actionTitle, style: .filled, compact: true) {
+                AppButton(actionTitle, prominence: .primary) {
                     showing = false
                     app.openControllerSetup(recheck: app.controllerNeedsCheck, returnTo: app.screen)
                 }

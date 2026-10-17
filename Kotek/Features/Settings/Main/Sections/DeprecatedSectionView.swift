@@ -19,10 +19,10 @@ struct DeprecatedSectionView: View {
         VStack(alignment: .leading, spacing: 24) {
             topView
             FlowLayout(spacing: 10) {
-                SecondaryButton(title: "Re-align keys", systemImage: "viewfinder") {
+                AppButton("Re-align keys", systemImage: "viewfinder") {
                     app.realign()
                 }
-                SecondaryButton(title: "Calibrate voice", systemImage: "waveform") {
+                AppButton("Calibrate voice", systemImage: "waveform") {
                     app.openCalibration()
                 }
             }

@@ -102,7 +102,7 @@ enum Theme {
     static let buttonFill = Color("Tertiary")
     /// Type sitting on that slab.
     static let onButtonFill = Color("LaunchBackground")
-    /// Type on the gold-tinted glass of the main action (`glassButton(filled:)`).
+    /// Type on the gold-tinted glass of the main action (`ControlSurface`, `.primary`).
     static let onGlassFill = onButtonFill
 
     // MARK: - Geometry
@@ -111,6 +111,26 @@ enum Theme {
     static let radius: CGFloat = 14
     /// Height of a primary button.
     static let buttonHeight: CGFloat = 56
+    /// The HIG minimum for anything tappable, and the height every button is
+    /// DRAWN at. Glass takes the shape of its label, so a button drawn at 38 and
+    /// "targeted" at 44 shows a press shimmer smaller than the finger's reach.
+    static let tapTarget: CGFloat = 44
+    /// How much gold the main action's glass is tinted with. Dark type sits on
+    /// it; lower let the label sink into the glass.
+    static let glassFillOpacity: Double = 0.6
+    /// The tint of the flat glass behind every other button: the card brown at
+    /// this strength. Clear glass lifts whatever is under it toward grey, so a
+    /// cream tint came out taupe; the card brown keeps it a step lighter than
+    /// the ground, like the cards.
+    static let washOpacity: Double = 0.6
+    /// How far past a button the glass behind it is drawn before being clipped
+    /// back — enough that the rim light and shadow land outside the clip.
+    static let glassBleed: CGFloat = 10
+    /// The same for record / destructive tints, which carry cream type.
+    static let tintOpacity: Double = 0.5
+    /// Space between adjacent controls. The HIG asks for at least 8pt between
+    /// targets; 12 is what keeps two glass buttons from reading as one slab.
+    static let controlSpacing: CGFloat = 12
 
     /// Weight and letter-spacing shared by every button label.
     ///

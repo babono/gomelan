@@ -33,46 +33,22 @@ struct PlayTopBar: View {
             ControllerStatusChip(compact: true)
                 .padding(.trailing, 10)
 
-            // Bring the score and controls up. Down by default.
-            Button {
-                bottomBarVisible.toggle()
-            } label: {
-                Image(
-                    systemName: bottomBarVisible
-                        ? "rectangle.bottomthird.inset.filled" : "rectangle"
-                )
-                .font(.sans(15, weight: .medium))
-                .foregroundStyle(
-                    bottomBarVisible ? Theme.ink : Theme.copper
-                )
-                .frame(width: 44, height: 34)
-                .background(
-                    bottomBarVisible ? Theme.copper : .clear,
-                    in: Capsule()
-                )
-                .tintedButton()
-            }
-            .buttonStyle(.kajar)
-            .accessibilityLabel(
-                engine.judging
-                    ? (bottomBarVisible ? "Hide the score" : "Show the score")
-                    : (bottomBarVisible ? "Hide the controls" : "Show the controls")
-            )
-            .coachTarget(.panelToggle)
-            .padding(.trailing, 10)
+            HStack(spacing: Theme.controlSpacing) {
+                // Bring the score and controls up. Down by default.
+                AppIconButton(
+                    systemImage: bottomBarVisible
+                        ? "rectangle.bottomthird.inset.filled" : "rectangle",
+                    label: engine.judging
+                        ? (bottomBarVisible ? "Hide the score" : "Show the score")
+                        : (bottomBarVisible ? "Hide the controls" : "Show the controls"),
+                    prominence: bottomBarVisible ? .primary : .standard
+                ) {
+                    bottomBarVisible.toggle()
+                }
+                .coachTarget(.panelToggle)
 
-            Button {
-                onPause()
-            } label: {
-                Image(systemName: "pause.fill")
-                    .font(.symbol(14, weight: .semibold))
-                    .foregroundStyle(Theme.cream)
-                    .frame(width: 44, height: 34)
-                    .tintedButton()
-                    .contentShape(Capsule())
+                AppIconButton(systemImage: "pause.fill", label: "Pause", action: onPause)
             }
-            .buttonStyle(.kajar)
-            .accessibilityLabel("Pause")
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 14)

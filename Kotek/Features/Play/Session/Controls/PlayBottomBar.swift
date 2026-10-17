@@ -16,11 +16,8 @@ struct PlayBottomBar: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                HalfSwitch(
-                    chosenHalf: app.chosenHalf,
-                    onSelect: { app.setHalf($0) }
-                )
-                .coachTarget(.half)
+                HalfPicker(selection: app.chosenHalf) { app.setHalf($0) }
+                    .coachTarget(.half)
 
                 TempoPicker(tempoScale: $app.tempoScale)
                     .coachTarget(.tempo)

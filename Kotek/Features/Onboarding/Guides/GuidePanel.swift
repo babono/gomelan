@@ -87,10 +87,9 @@ struct GuidePanel<Content: View>: View {
 
             Spacer(minLength: 16)
 
-            PillButton(
-                title: "Got it",
-                style: .filled,
-                compact: true,
+            AppButton(
+                "Got it",
+                prominence: .primary,
                 action: onClose
             )
             .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 8 }

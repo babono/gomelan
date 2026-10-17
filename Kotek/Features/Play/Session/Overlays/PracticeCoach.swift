@@ -190,16 +190,12 @@ struct PracticeCoachOverlay: View {
 
             HStack(spacing: 12) {
                 if !isLast {
-                    Button("Skip", action: onSkip)
-                        .font(.sans(13, weight: .medium))
-                        .foregroundStyle(Theme.cream.opacity(0.5))
-                        .buttonStyle(.kajar)
+                    AppButton("Skip", action: onSkip)
                 }
                 Spacer()
-                PillButton(
-                    title: isLast ? "Start" : "Next",
-                    style: .filled,
-                    compact: true,
+                AppButton(
+                    isLast ? "Start" : "Next",
+                    prominence: .primary,
                     action: onNext
                 )
             }

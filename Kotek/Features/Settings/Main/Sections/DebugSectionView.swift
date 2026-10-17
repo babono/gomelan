@@ -17,19 +17,19 @@ struct DebugSectionView: View {
                 .foregroundStyle(KotekFonts.displayRegular == nil ? Theme.miss : Theme.cream.opacity(0.75))
 
             FlowLayout(spacing: 10) {
-                SecondaryButton(title: "Test Mallet", systemImage: "scope") {
+                AppButton("Test Mallet", systemImage: "scope") {
                     app.openMalletTest()
                 }
-                SecondaryButton(title: "Test Detection", systemImage: "dot.radiowaves.left.and.right") {
+                AppButton("Test Detection", systemImage: "dot.radiowaves.left.and.right") {
                     app.openDetectionTest()
                 }
-                SecondaryButton(title: "Test Audio", systemImage: "waveform.circle") {
+                AppButton("Test Audio", systemImage: "waveform.circle") {
                     app.openAudioTest()
                 }
-                SecondaryButton(title: "Capture Training Data", systemImage: "camera.viewfinder") {
+                AppButton("Capture Training Data", systemImage: "camera.viewfinder") {
                     app.openCaptureTraining()
                 }
-                SecondaryButton(title: "Test Sensors", systemImage: "sensor.tag.radiowaves.forward") {
+                AppButton("Test Sensors", systemImage: "sensor.tag.radiowaves.forward") {
                     app.openSensorTest()
                 }
             }

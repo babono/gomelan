@@ -31,12 +31,11 @@ struct PianoRollView: View {
 
         VStack(spacing: 8) {
             CreateTopBar(title: "New Kotek") {
-                CircleIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
+                AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
             } trailing: {
                 RecordButton(recording: viewModel.recording) { viewModel.toggleRecording() }
-                CapsuleButton(title: "Next", filled: true) { viewModel.review() }
+                AppButton("Next", prominence: .primary) { viewModel.review() }
                     .disabled(draft.isEmpty)
-                    .opacity(draft.isEmpty ? 0.4 : 1)
             }
 
             PianoRollControls(viewModel: viewModel)
@@ -57,15 +56,10 @@ private struct PianoRollControls: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            HalfPicker(
-                half: Binding(
-                    get: { viewModel.writing },
-                    set: { viewModel.writing = $0
-                        viewModel.tool = .notes
-                    }
-                ),
-                active: viewModel.tool == .notes
-            )
+            HalfPicker(selection: viewModel.tool == .notes ? viewModel.writing : nil) {
+                viewModel.writing = $0
+                viewModel.tool = .notes
+            }
             divider
             HStack(spacing: 8) {
                 ForEach(ColotomicInstrument.allCases) { tool($0) }
@@ -81,26 +75,14 @@ private struct PianoRollControls: View {
     /// back to writing the half.
     private func tool(_ instrument: ColotomicInstrument) -> some View {
         let selected = viewModel.tool == .colotomic(instrument)
-        let color = instrument.color
-        return Button {
+        return AppChip(isSelected: selected) {
             viewModel.tool = selected ? .notes : .colotomic(instrument)
         } label: {
             HStack(spacing: 6) {
                 ColotomicMark(instrument: instrument, scale: 0.7)
-                Text(instrument.title).font(.sans(14, weight: selected ? .semibold : .regular))
+                Text(instrument.title)
             }
-            .foregroundStyle(selected ? Theme.cream : Theme.stone)
-            .fixedSize()
-            .padding(.horizontal, 10)
-            .frame(height: 34)
-            .background(color.opacity(selected ? 0.2 : 0), in: RoundedRectangle(cornerRadius: 9))
-            .overlay(
-                RoundedRectangle(cornerRadius: 9)
-                    .strokeBorder(selected ? color : Theme.cream.opacity(0.18), lineWidth: selected ? 1.5 : 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 9))
         }
-        .buttonStyle(.kajar)
         .accessibilityLabel("Add \(instrument.title)")
     }
 
@@ -113,21 +95,11 @@ private struct PianoRollControls: View {
     /// is for clearing several without one stray tap writing a new one.
     private var eraser: some View {
         let selected = viewModel.tool == .erase
-        return Button {
+        return AppChip(isSelected: selected) {
             viewModel.tool = selected ? .notes : .erase
         } label: {
             Image(systemName: "eraser")
-                .font(.symbol(15, weight: selected ? .semibold : .regular))
-                .foregroundStyle(selected ? Theme.cream : Theme.stone)
-                .frame(width: 44, height: 34)
-                .background(Theme.miss.opacity(selected ? 0.3 : 0), in: RoundedRectangle(cornerRadius: 9))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9)
-                        .strokeBorder(selected ? Theme.miss : Theme.cream.opacity(0.18), lineWidth: selected ? 1.5 : 1)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 9))
         }
-        .buttonStyle(.kajar)
         .accessibilityLabel("Delete")
     }
 
@@ -150,16 +122,7 @@ private struct PianoRollControls: View {
                 }
             }
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "squareshape.split.3x3").font(.symbol(12)).foregroundStyle(Theme.stone)
-                Text(viewModel.snap.label).font(.sans(14, weight: .semibold))
-                Image(systemName: "chevron.up.chevron.down").font(.symbol(10))
-            }
-            .fixedSize()
-            .foregroundStyle(Theme.cream)
-            .padding(.horizontal, 12)
-            .frame(height: 32)
-            .background(Theme.cream.opacity(0.08), in: Capsule())
+            AppMenuLabel(title: viewModel.snap.label, systemImage: "squareshape.split.3x3")
         }
         .kajarOnChange(of: viewModel.snap)
     }
@@ -632,36 +595,31 @@ private struct PianoRollTransport: View {
         HStack(spacing: 14) {
             Spacer(minLength: 0)
             HStack(spacing: 10) {
-                CircleIconButton(systemImage: "arrow.uturn.backward", label: "Undo") { draft.undo() }
+                AppIconButton(systemImage: "arrow.uturn.backward", label: "Undo") { draft.undo() }
                     .disabled(!draft.canUndo)
-                    .opacity(draft.canUndo ? 1 : 0.4)
-                CircleIconButton(systemImage: "arrow.uturn.forward", label: "Redo") { draft.redo() }
+                AppIconButton(systemImage: "arrow.uturn.forward", label: "Redo") { draft.redo() }
                     .disabled(!draft.canRedo)
-                    .opacity(draft.canRedo ? 1 : 0.4)
             }
 
             divider
 
             HStack(spacing: 10) {
-                CircleIconButton(systemImage: "stop.fill", label: "Back to start") {
+                AppIconButton(systemImage: "stop.fill", label: "Back to start") {
                     viewModel.stopPreview()
                 }
                 if viewModel.recording {
-                    CapsuleButton(title: "Rest") { viewModel.recordRest() }
+                    AppButton("Rest") { viewModel.recordRest() }
                         .accessibilityHint("Steps the line on without writing a note")
                 } else {
-                    Button { viewModel.togglePlay() } label: {
-                        Image(systemName: viewModel.playing ? "pause.fill" : "play.fill")
-                            .font(.symbol(18, weight: .bold))
-                            .foregroundStyle(Theme.onGlassFill)
-                            .frame(width: 50, height: 50)
-                            .glassButton(filled: true, in: Circle())
-                            .contentShape(Circle())
+                    AppIconButton(
+                        systemImage: viewModel.playing ? "pause.fill" : "play.fill",
+                        label: viewModel.playing ? "Pause" : "Play",
+                        size: 50,
+                        prominence: .primary
+                    ) {
+                        viewModel.togglePlay()
                     }
-                    .buttonStyle(.kajar)
-                    .accessibilityLabel(viewModel.playing ? "Pause" : "Play")
                     .disabled(draft.isEmpty)
-                    .opacity(draft.isEmpty ? 0.4 : 1)
                 }
             }
 
@@ -733,15 +691,7 @@ private struct PianoRollTransport: View {
                         }
                     }
                 } label: {
-                    HStack(spacing: 5) {
-                        Text("Bilah \(range(viewModel.firstSensorKey))").font(.sans(14, weight: .semibold))
-                        Image(systemName: "chevron.up.chevron.down").font(.symbol(10))
-                    }
-                    .fixedSize()
-                    .foregroundStyle(Theme.cream)
-                    .padding(.horizontal, 12)
-                    .frame(height: 32)
-                    .background(Theme.cream.opacity(0.08), in: Capsule())
+                    AppMenuLabel(title: "Bilah \(range(viewModel.firstSensorKey))")
                 }
                 .accessibilityLabel("Sensors on bilah \(range(viewModel.firstSensorKey))")
             }
@@ -809,12 +759,12 @@ struct MiniStepper: View {
             .foregroundStyle(Theme.cream)
             .fixedSize()
 
-            HStack(spacing: 0) {
-                button("minus", enabled: value > range.lowerBound) { value -= 1 }
-                Rectangle().fill(Theme.cream.opacity(0.2)).frame(width: 1, height: 16)
-                button("plus", enabled: value < range.upperBound) { value += 1 }
-            }
-            .background(Theme.cream.opacity(0.08), in: Capsule())
+            AppStepperButtons(
+                canDecrement: value > range.lowerBound,
+                canIncrement: value < range.upperBound,
+                decrement: { value -= 1 },
+                increment: { value += 1 }
+            )
         }
     }
 
@@ -856,29 +806,16 @@ struct MiniStepper: View {
         value = (Int(text) ?? value).clamped(to: range.lowerBound, range.upperBound)
         text = "\(value)"
     }
-
-    private func button(_ symbol: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.symbol(12, weight: .bold))
-                .foregroundStyle(enabled ? Theme.cream : Theme.cream.opacity(0.25))
-                .frame(width: 36, height: 32)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.kajar)
-        .buttonRepeatBehavior(.enabled)
-        .disabled(!enabled)
-    }
 }
 
-/// Arms the sensors. Red, and filled while recording, so it is never a
+/// Arms the sensors. Red, and tinted red while recording, so it is never a
 /// question whether a hit on the gangsa is being written down.
 private struct RecordButton: View {
     let recording: Bool
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        AppButton(prominence: recording ? .tinted(Theme.miss) : .standard, action: action) {
             HStack(spacing: 8) {
                 Image(systemName: recording ? "stop.fill" : "circle.fill")
                     .font(.symbol(recording ? 11 : 12, weight: .bold))
@@ -886,16 +823,9 @@ private struct RecordButton: View {
                     .symbolEffect(.pulse, isActive: recording)
                 Text(recording ? "Recording" : "Record")
                     .font(.sans(16, weight: .semibold))
-                    .foregroundStyle(Theme.cream)
             }
             .fixedSize()
-            .padding(.horizontal, 20)
-            .frame(minHeight: 44)
-            .background(recording ? Theme.miss : .clear, in: Capsule())
-            .tintedButton(Theme.miss)
-            .contentShape(Capsule())
         }
-        .buttonStyle(.kajar)
         .accessibilityLabel(recording ? "Stop recording" : "Record from the sensors")
     }
 }

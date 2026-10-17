@@ -24,23 +24,13 @@ struct ChooseKotekanFooter: View {
     let onCoop: (Kotekan) -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            Button {
+        HStack(spacing: Theme.controlSpacing) {
+            AppButton(
+                muted ? "Muted" : "Playing",
+                systemImage: muted ? "speaker.slash.fill" : "speaker.wave.2.fill"
+            ) {
                 muted.toggle()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                        .font(.symbol(13, weight: .semibold))
-                    Text(muted ? "Muted" : "Playing")
-                        .font(.sans(13, weight: .medium))
-                }
-                .foregroundStyle(muted ? Theme.cream.opacity(0.5) : Theme.gold)
-                .padding(.horizontal, 14)
-                .frame(height: 38)
-                .tintedButton()
-                .contentShape(Capsule())
             }
-            .buttonStyle(.kajar)
             .accessibilityLabel(muted ? "Unmute the preview" : "Mute the preview")
 
             Spacer()
@@ -52,41 +42,29 @@ struct ChooseKotekanFooter: View {
             Spacer()
 
             if let current, current.source != .builtin {
-                Button {
+                AppIconButton(systemImage: "trash", label: "Delete \(current.name)") {
                     onDelete(current)
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.symbol(14, weight: .semibold))
-                        .foregroundStyle(Theme.cream.opacity(0.7))
-                        .frame(width: 38, height: 38)
-                        .tintedButton(in: Circle())
-                        .contentShape(Circle())
                 }
-                .buttonStyle(.kajar)
-                .accessibilityLabel("Delete \(current.name)")
 
-                PillButton(title: "Edit", style: .outlined, compact: true) {
+                AppButton("Edit") {
                     onEdit(current)
                 }
             }
 
             // Nothing to start when a search matches nothing; Create is up top.
             if let current {
-                PillButton(title: "Coop", systemImage: "person.2.fill", style: .outlined, compact: true) {
+                AppButton("Coop", systemImage: "person.2.fill") {
                     onCoop(current)
                 }
                 .disabled(!playable)
-                .opacity(playable ? 1 : 0.4)
 
-                PillButton(
-                    title: "Start",
-                    style: .filled,
-                    compact: true
+                AppButton(
+                    "Start",
+                    prominence: .primary
                 ) {
                     onStart(current)
                 }
                 .disabled(!playable)
-                .opacity(playable ? 1 : 0.4)
             }
         }
         .padding(.bottom, 10)

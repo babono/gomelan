@@ -73,31 +73,17 @@ struct InstrumentSectionView: View {
             noteClips
 
             FlowLayout(spacing: 10) {
-                SecondaryButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath") {
+                AppButton("Switch gangsa", systemImage: "arrow.triangle.2.circlepath") {
                     app.openChooseInstrument()
                 }
-                SecondaryButton(title: "History", systemImage: "clock.arrow.circlepath") {
+                AppButton("History", systemImage: "clock.arrow.circlepath") {
                     app.openHistory()
                 }
             }
 
-            Button(role: .destructive) {
+            AppButton("Delete this gangsa", systemImage: "trash", prominence: .destructive) {
                 viewModel.showDeleteConfirm = true
-            } label: {
-                Label("Delete this gangsa", systemImage: "trash")
-                    .font(.sans(15, weight: Theme.buttonWeight))
-                    .tracking(Theme.buttonTracking)
-                    .foregroundStyle(Theme.miss)
-                    .padding(.vertical, 11)
-                    .padding(.horizontal, 18)
-                    .frame(minHeight: 44)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.radius)
-                            .strokeBorder(Theme.miss.opacity(0.5), lineWidth: 1)
-                    )
-                    .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
             }
-            .buttonStyle(.kajar)
             .padding(.top, 4)
         }
     }
@@ -113,13 +99,13 @@ struct InstrumentSectionView: View {
                     .foregroundStyle(Theme.cream.opacity(0.62))
                 ControllerStatusChip()
                 FlowLayout(spacing: 10) {
-                    SecondaryButton(title: "Check keys", systemImage: "checklist") {
+                    AppButton("Check keys", systemImage: "checklist") {
                         app.openControllerSetup(recheck: true)
                     }
-                    SecondaryButton(title: "Change controller", systemImage: "arrow.left.arrow.right") {
+                    AppButton("Change controller", systemImage: "arrow.left.arrow.right") {
                         app.openControllerSetup()
                     }
-                    SecondaryButton(title: "Forget controller", systemImage: "xmark.circle") {
+                    AppButton("Forget controller", systemImage: "xmark.circle") {
                         app.forgetController()
                     }
                 }
@@ -130,7 +116,7 @@ struct InstrumentSectionView: View {
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
                 .frame(maxWidth: 520, alignment: .leading)
-                SecondaryButton(title: "Connect controller", systemImage: "dot.radiowaves.left.and.right") {
+                AppButton("Connect controller", systemImage: "dot.radiowaves.left.and.right") {
                     app.openControllerSetup()
                 }
             }
@@ -146,7 +132,7 @@ struct InstrumentSectionView: View {
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
                 .frame(maxWidth: 520, alignment: .leading)
-            SecondaryButton(title: "Capture note clips", systemImage: "waveform.badge.mic") {
+            AppButton("Capture note clips", systemImage: "waveform.badge.mic") {
                 app.openNoteCapture()
             }
         }

@@ -81,7 +81,7 @@ private struct ControllerSetupContent: View {
                 Label(why, systemImage: "exclamationmark.triangle")
                     .font(.sans(16, weight: .semibold))
                     .foregroundStyle(Theme.miss)
-                SecondaryButton(title: "Open Settings", systemImage: "gear") {
+                AppButton("Open Settings", systemImage: "gear") {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
                     }
@@ -227,7 +227,7 @@ private struct ControllerSetupContent: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    PillButton(title: "Test key hits", style: .filled) {
+                    AppButton("Test key hits", prominence: .primary, size: .large) {
                         vm.startTest()
                     }
                     .disabled(info.hasPlugDetect && info.plugged.isEmpty)
@@ -289,7 +289,7 @@ private struct ControllerSetupContent: View {
                         .font(.sans(13))
                         .foregroundStyle(Theme.cream.opacity(0.55))
                     Spacer()
-                    PillButton(title: "Finish", systemImage: "checkmark", style: .filled) {
+                    AppButton("Finish", systemImage: "checkmark", prominence: .primary, size: .large) {
                         vm.finish()
                     }
                     .disabled(!vm.isDone)
@@ -319,8 +319,8 @@ private struct ControllerSetupContent: View {
                         .foregroundStyle(Theme.cream.opacity(0.65))
                 }
                 Spacer()
-                SecondaryButton(title: "Try again", systemImage: "arrow.counterclockwise") { vm.tryAgain() }
-                PillButton(title: "Remap", systemImage: "arrow.left.arrow.right", style: .filled, compact: true) {
+                AppButton("Try again", systemImage: "arrow.counterclockwise") { vm.tryAgain() }
+                AppButton("Remap", systemImage: "arrow.left.arrow.right", prominence: .primary) {
                     vm.remap()
                 }
             }
@@ -338,7 +338,7 @@ private struct ControllerSetupContent: View {
                 }
                 Spacer()
                 if vm.inputForKey[k] != nil {
-                    SecondaryButton(title: "No sensor on key \(k + 1)", systemImage: "camera") {
+                    AppButton("No sensor on key \(k + 1)", systemImage: "camera") {
                         vm.markNoSensor()
                     }
                 }

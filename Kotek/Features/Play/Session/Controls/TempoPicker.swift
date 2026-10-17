@@ -31,23 +31,10 @@ struct TempoPicker: View {
                 }
             }
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "gauge.with.dots.needle.67percent")
-                    .font(.symbol(12, weight: .semibold))
-                Text(Theme.tempoLabel(tempoScale))
-                    .font(.sans(12, weight: .semibold))
-                    .tracking(1)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.symbol(9, weight: .semibold))
-            }
-            .foregroundStyle(Theme.copper)
-            .padding(.vertical, 7)
-            .padding(.horizontal, 12)
-            .frame(minHeight: 34)
-            .overlay(
-                Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1)
+            AppMenuLabel(
+                title: Theme.tempoLabel(tempoScale),
+                systemImage: "gauge.with.dots.needle.67percent"
             )
-            .contentShape(Capsule())
         }
         .compositingGroup()
         .menuOrder(.fixed)

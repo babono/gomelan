@@ -57,15 +57,13 @@ struct CalibrationBottomBar: View {
                 confidence: confidence
             )
 
-            PillButton(title: "Reset", style: .outlined, tint: Theme.inkStone, compact: true) {
+            AppButton("Reset") {
                 onReset()
             }
 
-            PillButton(
-                title: learned ? "Continue" : "Listening…",
-                style: learned ? .filled : .outlined,
-                tint: Theme.copper,
-                compact: true
+            AppButton(
+                learned ? "Continue" : "Listening…",
+                prominence: learned ? .primary : .standard
             ) {
                 if learned { onCommit() }
             }

@@ -60,7 +60,7 @@ at the *end* of the upload.
   - **Single-view types belong in `Features/`**: If a class, struct, enum, ViewModel, or helper is used by only one view or feature (e.g. `KeyRenderState`, `CycleNote`, `Floater`, `CoachStep` in `Features/Play/`), keep it strictly within that feature module. Never pollute `Core/` with single-use types or premature abstractions.
 - **DRY Principle (Don't Repeat Yourself)**:
   - Single source of truth for app state (`AppState`), camera session lifecycle (`RootView` / `CameraController`), and audio routing (`AudioSessionManager`).
-  - Shared design tokens, styles, and controls live in `Kotek/Core/UI/` (`Theme.swift`, `Components.swift`, `PatternBackground.swift`) to eliminate visual and behavioral redundancy.
+  - Shared design tokens, styles, and controls live in `Kotek/Core/UI/` (`Theme.swift`, `Components.swift`, `Buttons/`, `PatternBackground.swift`) to eliminate visual and behavioral redundancy.
   - Core DSP algorithms (`Kotek/Core/Audio/DSP/`) and vision models/heuristics (`Kotek/Core/Vision/`) are shared, centralized services — never re-implemented inside feature screens.
 - **SOLID Principles**:
   - **Single Responsibility**: Each class, actor, and view has a single well-defined job. E.g., `FFTProcessor` only computes FFT magnitudes; `OnsetDetector` identifies spectral flux peaks; `StrikeFusion` actor reconciles multi-modal detection off the UI thread; Views only describe UI.
@@ -151,7 +151,8 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
 ### `Kotek/Core/UI/` — design system and shared visual components
 
 - `Theme.swift` — unified warm-brown palette (`Theme.ground`), corner radiuses, typography, and button metrics.
-- `Components.swift` — shared button and toggle styles (`.kajar`), custom controls, and typography helpers.
+- `Buttons/` — **every button, chip and menu label.** `AppButton` (labelled) and `AppIconButton` (one symbol) take a `ControlProminence` (`.primary` gold glass, `.standard`, `.destructive`, `.tinted`); `AppChip` is a button that is also a choice, `AppMenuLabel` the face of a `Menu`, `AppStepperButtons` the − | + pair, `HalfPicker` polos/sangsih. The surface (`ControlSurface`, `flatGlass`), type, 44pt height and the kajar tick (`Kajar.swift`) belong to these components — a feature view picks one and a prominence, and never styles a button. `.swiftlint.yml` bans `controlSurface`/`flatGlass`/`glassEffect`/`.buttonStyle(.plain)` under `Features/`. `.buttonStyle(.kajar)` is for content tiles only (cards, avatars, key tiles).
+- `Components.swift` — wordmark, `TopBar`, labels, busy scrim, confirm panel, and typography helpers.
 - `PatternBackground.swift` — single animated canvas providing continuous background drift across view transitions.
 
 ### `Kotek/Features/` — feature-oriented UI modules

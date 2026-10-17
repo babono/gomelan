@@ -27,7 +27,7 @@ struct CoopSetupView: View {
         VStack(spacing: 0) {
             TopBar(title: "Play together", onBack: { app.backToKotekan() })
 
-            VStack(spacing: 18) {
+            VStack(spacing: 12) {
                 if let k = app.selectedKotekan {
                     VStack(spacing: 2) {
                         Text(k.catalogLabel)
@@ -47,18 +47,9 @@ struct CoopSetupView: View {
                         profiles: app.savedProfiles,
                         profile: app.coopProfile(setup.wrappedValue.left)
                     )
-                    Button {
+                    AppIconButton(systemImage: "arrow.left.arrow.right", label: "Swap seats") {
                         withAnimation(.snappy) { setup.wrappedValue.swapSeats() }
-                    } label: {
-                        Image(systemName: "arrow.left.arrow.right")
-                            .font(.symbol(15, weight: .semibold))
-                            .foregroundStyle(Theme.cream.opacity(0.8))
-                            .frame(width: 44, height: 44)
-                            .overlay(Circle().strokeBorder(Theme.cream.opacity(0.22), lineWidth: 1))
-                            .contentShape(Circle())
                     }
-                    .buttonStyle(.kajar)
-                    .accessibilityLabel("Swap seats")
                     PlayerCard(
                         player: setup.right,
                         profiles: app.savedProfiles,
@@ -67,11 +58,9 @@ struct CoopSetupView: View {
                 }
 
                 HStack(spacing: 14) {
-                    PillButton(
-                        title: "Swap halves",
-                        systemImage: "arrow.up.arrow.down",
-                        style: .outlined,
-                        compact: true
+                    AppButton(
+                        "Swap halves",
+                        systemImage: "arrow.up.arrow.down"
                     ) {
                         withAnimation(.snappy) { setup.wrappedValue.swapHalves() }
                     }
@@ -100,10 +89,9 @@ struct CoopSetupView: View {
                 .font(.sans(13))
                 .foregroundStyle(playable ? Theme.cream.opacity(0.45) : Theme.wrong)
             Spacer()
-            PillButton(
-                title: "Start",
-                style: .filled,
-                compact: true
+            AppButton(
+                "Start",
+                prominence: .primary
             ) {
                 app.startCoop()
             }
@@ -124,7 +112,7 @@ private struct PlayerCard: View {
 
     var body: some View {
         let colour = player.half == .polos ? Theme.polosVoice : Theme.sangsihVoice
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(player.half.title)
                     .font(.serif(26))
@@ -172,22 +160,15 @@ private struct PlayerCard: View {
                     }
                 }
             } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "pianokeys")
-                        .font(.symbol(12, weight: .semibold))
-                    Text("\(profile.name) · \(profile.keyCount) bilah")
-                        .font(.sans(13, weight: .medium))
-                        .lineLimit(1)
-                    if profiles.count > 1 {
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.symbol(9, weight: .semibold))
-                    }
-                }
-                .foregroundStyle(Theme.copper)
+                AppMenuLabel(
+                    title: "\(profile.name) · \(profile.keyCount) bilah",
+                    systemImage: "pianokeys",
+                    showsChevron: profiles.count > 1
+                )
             }
             .disabled(profiles.count < 2)
         }
-        .padding(18)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.deep.opacity(0.45), in: RoundedRectangle(cornerRadius: Theme.radius))
         .overlay(

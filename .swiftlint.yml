@@ -70,4 +70,23 @@ identifier_name:
     - W
     - H
 
+# Buttons are components (Kotek/Core/UI/Buttons/), not something a view styles.
+# A feature view picks a component and a prominence; the surface, type, size and
+# padding belong to the component, so two screens cannot drift apart again.
+# `.buttonStyle(.kajar)` is NOT banned: it is the tick alone, for content tiles
+# (cards, avatars, key tiles) that are not button chrome.
+custom_rules:
+  no_view_level_button_surface:
+    name: "Button surface outside Core/UI/Buttons"
+    included: "Kotek/Features/.*\\.swift"
+    regex: '\.(controlSurface|flatGlass|glassEffect)\('
+    message: "Use AppButton, AppIconButton, AppChip or AppMenuLabel; do not draw a button surface in a feature view."
+    severity: error
+  no_plain_button_style:
+    name: "Plain button style in a feature view"
+    included: "Kotek/Features/.*\\.swift"
+    regex: '\.buttonStyle\(\.plain\)'
+    message: "A button is an AppButton (it ticks, and looks like the rest). Use AppButton(silent: true) if it must not tick."
+    severity: error
+
 reporter: "xcode"

@@ -165,7 +165,7 @@ private struct WaterfallContentView: View {
         @Bindable var bindableApp = app
         if vm.paused, vm.resumeCount == nil {
             HStack(spacing: 14) {
-                HalfSwitch(chosenHalf: app.chosenHalf) { app.setHalf($0) }
+                HalfPicker(selection: app.chosenHalf) { app.setHalf($0) }
                     .fixedSize()
                 SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: true)
                 VoiceMixer(
@@ -276,15 +276,15 @@ private struct PauseStage: View {
                     .transition(.scale.combined(with: .opacity))
             } else {
                 VStack(spacing: 22) {
-                    CircleIconButton(
+                    AppIconButton(
                         systemImage: "play.fill",
                         label: "Resume",
                         size: 72,
-                        filled: true,
+                        prominence: .primary,
                         action: onResume
                     )
-                    CapsuleButton(
-                        title: "Quit the session",
+                    AppButton(
+                        "Quit the session",
                         trailingSystemImage: "rectangle.portrait.and.arrow.right",
                         action: onQuit
                     )
@@ -308,11 +308,11 @@ struct WaterfallPauseOverlay: View {
             VStack(spacing: 22) {
                 Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
-                    PillButton(title: "Resume", style: .filled, action: onResume)
+                    AppButton("Resume", prominence: .primary, size: .large, action: onResume)
                     if let onEnd {
-                        PillButton(title: "End practice", style: .outlined, tint: Theme.copper, action: onEnd)
+                        AppButton("End practice", action: onEnd)
                     }
-                    PillButton(title: "Leave", style: .outlined, tint: Theme.copper, action: onLeave)
+                    AppButton("Leave", action: onLeave)
                 }
             }
         }

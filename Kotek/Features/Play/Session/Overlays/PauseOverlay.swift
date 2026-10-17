@@ -18,20 +18,16 @@ struct PauseOverlay: View {
             VStack(spacing: 22) {
                 Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
-                    PillButton(title: "Resume", style: .filled) {
+                    AppButton("Resume", prominence: .primary, size: .large) {
                         onResume()
                     }
-                    PillButton(
-                        title: "Show me around",
-                        style: .outlined,
-                        tint: Theme.copper
+                    AppButton(
+                        "Show me around"
                     ) {
                         onShowAround()
                     }
-                    PillButton(
-                        title: "End practice",
-                        style: .outlined,
-                        tint: Theme.copper
+                    AppButton(
+                        "End practice"
                     ) {
                         onEndPractice()
                     }

@@ -125,7 +125,7 @@ struct CaptureTrainingView: View {
     private var chrome: some View {
         VStack(spacing: 0) {
             HStack {
-                SecondaryButton(title: "Back", systemImage: "chevron.left") {
+                AppButton("Back", systemImage: "chevron.left") {
                     app.closeCaptureTraining()
                 }
                 Spacer()
@@ -181,53 +181,26 @@ struct CaptureTrainingView: View {
 
             HStack(spacing: 10) {
                 ForEach(TrainingCapture.Intent.allCases, id: \.self) { option in
-                    Button { intent = option } label: {
+                    AppChip(isSelected: intent == option) {
+                        intent = option
+                    } label: {
                         Text(option.title)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(intent == option ? Theme.ink : .white)
-                            .padding(.horizontal, 14).padding(.vertical, 9)
-                            .background(
-                                intent == option ? Theme.copper : .black.opacity(0.55),
-                                in: Capsule()
-                            )
                     }
-                    .buttonStyle(.kajar)
                 }
 
-                Button(action: captureNow) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "camera.fill")
-                        Text("Capture")
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18).padding(.vertical, 10)
-                    .background(
-                        canCapture ? Theme.terracotta : Color.gray.opacity(0.5),
-                        in: Capsule()
-                    )
-                }
-                .buttonStyle(.kajar)
-                .disabled(!canCapture)
+                AppButton("Capture", systemImage: "camera.fill", prominence: .primary, action: captureNow)
+                    .disabled(!canCapture)
 
-                Button(action: exportAll) {
-                    Image(systemName: exporting ? "hourglass" : "square.and.arrow.up")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .padding(10)
-                        .background(Theme.copper.opacity(0.85), in: Circle())
-                }
-                .buttonStyle(.kajar)
+                AppIconButton(
+                    systemImage: exporting ? "hourglass" : "square.and.arrow.up",
+                    label: "Export captures",
+                    action: exportAll
+                )
                 .disabled(exporting)
 
-                Button { capture.clear() } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.8))
-                        .padding(10)
-                        .background(.black.opacity(0.55), in: Circle())
+                AppIconButton(systemImage: "trash", label: "Clear captures") {
+                    capture.clear()
                 }
-                .buttonStyle(.kajar)
             }
             .padding(.bottom, 22)
         }

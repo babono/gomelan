@@ -2,7 +2,7 @@
 //  AppleSignInButton.swift
 //  Kotek
 //
-//  Apple's own button, sized to sit beside a `PillButton`, handing back the ID
+//  Apple's own button, sized to sit beside a `AppButton`, handing back the ID
 //  token Supabase signs in with. Shared by the welcome screen and Settings.
 //
 
@@ -47,8 +47,10 @@ struct AppleSignInButton: View {
             }
         }
         .signInWithAppleButtonStyle(.white)
-        .frame(width: 280, height: Theme.buttonHeight)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+        // Capsule and 44, like "Continue as guest" beside it: the two are equal
+        // doors, and the rounded rectangle at 56 made one read as the main one.
+        .frame(width: 280, height: Theme.tapTarget)
+        .clipShape(Capsule())
     }
 
     private static func randomNonce() -> String {
