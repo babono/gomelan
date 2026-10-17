@@ -14,7 +14,11 @@
 //  Palette (the October 2026 revamp) lives in the asset catalog, so the
 //  designers can change a colour without a code edit:
 //    Background #2A211C · PatternBackground #312721 · Card #3D322C
-//    TitleText #C29A59  · DescriptionText #7A5E4E   · LoadingBar #8D3021
+//    TitleText #C29A59  · DescriptionText #9D8273   · LoadingBar #8D3021
+//    Tertiary (button) #FBD494 · ButtonSecondary #1C1612
+//  DescriptionText was #7A5E4E until the designer's design-system frame
+//  (Frame 240, October 2026): 2.7:1 on the ground, under every contrast bar.
+//  The new value is 4.4:1. The palette is documented at laras.kotek.app.
 //  The revamp is one family — gold on brown. There is no cream any more: text
 //  that was cream is the title gold, and supporting text is the description
 //  brown. Cards are a step LIGHTER than the ground now, not darker.
@@ -102,6 +106,9 @@ enum Theme {
     static let buttonFill = Color("Tertiary")
     /// Type sitting on that slab.
     static let onButtonFill = Color("LaunchBackground")
+    /// The secondary button's slab — darker than the ground, so it reads as a
+    /// control rather than as another card. Gold type on it.
+    static let buttonSecondary = Color("ButtonSecondary")
 
     // MARK: - Geometry
 
