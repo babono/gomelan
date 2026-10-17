@@ -34,7 +34,8 @@ struct ChooseInstrumentView: View {
                 title: "Choose your gangsa",
                 onBack: { app.screen = .welcome },
                 trailingText: app.savedProfiles.isEmpty
-                    ? nil : "\(app.savedProfiles.count) saved"
+                    ? nil : "\(app.savedProfiles.count) saved",
+                edgeInset: 0
             )
 
             if app.savedProfiles.isEmpty {
@@ -74,19 +75,34 @@ struct ChooseInstrumentView: View {
 
     private var rail: some View {
         GeometryReader { geo in
+            // The side cards are sized to end on the rail's edge, as on the
+            // kotekan picker. The scroll transition this replaces scaled by
+            // how much of the card was on screen, so a neighbour's resting
+            // size depended on the width and landed under the Dynamic Island.
+            let side = CarouselFit.sideScale(width: geo.size.width, card: InstrumentCardView.width)
+            let gap = CarouselFit.gap(width: geo.size.width, card: InstrumentCardView.width)
+            let step = InstrumentCardView.width + gap
+
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 24) {
+                LazyHStack(spacing: gap) {
                     ForEach(profiles) { profile in
                         InstrumentCardView(
                             profile: profile,
                             isCurrent: app.profile.id == profile.id,
                             onSelect: { withAnimation(.snappy(duration: 0.32)) { centred = profile.id } }
                         )
-                        // Shrink and dim off-centre, as the kotekan carousel does.
-                        .scrollTransition(.interactive, axis: .horizontal) { card, phase in
-                            card
-                                .scaleEffect(phase.isIdentity ? 1 : 0.86)
-                                .opacity(phase.isIdentity ? 1 : 0.45)
+                        // Shrink and dim off-centre, as the kotekan carousel does,
+                        // pinned at the edge facing the middle so the gap to the
+                        // selected card stays `gap` and the outer edge is what moves.
+                        .visualEffect { card, proxy in
+                            // Against the scroll view's own bounds: it runs under the safe
+                            // area, so its midpoint is not the rail's.
+                            let centre = proxy.bounds(of: .scrollView)?.midX ?? 0
+                            let dx = proxy.frame(in: .scrollView).midX - centre
+                            let t = min(abs(dx) / step, 1)
+                            return card
+                                .scaleEffect(1 - (1 - side) * t, anchor: dx < 0 ? .trailing : .leading)
+                                .opacity(1 - 0.55 * t)
                         }
                         .id(profile.id)
                     }
@@ -98,6 +114,8 @@ struct ChooseInstrumentView: View {
             .scrollPosition(id: $centred, anchor: .center)
             .safeAreaPadding(.horizontal, max(0, (geo.size.width - InstrumentCardView.width) / 2))
         }
+        // A scroll view runs under the safe area; cut it at the rail's edge.
+        .clipped()
         .onAppear { centred = app.profile.id }
         // A search that hides the centred card centres the first match.
         .onChange(of: query) { _, _ in
@@ -131,7 +149,6 @@ struct ChooseInstrumentView: View {
             .disabled(!selected)
             .opacity(selected ? 1 : 0.4)
         }
-        .padding(.horizontal, 28)
         .padding(.bottom, 10)
     }
 }

@@ -472,6 +472,9 @@ struct TopBar: View {
     var compact: Bool = false
     /// The strike-controller icon, beside the gear: whether this session is scored.
     var showsSensor: Bool = false
+    /// Space between the controls and the safe-area edge. The pickers pass 0 so
+    /// the buttons sit in the corners, on the line their carousel ends at.
+    var edgeInset: CGFloat = 24
 
     var body: some View {
         VStack(spacing: 0) {
@@ -535,7 +538,7 @@ struct TopBar: View {
                     }
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, edgeInset)
             .padding(.top, compact ? 10 : 18)
             .padding(.bottom, compact ? 8 : 12)
         }

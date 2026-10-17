@@ -41,7 +41,8 @@ private struct ChooseKotekanContentView: View {
                 title: "Choose your kotekan",
                 onBack: { app.openChooseInstrument() },
                 settingsAction: { app.openSettings() },
-                showsSensor: true
+                showsSensor: true,
+                edgeInset: 0
             )
             SearchAndCreateBar(
                 query: $vm.query,
@@ -119,6 +120,11 @@ private struct ChooseKotekanContentView: View {
 
     private var carousel: some View {
         GeometryReader { geo in
+            // The side cards are sized to end on the rail's edge, so at rest
+            // nothing is cut; `step` follows from that size.
+            let side = CarouselFit.sideScale(width: geo.size.width, card: KotekanCardView.cardWidth)
+            let gap = CarouselFit.gap(width: geo.size.width, card: KotekanCardView.cardWidth)
+            let step = KotekanCardView.cardWidth / 2 + gap + side * KotekanCardView.cardWidth / 2
             let first = Int((viewModel.position - 2).rounded(.down))
             let last = Int((viewModel.position + 2).rounded(.up))
 
@@ -133,10 +139,11 @@ private struct ChooseKotekanContentView: View {
                             canPlay: viewModel.isPlayable(k),
                             engine: viewModel.engine,
                             // Nothing is scored without the sensor, so a record would be a number nobody can beat.
-                            bestRecord: app.controllerConnected ? viewModel.bestRecord(k) : nil
+                            bestRecord: app.controllerConnected ? viewModel.bestRecord(k) : nil,
+                            sideScale: side
                         )
                         .position(
-                            x: geo.size.width / 2 + CGFloat(offset) * ChooseKotekanViewModel.step,
+                            x: geo.size.width / 2 + CGFloat(offset) * step,
                             y: geo.size.height / 2
                         )
                     }
@@ -144,22 +151,23 @@ private struct ChooseKotekanContentView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
-            .gesture(swipe(width: geo.size.width))
+            .gesture(swipe(width: geo.size.width, step: step))
         }
         .clipped()
     }
 
-    private func swipe(width: CGFloat) -> some Gesture {
+    private func swipe(width: CGFloat, step: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                viewModel.onDragChanged(translationWidth: value.translation.width)
+                viewModel.onDragChanged(translationWidth: value.translation.width, step: step)
             }
             .onEnded { value in
                 viewModel.onDragEnded(
                     translationWidth: value.translation.width,
                     predictedEndTranslationWidth: value.predictedEndTranslation.width,
                     startLocationX: value.startLocation.x,
-                    width: width
+                    width: width,
+                    step: step
                 )
             }
     }

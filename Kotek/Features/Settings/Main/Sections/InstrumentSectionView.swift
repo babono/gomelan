@@ -60,8 +60,8 @@ struct InstrumentSectionView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text("\(app.profile.keyCount) keys · \(recordedClips) of \(app.profile.keyCount) note clips")
-                .font(.sans(14))
-                .foregroundStyle(Theme.cream.opacity(0.62))
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.62))
 
                 Text(playedLine)
                     .font(.sans(14))

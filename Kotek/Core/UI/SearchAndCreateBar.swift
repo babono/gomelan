@@ -41,7 +41,8 @@ struct SearchAndCreateBar: View {
             }
             CapsuleButton(title: createTitle, trailingSystemImage: "plus", glass: true, action: onCreate)
         }
-        .padding(.horizontal, 28)
+        // No side padding: flush to the safe-area edge, where the top bar's
+        // buttons, the footer's and the carousel's outer cards all end.
         .padding(.bottom, 4)
     }
 

@@ -16,6 +16,9 @@ struct KotekanCardView: View {
     let canPlay: Bool
     let engine: PlayEngine?
     let bestRecord: PatternRecord?
+    /// How small the cards beside the selected one are, from `CarouselFit` so
+    /// they end at the rail's edge rather than past it.
+    let sideScale: CGFloat
 
     static let cardWidth: CGFloat = 272
     static let cardHeight: CGFloat = 178
@@ -37,7 +40,7 @@ struct KotekanCardView: View {
                         lineWidth: 1 + nearness
                     )
             )
-            .scaleEffect(0.84 + 0.16 * nearness)
+            .scaleEffect(1 - (1 - sideScale) * min(abs(CGFloat(offset)), 1))
             .opacity(0.35 + 0.65 * nearness)
             .allowsHitTesting(false)
     }

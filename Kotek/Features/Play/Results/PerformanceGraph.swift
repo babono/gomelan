@@ -176,7 +176,13 @@ struct PerformanceGraph: View {
                     // LANDED, so it reads like every other score in the app —
                     // the slip share was tried first, and a stroke that never
                     // once landed read "100%".
-                    chip("\(Int(((1 - s.slipRate) * 100).rounded()))%", color: slip, at: CGPoint(x: rect.midX, y: y), ctx, size)
+                    chip(
+                        "\(Int(((1 - s.slipRate) * 100).rounded()))%",
+                        color: slip,
+                        at: CGPoint(x: rect.midX, y: y),
+                        ctx,
+                        size
+                    )
                 }
             }
         }
