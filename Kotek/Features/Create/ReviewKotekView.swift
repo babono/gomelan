@@ -46,13 +46,15 @@ struct ReviewKotekView: View {
             PatternOverview(viewModel: viewModel)
 
             HStack(spacing: 12) {
-                CircleIconButton(systemImage: "stop.fill", label: "Back to start") { viewModel.stopPreview() }
+                CircleIconButton(systemImage: "stop.fill", label: "Back to start") {
+                    viewModel.stopPreview()
+                }
                 Button { viewModel.togglePlay() } label: {
                     Image(systemName: viewModel.playing ? "pause.fill" : "play.fill")
                         .font(.symbol(18, weight: .bold))
-                        .foregroundStyle(Theme.onButtonFill)
+                        .foregroundStyle(Theme.onGlassFill)
                         .frame(width: 50, height: 50)
-                        .background(Theme.buttonFill, in: Circle())
+                        .glassButton(filled: true, in: Circle())
                         .contentShape(Circle())
                 }
                 .buttonStyle(.kajar)
@@ -68,8 +70,8 @@ struct ReviewKotekView: View {
                         .foregroundStyle(Theme.miss)
                         .lineLimit(2)
                 }
-                CreateCapsuleButton(title: "Edit") { viewModel.back() }
-                CreateCapsuleButton(title: viewModel.saving ? "Saving…" : "Save", filled: true) {
+                CapsuleButton(title: "Edit") { viewModel.back() }
+                CapsuleButton(title: viewModel.saving ? "Saving…" : "Save", filled: true) {
                     viewModel.pause()
                     naming = true
                 }
@@ -127,8 +129,8 @@ private struct NamePopup: View {
                     .background(Theme.deep, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.buttonFill, lineWidth: 2))
                 HStack(spacing: 12) {
-                    CreateCapsuleButton(title: "Cancel", fullWidth: true, action: onCancel)
-                    CreateCapsuleButton(title: "Save", filled: true, fullWidth: true, action: onSave)
+                    CapsuleButton(title: "Cancel", fullWidth: true, action: onCancel)
+                    CapsuleButton(title: "Save", filled: true, fullWidth: true, action: onSave)
                 }
             }
             .padding(20)

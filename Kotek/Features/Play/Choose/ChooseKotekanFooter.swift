@@ -16,7 +16,6 @@ struct ChooseKotekanFooter: View {
     /// One Start: the screen it opens (waterfall or camera top view) is
     /// `AppState.topView`'s choice, set in Settings, not a second button here.
     let onStart: (Kotekan) -> Void
-    let onCreate: () -> Void
     /// Only offered on the player's own figures; the built-ins are the app's.
     let onEdit: (Kotekan) -> Void
     let onDelete: (Kotekan) -> Void
@@ -38,7 +37,7 @@ struct ChooseKotekanFooter: View {
                 .foregroundStyle(muted ? Theme.cream.opacity(0.5) : Theme.gold)
                 .padding(.horizontal, 14)
                 .frame(height: 38)
-                .overlay(Capsule().strokeBorder(Theme.cream.opacity(0.22), lineWidth: 1))
+                .tintedButton()
                 .contentShape(Capsule())
             }
             .buttonStyle(.kajar)
@@ -60,7 +59,7 @@ struct ChooseKotekanFooter: View {
                         .font(.symbol(14, weight: .semibold))
                         .foregroundStyle(Theme.cream.opacity(0.7))
                         .frame(width: 38, height: 38)
-                        .overlay(Circle().strokeBorder(Theme.cream.opacity(0.22), lineWidth: 1))
+                        .tintedButton(in: Circle())
                         .contentShape(Circle())
                 }
                 .buttonStyle(.kajar)
@@ -71,6 +70,7 @@ struct ChooseKotekanFooter: View {
                 }
             }
 
+            // Nothing to start when a search matches nothing; Create is up top.
             if let current {
                 PillButton(title: "Coop", systemImage: "person.2.fill", style: .outlined, compact: true) {
                     onCoop(current)
@@ -80,7 +80,6 @@ struct ChooseKotekanFooter: View {
 
                 PillButton(
                     title: "Start",
-                    trailingSystemImage: "arrow.right",
                     style: .filled,
                     compact: true
                 ) {
@@ -88,14 +87,6 @@ struct ChooseKotekanFooter: View {
                 }
                 .disabled(!playable)
                 .opacity(playable ? 1 : 0.4)
-            } else {
-                PillButton(
-                    title: "Create",
-                    trailingSystemImage: "arrow.right",
-                    style: .filled,
-                    compact: true,
-                    action: onCreate
-                )
             }
         }
         .padding(.horizontal, 28)

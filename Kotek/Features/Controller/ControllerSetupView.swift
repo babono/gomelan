@@ -58,9 +58,10 @@ private struct ControllerSetupContent: View {
         .onChange(of: sensor.info) { _, _ in vm.infoChanged() }
     }
 
-    private var backTitle: String {
-        if vm.step == .summary { return "Controllers" }
-        return vm.app.controllerSetupIsOffer ? "Skip" : "Back"
+    /// nil is the plain back chevron; only Skip is spelled out.
+    private var backTitle: String? {
+        if vm.step == .summary { return nil }
+        return vm.app.controllerSetupIsOffer ? "Skip" : nil
     }
 
     private func back() {
@@ -226,7 +227,7 @@ private struct ControllerSetupContent: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    PillButton(title: "Test key hits", trailingSystemImage: "arrow.right", style: .filled) {
+                    PillButton(title: "Test key hits", style: .filled) {
                         vm.startTest()
                     }
                     .disabled(info.hasPlugDetect && info.plugged.isEmpty)

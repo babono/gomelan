@@ -29,7 +29,7 @@ struct EmptyInstrumentsView: View {
             .lineSpacing(3)
             .frame(maxWidth: 440)
 
-            PillButton(title: "Set up · 4 steps", trailingSystemImage: "arrow.right", style: .filled) {
+            PillButton(title: "Set up · 4 steps", style: .filled) {
                 onAdd()
             }
             .padding(.top, 4)

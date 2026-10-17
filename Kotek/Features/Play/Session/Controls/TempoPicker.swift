@@ -4,6 +4,10 @@
 //
 //  Tempo picker dropdown menu for practice session.
 //
+//  A gauge, not a metronome: the metronome click is gone (the kajar keeps the
+//  pulse), and a metronome icon on the one control left read as a switch for
+//  it. This sets speed, so it shows a speedometer.
+//
 
 import SwiftUI
 
@@ -28,7 +32,7 @@ struct TempoPicker: View {
             }
         } label: {
             HStack(spacing: 5) {
-                Image(systemName: "metronome")
+                Image(systemName: "gauge.with.dots.needle.67percent")
                     .font(.symbol(12, weight: .semibold))
                 Text(Theme.tempoLabel(tempoScale))
                     .font(.sans(12, weight: .semibold))

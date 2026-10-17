@@ -31,7 +31,6 @@ struct WelcomeView: View {
                     } else {
                         PillButton(
                             title: "Get started",
-                            trailingSystemImage: "arrow.right",
                             style: .filled
                         ) {
                             music.stop()

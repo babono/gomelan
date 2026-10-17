@@ -22,6 +22,10 @@ final class ChooseKotekanViewModel {
     var position: Double = 0
     var dragOrigin: Double?
     var muted = false
+    /// Narrows the rail by name. Typing jumps back to the first match.
+    var query = "" {
+        didSet { if query != oldValue { position = 0 } }
+    }
     /// Whether the preview is what is driving the shared cue player right now.
     private var previewing = false
 
@@ -41,22 +45,34 @@ final class ChooseKotekanViewModel {
     }
 
     var kotekans: [Kotekan] {
-        app.kotekans
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return app.kotekans }
+        return app.kotekans.filter { $0.name.localizedStandardContains(q) }
+    }
+
+    /// The rail wraps round, except over search results: two matches looped
+    /// would fill the screen with copies of themselves.
+    var loops: Bool {
+        query.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     var focusedSlot: Int {
         Int(position.rounded())
     }
 
-    /// Every figure, then the "+ Create" card.
+    /// Every figure. The "+ Create" card that used to close the rail is the
+    /// Create button above it now: at the end of the rail it was a swipe
+    /// past every figure away, and easy to never find.
     var railCount: Int {
-        kotekans.count + 1
+        kotekans.count
     }
 
-    /// The figure at a rail slot, or nil for the create card.
+    /// The figure at a rail slot; nil past either end of a rail that doesn't
+    /// loop, or when nothing matches.
     func kotekan(atSlot slot: Int) -> Kotekan? {
+        guard loops || kotekans.indices.contains(slot) else { return nil }
         let i = wrap(slot)
-        return i < kotekans.count ? kotekans[i] : nil
+        return kotekans.indices.contains(i) ? kotekans[i] : nil
     }
 
     var current: Kotekan? {
@@ -108,7 +124,6 @@ final class ChooseKotekanViewModel {
     func startPreview() {
         guard let k = current else { return stopPreview() }
         engine.cue = cue
-        engine.metronomeEnabled = false
         engine.partnerAudible = !muted
         engine.yourVoiceAudible = !muted
         engine.configure(
@@ -179,8 +194,8 @@ final class ChooseKotekanViewModel {
             do {
                 try await app.deleteKotekan(k)
                 // R The rail just lost a card; stay on the slot, which is now
-                // R the next figure (or the create card), rather than jumping.
-                position = Double(min(focusedSlot, railCount - 1))
+                // R the next figure (or the last one), rather than jumping.
+                position = Double(max(0, min(focusedSlot, railCount - 1)))
                 startPreview()
             } catch {
                 deleteError = "Couldn't delete \(k.name). Check your connection and try again."
@@ -191,7 +206,11 @@ final class ChooseKotekanViewModel {
     func onDragChanged(translationWidth: CGFloat) {
         let origin = dragOrigin ?? position
         dragOrigin = origin
-        position = origin - translationWidth / Self.step
+        position = clampToRail(origin - translationWidth / Self.step)
+    }
+
+    private func clampToRail(_ p: Double) -> Double {
+        loops ? p : p.clamped(to: 0, Double(max(0, railCount - 1)))
     }
 
     func onDragEnded(
@@ -211,7 +230,7 @@ final class ChooseKotekanViewModel {
 
         let landing = origin - predictedEndTranslationWidth / Self.step
         withAnimation(.snappy(duration: 0.32)) {
-            position = (landing.rounded()).clamped(to: origin - 1, origin + 1)
+            position = clampToRail((landing.rounded()).clamped(to: origin - 1, origin + 1))
         }
     }
 
@@ -223,10 +242,8 @@ final class ChooseKotekanViewModel {
         Task { @concurrent in
             await KajarTick.strike()
         }
-        if slot == focusedSlot {
-            guard let k = kotekan(atSlot: slot) else { return create() }
-            if isPlayable(k) { start(k) }
-        } else {
+        // The focused card does nothing on a tap: Start is the only way in.
+        if slot != focusedSlot, kotekan(atSlot: slot) != nil {
             withAnimation(.snappy(duration: 0.32)) { position = Double(slot) }
         }
     }

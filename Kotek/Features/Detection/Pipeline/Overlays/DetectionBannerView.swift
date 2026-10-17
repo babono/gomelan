@@ -16,14 +16,14 @@ struct DetectionBannerView: View {
             if let hit {
                 VStack(spacing: 6) {
                     Text("KEY \(hit.key)")
-                        .font(.system(size: 72, weight: .heavy, design: .rounded))
+                        .font(.sans(72, weight: .heavy))
                         .foregroundStyle(.white)
                     HStack(spacing: 8) {
                         Image(systemName: hit.audioSnapped ? "waveform.badge.checkmark" : "eye")
                         Text(hit.audioSnapped ? "vision + audio" : "vision only")
                         Text("· \(Int(hit.prob * 100))%")
                     }
-                    .font(.subheadline.weight(.semibold).monospaced())
+                    .font(.sans(15, weight: .semibold).monospacedDigit())
                     .foregroundStyle(hit.audioSnapped ? Theme.hit : .white.opacity(0.7))
 
                     if let heardKey = hit.heardKey {
@@ -38,7 +38,7 @@ struct DetectionBannerView: View {
                                     .foregroundStyle(.white.opacity(0.5))
                             }
                         }
-                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .font(.sans(13, weight: .semibold).monospacedDigit())
                         .foregroundStyle(hit.agrees == true ? Theme.hit : Theme.wrong)
                     }
                 }

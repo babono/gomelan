@@ -41,7 +41,6 @@ private struct FramingContentView: View {
             VStack(spacing: 0) {
                 TopBar(
                     title: "Frame the gangsa",
-                    backTitle: "Back",
                     onBack: { app.screen = .choosingKeyCount },
                     trailingText: "2 / 4",
                     tint: Theme.cream,

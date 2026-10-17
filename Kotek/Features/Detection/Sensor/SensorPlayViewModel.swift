@@ -113,9 +113,7 @@ final class SensorPlayViewModel {
 
     func startSession(app: AppState) {
         engine.cue = cue
-        engine.leniency = app.judgementLeniency
         engine.callsStrokes = true
-        engine.scoresWrongBar = app.scoresWrongBar
         // Partner on: you are playing one half of an interlocking figure, and
         // without the other half there is nothing to lock into.
         engine.partnerAudible = true

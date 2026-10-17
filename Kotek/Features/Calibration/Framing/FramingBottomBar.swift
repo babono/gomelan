@@ -25,7 +25,6 @@ struct FramingBottomBar: View {
 
             PillButton(
                 title: "Continue",
-                trailingSystemImage: "arrow.right",
                 style: .filled,
                 tint: Theme.copper,
                 compact: true,

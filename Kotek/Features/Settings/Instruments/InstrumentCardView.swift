@@ -12,9 +12,11 @@ struct InstrumentCardView: View {
     let isCurrent: Bool
     let onSelect: () -> Void
 
-    private static let width: CGFloat = 258
-    private static let height: CGFloat = 240
-    private static let photoHeight: CGFloat = 104
+    /// The kotekan card's size (`KotekanCardView`), so the two pickers match.
+    /// It was 258 x 240 with a 104pt photo, too tall for the carousel layout.
+    static let width = KotekanCardView.cardWidth
+    static let height = KotekanCardView.cardHeight
+    private static let photoHeight: CGFloat = 62
 
     var body: some View {
         Button {
@@ -31,25 +33,29 @@ struct InstrumentCardView: View {
                         .clipped()
                 }
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(profile.name)
-                        .font(.serif(photo == nil ? 30 : 26))
+                        .font(.serif(photo == nil ? 28 : 22))
                         .foregroundStyle(Theme.cream)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
 
                     Text("\(profile.keyCount) keys · \(lastPlayedText)")
-                        .font(.sans(15, weight: .medium))
+                        .font(.sans(13, weight: .medium))
                         .foregroundStyle(Theme.description)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
 
-                    Spacer(minLength: photo == nil ? 12 : 4)
+                    Spacer(minLength: 2)
 
-                    playedLine
-                    statusDot
+                    // One line: two stacked ran out of card at this height.
+                    HStack(spacing: 12) {
+                        playedLine
+                        statusDot
+                    }
                 }
-                .padding(photo == nil ? 20 : 16)
+                .padding(.horizontal, 18)
+                .padding(.vertical, photo == nil ? 18 : 10)
             }
             .frame(width: Self.width, height: Self.height, alignment: .topLeading)
             .background(Theme.deep)
@@ -65,15 +71,15 @@ struct InstrumentCardView: View {
         .buttonStyle(.kajar)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(isCurrent ? [.isButton, .isSelected] : .isButton)
-        .accessibilityHint("Plays this gangsa")
+        .accessibilityHint("Selects this gangsa")
     }
 
     private var playedLine: some View {
         let played = profile.hasBeenPlayed
         return Text(played ? "\(profile.notesLanded.formatted()) notes landed" : "Unplayed")
-            .font(.sans(12, weight: .semibold))
+            .font(.sans(11, weight: .semibold))
             .textCase(.uppercase)
-            .tracking(2)
+            .tracking(1.5)
             .foregroundStyle(played ? Theme.gold : Theme.cream.opacity(0.35))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
@@ -87,7 +93,8 @@ struct InstrumentCardView: View {
                 .background(Circle().fill(learned ? Theme.buttonFill : Color.clear))
                 .frame(width: 8, height: 8)
             Text(learned ? "Voice learned" : "No voice yet")
-                .font(.sans(13))
+                .font(.sans(12))
+                .lineLimit(1)
                 .foregroundStyle(learned ? Theme.buttonFill : Theme.cream.opacity(0.45))
         }
     }
