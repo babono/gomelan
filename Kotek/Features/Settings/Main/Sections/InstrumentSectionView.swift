@@ -72,6 +72,8 @@ struct InstrumentSectionView: View {
 
             noteClips
 
+            damping
+
             FlowLayout(spacing: 10) {
                 SecondaryButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath") {
                     app.openChooseInstrument()
@@ -149,6 +151,22 @@ struct InstrumentSectionView: View {
             SecondaryButton(title: "Capture note clips", systemImage: "waveform.badge.mic") {
                 app.openNoteCapture()
             }
+        }
+    }
+
+    /// Read when a practice starts, so a change here applies from the next one.
+    private var damping: some View {
+        @Bindable var bindableApp = app
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionLabel("Damping")
+            Toggle("Show damping", isOn: $bindableApp.showsDamp)
+                .tint(Theme.terracotta)
+                .frame(maxWidth: 360)
+                .foregroundStyle(Theme.cream)
+            Text("A hand on each bilah as its note ends, on the waterfall and the gangsa.")
+                .font(.sans(14))
+                .foregroundStyle(Theme.cream.opacity(0.62))
+                .frame(maxWidth: 520, alignment: .leading)
         }
     }
 

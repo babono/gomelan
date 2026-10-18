@@ -244,6 +244,9 @@ final class PlayEngine {
     /// makes becomes meaningless.
     var partnerAudible = false
     var yourVoiceAudible = true
+    /// Whether the waterfall and the gangsa show where to damp. A display
+    /// setting only: nothing is judged on damping.
+    var showsDamp = true
     /// Whether this engine sounds the gong, kempur, kajar and metronome. Off
     /// only for the second engine of one-screen coop: two engines on one clock
     /// would strike every gong twice, a hair apart, and it would ring flanged.
@@ -575,12 +578,10 @@ final class PlayEngine {
                     let at = origin + scaledTime(note)
                     let duration = Double(note.durationMs) / tempoScale
                     guard at + duration >= from, at <= to else { continue }
-                    // The stroke before the first one of a pass is the last one
-                    // of the pass before — the figure goes round without a seam.
-                    let previous = i > 0 ? list[i - 1] : (loop > 0 ? list.last : nil)
-                    let damp = voice == .yours
-                        ? previous.map(\.keyIndex).flatMap { $0 == note.keyIndex ? nil : $0 }
-                        : nil
+                    // The stroke after the last one of a pass is the first one
+                    // of the next — the figure goes round without a seam.
+                    let next = i + 1 < list.count ? list[i + 1] : list[0]
+                    let damps = voice == .yours && showsDamp && next.keyIndex != note.keyIndex
                     let outcome = voice == .yours && loop == loopIndex && phase == .userTurn
                         && outcomes.indices.contains(i) ? outcomes[i] : nil
                     out.append(FallingNote(
@@ -590,7 +591,7 @@ final class PlayEngine {
                         msAhead: at - currentTimeMs,
                         durationMs: duration,
                         outcome: outcome,
-                        dampKey: damp
+                        dampsAfter: damps
                     ))
                 }
             }
