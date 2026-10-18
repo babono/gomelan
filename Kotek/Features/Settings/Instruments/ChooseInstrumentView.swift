@@ -94,6 +94,7 @@ struct ChooseInstrumentView: View {
                         InstrumentCardView(
                             profile: profile,
                             isCurrent: app.profile.id == profile.id,
+                            height: min(InstrumentCardView.maxHeight, geo.size.height),
                             onSelect: { withAnimation(.snappy(duration: 0.32)) { centred = profile.id } }
                         )
                         // Shrink and dim off-centre, as the kotekan carousel does.
