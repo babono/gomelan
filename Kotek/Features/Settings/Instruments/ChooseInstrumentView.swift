@@ -129,7 +129,6 @@ struct ChooseInstrumentView: View {
                 app.selectInstrument(app.profile)
             }
             .disabled(!selected)
-            .opacity(selected ? 1 : 0.4)
         }
         .padding(.horizontal, 28)
         .padding(.bottom, 10)

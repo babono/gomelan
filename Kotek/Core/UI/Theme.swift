@@ -102,7 +102,7 @@ enum Theme {
     static let buttonFill = Color("Tertiary")
     /// Type sitting on that slab.
     static let onButtonFill = Color("LaunchBackground")
-    /// Type on the gold-tinted glass of the main action (`glassButton(filled:)`).
+    /// Type on the main action, gold glass or solid gold (`ButtonSurface`).
     static let onGlassFill = onButtonFill
 
     // MARK: - Geometry
