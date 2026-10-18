@@ -141,13 +141,32 @@ struct InstrumentSectionView: View {
 
     /// This gangsa's own recorded bilah (`NoteClipCapture`). A key without a
     /// clip plays the bundled sample, so this is optional too.
+    ///
+    /// Once there is a recording, a choice of which to hear. Before, there is
+    /// nothing to choose between, so no picker.
     private var noteClips: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        @Bindable var bindableApp = app
+        return VStack(alignment: .leading, spacing: 10) {
             SectionLabel("Note clips")
             Text("Record each bilah so the guide and partner sound like your gangsa.")
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
                 .frame(maxWidth: 520, alignment: .leading)
+            if recordedClips > 0 {
+                Picker("Key sounds", selection: $bindableApp.playsRecordedSounds) {
+                    Text("Default").tag(false)
+                    Text("Recorded").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .kajarOnChange(of: app.playsRecordedSounds)
+                .frame(maxWidth: 280)
+                .accessibilityLabel("Key sounds")
+                if app.playsRecordedSounds, recordedClips < app.profile.keyCount {
+                    Text("Keys you haven't recorded play the default sound.")
+                        .font(.sans(13))
+                        .foregroundStyle(Theme.cream.opacity(0.62))
+                }
+            }
             SecondaryButton(title: "Capture note clips", systemImage: "waveform.badge.mic") {
                 app.openNoteCapture()
             }
