@@ -52,11 +52,11 @@ extension AppState {
         switch screen {
         case .controllerSetup, .sensorTest:
             nil
-        // The waterfall and Create Kotek's recording take any controller
-        // themselves when the gangsa has none set up — the prototype wiring
-        // both were built on.
-        case .waterfall where profile.controller == nil,
-             .createKotek where profile.controller == nil:
+        // Create Kotek's recording takes any controller itself when the
+        // gangsa has none set up — the prototype wiring it was built on. The
+        // waterfall no longer does: each gangsa has its own controller, and a
+        // gangsa without one must not pick up a neighbour's and be scored.
+        case .createKotek where profile.controller == nil:
             nil
         default:
             profile.controller.map { .hardware($0.hardwareId) } ?? GangsaSensor.Target.none

@@ -36,7 +36,12 @@ private struct ChooseKotekanContentView: View {
                 title: "Choose your kotekan",
                 onBack: { app.openChooseInstrument() },
                 settingsAction: { app.openSettings() },
-                infoAction: { app.openGuide(.kotekan) }
+                infoAction: { app.openGuide(.kotekan) },
+                // Sensors are optional; without them the waterfall plays the
+                // figure but scores nothing, so say which it will be up front.
+                status: app.controllerConnected
+                    ? (Theme.hit, "Sensors connected")
+                    : (Theme.cream.opacity(0.25), "No sensors connected")
             )
             ControllerStatusChip()
 

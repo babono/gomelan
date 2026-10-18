@@ -383,6 +383,9 @@ struct TopBar: View {
     var settingsAction: (() -> Void)?
     /// When set, a help button is shown at the trailing edge, before the gear.
     var infoAction: (() -> Void)?
+    /// When set, a status dot in the far corner, beside the gear — e.g. the
+    /// kotekan picker's "sensors connected".
+    var status: (color: Color, label: String)?
     var tint: Color = Theme.cream
     var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
@@ -452,6 +455,13 @@ struct TopBar: View {
                         }
                         .buttonStyle(.kajar)
                         .accessibilityLabel("Settings")
+                    }
+                    if let status {
+                        Circle()
+                            .fill(status.color)
+                            .frame(width: 10, height: 10)
+                            .accessibilityElement()
+                            .accessibilityLabel(status.label)
                     }
                 }
             }
