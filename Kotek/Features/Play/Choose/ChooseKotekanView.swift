@@ -40,7 +40,12 @@ private struct ChooseKotekanContentView: View {
             TopBar(
                 title: "Choose your kotekan",
                 onBack: { app.openChooseInstrument() },
-                settingsAction: { app.openSettings() }
+                settingsAction: { app.openSettings() },
+                // Sensors are optional; without them the waterfall plays the
+                // figure but scores nothing, so say which it will be up front.
+                status: app.controllerConnected
+                    ? (Theme.hit, "Sensors connected")
+                    : (Theme.cream.opacity(0.25), "No sensors connected")
             )
             SearchAndCreateBar(
                 query: $vm.query,

@@ -4,7 +4,8 @@
 //
 //  Practice without the camera: the gangsa is drawn on screen and the figure
 //  falls onto it, Synthesia-style, with a damp cue riding beside every stroke.
-//  Strikes come from the piezo sensors (`GangsaSensor`).
+//  Strikes come from this gangsa's piezo sensors (`GangsaSensor`), when it
+//  has a controller; without one the figure plays and nothing is scored.
 //
 //  Two views of the same instrument — flat, straight down from above, and
 //  tilted towards the player for depth. Swipe up on the gangsa to flip
@@ -153,6 +154,7 @@ private struct WaterfallContentView: View {
         .onChange(of: app.partnerAudible) { _, new in vm.engine.partnerAudible = new }
         .onChange(of: app.yourVoiceAudible) { _, new in vm.engine.yourVoiceAudible = new }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
+        .onChange(of: vm.sensing) { _, on in vm.sensingChanged(on) }
     }
 
     // MARK: - Chrome
@@ -167,7 +169,8 @@ private struct WaterfallContentView: View {
             HStack(spacing: 14) {
                 HalfSwitch(chosenHalf: app.chosenHalf) { app.setHalf($0) }
                     .fixedSize()
-                SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: true)
+                SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: vm.sensing)
+                sensorDot
                 VoiceMixer(
                     yourHalf: app.chosenHalf,
                     yourVoiceAudible: $bindableApp.yourVoiceAudible,
@@ -182,9 +185,20 @@ private struct WaterfallContentView: View {
             .background(Theme.deep.opacity(0.92), in: RoundedRectangle(cornerRadius: Theme.radius))
             .transition(.opacity)
         } else {
-            SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: false)
-                .frame(minHeight: 34)
-                .transition(.opacity)
+            HStack(spacing: 10) {
+                SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: false)
+                sensorDot
+            }
+            .frame(minHeight: 34)
+            .transition(.opacity)
+        }
+    }
+
+    /// Only a gangsa with a controller has sensors to report on.
+    @ViewBuilder
+    private var sensorDot: some View {
+        if app.profile.controller != nil {
+            SensorDot(status: vm.sensor.status)
         }
     }
 
@@ -224,6 +238,26 @@ struct StartCaption: View {
         .shadow(color: .black.opacity(0.6), radius: 8)
         .animation(.snappy(duration: 0.25), value: engine.countdownNumber)
         .allowsHitTesting(false)
+    }
+}
+
+private struct SensorDot: View {
+    let status: GangsaSensor.Status
+
+    var body: some View {
+        let (colour, label): (Color, String) = switch status {
+        case .connected: (Theme.hit, "Sensors connected")
+        case .scanning, .connecting: (Theme.gold, "Looking for sensors")
+        case .off, .unavailable: (Theme.miss, "Sensors unavailable")
+        }
+        HStack(spacing: 6) {
+            Circle().fill(colour).frame(width: 8, height: 8)
+            Image(systemName: "sensor.tag.radiowaves.forward")
+                .font(.symbol(12))
+                .foregroundStyle(Theme.cream.opacity(0.6))
+        }
+        .accessibilityElement()
+        .accessibilityLabel(label)
     }
 }
 

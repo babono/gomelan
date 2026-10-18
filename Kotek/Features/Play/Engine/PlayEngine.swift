@@ -470,6 +470,22 @@ final class PlayEngine {
         cycleVoided = true
     }
 
+    /// Start or stop scoring mid-session — the waterfall, as its sensors come
+    /// and go. Nothing hears your strokes without them, so judging on would
+    /// auto-miss every one and paint the lane red.
+    ///
+    /// The pass in progress is voided either way, and strokes already behind
+    /// the playhead are passed over rather than missed — same as `setHalf`.
+    func setJudging(_ on: Bool) {
+        guard on != judging else { return }
+        judging = on
+        cycleVoided = true
+        let patternTime = currentTimeMs - patternOriginMs
+        for i in notes.indices where patternTime > scaledTime(notes[i]) + strokeGap(around: i) {
+            judged[i] = true
+        }
+    }
+
     /// Stop the session and hand back what was played.
     ///
     /// Only COMPLETED passes are reported. The one in progress when the player

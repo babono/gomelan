@@ -81,17 +81,22 @@ struct SplashView: View {
     }
 }
 
-/// One side's ornament: the designers' strip of flower-and-fern units
-/// (`splash-ornament-left` / `-right`), drawn at its own angle, sliding down
-/// its own diagonal — the left one towards the bottom left, the right one
-/// towards the bottom right — like a marquee, in Core Animation (`Marquee`).
+/// One side's ornament: a band of the carved motif (`splash-motif`, solid),
+/// laid at a slant, sliding down its own diagonal — the left one towards the
+/// bottom left, the right one towards the bottom right — like a marquee, in
+/// Core Animation (`Marquee`).
 ///
-/// Each file is six units long in two staggered lanes, and every unit sits
-/// exactly one `step` from the next (72 across, 144 down, in the artwork's
-/// units). So copies laid end to end six steps apart make one endless strip,
-/// and sliding it by one step lands every unit where its neighbour was: the
-/// loop is invisible. On `parted` the strip swings out about its outer edge,
-/// growing as it goes, until it is off the screen.
+/// The band is built here from ONE motif, the same way the background builds
+/// its rows: a row hanging and a row standing, half a motif apart. The first
+/// design shipped each strip as a ready-drawn file with its unit spacing and
+/// anchor typed in from the artwork, so a redrawn motif meant re-measuring
+/// both; from one tile, a redraw is a file swap.
+///
+/// Every unit sits exactly one `step` from the next, so copies laid end to
+/// end make one endless strip, and sliding it by one step lands every unit
+/// where its neighbour was: the loop is invisible. On `parted` the strip
+/// swings out about its outer edge, growing as it goes, until it is off the
+/// screen.
 private struct CurtainColumn: View {
     let side: HorizontalEdge
     let screen: CGSize
@@ -99,43 +104,38 @@ private struct CurtainColumn: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Both files are 693 x 1032.
-    private static let artSize = CGSize(width: 693, height: 1032)
-    /// One unit up the strip, artwork units. The right strip runs the other
-    /// way across.
-    private static let stepAcross: CGFloat = 72
-    private static let stepUp: CGFloat = 144
-    private static let unitsPerFile = 6
-    /// The topmost unit's centre in each file — the point placed on screen.
-    private static let leftTop = CGPoint(x: 567, y: 155)
-    private static let rightTop = CGPoint(x: 126, y: 155)
+    /// Up the strip: one across for two up, the slant the first design's
+    /// strips had. The right strip runs the other way across.
+    private static let run = CGVector(dx: 1, dy: -2)
+    /// Each motif's height, as a share of the screen's — so the band is the
+    /// same share of the screen on every phone (and on iPad, before PadScale),
+    /// and about as wide as the first design's.
+    private static let motifShare: CGFloat = 0.47
+    /// The design's proportions, as in `PatternBackground`: neighbours 6.5%
+    /// of a width apart, the band 1.2 motifs deep.
+    private static let pitch: CGFloat = 1.065
+    private static let depth: CGFloat = 1.2
+    /// Units drawn into one copy of the strip.
+    private static let units = 6
     /// Points per second along the diagonal.
     private static let speed: Double = 16
 
     var body: some View {
         let leading = side == .leading
-        // Sized to the screen's height, so a unit is the same share of the
-        // screen on every phone (and on iPad, before PadScale).
-        let s = screen.height / 402 * 0.87
-        let art = CGSize(width: Self.artSize.width * s, height: Self.artSize.height * s)
-        let step = CGSize(width: (leading ? Self.stepAcross : -Self.stepAcross) * s, height: -Self.stepUp * s)
-        let period = CGSize(
-            width: step.width * CGFloat(Self.unitsPerFile),
-            height: step.height * CGFloat(Self.unitsPerFile)
-        )
-        let anchor = leading ? Self.leftTop : Self.rightTop
-        let target = CGPoint(x: screen.width * (leading ? 0.22 : 0.78), y: screen.height * 0.2)
-        let origin = CGPoint(x: target.x - anchor.x * s, y: target.y - anchor.y * s)
+        let strip = Self.strip(leading: leading, screenHeight: screen.height)
+        let target = CGPoint(x: screen.width * (leading ? 0.13 : 0.87), y: screen.height * 0.2)
+        let origin = CGPoint(x: target.x + strip.offset.dx, y: target.y + strip.offset.dy)
+        let step = strip.step
 
         Marquee(
-            image: Self.strip(leading: leading, size: art),
+            image: strip.image,
             origin: origin,
-            spacing: CGVector(dx: period.width, dy: period.height),
+            spacing: CGVector(dx: step.dx * CGFloat(Self.units), dy: step.dy * CGFloat(Self.units)),
             // One copy on screen, one either side up the strip, one below.
             count: 4,
             // Down the diagonal by one unit, over and over.
-            travel: CGVector(dx: -step.width, dy: -step.height),
-            duration: hypot(step.width, step.height) / Self.speed,
+            travel: CGVector(dx: -step.dx, dy: -step.dy),
+            duration: hypot(step.dx, step.dy) / Self.speed,
             running: !reduceMotion,
             // Swung outwards — the left strip anticlockwise, the right
             // clockwise, each about its own bottom corner — and grown, as if
@@ -157,19 +157,65 @@ private struct CurtainColumn: View {
         .allowsHitTesting(false)
     }
 
-    /// The SVG drawn once at its on-screen size, for the marquee to repeat.
-    /// Cached: a new bitmap on every SwiftUI update would restart the slide.
-    private static func strip(leading: Bool, size: CGSize) -> UIImage {
-        let name = leading ? "splash-ornament-left" : "splash-ornament-right"
-        let key = "\(name)@\(size.width)x\(size.height)"
-        if let cached = cache[key] { return cached }
-        let art = UIImage(named: name)
-        let image = Marquee.render(size: size) { _ in
-            art?.draw(in: CGRect(origin: .zero, size: size))
-        }
-        cache[key] = image
-        return image
+    /// One copy of the strip, drawn once at its on-screen size, for the
+    /// marquee to repeat.
+    private struct Strip {
+        let image: UIImage
+        /// From the topmost unit's centre — the point placed on screen — to
+        /// the image's top-left corner.
+        let offset: CGVector
+        /// One unit up the strip.
+        let step: CGVector
     }
 
-    private nonisolated(unsafe) static var cache: [String: UIImage] = [:]
+    /// Laid out flat — x along the band, y across it from the hanging row's
+    /// edge — then turned onto the slant as it is drawn. The right strip is
+    /// the left one mirrored; the motif is symmetric, so only the slant shows
+    /// it. Cached: a new bitmap on every SwiftUI update would restart the slide.
+    private static func strip(leading: Bool, screenHeight: CGFloat) -> Strip {
+        let key = "\(leading)@\(screenHeight)"
+        if let cached = cache[key] { return cached }
+        let art = UIImage(named: "splash-motif")
+        let aspect = art.map { $0.size.width / $0.size.height } ?? 342.0 / 424.0
+        let motif = CGSize(width: screenHeight * motifShare * aspect, height: screenHeight * motifShare)
+        let period = motif.width * pitch
+
+        let length = hypot(run.dx, run.dy)
+        let along = CGVector(dx: (leading ? run.dx : -run.dx) / length, dy: run.dy / length)
+        let across = CGVector(dx: leading ? -along.dy : along.dy, dy: leading ? along.dx : -along.dx)
+        let slant = CGAffineTransform(a: along.dx, b: along.dy, c: across.dx, d: across.dy, tx: 0, ty: 0)
+
+        let last = CGFloat(units - 1) * period
+        let flat = CGRect(
+            x: -motif.width / 2, y: 0,
+            width: last + period / 2 + motif.width, height: motif.height * depth
+        )
+        let bounds = flat.applying(slant)
+        let image = Marquee.render(size: bounds.size) { cg in
+            cg.translateBy(x: -bounds.minX, y: -bounds.minY)
+            cg.concatenate(slant)
+            for i in 0 ..< units {
+                let x = CGFloat(i) * period
+                // Hanging: turned over, fan on the band's top edge.
+                cg.saveGState()
+                cg.translateBy(x: x - motif.width / 2, y: motif.height)
+                cg.scaleBy(x: 1, y: -1)
+                art?.draw(in: CGRect(origin: .zero, size: motif))
+                cg.restoreGState()
+                // Standing: upright, half a period on, fan on the bottom edge.
+                let foot = CGPoint(x: x + period / 2 - motif.width / 2, y: motif.height * (depth - 1))
+                art?.draw(in: CGRect(origin: foot, size: motif))
+            }
+        }
+        let top = CGPoint(x: last + period / 4, y: motif.height * depth / 2).applying(slant)
+        let strip = Strip(
+            image: image,
+            offset: CGVector(dx: bounds.minX - top.x, dy: bounds.minY - top.y),
+            step: CGVector(dx: along.dx * period, dy: along.dy * period)
+        )
+        cache[key] = strip
+        return strip
+    }
+
+    private nonisolated(unsafe) static var cache: [String: Strip] = [:]
 }

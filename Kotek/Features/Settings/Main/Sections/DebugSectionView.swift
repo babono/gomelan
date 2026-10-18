@@ -29,9 +29,6 @@ struct DebugSectionView: View {
                 SecondaryButton(title: "Capture Training Data", systemImage: "camera.viewfinder") {
                     app.openCaptureTraining()
                 }
-                SecondaryButton(title: "Capture Note Clips", systemImage: "waveform.badge.mic") {
-                    app.openNoteCapture()
-                }
                 SecondaryButton(title: "Test Sensors", systemImage: "sensor.tag.radiowaves.forward") {
                     app.openSensorTest()
                 }
