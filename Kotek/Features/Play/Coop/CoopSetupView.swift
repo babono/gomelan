@@ -30,14 +30,12 @@ struct CoopSetupView: View {
             VStack(spacing: 18) {
                 if let k = app.selectedKotekan {
                     VStack(spacing: 2) {
-                        Text(k.catalogLabel)
-                            .font(.sans(12, weight: .medium))
-                            .textCase(.uppercase)
-                            .tracking(1.5)
-                            .foregroundStyle(Theme.stone)
                         Text(k.name)
                             .font(.serif(28))
                             .foregroundStyle(Theme.cream)
+                        Text(k.specLabel)
+                            .font(.sans(13, weight: .medium).monospacedDigit())
+                            .foregroundStyle(Theme.stone)
                     }
                 }
 

@@ -13,20 +13,19 @@ struct KotekanEntity: AppEntity {
 
     let id: String
     let name: String
-    let level: Int
-    let toneLabel: String
+    /// "60 BPM · 4 s cycle", as the picker shows it.
+    let spec: String
 
     init(_ k: Kotekan) {
         id = k.id
         name = k.name
-        level = k.level
-        toneLabel = k.toneLabel
+        spec = k.specLabel
     }
 
     var displayRepresentation: DisplayRepresentation {
         DisplayRepresentation(
             title: "\(name)",
-            subtitle: "Level \(level) - \(toneLabel)"
+            subtitle: "\(spec)"
         )
     }
 }
