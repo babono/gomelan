@@ -10,32 +10,39 @@ import SwiftUI
 struct InstrumentCardView: View {
     let profile: InstrumentProfile
     let isCurrent: Bool
+    /// As tall as the rail allows, up to `maxHeight` — see there.
+    var height: CGFloat = InstrumentCardView.maxHeight
     let onSelect: () -> Void
 
-    /// The kotekan card's size (`KotekanCardView`), so the two pickers match.
-    /// It was 258 x 240 with a 104pt photo, too tall for the carousel layout.
+    /// The kotekan card's width (`KotekanCardView`), so the two pickers line up.
     static let width = KotekanCardView.cardWidth
-    static let height = KotekanCardView.cardHeight
-    private static let photoHeight: CGFloat = 62
+    /// Taller than the kotekan card, for the photo — the photo is how a player
+    /// tells their gangsa apart, and at the kotekan card's 178 it was a strip.
+    /// Not fixed: on a small phone in landscape the rail has less than this
+    /// (it was once 240 and ran into the footer), so the card takes what the
+    /// rail has, and the photo gives up the difference.
+    static let maxHeight: CGFloat = 214
+    /// Name, keys line and set-up marks, with their padding.
+    private static let infoHeight: CGFloat = 90
+
+    private var photoHeight: CGFloat {
+        max(56, height - Self.infoHeight)
+    }
 
     var body: some View {
         Button {
             onSelect()
         } label: {
-            let photo = InstrumentPhotoStore.image(for: profile)
             VStack(alignment: .leading, spacing: 0) {
-                // Across the top, edge to edge, as the revamp draws it.
-                if let photo {
-                    Image(uiImage: photo)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: Self.width, height: Self.photoHeight)
-                        .clipped()
-                }
+                // Across the top, edge to edge, as the revamp draws it — and
+                // on every card, so the names line up along the rail.
+                photo
+                    .frame(width: Self.width, height: photoHeight)
+                    .clipped()
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(profile.name)
-                        .font(.serif(photo == nil ? 28 : 22))
+                        .font(.serif(22))
                         .foregroundStyle(Theme.cream)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
@@ -48,16 +55,19 @@ struct InstrumentCardView: View {
 
                     Spacer(minLength: 2)
 
-                    // One line: two stacked ran out of card at this height.
-                    HStack(spacing: 12) {
-                        playedLine
-                        statusDot
+                    // What this gangsa is set up with — the two things that
+                    // change how it plays. "Notes landed" and the learned
+                    // voice were here; the first is history, the second only
+                    // matters to the camera mode.
+                    HStack(spacing: 14) {
+                        setupMark("Sound clips", done: hasSoundClips)
+                        setupMark("Sensors", done: hasSensors)
                     }
                 }
                 .padding(.horizontal, 18)
-                .padding(.vertical, photo == nil ? 18 : 10)
+                .padding(.vertical, 10)
             }
-            .frame(width: Self.width, height: Self.height, alignment: .topLeading)
+            .frame(width: Self.width, height: height, alignment: .topLeading)
             .background(Theme.deep)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .overlay(
@@ -74,29 +84,46 @@ struct InstrumentCardView: View {
         .accessibilityHint("Selects this gangsa")
     }
 
-    private var playedLine: some View {
-        let played = profile.hasBeenPlayed
-        return Text(played ? "\(profile.notesLanded.formatted()) notes landed" : "Unplayed")
-            .font(.sans(11, weight: .semibold))
-            .textCase(.uppercase)
-            .tracking(1.5)
-            .foregroundStyle(played ? Theme.gold : Theme.cream.opacity(0.35))
-            .lineLimit(1)
-            .minimumScaleFactor(0.8)
+    /// The gangsa's photo, or an image symbol where it has none — a plain
+    /// placeholder, so a card without a photo still reads as "add one here".
+    @ViewBuilder private var photo: some View {
+        if let image = InstrumentPhotoStore.image(for: profile) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+        } else {
+            ZStack {
+                Theme.cream.opacity(0.06)
+                Image(systemName: "photo")
+                    .font(.symbol(26, weight: .regular))
+                    .foregroundStyle(Theme.cream.opacity(0.3))
+            }
+            .accessibilityHidden(true)
+        }
     }
 
-    private var statusDot: some View {
-        let learned = profile.hasLearnedBaseline
-        return HStack(spacing: 8) {
-            Circle()
-                .strokeBorder(learned ? Color.clear : Theme.cream.opacity(0.45), lineWidth: 1.5)
-                .background(Circle().fill(learned ? Theme.buttonFill : Color.clear))
-                .frame(width: 8, height: 8)
-            Text(learned ? "Voice learned" : "No voice yet")
-                .font(.sans(12))
-                .lineLimit(1)
-                .foregroundStyle(learned ? Theme.buttonFill : Theme.cream.opacity(0.45))
+    /// At least one key recorded (`NoteClipCapture`).
+    private var hasSoundClips: Bool {
+        profile.keys.contains { $0.soundFile != nil }
+    }
+
+    /// A strike controller set up, so this gangsa can be scored.
+    private var hasSensors: Bool {
+        profile.controller != nil
+    }
+
+    /// A tick or an empty circle as well as the colour, so the state never
+    /// rests on colour alone.
+    private func setupMark(_ title: String, done: Bool) -> some View {
+        Label {
+            Text(title).font(.sans(12, weight: .medium))
+        } icon: {
+            Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                .font(.symbol(12, weight: .semibold))
         }
+        .labelStyle(.titleAndIcon)
+        .foregroundStyle(done ? Theme.buttonFill : Theme.cream.opacity(0.4))
+        .lineLimit(1)
     }
 
     private var lastPlayedText: String {
@@ -106,12 +133,9 @@ struct InstrumentCardView: View {
 
     private var accessibilityLabel: String {
         var parts = ["\(profile.name), \(profile.keyCount) keys"]
-        parts.append(
-            profile.hasBeenPlayed
-                ? "last played \(lastPlayedText), \(profile.notesLanded) notes landed"
-                : "not played yet"
-        )
-        parts.append(profile.hasLearnedBaseline ? "voice learned" : "no voice yet")
+        parts.append(profile.hasBeenPlayed ? "last played \(lastPlayedText)" : "not played yet")
+        parts.append(hasSoundClips ? "has sound clips" : "no sound clips")
+        parts.append(hasSensors ? "sensors set up" : "no sensors")
         return parts.joined(separator: ", ")
     }
 }
