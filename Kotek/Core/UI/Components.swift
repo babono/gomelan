@@ -443,6 +443,30 @@ struct CapsuleButton: View {
     }
 }
 
+/// The trash circle in a picker's bottom bar, beside its way on: delete the
+/// card in the middle. Always behind a `.confirm` — nothing goes on one tap.
+/// Shared by the kotekan and gangsa pickers so the two bars stay one design.
+struct DeleteIconButton: View {
+    /// What VoiceOver hears: "Delete Pemade 1".
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "trash")
+                .font(.symbol(14, weight: .semibold))
+                .foregroundStyle(Theme.cream.opacity(0.7))
+                .frame(width: 38, height: 38)
+                .buttonSurface(.wash(Theme.cream), in: Circle())
+                // Drawn at 38, targeted at 44 — see `PillButton`.
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.kajar)
+        .accessibilityLabel(label)
+    }
+}
+
 /// The cream call-to-action. Kept as a distinct name because many call sites
 /// use it; it is just a non-uppercased filled `PillButton` with an icon.
 struct PrimaryButton: View {
@@ -866,9 +890,13 @@ extension View {
                     message: message,
                     confirmTitle: confirmTitle,
                     confirmTint: confirmTint,
+                    // Act FIRST, then dismiss. The pickers present this from
+                    // the thing being deleted (`pendingDelete != nil`), so
+                    // dismissing first cleared it and the action found
+                    // nothing to delete — Delete silently did nothing.
                     onConfirm: {
-                        isPresented.wrappedValue = false
                         action()
+                        isPresented.wrappedValue = false
                     },
                     onCancel: { isPresented.wrappedValue = false }
                 )
