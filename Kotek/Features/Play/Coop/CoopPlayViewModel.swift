@@ -72,6 +72,7 @@ final class CoopPlayViewModel {
             engine.colotomicAudible = lane.id == 0
             engine.partnerAudible = false
             engine.yourVoiceAudible = guideVoices
+            engine.showsDamp = app.showsDamp
             // Polos from the left of the stereo field, sangsih from the right,
             // whoever sits where — the halves read as two players by ear too.
             engine.yourPan = lane.player.half == .polos ? -0.32 : 0.32

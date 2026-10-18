@@ -111,12 +111,16 @@ struct FallingNote: Identifiable, Equatable {
     let msAhead: Double
     let durationMs: Double
     var outcome: JudgementResult?
-    /// The bilah the left hand pinches as this one is struck — the previous
-    /// stroke of the same half (§5.5). nil for the very first stroke, for the
-    /// partner's half, and when the previous stroke was this same bilah: the
-    /// mallet re-strikes a bar that is still ringing, there is nothing to damp
-    /// beside it.
-    let dampKey: Int?
+    /// Whether the left hand pinches THIS bilah as soon as the note ends
+    /// (§5.5). False for the partner's half, when the damp cues are switched
+    /// off, and when the next stroke of the same half is this same bilah: the
+    /// mallet re-strikes a bar that is still ringing, so there is nothing to
+    /// damp in between.
+    ///
+    /// It used to be the previous stroke's bilah, pinched as this one was
+    /// struck. That made the damp wait for the next note, so a note before a
+    /// rest rang on through the rest with no damp shown at all.
+    let dampsAfter: Bool
 }
 
 /// A beat rule on the waterfall. `strong` every four beats, on the kajar.

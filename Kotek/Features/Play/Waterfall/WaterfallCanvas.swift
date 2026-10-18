@@ -3,9 +3,9 @@
 //  Kotek
 //
 //  The falling notes. Every stroke is a block in its bilah's lane that reaches
-//  the bottom edge — the top of the bar — at the instant it is due. Beside it,
-//  in the lane of the bar struck before, rides a damp cue: the left hand pinches
-//  the previous bilah as the right strikes the next (§5.5).
+//  the bottom edge — the top of the bar — at the instant it is due. Right
+//  behind it in the same lane rides a damp cue: the moment the note ends, the
+//  left hand pinches that bilah (§5.5).
 //
 //  One Canvas, reading the engine, so the per-frame redraw stays in here and
 //  never reaches the instrument or the chrome.
@@ -211,21 +211,24 @@ struct WaterfallCanvas: View {
         drawBlock(ctx, block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs), skin: yourSkin)
     }
 
-    /// Rides beside its stroke, same height, in the lane of the bar to damp:
-    /// a bronze tile with a pinch, the colour of the bar it stops, so it never
-    /// reads as a target.
+    /// Follows its stroke up the same lane, as long as the stroke, reaching
+    /// the bar the instant the note ends: a bronze tile with a pinch, the
+    /// colour of the bar it stops, so it never reads as a target.
     private func drawDamp(
         _ ctx: GraphicsContext,
         note: FallingNote,
         y: (Double) -> CGFloat,
         pxPerMs: Double
     ) {
-        guard let dampKey = note.dampKey else { return }
+        guard note.dampsAfter else { return }
         let stroke = block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs)
         let width = layout.barWidth * 0.84
+        // Its bottom is the note's end; the 3pt the stroke leaves at its top
+        // is the gap between the two.
+        let bottom = y(note.msAhead + note.durationMs)
         let r = CGRect(
-            x: layout.laneCenter(dampKey) - width / 2,
-            y: stroke.minY,
+            x: layout.laneCenter(note.keyIndex) - width / 2,
+            y: bottom - stroke.height,
             width: width,
             height: stroke.height
         )
