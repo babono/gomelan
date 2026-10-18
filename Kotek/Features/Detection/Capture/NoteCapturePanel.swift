@@ -48,7 +48,7 @@ struct NoteCapturePanel: View {
             PillButton(
                 title: "Record",
                 systemImage: "record.circle",
-                style: .filled,
+                style: .solid,
                 tint: Theme.copper,
                 fullWidth: true,
                 compact: true,
@@ -56,7 +56,6 @@ struct NoteCapturePanel: View {
                 action: { viewModel.record() }
             )
             .disabled(viewModel.isRecording)
-            .opacity(viewModel.isRecording ? 0.5 : 1)
 
             HStack(spacing: 8) {
                 PillButton(
@@ -70,25 +69,21 @@ struct NoteCapturePanel: View {
                     action: { viewModel.togglePlayback() }
                 )
                 .disabled(!canPlay)
-                .opacity(canPlay ? 1 : 0.5)
 
-                // Arrow only: PillButton has no icon-only form and this is its
-                // single use. Same outlined-glass look so it reads as a sibling.
+                // Arrow only: a capsule wash, the same as Play beside it.
                 Button {
                     viewModel.next()
                 } label: {
                     Image(systemName: "arrow.right")
                         .font(.symbol(14, weight: .semibold))
-                        .foregroundStyle(Theme.cream)
+                        .foregroundStyle(ButtonSurface<Capsule>.label(.wash(Theme.copper), enabled: canNext))
                         .frame(width: 44, height: 38)
-                        .background(Theme.cream.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.radius))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.radius).strokeBorder(Theme.copper, lineWidth: 1))
+                        .buttonSurface(.wash(Theme.copper))
                         .frame(minHeight: 44)
-                        .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+                        .contentShape(Capsule())
                 }
                 .buttonStyle(.kajar)
                 .disabled(!canNext)
-                .opacity(canNext ? 1 : 0.5)
                 .accessibilityLabel("Next key")
             }
         }

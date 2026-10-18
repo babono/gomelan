@@ -87,9 +87,11 @@ struct GuidePanel<Content: View>: View {
 
             Spacer(minLength: 16)
 
+            // Solid: it sits on the guide's own card, where glass would have
+            // nothing to refract and would be glass in the content layer.
             PillButton(
                 title: "Got it",
-                style: .filled,
+                style: .solid,
                 compact: true,
                 action: onClose
             )
