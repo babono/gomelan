@@ -11,6 +11,11 @@ import SwiftUI
 /// The legend IS the mixer. Each colour names a voice on the score, and tapping
 /// it silences that voice — so a figure can be learned by hearing it played
 /// first, then heard against the other half once it is in the hands.
+///
+/// No speaker glyph on the chips. It made them read as mute switches first and
+/// as the score's legend second, which is the wrong way round; a silenced voice
+/// shows as a hollow swatch and dimmed name instead. It replaced a Voices
+/// dropdown on the waterfall, which hid both voices behind a menu.
 struct VoiceMixer: View {
     let yourHalf: KotekanHalf
     /// ON by default: you cannot copy what you have not heard. Mute it once the
@@ -53,15 +58,12 @@ struct VoiceMixer: View {
                 Text(label)
                     .font(.sans(11, weight: .medium))
                     .foregroundStyle(isOn.wrappedValue ? Theme.cream : Theme.inkStone.opacity(0.7))
-
-                Image(systemName: isOn.wrappedValue ? "speaker.wave.1.fill" : "speaker.slash.fill")
-                    .font(.sans(9))
-                    .foregroundStyle(isOn.wrappedValue ? color : Theme.inkStone.opacity(0.7))
             }
             .padding(.horizontal, 9)
             .padding(.vertical, 6)
             .background(isOn.wrappedValue ? Theme.ink.opacity(0.55) : .clear, in: Capsule())
             .overlay(Capsule().strokeBorder(Theme.inkStone.opacity(0.35), lineWidth: 1))
+            .contentShape(Capsule())
         }
         .buttonStyle(.kajar)
     }

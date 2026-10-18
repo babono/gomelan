@@ -13,7 +13,7 @@ struct DebugSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(KotekFonts.summary)
-                .font(.system(size: 11, design: .monospaced))
+                .font(.sans(11).monospacedDigit())
                 .foregroundStyle(KotekFonts.displayRegular == nil ? Theme.miss : Theme.cream.opacity(0.75))
 
             FlowLayout(spacing: 10) {

@@ -170,7 +170,13 @@ struct PerformanceGraph: View {
                 if column >= Self.minColumn {
                     // Above the block, or below it on the top row.
                     let y = rect.minY >= 16 ? rect.minY - 9 : rect.maxY + 9
-                    chip("\(s.slips)/\(s.attempts)", color: slip, at: CGPoint(x: rect.midX, y: y), ctx, size)
+                    // A share, not "5/10": the counts depend on how long you
+                    // played, so 5/5 and 5/10 had to be divided in your head
+                    // before two strokes could be compared. The share that
+                    // LANDED, so it reads like every other score in the app —
+                    // the slip share was tried first, and a stroke that never
+                    // once landed read "100%".
+                    chip("\(Int(((1 - s.slipRate) * 100).rounded()))%", color: slip, at: CGPoint(x: rect.midX, y: y), ctx, size)
                 }
             }
         }

@@ -32,7 +32,7 @@ struct DetectionKeyOverlay: View {
                     )
                     .overlay(alignment: .top) {
                         Text("\(key.index) · \(Int(prob * 100))%")
-                            .font(.system(size: 11, weight: .bold, design: .monospaced))
+                            .font(.sans(11, weight: .bold).monospacedDigit())
                             .foregroundStyle(isHit ? .green : .white.opacity(0.7))
                             .padding(.horizontal, 5).padding(.vertical, 2)
                             .background(.black.opacity(0.6), in: Capsule())

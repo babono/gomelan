@@ -98,7 +98,7 @@ struct DetectionTestView: View {
                         .fill(viewModel.audio.isRunning ? Theme.hit : Theme.miss)
                         .frame(width: 10, height: 10)
                     Text("vision + audio")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .font(.sans(12, weight: .bold))
                         .foregroundStyle(.white)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 8)
@@ -131,7 +131,7 @@ struct DetectionTestView: View {
                 Image(systemName: "waveform.and.magnifyingglass")
                 Text("dict")
             }
-            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .font(.sans(12, weight: .bold))
             .foregroundStyle(.white)
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(.black.opacity(0.6), in: Capsule())

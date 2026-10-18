@@ -53,10 +53,6 @@ private struct SettingsContentView: View {
                             InstrumentSectionView(viewModel: vm)
                         }
 
-                        section(.judging) {
-                            JudgingSectionView(app: app)
-                        }
-
                         section(.deprecated) {
                             DeprecatedSectionView(app: app)
                         }

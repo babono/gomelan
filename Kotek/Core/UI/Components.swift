@@ -5,10 +5,13 @@
 //  Shared UI pieces, in the Kotek design language: one warm brown ground,
 //  cream type, gold outlines, radius 14 throughout.
 //
-//  Buttons are rounded rectangles rather than capsules. That is the design's
-//  call and it matters more than it sounds — a capsule reads as a chip, a 14pt
-//  rectangle at 56pt tall reads as a key on an instrument, which is what these
-//  screens are about.
+//  Liquid Glass marks the calls to action, so they stand out:
+//   - Start / Next / Resume: glass tinted gold (`glassButton(filled:)`).
+//   - Create / Add, search: regular glass (`glassButton`).
+//   - back, settings, Quit, Coop, Edit, undo, the controls over the camera:
+//     a flat tinted fill (`tintedButton`), like the Edit button in Photos.
+//  Regular glass on everything was tried first and flattened the hierarchy;
+//  clear glass on the secondary buttons was tried after and was still too loud.
 //
 
 import SwiftUI
@@ -198,6 +201,26 @@ extension View {
 
 // MARK: - Buttons
 
+extension View {
+    /// System Liquid Glass, for the navigation layer. `filled` is the screen's
+    /// main action: the glass tinted gold at 60% with dark type
+    /// (`Theme.onGlassFill`) — 75% painted over the refraction, 40% with cream
+    /// type let the label sink into the glass.
+    func glassButton(filled: Bool = false, in shape: some Shape = Capsule()) -> some View {
+        glassEffect(
+            filled ? .regular.tint(Theme.buttonFill.opacity(0.6)).interactive() : .regular.interactive(),
+            in: shape
+        )
+    }
+
+    /// Secondary buttons: a flat wash of `tint`, no glass. Clear glass
+    /// (`.clear`) was tried here and still stood up as loud as the calls to
+    /// action.
+    func tintedButton(_ tint: Color = Theme.cream, in shape: some Shape = Capsule()) -> some View {
+        background(tint.opacity(0.12), in: shape)
+    }
+}
+
 enum PillStyle { case filled, outlined, secondary }
 
 /// The canonical pill button (GO, NEXT, CALIBRATE, START PRACTICE, RETRY …).
@@ -253,49 +276,106 @@ struct PillButton: View {
             .padding(.horizontal, compact ? 18 : 30)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .frame(height: compact ? 38 : Theme.buttonHeight)
-            .background(background)
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.radius)
-                    .strokeBorder(tint, lineWidth: style == .outlined ? 1 : 0)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+            .background { background }
             // The compact pill is drawn 38pt tall because that is what the
             // design calls for, but the HIG minimum target is 44 — so the
             // TARGET is grown to 44 without changing what is drawn. Someone
             // reaching for this is standing over an instrument holding a
             // mallet, which is not the moment for a six-point miss.
             .frame(minHeight: 44)
-            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+            .contentShape(Capsule())
         }
         .buttonStyle(KajarButtonStyle(ticks: !silent))
     }
 
     private var foreground: Color {
         switch style {
-        // The primary button is a cream slab with dark type on it — the one
-        // place in the app where ink-on-light is correct.
-        case .filled: Theme.onButtonFill
+        // Dark type on gold glass. Cream type was tried at a lighter tint and
+        // disappeared into the background showing through.
+        case .filled: Theme.onGlassFill
         case .outlined: Theme.cream
         case .secondary: Theme.cream
         }
     }
 
+    /// Only the filled pill is glass — it is the screen's way on. Outlined
+    /// ones (Coop, Edit, Cancel) sit in the content and are a tinted fill.
     @ViewBuilder private var background: some View {
         switch style {
-        case .filled:
-            RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.buttonFill)
-        case .outlined:
-            // Glass rather than a hole: a cream wash at 8% over whatever is
-            // behind, which on the camera screens is the instrument itself.
-            RoundedRectangle(cornerRadius: Theme.radius)
-                .fill(Theme.cream.opacity(0.08))
-                .background(
-                    .ultraThinMaterial,
-                    in: RoundedRectangle(cornerRadius: Theme.radius)
-                )
-        case .secondary:
-            RoundedRectangle(cornerRadius: Theme.radius).fill(Theme.inkRaised)
+        case .filled: Color.clear.glassButton(filled: true)
+        case .outlined: Color.clear.tintedButton(tint == Theme.gold ? Theme.cream : tint)
+        case .secondary: Capsule().fill(Theme.inkRaised)
         }
+    }
+}
+
+/// A round button holding one symbol. Quiet glass — back, undo, stop;
+/// `glass` for a call to action (search), `filled` for the main one (Resume).
+struct CircleIconButton: View {
+    let systemImage: String
+    let label: String
+    var size: CGFloat = 44
+    var glass = false
+    var filled = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.symbol(size * 17 / 44, weight: .semibold))
+                .foregroundStyle(filled ? Theme.onGlassFill : Theme.cream)
+                .frame(width: size, height: size)
+                .background {
+                    if glass || filled {
+                        Color.clear.glassButton(filled: filled, in: Circle())
+                    } else {
+                        Color.clear.tintedButton(in: Circle())
+                    }
+                }
+                .contentShape(Circle())
+        }
+        .buttonStyle(.kajar)
+        .accessibilityLabel(label)
+    }
+}
+
+/// A capsule button with a sentence-case label, and optionally a symbol after
+/// it. `filled` is the step's main action, in tinted glass; `glass` is a
+/// secondary call to action (Create kotek, Add gangsa); otherwise a tinted
+/// fill.
+struct CapsuleButton: View {
+    let title: String
+    var trailingSystemImage: String?
+    var filled = false
+    var glass = false
+    var fullWidth = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Text(title)
+                if let trailingSystemImage {
+                    Image(systemName: trailingSystemImage)
+                        .font(.symbol(16, weight: .semibold))
+                }
+            }
+            .font(.sans(16, weight: .semibold))
+            .foregroundStyle(filled ? Theme.onGlassFill : Theme.cream)
+            .lineLimit(1)
+            .fixedSize(horizontal: !fullWidth, vertical: false)
+            .padding(.horizontal, 24)
+            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 44)
+            .background {
+                if filled || glass {
+                    Color.clear.glassButton(filled: filled)
+                } else {
+                    Color.clear.tintedButton()
+                }
+            }
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.kajar)
     }
 }
 
@@ -376,6 +456,9 @@ struct SecondaryButton: View {
 /// whose whole character is soft.
 struct TopBar: View {
     var title: String
+    /// nil is plain Back: a chevron in a glass circle. A title is for a leading
+    /// action that is not simply "back" — Done, Cancel, Skip, Rescan — and
+    /// shows as words in a glass capsule.
     var backTitle: String?
     var onBack: (() -> Void)?
     var trailingText: String?
@@ -405,21 +488,14 @@ struct TopBar: View {
                     .padding(.horizontal, 96)
 
                 HStack(spacing: 14) {
+                    // R Was "‹ Back" as bare text. The chevron alone in glass
+                    // R matches the back button Create Kotek already had.
                     if let onBack {
-                        Button(action: onBack) {
-                            HStack(spacing: 4) {
-                                // The system back chevron, at the weight and
-                                // spacing iOS itself uses for one, so it reads
-                                // as Back rather than as an arrow someone drew.
-                                Image(systemName: "chevron.left")
-                                    .font(.symbol(16, weight: .semibold))
-                                Text(backTitle ?? "Back").font(.sans(16))
-                            }
-                            .foregroundStyle(tint)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
+                        if let backTitle {
+                            CapsuleButton(title: backTitle, action: onBack)
+                        } else {
+                            CircleIconButton(systemImage: "chevron.left", label: "Back", action: onBack)
                         }
-                        .buttonStyle(.kajar)
                     }
                     Spacer()
                     if let trailingText {
@@ -451,7 +527,8 @@ struct TopBar: View {
                                 // corner is the easiest thing in the app to
                                 // miss.
                                 .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
+                                .tintedButton(in: Circle())
+                                .contentShape(Circle())
                         }
                         .buttonStyle(.kajar)
                         .accessibilityLabel("Settings")
@@ -500,6 +577,7 @@ struct CountStepper: View {
     @Binding var value: Int
     var range: ClosedRange<Int>
     var numberSize: CGFloat = 64
+    var buttonSize: CGFloat = 64
     var tint: Color = Theme.gold
     var numberColor: Color = Theme.cream
     var lineColor: Color = Theme.cream
@@ -528,9 +606,9 @@ struct CountStepper: View {
     ) -> some View {
         Button(action: action) {
             Image(systemName: system)
-                .font(.symbol(24, weight: .semibold))
+                .font(.symbol(buttonSize * 24 / 64, weight: .semibold))
                 .foregroundStyle(enabled ? tint : lineColor.opacity(0.3))
-                .frame(width: 64, height: 64)
+                .frame(width: buttonSize, height: buttonSize)
                 .background(
                     Circle()
                         .fill(enabled ? tint.opacity(0.08) : Color.clear)
@@ -698,20 +776,14 @@ struct ConfirmDialog: View {
                             .padding(.horizontal, 18)
                             .frame(height: 38)
                             .overlay(
-                                RoundedRectangle(cornerRadius: Theme.radius)
-                                    .strokeBorder(
-                                        confirmTint.opacity(0.6),
-                                        lineWidth: 1.5
-                                    )
-                            )
-                            .clipShape(
-                                RoundedRectangle(cornerRadius: Theme.radius)
+                                Capsule().strokeBorder(
+                                    confirmTint.opacity(0.6),
+                                    lineWidth: 1.5
+                                )
                             )
                             // Drawn at 38, targeted at 44 — see `PillButton`.
                             .frame(minHeight: 44)
-                            .contentShape(
-                                RoundedRectangle(cornerRadius: Theme.radius)
-                            )
+                            .contentShape(Capsule())
                     }
                     .buttonStyle(.kajar)
                 }

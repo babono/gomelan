@@ -22,7 +22,6 @@ struct WelcomeSlide: View {
         } action: {
             PillButton(
                 title: "Next",
-                trailingSystemImage: "arrow.right",
                 style: .filled,
                 action: onNext
             )
@@ -47,7 +46,6 @@ struct InterlockSlide: View {
         } action: {
             PillButton(
                 title: "Next",
-                trailingSystemImage: "arrow.right",
                 style: .filled,
                 action: onNext
             )

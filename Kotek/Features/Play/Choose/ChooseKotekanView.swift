@@ -2,8 +2,10 @@
 //  ChooseKotekanView.swift
 //  Kotek
 //
-//  Pick the interlocking figure to learn. Tapping the focused card goes straight
-//  to the count-in — this is the last decision before playing.
+//  Pick the interlocking figure to learn. Tapping a card only brings it to the
+//  middle and plays it; Start, bottom right, is the one way on to the count-in.
+//  A tap on the focused card used to start the session, and a tap meant to
+//  hear a figure again kept throwing the player into one.
 //
 
 import FactoryKit
@@ -31,35 +33,50 @@ private struct ChooseKotekanContentView: View {
     var body: some View {
         @Bindable var vm = viewModel
 
+        // The page ignores the keyboard: the search field is up top beside
+        // Create, so the keyboard has nothing to push out of the way, and
+        // letting the page avoid it squeezed the carousel into a sliver.
         VStack(spacing: 0) {
             TopBar(
                 title: "Choose your kotekan",
                 onBack: { app.openChooseInstrument() },
                 settingsAction: { app.openSettings() },
-                infoAction: { app.openGuide(.kotekan) },
                 // Sensors are optional; without them the waterfall plays the
                 // figure but scores nothing, so say which it will be up front.
                 status: app.controllerConnected
                     ? (Theme.hit, "Sensors connected")
                     : (Theme.cream.opacity(0.25), "No sensors connected")
             )
+            SearchAndCreateBar(
+                query: $vm.query,
+                prompt: "Search kotekan",
+                createTitle: "Create kotek",
+                onCreate: { vm.create() }
+            )
             ControllerStatusChip()
 
-            carousel
-                .frame(maxHeight: .infinity)
-                .ignoresSafeArea(.container, edges: .horizontal)
+            Group {
+                if vm.kotekans.isEmpty {
+                    noMatches
+                } else {
+                    carousel
+                }
+            }
+            // Inside the safe area: run to the screen edge, the side cards
+            // slid under the Dynamic Island.
+            .frame(maxHeight: .infinity)
 
             ChooseKotekanFooter(
                 muted: $vm.muted,
                 current: vm.current,
                 playable: vm.playable,
                 onStart: { vm.start($0) },
-                onCreate: { vm.create() },
                 onEdit: { vm.edit($0) },
                 onDelete: { vm.pendingDelete = $0 },
                 onCoop: { vm.coop($0) }
             )
         }
+        .ignoresSafeArea(.keyboard)
         .confirm(
             Binding(get: { vm.pendingDelete != nil }, set: { if !$0 { vm.pendingDelete = nil } }),
             title: "Delete this kotekan?",
@@ -82,9 +99,25 @@ private struct ChooseKotekanContentView: View {
         }
         .onAppear { vm.onAppear() }
         .onDisappear { vm.onDisappear() }
-        .onChange(of: vm.wrap(vm.focusedSlot)) { _, _ in vm.onSlotChanged() }
+        // The figure, not the slot: a search can change what sits in the
+        // focused slot without the slot moving.
+        .onChange(of: vm.current?.id) { _, _ in vm.onSlotChanged() }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
         .onChange(of: vm.muted) { _, isMuted in vm.handleMutedChanged(isMuted) }
+    }
+
+    private var noMatches: some View {
+        VStack(spacing: 8) {
+            Text("No kotekan called “\(viewModel.query)”")
+                .font(.serif(26))
+                .foregroundStyle(Theme.cream)
+            Text("Try another name, or create it yourself.")
+                .font(.sans(14))
+                .foregroundStyle(Theme.stone)
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - The carousel
@@ -97,24 +130,20 @@ private struct ChooseKotekanContentView: View {
             ZStack {
                 ForEach(first ... last, id: \.self) { slot in
                     let offset = Double(slot) - viewModel.position
-                    Group {
-                        if let k = viewModel.kotekan(atSlot: slot) {
-                            KotekanCardView(
-                                kotekan: k,
-                                isPlaying: slot == viewModel.focusedSlot,
-                                offset: offset,
-                                canPlay: viewModel.isPlayable(k),
-                                engine: viewModel.engine,
-                                bestRecord: viewModel.bestRecord(k)
-                            )
-                        } else {
-                            CreateKotekanCardView(offset: offset)
-                        }
+                    if let k = viewModel.kotekan(atSlot: slot) {
+                        KotekanCardView(
+                            kotekan: k,
+                            isPlaying: slot == viewModel.focusedSlot,
+                            offset: offset,
+                            canPlay: viewModel.isPlayable(k),
+                            engine: viewModel.engine,
+                            bestRecord: viewModel.bestRecord(k)
+                        )
+                        .position(
+                            x: geo.size.width / 2 + CGFloat(offset) * ChooseKotekanViewModel.step,
+                            y: geo.size.height / 2
+                        )
                     }
-                    .position(
-                        x: geo.size.width / 2 + CGFloat(offset) * ChooseKotekanViewModel.step,
-                        y: geo.size.height / 2
-                    )
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height)

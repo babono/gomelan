@@ -14,7 +14,7 @@ struct InstrumentNameField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text("Call it")
+            Text("Name")
                 .font(.sans(13, weight: .medium))
                 .textCase(.uppercase)
                 .tracking(1.5)

@@ -18,7 +18,7 @@ struct DetectionDictionaryPanel: View {
             // Header stays pinned so the collapse control is always reachable.
             HStack(spacing: 8) {
                 Text("DICTIONARY")
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.sans(11, weight: .bold).monospacedDigit())
                     .foregroundStyle(Theme.copper)
                 Spacer()
                 Button {
@@ -66,12 +66,12 @@ struct DetectionDictionaryPanel: View {
     @ViewBuilder
     private var markerSection: some View {
         Text("MARKER")
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .font(.sans(10, weight: .bold).monospacedDigit())
             .foregroundStyle(Theme.accent)
 
         Toggle(isOn: $app.markerVision) {
             Text("track marker")
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .font(.sans(11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white)
         }
         .toggleStyle(.switch)
@@ -84,7 +84,7 @@ struct DetectionDictionaryPanel: View {
                         app.markerColour = c.rawValue
                     } label: {
                         Text(c.name)
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.sans(10, weight: .bold).monospacedDigit())
                             .foregroundStyle(app.markerColour == c.rawValue ? Theme.ink : .white)
                             .padding(.horizontal, 8).padding(.vertical, 4)
                             .background(
@@ -96,7 +96,7 @@ struct DetectionDictionaryPanel: View {
                 }
             }
             Text(MarkerColour(rawValue: app.markerColour)?.note ?? "")
-                .font(.system(size: 9, design: .monospaced))
+                .font(.sans(9).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.5))
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -106,7 +106,7 @@ struct DetectionDictionaryPanel: View {
                         app.markerPOV = p.rawValue
                     } label: {
                         Text(p.name)
-                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .font(.sans(10, weight: .bold).monospacedDigit())
                             .foregroundStyle(app.markerPOV == p.rawValue ? Theme.ink : .white)
                             .padding(.horizontal, 8).padding(.vertical, 4)
                             .background(
@@ -121,7 +121,7 @@ struct DetectionDictionaryPanel: View {
             if app.markerPOV == MarkerPOV.front.rawValue {
                 Toggle(isOn: $app.markerBandFlip) {
                     Text("key 0 on right")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.sans(10).monospacedDigit())
                         .foregroundStyle(.white.opacity(0.7))
                 }
                 .toggleStyle(.switch)
@@ -171,19 +171,19 @@ struct DetectionDictionaryPanel: View {
                 if f.blobs.isEmpty {
                     if f.maxBrightness < Int(app.markerBrightness) {
                         Text("nothing reaches \(Int(app.markerBrightness)) — torch off, or EV too low")
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(.sans(9).monospacedDigit())
                             .foregroundStyle(Theme.wrong)
                             .fixedSize(horizontal: false, vertical: true)
                     } else if f.colourRejected > f.brightnessPassed / 2 {
                         Text(
                             "bright, but the wrong colour for \(MarkerColour(rawValue: app.markerColour)?.name ?? "?")"
                         )
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(.sans(9).monospacedDigit())
                         .foregroundStyle(Theme.wrong)
                         .fixedSize(horizontal: false, vertical: true)
                     } else {
                         Text("passing pixels, all too small — lower min area")
-                            .font(.system(size: 9, design: .monospaced))
+                            .font(.sans(9).monospacedDigit())
                             .foregroundStyle(Theme.wrong)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -195,7 +195,7 @@ struct DetectionDictionaryPanel: View {
             }
             if lit > 1.0 {
                 Text("scene leaking — lower EV or raise luma")
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(.sans(9).monospacedDigit())
                     .foregroundStyle(Theme.wrong)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -252,11 +252,11 @@ struct DetectionDictionaryPanel: View {
     private var markerGateSection: some View {
         Divider().overlay(Color.white.opacity(0.2))
         Text("MARKER GATE")
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .font(.sans(10, weight: .bold).monospacedDigit())
             .foregroundStyle(Theme.accent)
         Toggle(isOn: $app.requireMarker) {
             Text("marker must vouch")
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .font(.sans(11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white)
         }
         .toggleStyle(.switch)
@@ -264,13 +264,13 @@ struct DetectionDictionaryPanel: View {
 
         if app.requireMarker {
             Text("torch on, exposure left alone — the classifier is still the detector")
-                .font(.system(size: 9, design: .monospaced))
+                .font(.sans(9).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.5))
                 .fixedSize(horizontal: false, vertical: true)
             statRow("gate vetoed", "\(viewModel.gateVetoed)")
             if let lastGate = viewModel.lastGate {
                 Text(lastGate)
-                    .font(.system(size: 9, design: .monospaced))
+                    .font(.sans(9).monospacedDigit())
                     .foregroundStyle(Theme.wrong)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -287,7 +287,7 @@ struct DetectionDictionaryPanel: View {
     @ViewBuilder
     private var onsetPathSection: some View {
         Text("ONSET PATH")
-            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .font(.sans(10, weight: .bold).monospacedDigit())
             .foregroundStyle(Theme.wrong)
 
         statRow("model", MalletHitClassifier.loaded ? "loaded" : "FAILED")
@@ -300,7 +300,7 @@ struct DetectionDictionaryPanel: View {
                     viewModel.resetPeakScores()
                 } label: {
                     Text(mode.name)
-                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .font(.sans(10, weight: .bold).monospacedDigit())
                         .foregroundStyle(app.cropScaleMode == i ? Theme.ink : .white)
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(
@@ -313,7 +313,7 @@ struct DetectionDictionaryPanel: View {
         }
         if let failure = MalletHitClassifier.lastFailure {
             Text(failure)
-                .font(.system(size: 9, design: .monospaced))
+                .font(.sans(9).monospacedDigit())
                 .foregroundStyle(Theme.wrong)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -322,11 +322,11 @@ struct DetectionDictionaryPanel: View {
         statRow("frame age", String(format: "%.0f ms", viewModel.lastFrameAge * 1000))
         if !viewModel.lastOnsetTop.isEmpty {
             Text("at last onset:")
-                .font(.system(size: 10, design: .monospaced))
+                .font(.sans(10).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.55))
             ForEach(viewModel.lastOnsetTop, id: \.key) { entry in
                 Text(String(format: "   k%02d  %.2f", entry.key, entry.score))
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.sans(11, weight: .semibold).monospacedDigit())
                     .foregroundStyle(entry.score >= app.visionThreshold ? Theme.hit : Theme.wrong)
             }
         }
@@ -342,7 +342,7 @@ struct DetectionDictionaryPanel: View {
                 let trusted = count >= KeyDecomposer.strikesToTrustAtom
                 HStack(spacing: 6) {
                     Text(String(format: "%2d", key.index))
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(.sans(11).monospacedDigit())
                         .foregroundStyle(.white.opacity(0.75))
                     HStack(spacing: 2) {
                         ForEach(0 ..< KeyDecomposer.strikesToTrustAtom, id: \.self) { i in
@@ -352,7 +352,7 @@ struct DetectionDictionaryPanel: View {
                         }
                     }
                     Text(trusted ? "×\(count)" : "")
-                        .font(.system(size: 10, design: .monospaced))
+                        .font(.sans(10).monospacedDigit())
                         .foregroundStyle(Theme.hit.opacity(0.9))
                 }
             }
@@ -380,11 +380,11 @@ struct DetectionDictionaryPanel: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text("threshold")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.sans(10).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.55))
                 Spacer()
                 Text(String(format: "%.2f", app.visionThreshold))
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.sans(11, weight: .semibold).monospacedDigit())
                     .foregroundStyle(Theme.copper)
             }
             Slider(value: $app.visionThreshold, in: 0.05 ... 0.95, step: 0.05)
@@ -396,7 +396,7 @@ struct DetectionDictionaryPanel: View {
                 display: String(format: "%.2f", app.visionRelativeDip)
             )
             Text("lower = repeated strokes on one bar register; too low = one stroke fires twice")
-                .font(.system(size: 9, design: .monospaced))
+                .font(.sans(9).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.5))
                 .fixedSize(horizontal: false, vertical: true)
                 .tint(Theme.copper)
@@ -404,11 +404,11 @@ struct DetectionDictionaryPanel: View {
 
             HStack {
                 Text("peak seen")
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.sans(10).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.55))
                 Spacer()
                 Text(viewModel.peakScores.values.max().map { String(format: "%.2f", $0) } ?? "—")
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.sans(11, weight: .semibold).monospacedDigit())
                     .foregroundStyle(Theme.hit)
                 Button {
                     viewModel.resetPeakScores()
@@ -426,7 +426,7 @@ struct DetectionDictionaryPanel: View {
     private var strikeTriggerSection: some View {
         Toggle(isOn: $app.audioTriggersStrikes) {
             Text("audio triggers")
-                .font(.system(size: 10, design: .monospaced))
+                .font(.sans(10).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.75))
         }
         .toggleStyle(.switch)
@@ -439,7 +439,7 @@ struct DetectionDictionaryPanel: View {
             set: { app.requireStrikeSound = $0 }
         )) {
             Text("heard only")
-                .font(.system(size: 10, design: .monospaced))
+                .font(.sans(10).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.75))
         }
         .toggleStyle(.switch)
@@ -453,13 +453,13 @@ struct DetectionDictionaryPanel: View {
         if !viewModel.agreement.recent.isEmpty {
             Divider().overlay(Color.white.opacity(0.2))
             Text("EYE ≠ EAR")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .font(.sans(10, weight: .bold).monospacedDigit())
                 .foregroundStyle(Theme.wrong)
             ForEach(Array(viewModel.agreement.recent.suffix(4).enumerated()), id: \.offset) { _, d in
                 Text(
                     "saw \(d.visionKey) (\(Int(d.visionConfidence * 100))%) · heard \(d.heardKey) (\(Int(d.heardShare * 100))%)"
                 )
-                .font(.system(size: 10, design: .monospaced))
+                .font(.sans(10).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.8))
             }
         }
@@ -482,11 +482,11 @@ struct DetectionDictionaryPanel: View {
         VStack(alignment: .leading, spacing: 1) {
             HStack {
                 Text(label)
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.sans(10).monospacedDigit())
                     .foregroundStyle(.white.opacity(0.55))
                 Spacer()
                 Text(display)
-                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .font(.sans(11, weight: .semibold).monospacedDigit())
                     .foregroundStyle(.white)
             }
             Slider(value: value, in: range, step: step)
@@ -497,11 +497,11 @@ struct DetectionDictionaryPanel: View {
     private func statRow(_ label: String, _ value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 10, design: .monospaced))
+                .font(.sans(10).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.55))
             Spacer()
             Text(value)
-                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .font(.sans(11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white)
         }
     }

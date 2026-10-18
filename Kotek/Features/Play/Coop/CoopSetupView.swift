@@ -102,7 +102,6 @@ struct CoopSetupView: View {
             Spacer()
             PillButton(
                 title: "Start",
-                trailingSystemImage: "arrow.right",
                 style: .filled,
                 compact: true
             ) {

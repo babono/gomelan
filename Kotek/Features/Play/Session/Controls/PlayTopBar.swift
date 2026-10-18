@@ -45,17 +45,12 @@ struct PlayTopBar: View {
                 .foregroundStyle(
                     bottomBarVisible ? Theme.ink : Theme.copper
                 )
-                .frame(width: 40, height: 34)
+                .frame(width: 44, height: 34)
                 .background(
                     bottomBarVisible ? Theme.copper : .clear,
                     in: Capsule()
                 )
-                .overlay(
-                    Capsule().strokeBorder(
-                        Theme.copper.opacity(0.6),
-                        lineWidth: 1.5
-                    )
-                )
+                .tintedButton()
             }
             .buttonStyle(.kajar)
             .accessibilityLabel(
@@ -70,15 +65,9 @@ struct PlayTopBar: View {
                 Image(systemName: "pause.fill")
                     .font(.symbol(14, weight: .semibold))
                     .foregroundStyle(Theme.cream)
-                    .frame(width: 40, height: 34)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(
-                                Theme.cream.opacity(0.45),
-                                lineWidth: 1
-                            )
-                    )
-                    .contentShape(RoundedRectangle(cornerRadius: 8))
+                    .frame(width: 44, height: 34)
+                    .tintedButton()
+                    .contentShape(Capsule())
             }
             .buttonStyle(.kajar)
             .accessibilityLabel("Pause")

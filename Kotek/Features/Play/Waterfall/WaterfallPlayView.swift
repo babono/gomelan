@@ -37,7 +37,23 @@ private struct WaterfallContentView: View {
         @Bindable var bindableApp = app
 
         VStack(spacing: 0) {
+            // One fixed height for both states. The paused panel is taller
+            // than the playing title, and when the bar grew the stage under
+            // it shrank — the whole gangsa visibly resized on every pause.
             topBar(tempo: $bindableApp.tempoScale)
+                .frame(height: 50)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 6)
+                // The pause dim's top half, behind the paused controls, so
+                // together with `PauseStage` it covers the whole screen. It
+                // stopped at the top bar, which left a bright band across the
+                // top of a paused screen.
+                .frame(maxWidth: .infinity)
+                .background {
+                    if vm.paused {
+                        Color.black.opacity(PauseStage.dim).ignoresSafeArea(edges: [.top, .horizontal])
+                    }
+                }
 
             GeometryReader { geo in
                 // The instrument is sized from its HEIGHT and the lane width
@@ -111,13 +127,26 @@ private struct WaterfallContentView: View {
             // Down to the physical edge of the screen, so "sunk" is measured
             // from the glass and not from the home indicator's inset.
             .ignoresSafeArea(.container, edges: .bottom)
-        }
-        .background(Theme.ground.ignoresSafeArea())
-        .overlay {
-            if vm.paused {
-                WaterfallPauseOverlay(onResume: vm.resume, onEnd: endAction, onLeave: vm.leave)
+            // Over the stage only: the session controls are in the top bar
+            // while paused, and they have to stay reachable.
+            .overlay {
+                if vm.paused {
+                    PauseStage(
+                        resumeCount: vm.resumeCount,
+                        onResume: vm.resume,
+                        onQuit: vm.end
+                    )
+                }
             }
         }
+        .background(Theme.ground.ignoresSafeArea())
+        // A tap anywhere pauses. The pause button it replaces was a 40pt target
+        // in a corner, hard to find mid-figure with a panggul in each hand.
+        .contentShape(Rectangle())
+        .onTapGesture(perform: vm.pause)
+        .accessibilityAction(named: "Pause", vm.pause)
+        .animation(.easeInOut(duration: 0.2), value: vm.paused)
+        .animation(.easeInOut(duration: 0.2), value: vm.resumeCount == nil)
         .onAppear(perform: vm.setup)
         .onDisappear(perform: vm.teardown)
         .onChange(of: app.chosenHalf) { _, _ in vm.halfChanged() }
@@ -130,55 +159,47 @@ private struct WaterfallContentView: View {
 
     // MARK: - Chrome
 
-    /// Nothing was ever scored without sensors, so there is nothing to end.
-    private var endAction: (() -> Void)? {
-        guard vm.everSensed else { return nil }
-        return { vm.end() }
-    }
-
+    /// Playing: the figure's name and the cycle, nothing else — every control
+    /// moved to the pause screen, so there is nothing up here to reach for
+    /// mid-figure. Paused: the controls, in one panel around the same title.
+    @ViewBuilder
     private func topBar(tempo: Binding<Double>) -> some View {
         @Bindable var bindableApp = app
-        return HStack(spacing: 12) {
-            Button(action: vm.pause) {
-                Image(systemName: "pause.fill")
-                    .font(.symbol(14, weight: .semibold))
-                    .foregroundStyle(Theme.cream)
-                    .frame(width: 40, height: 34)
-                    .overlay(RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Theme.cream.opacity(0.45), lineWidth: 1))
-                    .contentShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .buttonStyle(.kajar)
-            .accessibilityLabel("Pause")
-
-            Text(app.selectedKotekan?.name ?? "")
-                .font(.sans(13, weight: .semibold))
-                .textCase(.uppercase)
-                .tracking(2)
-                .foregroundStyle(Theme.copper)
-                .lineLimit(1)
-
-            // Only a gangsa with a controller has sensors to report on.
-            if app.profile.controller != nil {
-                SensorDot(status: vm.sensor.status)
-            }
-
-            Spacer()
-            // No sensors, no score: just the figure falling and the gangsa.
-            if vm.sensing {
-                SessionCountersView(engine: vm.engine, record: vm.record)
-                Spacer()
-            }
-
-            HalfSwitch(chosenHalf: app.chosenHalf) { app.setHalf($0) }
+        if vm.paused, vm.resumeCount == nil {
+            HStack(spacing: 14) {
+                HalfSwitch(chosenHalf: app.chosenHalf) { app.setHalf($0) }
+                    .fixedSize()
+                SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: vm.sensing)
+                sensorDot
+                VoiceMixer(
+                    yourHalf: app.chosenHalf,
+                    yourVoiceAudible: $bindableApp.yourVoiceAudible,
+                    partnerAudible: $bindableApp.partnerAudible
+                )
                 .fixedSize()
-            VoicesMenu(guide: $bindableApp.yourVoiceAudible, partner: $bindableApp.partnerAudible)
-                .fixedSize()
-            TempoPicker(tempoScale: tempo)
-                .fixedSize()
+                TempoPicker(tempoScale: tempo)
+                    .fixedSize()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.deep.opacity(0.92), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .transition(.opacity)
+        } else {
+            HStack(spacing: 10) {
+                SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: false)
+                sensorDot
+            }
+            .frame(minHeight: 34)
+            .transition(.opacity)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
+    }
+
+    /// Only a gangsa with a controller has sensors to report on.
+    @ViewBuilder
+    private var sensorDot: some View {
+        if app.profile.controller != nil {
+            SensorDot(status: vm.sensor.status)
+        }
     }
 
     /// How much of the instrument sits below the screen edge.
@@ -237,6 +258,75 @@ private struct SensorDot: View {
         }
         .accessibilityElement()
         .accessibilityLabel(label)
+    }
+}
+
+/// "Ubitan Nyendok - Cycle 12", and on the pause screen " - 86%" after it.
+/// Its own view so the cycle ticking over doesn't re-evaluate the screen.
+private struct SessionTitle: View {
+    let name: String
+    let engine: PlayEngine
+    let showsScore: Bool
+
+    private var text: String {
+        var parts = [name, engine.phase == .countIn ? "Count-in" : "Cycle \(engine.loopIndex + 1)"]
+        // Nothing until a pass has scored, rather than a 0% that reads as a verdict.
+        if showsScore, let best = engine.bestSoFar {
+            parts.append("\(Int((best * 100).rounded()))%")
+        }
+        return parts.joined(separator: " - ")
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.sans(15, weight: .medium))
+            .foregroundStyle(Theme.copper)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .contentTransition(.numericText())
+            .animation(.snappy(duration: 0.25), value: engine.loopIndex)
+    }
+}
+
+/// Over the stage while paused: Resume and Quit in glass, or the 3, 2, 1
+/// after Resume. The waterfall stays visible behind, dimmed, so you can see
+/// where in the figure you will pick up.
+private struct PauseStage: View {
+    let resumeCount: Int?
+    let onResume: () -> Void
+    let onQuit: () -> Void
+
+    static let dim = 0.35
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(Self.dim).ignoresSafeArea()
+            if let n = resumeCount {
+                Text("\(n)")
+                    .font(.serif(96))
+                    .foregroundStyle(Theme.cream)
+                    .shadow(color: .black.opacity(0.6), radius: 8)
+                    .id(n)
+                    .transition(.scale.combined(with: .opacity))
+            } else {
+                VStack(spacing: 22) {
+                    CircleIconButton(
+                        systemImage: "play.fill",
+                        label: "Resume",
+                        size: 72,
+                        filled: true,
+                        action: onResume
+                    )
+                    CapsuleButton(
+                        title: "Quit the session",
+                        trailingSystemImage: "rectangle.portrait.and.arrow.right",
+                        action: onQuit
+                    )
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(.snappy(duration: 0.25), value: resumeCount)
     }
 }
 

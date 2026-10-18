@@ -25,7 +25,6 @@ struct PracticeHistoryView: View {
         VStack(spacing: 0) {
             TopBar(
                 title: "History",
-                backTitle: "Settings",
                 onBack: { app.closeHistory() },
                 trailingText: app.profile.name
             )

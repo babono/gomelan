@@ -62,7 +62,7 @@ struct AudioTestView: View {
                         Text(
                             "Tap the gangsa. Green = accepted strike · Yellow = passed gate but no fingerprint · Grey = below gate (too quiet / noise floor)."
                         )
-                        .font(.caption)
+                        .font(.sans(12))
                         .foregroundStyle(.white.opacity(0.5))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
@@ -96,7 +96,7 @@ struct AudioTestView: View {
             HStack(spacing: 8) {
                 Circle().fill(audio.isRunning ? Theme.hit : Theme.miss).frame(width: 10, height: 10)
                 Text("onsets \(onsetCount) · accepted \(acceptedCount)")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.sans(12, weight: .bold).monospacedDigit())
                     .foregroundStyle(.white)
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
@@ -108,7 +108,7 @@ struct AudioTestView: View {
     private var statusPanel: some View {
         VStack(spacing: 16) {
             Text(statusText)
-                .font(.system(size: 44, weight: .heavy, design: .rounded))
+                .font(.sans(44, weight: .heavy))
                 .foregroundStyle(statusColor)
 
             if let e = lastEvent {
@@ -130,7 +130,7 @@ struct AudioTestView: View {
         let denom = fullScale ?? scale
         return HStack(spacing: 12) {
             Text(label)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .font(.sans(12, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.6))
                 .frame(width: 48, alignment: .leading)
             GeometryReader { geo in
@@ -142,7 +142,7 @@ struct AudioTestView: View {
             }
             .frame(height: 14)
             Text(String(format: "%.3f", value))
-                .font(.system(size: 12, design: .monospaced))
+                .font(.sans(12).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.8))
                 .frame(width: 56, alignment: .trailing)
         }
@@ -192,10 +192,10 @@ struct AudioTestView: View {
                 }
                 if capturingBaseline {
                     Text("hit any keys a few times…")
-                        .font(.caption).foregroundStyle(Theme.accent)
+                        .font(.sans(12)).foregroundStyle(Theme.accent)
                 } else if let n = baselineCount {
                     Text("baseline from \(n) strikes")
-                        .font(.caption).foregroundStyle(.white.opacity(0.6))
+                        .font(.sans(12)).foregroundStyle(.white.opacity(0.6))
                 }
                 Spacer()
             }
@@ -220,12 +220,12 @@ struct AudioTestView: View {
     private func slider(label: String, value: Binding<Float>, range: ClosedRange<Float>) -> some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .font(.sans(12, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white.opacity(0.6))
                 .frame(width: 64, alignment: .leading)
             Slider(value: value, in: range)
             Text(String(format: "%.3f", value.wrappedValue))
-                .font(.system(size: 12, design: .monospaced))
+                .font(.sans(12).monospacedDigit())
                 .foregroundStyle(Theme.accent)
                 .frame(width: 56, alignment: .trailing)
         }

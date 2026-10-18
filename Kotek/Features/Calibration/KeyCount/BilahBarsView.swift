@@ -11,6 +11,8 @@ import SwiftUI
 /// layout so the number has a shape, not just a digit.
 struct BilahBarsView: View {
     let count: Int
+    /// The tallest (lowest) bar.
+    var height: CGFloat = 72
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 5) {
@@ -22,7 +24,7 @@ struct BilahBarsView: View {
                         RoundedRectangle(cornerRadius: 2)
                             .strokeBorder(Theme.charcoal.opacity(0.3), lineWidth: 1)
                     )
-                    .frame(width: 14, height: 72 * (1.0 - 0.55 * t))
+                    .frame(width: 14, height: height * (1.0 - 0.55 * t))
             }
         }
         .animation(.snappy(duration: 0.2), value: count)

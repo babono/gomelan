@@ -122,7 +122,7 @@ struct SensorPlayView: View {
                     ? "scanning · no Bluetooth devices heard yet"
                     : "scanning · heard " + sensor.seenDevices.suffix(12).joined(separator: ", ")
             )
-            .font(.system(size: 11, design: .monospaced))
+            .font(.sans(11).monospacedDigit())
             .foregroundStyle(Theme.gold)
             .lineLimit(3)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -135,7 +135,7 @@ struct SensorPlayView: View {
             "packets · events \(sensor.eventPackets) · levels \(sensor.levelPackets)"
                 + (sensor.rejectedPackets > 0 ? " · rejected \(sensor.rejectedPackets)" : "")
         )
-        .font(.system(size: 11, design: .monospaced))
+        .font(.sans(11).monospacedDigit())
         .foregroundStyle(sensor.rejectedPackets > 0 ? Theme.miss : Theme.cream.opacity(0.5))
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -175,7 +175,7 @@ struct SensorPlayView: View {
                             Text(h.intervalMs.map { "+\($0)ms" } ?? "—")
                                 .frame(width: 72, alignment: .trailing)
                         }
-                        .font(.system(size: 12, design: .monospaced))
+                        .font(.sans(12).monospacedDigit())
                         .foregroundStyle(Theme.cream.opacity(0.85))
                     }
                 }
@@ -247,7 +247,7 @@ private struct SensorBars: View {
                 .font(.sans(12, weight: .semibold))
                 .foregroundStyle(Theme.cream.opacity(0.7))
             Text("\(count) hits · last \(lastHit.map { "\($0.strength)" } ?? "—")")
-                .font(.system(size: 11, design: .monospaced))
+                .font(.sans(11).monospacedDigit())
                 .foregroundStyle(Theme.cream.opacity(0.5))
         }
         .frame(maxWidth: .infinity)

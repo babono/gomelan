@@ -158,10 +158,6 @@ final class PlayEngine {
 
     // Dependencies set before start
     var cue: CuePlayer?
-    /// Always on in a session; off only for the picker's preview. The
-    /// Settings switch went with the Audio card: one click per beat is the
-    /// pulse a learner holds on to, and nobody turned it off.
-    var metronomeEnabled = true
     var onComplete: ((SongResult?) -> Void)?
     /// "Kotekan Telu · Polos" — shown on the results screen.
     var sessionSubtitle = ""
@@ -726,8 +722,11 @@ final class PlayEngine {
         rebuildTrack(patternTime: patternTime, beatMs: beatMs)
     }
 
-    /// The gong, kempur and kajar of one beat of the 32-beat cycle, and the
-    /// metronome under them.
+    /// The gong, kempur and kajar of one beat of the 32-beat cycle.
+    ///
+    /// No metronome click under them any more. The kajar (kempli) already
+    /// keeps the pulse, and a click on top of it was a second, synthetic
+    /// beat competing with the real one.
     private func soundColotomic(beat: Int) {
         switch colotomicIndex(forBeat: beat) {
         case 0:
@@ -747,7 +746,6 @@ final class PlayEngine {
         default:
             break
         }
-        if metronomeEnabled { cue?.playClick() }
     }
 
     /// Bank the pass that just ended.
@@ -1026,11 +1024,13 @@ final class PlayEngine {
     /// How much wider than notated the timing grades are. 1.0 is the figure as
     /// written; above that, the same stroke earns a better grade.
     ///
-    /// Set from `AppState.judgementLeniency` on the way into a session. It does
+    /// Fixed at `standardLeniency` since the Judging settings went; it was
+    /// set from `AppState.judgementLeniency`. It does
     /// NOT widen the window a stroke has to land in to count at all — that stays
     /// the note's own spacing, because a stroke closer to the next note than to
     /// this one is not a generous reading of this one, it is the wrong note.
-    var leniency: Double = 1.0
+    var leniency: Double = PlayEngine.standardLeniency
+    static let standardLeniency = 1.25
 
     private func registerPlayStrike(keyIndex: Int, hostTime: Double) {
         let atMs = (hostTime - startHostTime) * 1000 - patternOriginMs
