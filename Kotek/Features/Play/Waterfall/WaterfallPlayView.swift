@@ -4,7 +4,8 @@
 //
 //  Practice without the camera: the gangsa is drawn on screen and the figure
 //  falls onto it, Synthesia-style, with a damp cue riding beside every stroke.
-//  Strikes come from the piezo sensors (`GangsaSensor`).
+//  Strikes come from this gangsa's piezo sensors (`GangsaSensor`), when it
+//  has a controller; without one the figure plays and nothing is scored.
 //
 //  Two views of the same instrument — flat, straight down from above, and
 //  tilted towards the player for depth. Swipe up on the gangsa to flip
@@ -114,7 +115,7 @@ private struct WaterfallContentView: View {
         .background(Theme.ground.ignoresSafeArea())
         .overlay {
             if vm.paused {
-                WaterfallPauseOverlay(onResume: vm.resume, onEnd: vm.end, onLeave: vm.leave)
+                WaterfallPauseOverlay(onResume: vm.resume, onEnd: endAction, onLeave: vm.leave)
             }
         }
         .onAppear(perform: vm.setup)
@@ -124,9 +125,16 @@ private struct WaterfallContentView: View {
         .onChange(of: app.partnerAudible) { _, new in vm.engine.partnerAudible = new }
         .onChange(of: app.yourVoiceAudible) { _, new in vm.engine.yourVoiceAudible = new }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
+        .onChange(of: vm.sensing) { _, on in vm.sensingChanged(on) }
     }
 
     // MARK: - Chrome
+
+    /// Nothing was ever scored without sensors, so there is nothing to end.
+    private var endAction: (() -> Void)? {
+        guard vm.everSensed else { return nil }
+        return { vm.end() }
+    }
 
     private func topBar(tempo: Binding<Double>) -> some View {
         @Bindable var bindableApp = app
@@ -150,11 +158,17 @@ private struct WaterfallContentView: View {
                 .foregroundStyle(Theme.copper)
                 .lineLimit(1)
 
-            SensorDot(status: vm.sensor.status)
+            // Only a gangsa with a controller has sensors to report on.
+            if app.profile.controller != nil {
+                SensorDot(status: vm.sensor.status)
+            }
 
             Spacer()
-            SessionCountersView(engine: vm.engine, record: vm.record)
-            Spacer()
+            // No sensors, no score: just the figure falling and the gangsa.
+            if vm.sensing {
+                SessionCountersView(engine: vm.engine, record: vm.record)
+                Spacer()
+            }
 
             HalfSwitch(chosenHalf: app.chosenHalf) { app.setHalf($0) }
                 .fixedSize()
