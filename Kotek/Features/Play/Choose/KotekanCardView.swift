@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-/// A card in the Kotekan selection carousel showing title, catalog tag, mini score,
-/// and mastery record or key requirement warning.
+/// A card in the Kotekan selection carousel: the title, its length and tempo
+/// under it, a mini score, and the mastery record or key requirement warning.
 struct KotekanCardView: View {
     let kotekan: Kotekan
     let isPlaying: Bool
@@ -44,13 +44,17 @@ struct KotekanCardView: View {
 
     private var cardBody: some View {
         VStack(alignment: .leading, spacing: 7) {
-            SectionLabel(kotekan.catalogLabel, color: Theme.terracotta)
-
-            Text(kotekan.name)
-                .font(.serif(26))
-                .foregroundStyle(Theme.cream)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+            // Title first, then what it is: the name is what you scan for.
+            VStack(alignment: .leading, spacing: 2) {
+                Text(kotekan.name)
+                    .font(.serif(26))
+                    .foregroundStyle(Theme.cream)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(kotekan.specLabel)
+                    .font(.sans(13, weight: .medium).monospacedDigit())
+                    .foregroundStyle(Theme.terracotta)
+            }
 
             KotekanMiniScore(kotekan: kotekan, engine: isPlaying ? engine : nil)
                 .frame(height: 54)
