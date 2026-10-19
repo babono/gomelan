@@ -178,7 +178,10 @@ struct Kotekan: Identifiable, Codable, Equatable {
     var specLabel: String {
         let d = Duration.milliseconds(cycleMs)
         let length = cycleMs >= 3_600_000
-            ? d.formatted(.time(pattern: .hourMinuteSecond(padHourToLength: 1, roundFractionalSeconds: .toNearestOrEven)))
+            ? d.formatted(.time(pattern: .hourMinuteSecond(
+                padHourToLength: 1,
+                roundFractionalSeconds: .toNearestOrEven
+            )))
             : d.formatted(.time(pattern: .minuteSecond(padMinuteToLength: 1, roundFractionalSeconds: .toNearestOrEven)))
         return "\(length) · \(bpm) BPM"
     }
