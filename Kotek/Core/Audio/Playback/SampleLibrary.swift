@@ -132,7 +132,23 @@ final nonisolated class SampleLibrary {
             return nil
         }
         try? file.read(into: buf)
-        return trimLeadingSilence(buf)
+        return fadeIn(trimLeadingSilence(buf))
+    }
+
+    /// The trim lands on 8% of peak, and a sample can also simply begin mid-wave
+    /// (kempur's first 2 ms already sit at -20 dBFS). Either way frame 0 is not
+    /// zero, so the node's first render is a step — a click, and on a bass-heavy
+    /// gong a thump. The ramp is 2 ms, the same as the trim's pre-roll, so it ends
+    /// where the 8% threshold crossing — the start of the strike — begins.
+    private static func fadeIn(_ buffer: AVAudioPCMBuffer) -> AVAudioPCMBuffer {
+        guard let data = buffer.floatChannelData else { return buffer }
+        let ramp = min(Int(buffer.format.sampleRate * 0.002), Int(buffer.frameLength))
+        for c in 0 ..< Int(buffer.format.channelCount) {
+            for i in 0 ..< ramp {
+                data[c][i] *= Float(i) / Float(ramp)
+            }
+        }
+        return buffer
     }
 
     /// Several bundled samples were recorded with the strike well into the file
