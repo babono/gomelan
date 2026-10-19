@@ -3,110 +3,70 @@
 //  Kotek
 //
 //  Icon-only: is the strike controller with us, and so will a session be
-//  scored? Sits beside the settings gear on the kotekan picker. The glyph says
-//  it at a glance — slashed is "no sensor, guidance only", lit is "scored" —
-//  and tapping it says it in words, because a custom icon with no label is
-//  something a player can only learn by being told.
+//  scored? Sits beside the settings gear on the kotekan picker. Waves lit is
+//  "scored", waves pulsing is "looking for it", the crossed-out art is "no
+//  sensor, guidance only".
 //
-//  It is also the re-check prompt (§3.6.3) when the plugged-in sensors no
-//  longer match the setup, which the text chip used to be on this screen.
+//  Not a button, on purpose: it only reports. Setting the sensor up or
+//  re-checking its keys lives in Settings → Strike controller, which is
+//  where the §3.6.3 re-check prompt goes too. A dot on the glyph says the
+//  plugged-in sensors no longer match the setup.
 //
 
 import SwiftUI
 
 struct SensorIndicator: View {
     @Environment(AppState.self) private var app
-    @State private var showing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        Button {
-            showing = true
-        } label: {
-            glyph
-        }
-        .buttonStyle(.kajar)
-        .accessibilityLabel(label)
-        .accessibilityHint("Shows what this means")
-        // Compact height (a landscape iPhone) would turn this into a sheet.
-        .popover(isPresented: $showing) {
-            explanation
-                .presentationCompactAdaptation(.popover)
-        }
-    }
-
-    private var glyph: some View {
-        // The art is 2:1; template-rendered, so the colour tints it. Always
-        // cream, like the gear: the slash says connected or not, and colour
-        // on a header control is kept for what needs the player to act.
-        Image(app.controllerConnected ? "sensor" : "sensor-disabled")
-            .resizable()
-            .scaledToFit()
-            .frame(width: 22)
+        // `sensor.radiowaves.left.and.right` is the live glyph: it scales and
+        // weighs like the gear beside it, at the same 17pt as the glyph inside
+        // the gear's 44pt circle (`CircleIconButton`). SF Symbols has no slashed
+        // version of it, so "no sensor" is the drawn `sensor-disabled` art — the
+        // same 2:1 shape, sized to the symbol's width.
+        glyph
             .foregroundStyle(Theme.cream)
-            // Same 44pt glass circle as the gear beside it.
-            .frame(width: 44, height: 44)
-            .tintedButton(in: Circle())
-            .contentShape(Circle())
+            .frame(height: 44)
             .overlay(alignment: .topTrailing) {
                 if app.controllerNeedsCheck {
                     Circle()
                         .fill(Theme.wrong)
                         .frame(width: 9, height: 9)
-                        .offset(x: -3, y: 3)
-                        .accessibilityHidden(true)
+                        .offset(x: 3, y: 9)
                 }
             }
+            .accessibilityElement()
+            .accessibilityLabel(label)
     }
 
-    // MARK: - Words
+    @ViewBuilder
+    private var glyph: some View {
+        if connected || looking {
+            Image(systemName: "sensor.radiowaves.left.and.right")
+                .font(.symbol(17, weight: .semibold))
+                .symbolEffect(.pulse, isActive: looking && !reduceMotion)
+        } else {
+            Image("sensor-disabled")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 32)
+        }
+    }
 
-    private var controllerName: String? {
-        app.profile.controller?.name
+    private var connected: Bool {
+        app.controllerConnected
+    }
+
+    /// A controller is set up and Bluetooth is hunting for it.
+    private var looking: Bool {
+        guard !connected, app.profile.controller != nil else { return false }
+        return app.sensor.status == .scanning || app.sensor.status == .connecting
     }
 
     private var label: String {
-        if app.controllerNeedsCheck { return "Sensors changed, check keys" }
-        return app.controllerConnected ? "Sensor connected, scoring on" : "No sensor, guidance only"
-    }
-
-    private var headline: String {
-        if app.controllerNeedsCheck { return "Sensors changed" }
-        if app.controllerConnected { return "Sensor connected" }
-        return controllerName.map { "Looking for \($0)" } ?? "No sensor"
-    }
-
-    private var detail: String {
-        if app.controllerNeedsCheck {
-            return "The plugged-in sensors don't match the setup. Check the keys."
-        }
-        if app.controllerConnected { return "\(controllerName ?? "The sensor") is scoring this session." }
-        if controllerName != nil { return "Guidance only until it connects." }
-        return "Guidance only. Set up a sensor to be scored."
-    }
-
-    /// Setup is only the fix when it is up to the player: a controller that
-    /// is set up but out of range just needs to be switched on.
-    private var actionTitle: String? {
-        if app.controllerNeedsCheck { return "Check keys" }
-        return app.profile.controller == nil && !app.controllerConnected ? "Set up sensor" : nil
-    }
-
-    private var explanation: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(headline)
-                .font(.sans(15, weight: .semibold))
-            Text(detail)
-                .font(.sans(13))
-                .foregroundStyle(.secondary)
-            if let actionTitle {
-                PillButton(title: actionTitle, style: .filled, compact: true) {
-                    showing = false
-                    app.openControllerSetup(recheck: app.controllerNeedsCheck, returnTo: app.screen)
-                }
-                .padding(.top, 6)
-            }
-        }
-        .padding(16)
-        .frame(minWidth: 220, alignment: .leading)
+        if app.controllerNeedsCheck { return "Sensors changed, check keys in Settings" }
+        if connected { return "Sensor connected, scoring on" }
+        return looking ? "Looking for sensor" : "No sensor, guidance only"
     }
 }
