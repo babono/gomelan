@@ -11,6 +11,11 @@
 //  the keyboard, iOS-style, which put the field a screen away from the button
 //  that opened it.
 //
+//  The grow is the system's glass morph: the circle and the field share one
+//  `glassEffectID` inside a `GlassEffectContainer`, so the glass itself flows
+//  from one shape into the other. It was a scale-and-fade the app drew,
+//  which looked like two things swapping rather than one thing opening.
+//
 
 import SwiftUI
 
@@ -23,23 +28,29 @@ struct SearchAndCreateBar: View {
     /// The magnifying glass opened into a field.
     @State private var searching = false
     @FocusState private var focused: Bool
+    @Namespace private var glass
 
     var body: some View {
-        HStack(spacing: 10) {
-            Spacer(minLength: 0)
-            if searching {
-                field
-                    .transition(.asymmetric(
-                        insertion: .scale(scale: 0.2, anchor: .trailing).combined(with: .opacity),
-                        removal: .opacity
-                    ))
-            } else {
-                CircleIconButton(systemImage: "magnifyingglass", label: prompt, glass: true) {
-                    setSearching(true)
+        GlassEffectContainer(spacing: 10) {
+            HStack(spacing: 10) {
+                Spacer(minLength: 0)
+                if searching {
+                    field
+                } else {
+                    Button { setSearching(true) } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.symbol(17, weight: .semibold))
+                            .foregroundStyle(Theme.cream)
+                            .frame(width: 44, height: 44)
+                            .glassEffect(.regular.interactive(), in: Circle())
+                            .glassEffectID("search", in: glass)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.kajar)
+                    .accessibilityLabel(prompt)
                 }
-                .transition(.opacity)
+                CapsuleButton(title: createTitle, trailingSystemImage: "plus", glass: true, action: onCreate)
             }
-            CapsuleButton(title: createTitle, trailingSystemImage: "plus", glass: true, action: onCreate)
         }
         // No side padding: flush to the safe-area edge, where the top bar's
         // buttons, the footer's and the carousel's outer cards all end.
@@ -74,7 +85,8 @@ struct SearchAndCreateBar: View {
         .padding(.leading, 14)
         .padding(.trailing, 6)
         .frame(width: 280, height: 44)
-        .glassButton()
+        .glassEffect(.regular.interactive(), in: Capsule())
+        .glassEffectID("search", in: glass)
     }
 
     /// Closing clears the query too — a hidden filter would leave the rail

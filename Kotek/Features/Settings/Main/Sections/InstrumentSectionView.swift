@@ -72,6 +72,8 @@ struct InstrumentSectionView: View {
 
             noteClips
 
+            damping
+
             FlowLayout(spacing: 10) {
                 SecondaryButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath") {
                     app.openChooseInstrument()
@@ -139,16 +141,51 @@ struct InstrumentSectionView: View {
 
     /// This gangsa's own recorded bilah (`NoteClipCapture`). A key without a
     /// clip plays the bundled sample, so this is optional too.
+    ///
+    /// Once there is a recording, a choice of which to hear. Before, there is
+    /// nothing to choose between, so no picker.
     private var noteClips: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        @Bindable var bindableApp = app
+        return VStack(alignment: .leading, spacing: 10) {
             SectionLabel("Note clips")
             Text("Record each bilah so the guide and partner sound like your gangsa.")
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
                 .frame(maxWidth: 520, alignment: .leading)
+            if recordedClips > 0 {
+                Picker("Key sounds", selection: $bindableApp.playsRecordedSounds) {
+                    Text("Default").tag(false)
+                    Text("Recorded").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .kajarOnChange(of: app.playsRecordedSounds)
+                .frame(maxWidth: 280)
+                .accessibilityLabel("Key sounds")
+                if app.playsRecordedSounds, recordedClips < app.profile.keyCount {
+                    Text("Keys you haven't recorded play the default sound.")
+                        .font(.sans(13))
+                        .foregroundStyle(Theme.cream.opacity(0.62))
+                }
+            }
             SecondaryButton(title: "Capture note clips", systemImage: "waveform.badge.mic") {
                 app.openNoteCapture()
             }
+        }
+    }
+
+    /// Read when a practice starts, so a change here applies from the next one.
+    private var damping: some View {
+        @Bindable var bindableApp = app
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionLabel("Damping")
+            Toggle("Show damping", isOn: $bindableApp.showsDamp)
+                .tint(Theme.terracotta)
+                .frame(maxWidth: 360)
+                .foregroundStyle(Theme.cream)
+            Text("A hand on each bilah as its note ends, on the waterfall and the gangsa.")
+                .font(.sans(14))
+                .foregroundStyle(Theme.cream.opacity(0.62))
+                .frame(maxWidth: 520, alignment: .leading)
         }
     }
 

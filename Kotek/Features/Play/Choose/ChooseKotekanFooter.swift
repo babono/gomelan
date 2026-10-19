@@ -52,18 +52,7 @@ struct ChooseKotekanFooter: View {
             Spacer()
 
             if let current, current.source != .builtin {
-                Button {
-                    onDelete(current)
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.symbol(14, weight: .semibold))
-                        .foregroundStyle(Theme.cream.opacity(0.7))
-                        .frame(width: 38, height: 38)
-                        .tintedButton(in: Circle())
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.kajar)
-                .accessibilityLabel("Delete \(current.name)")
+                DeleteIconButton(label: "Delete \(current.name)") { onDelete(current) }
 
                 PillButton(title: "Edit", style: .outlined, compact: true) {
                     onEdit(current)
@@ -76,7 +65,6 @@ struct ChooseKotekanFooter: View {
                     onCoop(current)
                 }
                 .disabled(!playable)
-                .opacity(playable ? 1 : 0.4)
 
                 PillButton(
                     title: "Start",
@@ -86,7 +74,6 @@ struct ChooseKotekanFooter: View {
                     onStart(current)
                 }
                 .disabled(!playable)
-                .opacity(playable ? 1 : 0.4)
             }
         }
         .padding(.bottom, 10)

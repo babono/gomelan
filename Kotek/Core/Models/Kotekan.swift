@@ -161,8 +161,26 @@ struct Kotekan: Identifiable, Codable, Equatable {
     /// Figures carry their rung, because the four of them ARE a progression and
     /// the number is the reason to swipe right. Melodies carry only what they
     /// are — they sit in the same rail but not on the same ladder.
-    var catalogLabel: String {
-        kind == .figure && source == .builtin ? "Level \(level) · \(toneLabel)" : toneLabel
+    /// Quarter notes per minute, the way Create shows a tempo: each slot read
+    /// as a 16th. (Create reads a slot as a coarser or finer note only when a
+    /// 16th would land outside 40…200 BPM, which no catalogue figure does.)
+    var bpm: Int {
+        max(1, Int((15000.0 / Double(max(1, strokeMs))).rounded()))
+    }
+
+    /// "0:04 · 60 BPM": what the picker says about a figure — how long one
+    /// pass lasts, gong to gong, then its tempo. It used to say its level and
+    /// tone family ("Level 2 · Telu family"); the length and the tempo say more
+    /// about the figure you are about to play.
+    ///
+    /// The length reads like a song's, m:ss, hours only past one: a cycle is
+    /// two to eight seconds, so "00:00:04" would be mostly zeros.
+    var specLabel: String {
+        let d = Duration.milliseconds(cycleMs)
+        let length = cycleMs >= 3_600_000
+            ? d.formatted(.time(pattern: .hourMinuteSecond(padHourToLength: 1, roundFractionalSeconds: .toNearestOrEven)))
+            : d.formatted(.time(pattern: .minuteSecond(padMinuteToLength: 1, roundFractionalSeconds: .toNearestOrEven)))
+        return "\(length) · \(bpm) BPM"
     }
 
     /// Render the chosen half, repeated `cycles` times, into engine notes.
@@ -178,12 +196,13 @@ struct Kotekan: Identifiable, Codable, Equatable {
         }
         let duration = cycles * cycleMs
         // One "beat" per grid slot — keeps the metronome aligned to the pulse.
-        let bpm = max(1, Int((60000.0 / Double(strokeMs)).rounded()))
+        // Not the quarter-note `bpm` the picker shows.
+        let slotsPerMinute = max(1, Int((60000.0 / Double(strokeMs)).rounded()))
         return Song(
             id: "\(id)-\(half.rawValue)",
             title: name,
             difficulty: .beginner,
-            bpm: bpm,
+            bpm: slotsPerMinute,
             requiredKeys: requiredKeys,
             durationMs: duration,
             notes: notes,

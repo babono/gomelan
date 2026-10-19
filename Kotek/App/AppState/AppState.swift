@@ -19,8 +19,38 @@ import SwiftUI
 final class AppState {
     var screen: Route = .welcome
     var profile: InstrumentProfile {
-        // The gangsa's own key recordings are what the cue player sounds.
-        didSet { cue.instrumentID = profile.id }
+        didSet {
+            playsRecordedSounds = Self.playsRecordedSounds(profile.id)
+            applyKeySounds()
+        }
+    }
+
+    /// Whether this gangsa sounds its own recorded keys (Settings → Gangsa →
+    /// Note clips) or the bundled samples. On by default: recording them is
+    /// the point. A key with no recording plays the bundled sample either way.
+    ///
+    /// Per gangsa, kept on this device beside the recordings themselves.
+    /// ponytail: not synced — the gangsa row has no column for it, and a second
+    /// device would need the recordings first anyway.
+    var playsRecordedSounds = true {
+        didSet {
+            Defaults.set(Self.recordedSoundsKey(profile.id), playsRecordedSounds)
+            applyKeySounds()
+        }
+    }
+
+    static func recordedSoundsKey(_ id: String) -> String {
+        "playsRecordedSounds.\(id.lowercased())"
+    }
+
+    private static func playsRecordedSounds(_ id: String) -> Bool {
+        Defaults.bool(recordedSoundsKey(id), true)
+    }
+
+    /// The cue player loads its key sounds when a session starts: this gangsa's
+    /// recordings, or none — nil keeps the bundled samples.
+    func applyKeySounds() {
+        cue.instrumentID = playsRecordedSounds ? profile.id : nil
     }
 
     var savedProfiles: [InstrumentProfile] = []
@@ -67,6 +97,17 @@ final class AppState {
 
     var yourVoiceAudible: Bool = Defaults.bool("yourVoiceAudible", true) {
         didSet { Defaults.set("yourVoiceAudible", yourVoiceAudible) }
+    }
+
+    /// Whether the practice screen shows where to damp: the hand tile behind
+    /// each note and the pinch on the bar as the note ends. On by default —
+    /// damping is half of playing a gangsa — and off for anyone who would
+    /// rather read the strokes alone. Display only; damping is never judged.
+    ///
+    /// ponytail: one setting for the app, not one per gangsa, though it sits
+    /// in the Gangsa card. Nothing yet needs a different answer per gangsa.
+    var showsDamp: Bool = Defaults.bool("showsDamp", true) {
+        didSet { Defaults.set("showsDamp", showsDamp) }
     }
 
     /// Whether the practice screen's bottom panel — the half switch, the tempo,
@@ -432,7 +473,9 @@ final class AppState {
             profile = ResourceLoader.defaultProfile()
         }
         screen = .welcome
-        cue.instrumentID = profile.id // didSet does not fire inside init
+        // didSet does not fire inside init
+        playsRecordedSounds = Self.playsRecordedSounds(profile.id)
+        applyKeySounds()
 
         account = Defaults.string("account").flatMap(Account.init)
         if account == .apple { loadPlayer() }

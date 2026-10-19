@@ -78,8 +78,8 @@ struct RootView: View {
             message: "Switch to it? The gangsa and records on this iPhone will be removed.",
             confirmTitle: "Switch account"
         ) { [pending = app.pendingSwitch] in
-            // Captured here because the dialog clears the binding — and with
-            // it `pendingSwitch` — before it runs this.
+            // Captured here: the switch runs in a Task, after the dialog has
+            // closed and cleared the binding — and with it `pendingSwitch`.
             guard let pending else { return }
             Task { await app.confirmSwitch(pending) }
         }

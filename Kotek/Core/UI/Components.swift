@@ -3,15 +3,20 @@
 //  Kotek
 //
 //  Shared UI pieces, in the Kotek design language: one warm brown ground,
-//  cream type, gold outlines, radius 14 throughout.
+//  cream type, capsule buttons.
 //
-//  Liquid Glass marks the calls to action, so they stand out:
-//   - Start / Next / Resume: glass tinted gold (`glassButton(filled:)`).
-//   - Create / Add, search: regular glass (`glassButton`).
-//   - back, settings, Quit, Coop, Edit, undo, the controls over the camera:
-//     a flat tinted fill (`tintedButton`), like the Edit button in Photos.
+//  Liquid Glass follows Apple's rule for it: it is the layer of controls that
+//  floats above the content, never the content itself (`ButtonSurface`).
+//   - Start / Next / Resume in a floating bar: glass tinted gold (`prominent`).
+//   - back, help, settings, search, Create / Add: regular glass (`glass`).
+//   - the way on INSIDE content — an empty state, the guide card, a panel:
+//     opaque gold (`solid`), not glass.
+//   - Quit, Coop, Edit, undo, the utility buttons in cards: a flat wash
+//     (`wash`), like the Edit button in Photos.
 //  Regular glass on everything was tried first and flattened the hierarchy;
 //  clear glass on the secondary buttons was tried after and was still too loud.
+//  Back and settings were a wash until they moved to glass with the rest of
+//  the navigation layer, as iOS draws them.
 //
 
 import SwiftUI
@@ -219,9 +224,73 @@ extension View {
     func tintedButton(_ tint: Color = Theme.cream, in shape: some Shape = Capsule()) -> some View {
         background(tint.opacity(0.12), in: shape)
     }
+
+    /// How every button in the app is drawn — see `ButtonSurface`.
+    func buttonSurface(_ kind: ButtonSurface<Capsule>.Kind) -> some View {
+        modifier(ButtonSurface(kind: kind, shape: Capsule()))
+    }
+
+    func buttonSurface<S: Shape>(_ kind: ButtonSurface<S>.Kind, in shape: S) -> some View {
+        modifier(ButtonSurface(kind: kind, shape: shape))
+    }
 }
 
-enum PillStyle { case filled, outlined, secondary }
+/// The three ways a button is drawn, by which layer it sits in (Apple's
+/// Liquid Glass guidance: glass is for the controls that float above the
+/// content, never for the content itself).
+///
+/// - `prominent`: the screen's way on, in a floating bar — glass tinted gold,
+///   dark type. Apple's own prominent buttons colour the glass, not the label.
+/// - `glass`: any other floating control — back, settings, search, Create.
+/// - `solid`: the way on when it sits INSIDE content (an empty state, a card,
+///   a panel). Same gold, as an opaque slab: glass there would be glass in the
+///   content layer, and on a flat card it has nothing to refract anyway.
+/// - `wash`: everything else — a flat 12% wash of the tint.
+///
+/// Applied to the label itself rather than to a clear view behind it, the
+/// way Apple's custom-glass examples do, so the glass is the view the touch
+/// lands on and `interactive()` gives it the system press response.
+///
+/// Disabled buttons drop the gold and the press response, and their type
+/// fades — rather than the whole button going to 40% opacity, which left a
+/// muddy glass with its label at 2:1.
+struct ButtonSurface<S: Shape>: ViewModifier {
+    enum Kind { case prominent, glass, solid, wash(Color) }
+
+    let kind: Kind
+    let shape: S
+    @Environment(\.isEnabled) private var isEnabled
+
+    func body(content: Content) -> some View {
+        switch kind {
+        case .prominent:
+            content.glassEffect(
+                isEnabled ? .regular.tint(Theme.buttonFill.opacity(0.6)).interactive() : .regular,
+                in: shape
+            )
+        case .glass:
+            content.glassEffect(isEnabled ? .regular.interactive() : .regular, in: shape)
+        case .solid:
+            content.background(isEnabled ? Theme.buttonFill : Theme.cream.opacity(0.12), in: shape)
+        case let .wash(tint):
+            content.background(tint.opacity(isEnabled ? 0.12 : 0.06), in: shape)
+        }
+    }
+
+    /// The label's colour on this surface.
+    static func label(_ kind: Kind, enabled: Bool) -> Color {
+        guard enabled else { return Theme.cream.opacity(0.4) }
+        switch kind {
+        case .prominent, .solid: return Theme.onGlassFill
+        case .glass: return Theme.cream
+        case let .wash(tint): return tint == Theme.gold ? Theme.cream : tint
+        }
+    }
+}
+
+/// `filled` is the way on in a floating bar (gold glass); `solid` is the way on
+/// inside content (opaque gold) — see `ButtonSurface`.
+enum PillStyle { case filled, solid, outlined }
 
 /// The canonical pill button (GO, NEXT, CALIBRATE, START PRACTICE, RETRY …).
 /// Labels are tracked and uppercased by default to match the spec.
@@ -240,6 +309,8 @@ struct PillButton: View {
     /// No kajar tick on press, for buttons that record or play audio.
     var silent: Bool = false
     let action: () -> Void
+
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
@@ -272,11 +343,11 @@ struct PillButton: View {
                         .font(.symbol(compact ? 13 : 16, weight: .semibold))
                 }
             }
-            .foregroundStyle(foreground)
+            .foregroundStyle(ButtonSurface<Capsule>.label(surface, enabled: isEnabled))
             .padding(.horizontal, compact ? 18 : 30)
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .frame(height: compact ? 38 : Theme.buttonHeight)
-            .background { background }
+            .buttonSurface(surface)
             // The compact pill is drawn 38pt tall because that is what the
             // design calls for, but the HIG minimum target is 44 — so the
             // TARGET is grown to 44 without changing what is drawn. Someone
@@ -288,23 +359,15 @@ struct PillButton: View {
         .buttonStyle(KajarButtonStyle(ticks: !silent))
     }
 
-    private var foreground: Color {
+    /// Only the filled pill is glass — it is the screen's way on. Dark type
+    /// on it: cream was tried at a lighter tint and disappeared into the
+    /// background showing through. Outlined ones (Coop, Edit, Cancel) are a
+    /// wash.
+    private var surface: ButtonSurface<Capsule>.Kind {
         switch style {
-        // Dark type on gold glass. Cream type was tried at a lighter tint and
-        // disappeared into the background showing through.
-        case .filled: Theme.onGlassFill
-        case .outlined: Theme.cream
-        case .secondary: Theme.cream
-        }
-    }
-
-    /// Only the filled pill is glass — it is the screen's way on. Outlined
-    /// ones (Coop, Edit, Cancel) sit in the content and are a tinted fill.
-    @ViewBuilder private var background: some View {
-        switch style {
-        case .filled: Color.clear.glassButton(filled: true)
-        case .outlined: Color.clear.tintedButton(tint == Theme.gold ? Theme.cream : tint)
-        case .secondary: Capsule().fill(Theme.inkRaised)
+        case .filled: .prominent
+        case .solid: .solid
+        case .outlined: .wash(tint == Theme.gold ? Theme.cream : tint)
         }
     }
 }
@@ -319,19 +382,19 @@ struct CircleIconButton: View {
     var filled = false
     let action: () -> Void
 
+    @Environment(\.isEnabled) private var isEnabled
+
+    private var surface: ButtonSurface<Circle>.Kind {
+        filled ? .prominent : glass ? .glass : .wash(Theme.cream)
+    }
+
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.symbol(size * 17 / 44, weight: .semibold))
-                .foregroundStyle(filled ? Theme.onGlassFill : Theme.cream)
+                .foregroundStyle(ButtonSurface<Circle>.label(surface, enabled: isEnabled))
                 .frame(width: size, height: size)
-                .background {
-                    if glass || filled {
-                        Color.clear.glassButton(filled: filled, in: Circle())
-                    } else {
-                        Color.clear.tintedButton(in: Circle())
-                    }
-                }
+                .buttonSurface(surface, in: Circle())
                 .contentShape(Circle())
         }
         .buttonStyle(.kajar)
@@ -351,6 +414,12 @@ struct CapsuleButton: View {
     var fullWidth = false
     let action: () -> Void
 
+    @Environment(\.isEnabled) private var isEnabled
+
+    private var surface: ButtonSurface<Capsule>.Kind {
+        filled ? .prominent : glass ? .glass : .wash(Theme.cream)
+    }
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
@@ -361,21 +430,39 @@ struct CapsuleButton: View {
                 }
             }
             .font(.sans(16, weight: .semibold))
-            .foregroundStyle(filled ? Theme.onGlassFill : Theme.cream)
+            .foregroundStyle(ButtonSurface<Capsule>.label(surface, enabled: isEnabled))
             .lineLimit(1)
             .fixedSize(horizontal: !fullWidth, vertical: false)
             .padding(.horizontal, 24)
             .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 44)
-            .background {
-                if filled || glass {
-                    Color.clear.glassButton(filled: filled)
-                } else {
-                    Color.clear.tintedButton()
-                }
-            }
+            .buttonSurface(surface)
             .contentShape(Capsule())
         }
         .buttonStyle(.kajar)
+    }
+}
+
+/// The trash circle in a picker's bottom bar, beside its way on: delete the
+/// card in the middle. Always behind a `.confirm` — nothing goes on one tap.
+/// Shared by the kotekan and gangsa pickers so the two bars stay one design.
+struct DeleteIconButton: View {
+    /// What VoiceOver hears: "Delete Pemade 1".
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "trash")
+                .font(.symbol(14, weight: .semibold))
+                .foregroundStyle(Theme.cream.opacity(0.7))
+                .frame(width: 38, height: 38)
+                .buttonSurface(.wash(Theme.cream), in: Circle())
+                // Drawn at 38, targeted at 44 — see `PillButton`.
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.kajar)
+        .accessibilityLabel(label)
     }
 }
 
@@ -400,12 +487,17 @@ struct PrimaryButton: View {
     }
 }
 
-/// Outlined utility button. Adapts to the surface via the ambient colour scheme,
-/// so it reads on both paper (light) and stage (dark) screens.
+/// The utility button inside cards and settings: Switch gangsa, History,
+/// Connect controller. A capsule wash like the app's other secondary buttons —
+/// it was the last rounded rectangle with a gold hairline, from before the
+/// buttons became capsules, and read as a different app beside them. Never
+/// glass: it sits in the content layer.
 struct SecondaryButton: View {
     let title: String
     var systemImage: String?
     let action: () -> Void
+
+    @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
         Button(action: action) {
@@ -417,22 +509,15 @@ struct SecondaryButton: View {
                     .font(.sans(15, weight: Theme.buttonWeight))
                     .tracking(Theme.buttonTracking)
             }
-            .foregroundStyle(Theme.cream)
+            .foregroundStyle(ButtonSurface<Capsule>.label(.wash(Theme.cream), enabled: isEnabled))
             .padding(.vertical, 11)
             .padding(.horizontal, 18)
             // 15pt type plus 11pt either side lands a point or two under the
             // HIG's 44pt minimum, which is exactly the kind of near-miss that
             // never gets noticed. Stated explicitly instead.
             .frame(minHeight: 44)
-            .background(
-                Theme.cream.opacity(0.08),
-                in: RoundedRectangle(cornerRadius: Theme.radius)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.radius)
-                    .strokeBorder(Theme.gold.opacity(0.45), lineWidth: 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
+            .buttonSurface(.wash(Theme.cream))
+            .contentShape(Capsule())
         }
         .buttonStyle(.kajar)
     }
@@ -466,6 +551,9 @@ struct TopBar: View {
     var settingsAction: (() -> Void)?
     /// When set, a help button is shown at the trailing edge, before the gear.
     var infoAction: (() -> Void)?
+    /// When set, a status dot in the far corner, beside the gear — e.g. the
+    /// kotekan picker's "sensors connected".
+    var status: (color: Color, label: String)?
     var tint: Color = Theme.cream
     var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
@@ -489,52 +577,59 @@ struct TopBar: View {
                     // Never let the title grow under the controls either side.
                     .padding(.horizontal, 96)
 
-                HStack(spacing: 14) {
-                    // R Was "‹ Back" as bare text. The chevron alone in glass
-                    // R matches the back button Create Kotek already had.
-                    if let onBack {
-                        if let backTitle {
-                            CapsuleButton(title: backTitle, action: onBack)
-                        } else {
-                            CircleIconButton(systemImage: "chevron.left", label: "Back", action: onBack)
+                // One container for the bar's glass, as Apple recommends
+                // wherever glass controls sit together: they render as one
+                // pass and blend as glass should when they move.
+                GlassEffectContainer(spacing: 14) {
+                    HStack(spacing: 14) {
+                        // R Was "‹ Back" as bare text, then a chevron in a flat
+                        // R wash. Glass now: back, help and settings are the
+                        // R navigation layer, which is what Liquid Glass is for —
+                        // R and how iOS itself draws them.
+                        if let onBack {
+                            if let backTitle {
+                                CapsuleButton(title: backTitle, glass: true, action: onBack)
+                            } else {
+                                CircleIconButton(
+                                    systemImage: "chevron.left",
+                                    label: "Back",
+                                    glass: true,
+                                    action: onBack
+                                )
+                            }
                         }
-                    }
-                    Spacer()
-                    if let trailingText {
-                        Text(trailingText)
-                            .font(.sans(13, weight: .medium))
-                            .foregroundStyle(accent)
-                    }
-                    if showsSensor { SensorIndicator() }
-                    if let infoAction {
-                        Button(action: infoAction) {
-                            Image(systemName: "questionmark.circle")
-                                .font(.symbol(19, weight: .medium))
-                                .foregroundStyle(tint)
-                                // R Same 44pt target as the gear below, for the
-                                // R same reason: a bare glyph in a corner is a
-                                // R 19pt target and the HIG minimum is 44.
-                                .frame(width: 44, height: 44)
-                                .contentShape(Rectangle())
+                        Spacer()
+                        if let trailingText {
+                            Text(trailingText)
+                                .font(.sans(13, weight: .medium))
+                                .foregroundStyle(accent)
                         }
-                        .buttonStyle(.kajar)
-                        .accessibilityLabel("How Kotek works")
-                    }
-                    if let settingsAction {
-                        Button(action: settingsAction) {
-                            Image(systemName: "gearshape")
-                                .font(.symbol(19, weight: .medium))
-                                .foregroundStyle(tint)
-                                // A bare 19pt glyph is a ~19pt target. The
-                                // HIG minimum is 44 square, and a gear in a
-                                // corner is the easiest thing in the app to
-                                // miss.
-                                .frame(width: 44, height: 44)
-                                .tintedButton(in: Circle())
-                                .contentShape(Circle())
+                        if showsSensor { SensorIndicator() }
+                        // 44pt circles: a bare glyph in a corner is a 19pt
+                        // target, and the HIG minimum is 44.
+                        if let infoAction {
+                            CircleIconButton(
+                                systemImage: "questionmark",
+                                label: "How Kotek works",
+                                glass: true,
+                                action: infoAction
+                            )
                         }
-                        .buttonStyle(.kajar)
-                        .accessibilityLabel("Settings")
+                        if let settingsAction {
+                            CircleIconButton(
+                                systemImage: "gearshape",
+                                label: "Settings",
+                                glass: true,
+                                action: settingsAction
+                            )
+                        }
+                        if let status {
+                            Circle()
+                                .fill(status.color)
+                                .frame(width: 10, height: 10)
+                                .accessibilityElement()
+                                .accessibilityLabel(status.label)
+                        }
                     }
                 }
             }
@@ -771,12 +866,9 @@ struct ConfirmDialog: View {
                             .lineLimit(1)
                             .padding(.horizontal, 18)
                             .frame(height: 38)
-                            .overlay(
-                                Capsule().strokeBorder(
-                                    confirmTint.opacity(0.6),
-                                    lineWidth: 1.5
-                                )
-                            )
+                            // A wash of the action's colour, like Cancel
+                            // beside it — not an outline, the one left.
+                            .buttonSurface(.wash(confirmTint))
                             // Drawn at 38, targeted at 44 — see `PillButton`.
                             .frame(minHeight: 44)
                             .contentShape(Capsule())
@@ -818,9 +910,13 @@ extension View {
                     message: message,
                     confirmTitle: confirmTitle,
                     confirmTint: confirmTint,
+                    // Act FIRST, then dismiss. The pickers present this from
+                    // the thing being deleted (`pendingDelete != nil`), so
+                    // dismissing first cleared it and the action found
+                    // nothing to delete — Delete silently did nothing.
                     onConfirm: {
-                        isPresented.wrappedValue = false
                         action()
+                        isPresented.wrappedValue = false
                     },
                     onCancel: { isPresented.wrappedValue = false }
                 )

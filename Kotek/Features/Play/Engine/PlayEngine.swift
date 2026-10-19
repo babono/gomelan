@@ -253,6 +253,9 @@ final class PlayEngine {
     /// makes becomes meaningless.
     var partnerAudible = false
     var yourVoiceAudible = true
+    /// Whether the waterfall and the gangsa show where to damp. A display
+    /// setting only: nothing is judged on damping.
+    var showsDamp = true
     /// Whether this engine sounds the gong, kempur, kajar and metronome. Off
     /// only for the second engine of one-screen coop: two engines on one clock
     /// would strike every gong twice, a hair apart, and it would ring flanged.
@@ -479,6 +482,22 @@ final class PlayEngine {
         cycleVoided = true
     }
 
+    /// Start or stop scoring mid-session — the waterfall, as its sensors come
+    /// and go. Nothing hears your strokes without them, so judging on would
+    /// auto-miss every one and paint the lane red.
+    ///
+    /// The pass in progress is voided either way, and strokes already behind
+    /// the playhead are passed over rather than missed — same as `setHalf`.
+    func setJudging(_ on: Bool) {
+        guard on != judging else { return }
+        judging = on
+        cycleVoided = true
+        let patternTime = currentTimeMs - patternOriginMs
+        for i in notes.indices where patternTime > scaledTime(notes[i]) + strokeGap(around: i) {
+            judged[i] = true
+        }
+    }
+
     /// Stop the session and hand back what was played.
     ///
     /// Only COMPLETED passes are reported. The one in progress when the player
@@ -579,12 +598,10 @@ final class PlayEngine {
                     let at = origin + scaledTime(note)
                     let duration = Double(note.durationMs) / tempoScale
                     guard at + duration >= from, at <= to else { continue }
-                    // The stroke before the first one of a pass is the last one
-                    // of the pass before — the figure goes round without a seam.
-                    let previous = i > 0 ? list[i - 1] : (loop > 0 ? list.last : nil)
-                    let damp = voice == .yours
-                        ? previous.map(\.keyIndex).flatMap { $0 == note.keyIndex ? nil : $0 }
-                        : nil
+                    // The stroke after the last one of a pass is the first one
+                    // of the next — the figure goes round without a seam.
+                    let next = i + 1 < list.count ? list[i + 1] : list[0]
+                    let damps = voice == .yours && showsDamp && next.keyIndex != note.keyIndex
                     let outcome = voice == .yours && loop == loopIndex && phase == .userTurn
                         && outcomes.indices.contains(i) ? outcomes[i] : nil
                     out.append(FallingNote(
@@ -594,7 +611,7 @@ final class PlayEngine {
                         msAhead: at - currentTimeMs,
                         durationMs: duration,
                         outcome: outcome,
-                        dampKey: damp
+                        dampsAfter: damps
                     ))
                 }
             }

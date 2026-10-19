@@ -35,37 +35,31 @@ struct GangsaStage: View {
             struck(key, age: flash.age)
         }
 
-        // Damp: on in the SAME frame as the strike cue — when the paired stroke
-        // is due — and held for the span the engine holds that cue
-        // (`tickUserTurnCue`: 55% of the gap to the next stroke, 90…400 ms).
-        // "Hit this, pinch that" is one instruction, so it lights as one.
+        // Damp: on the moment a note ends — when its falling damp tile
+        // reaches the bar — and held for as long as that tile takes to pass
+        // (the note's own length, 90…400 ms). It no longer waits for the next
+        // stroke: a note before a rest is damped too, as it is on a real
+        // gangsa, where the hand stops each bilah once its note is done.
         //
-        // It used to fade in a full beat early and out over 0.6 of one after,
-        // peaking at the due instant. With strokes a slot apart that window
-        // reached back to the previous stroke, so the red was always already
-        // up before the strike cue appeared, slid onto the next bar early, lit
-        // during rests, and could turn a bar red while it was still the one to
-        // strike. The falling cue already gives the warning; the bar only has
-        // to say "now".
+        // It once faded in a full beat early and out over 0.6 of one after,
+        // and lit bars during rests and while they were still to be struck.
+        // The falling tile gives the warning; the bar only has to say "now".
         //
-        // Unlike the strike cue it does not vanish when you hit: the moment
-        // after the stroke is exactly when the left hand is pinching.
+        // Unlike the strike cue it does not vanish when you hit: it is the
+        // left hand's moment, not the right's.
         let beat = engine.beatLengthMs
         if beat > 0 {
-            let yours = engine.fallingNotes(aheadMs: beat * 4, behindMs: 400)
-                .filter { $0.voice == .yours }
-                .sorted { $0.msAhead < $1.msAhead }
-            if let i = yours.lastIndex(where: { $0.msAhead <= 0 }),
-               let key = yours[i].dampKey
+            for note in engine.fallingNotes(aheadMs: 0, behindMs: beat * 2)
+                where note.voice == .yours && note.dampsAfter
             {
-                let gap = i + 1 < yours.count ? yours[i + 1].msAhead - yours[i].msAhead : beat
-                let hold = min(max(gap * 0.55, 90), 400)
+                let hold = min(max(note.durationMs, 90), 400)
+                let held = -(note.msAhead + note.durationMs)
                 // Eased over 60 ms each way so the bar visibly shrinks
                 // into the pinch and back, instead of popping.
-                let held = -yours[i].msAhead
                 let damp = min(1, held / 60, (hold - held) / 60)
                 if damp > 0 {
-                    cues[key, default: BilahCue()].damp = damp
+                    let earlier = cues[note.keyIndex]?.damp ?? 0
+                    cues[note.keyIndex, default: BilahCue()].damp = max(earlier, damp)
                 }
             }
         }

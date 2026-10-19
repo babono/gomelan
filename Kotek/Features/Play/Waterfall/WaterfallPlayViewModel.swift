@@ -62,19 +62,27 @@ final class WaterfallPlayViewModel {
         app.selectedKotekan?.voicedKeyRange ?? 0 ... keyCount - 1
     }
 
-    /// Controller input → key. A gangsa with a controller set up uses its own
-    /// map (§3.6.5); nil is an input with no key on it, and its hits are
-    /// dropped.
+    /// Controller input → key, from this gangsa's own map (§3.6.5); nil is an
+    /// input with no key on it, and its hits are dropped.
     ///
-    /// Without one, the prototype wiring this screen was built on: three
-    /// sensors on the lowest three bilah the figure uses.
-    ///
-    /// ponytail: the fixed offset goes once every gangsa is set up through the
-    /// controller screen.
+    /// The prototype wiring (three sensors on the lowest three bilah, any
+    /// controller in reach) is gone from here: it let a gangsa with no
+    /// controller borrow the one set up on another and be scored.
     func key(forInput input: Int) -> Int? {
-        if app.profile.controller != nil { return app.profile.keyForInput[input] }
-        return voicedKeys.lowerBound + input
+        app.profile.keyForInput[input]
     }
+
+    /// Sensors are optional, and without them nothing hears your strokes — so
+    /// nothing is scored, and no hit or miss is drawn. Only THIS gangsa's
+    /// controller counts (Settings → Strike controller); one set up on another
+    /// gangsa does not, even when it is in reach.
+    var sensing: Bool {
+        app.controllerConnected
+    }
+
+    /// Whether the sensors were ever up this session. Never, and there is no
+    /// result to show — End goes back to the picker, not to a 0%.
+    private(set) var everSensed = false
 
     /// The bar a sensor just fired on, before any judging — so a dead piezo is
     /// obvious on the drawn gangsa.
@@ -90,12 +98,17 @@ final class WaterfallPlayViewModel {
         engine.cue = cue
         engine.partnerAudible = app.partnerAudible
         engine.yourVoiceAudible = app.yourVoiceAudible
+        engine.showsDamp = app.showsDamp
         engine.sessionSubtitle = title
         engine.onComplete = { [weak self] result in
             Task { @MainActor in
                 guard let self else { return }
                 self.teardown()
-                if let result { self.app.finish(result: result) } else { self.app.backToKotekan() }
+                if let result, self.everSensed {
+                    self.app.finish(result: result)
+                } else {
+                    self.app.backToKotekan()
+                }
             }
         }
         if let song = app.selectedSong {
@@ -104,19 +117,17 @@ final class WaterfallPlayViewModel {
                 partner: app.partnerSong,
                 profile: app.profile,
                 tempoScale: app.tempoScale,
-                // Snapshot at the start: the sensor is what scores a session,
-                // and without it the screen is guidance only.
-                judging: app.controllerConnected
+                judging: sensing
             )
         }
+        everSensed = sensing
 
         sensor.onHit = { [weak self] hit in
             guard let self, !self.paused, let key = key(forInput: hit.input) else { return }
             engine.registerStrike(keyIndex: key, hostTime: hit.hostTime, confidence: 1)
         }
-        // A gangsa with a controller is already being followed by RootView
-        // (`AppState.sensorTarget`); without one, take any controller in reach.
-        if app.profile.controller == nil { sensor.use(.any) }
+        // RootView follows this gangsa's controller, if it has one
+        // (`AppState.sensorTarget`).
 
         // No microphone here, so none of the route-change race `PlayViewModel`
         // waits out before starting the cue engine — the clock can start now.
@@ -177,6 +188,11 @@ final class WaterfallPlayViewModel {
         cancelResume()
         displayLink.stop()
         engine.end()
+    }
+
+    func sensingChanged(_ on: Bool) {
+        engine.setJudging(on)
+        if on { everSensed = true }
     }
 
     func halfChanged() {

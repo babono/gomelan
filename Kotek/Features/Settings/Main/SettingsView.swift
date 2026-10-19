@@ -78,7 +78,7 @@ private struct SettingsContentView: View {
         .confirm(
             $vm.showDeleteConfirm,
             title: "Delete this gangsa?",
-            message: "Its key alignment and learned voice go with it. This cannot be undone.",
+            message: GangsaDeletion.message(app.profile.name),
             confirmTitle: "Delete \(app.profile.name)"
         ) {
             vm.deleteInstrument()

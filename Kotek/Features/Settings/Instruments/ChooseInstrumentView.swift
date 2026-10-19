@@ -21,6 +21,8 @@ struct ChooseInstrumentView: View {
     @State private var query = ""
     /// The card in the middle of the carousel — the selected gangsa.
     @State private var centred: String?
+    /// The gangsa waiting on the delete confirmation.
+    @State private var pendingDelete: InstrumentProfile?
 
     private var profiles: [InstrumentProfile] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -58,6 +60,18 @@ struct ChooseInstrumentView: View {
         // As on the kotekan picker: the field is up top, so the keyboard has
         // nothing to push out of the way.
         .ignoresSafeArea(.keyboard)
+        .confirm(
+            Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+            title: "Delete this gangsa?",
+            message: GangsaDeletion.message(pendingDelete?.name),
+            confirmTitle: "Delete"
+        ) {
+            guard let p = pendingDelete else { return }
+            app.deleteInstrument(p.id)
+            // The app moves to the next gangsa; centre its card. An empty
+            // list shows the set-up screen by itself.
+            withAnimation(.snappy(duration: 0.32)) { centred = app.profile.id }
+        }
         .onAppear {
             app.showGuideIfFirstRun(.app)
 
@@ -89,6 +103,7 @@ struct ChooseInstrumentView: View {
                         InstrumentCardView(
                             profile: profile,
                             isCurrent: app.profile.id == profile.id,
+                            height: min(InstrumentCardView.maxHeight, geo.size.height),
                             onSelect: { withAnimation(.snappy(duration: 0.32)) { centred = profile.id } }
                         )
                         // Shrink and dim off-centre, as the kotekan carousel does,
@@ -140,16 +155,18 @@ struct ChooseInstrumentView: View {
     }
 
     /// Next goes with whichever card is selected — the one the app is already
-    /// on until another is tapped.
+    /// on until another is tapped. Delete beside it, as on the kotekan picker.
     private var footer: some View {
-        let selected = app.savedProfiles.contains { $0.id == app.profile.id }
-        return HStack {
+        let selected = app.savedProfiles.first { $0.id == app.profile.id }
+        return HStack(spacing: 14) {
             Spacer()
+            if let selected {
+                DeleteIconButton(label: "Delete \(selected.name)") { pendingDelete = selected }
+            }
             PillButton(title: "Next", style: .filled, compact: true) {
                 app.selectInstrument(app.profile)
             }
-            .disabled(!selected)
-            .opacity(selected ? 1 : 0.4)
+            .disabled(selected == nil)
         }
         .padding(.bottom, 10)
     }

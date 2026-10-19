@@ -70,6 +70,7 @@ extension AppState {
         ProfileStore.delete(profileID)
         InstrumentPhotoStore.delete(id: profileID)
         NoteClipCapture.deleteInstrument(instrumentID: profileID)
+        UserDefaults.standard.removeObject(forKey: Self.recordedSoundsKey(profileID))
         savedProfiles = ProfileStore.loadAll()
         Task { [instrumentRemote, log] in
             do {
