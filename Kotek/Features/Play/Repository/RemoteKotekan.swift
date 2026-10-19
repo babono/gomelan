@@ -50,7 +50,7 @@ nonisolated struct RemoteKotekan {
 nonisolated extension RemoteKotekan {
     /// Rebuild the two grids from the hit rows.
     ///
-    /// Gong, kempur and kajar hits only come back on a player's own figure —
+    /// Gong, kempur, klentong and kajar hits only come back on a player's own figure —
     /// see `Kotekan.colotomic`.
     init?(row: KotekanRow, hits: [KotekanHitRow]) {
         guard row.slotsPerCycle > 0, row.bpm > 0 else { return nil }

@@ -143,7 +143,7 @@ private struct ChooseKotekanContentView: View {
                             bestRecord: app.controllerConnected ? viewModel.bestRecord(k) : nil,
                             sideScale: side
                         )
-                        
+
                         .position(
                             x: geo.size.width / 2 + CGFloat(offset.sign == .minus ? -1 : 1)
                                 * (min(abs(CGFloat(offset)), 1) * step

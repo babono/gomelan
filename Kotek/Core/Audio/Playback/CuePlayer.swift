@@ -30,6 +30,7 @@ final class CuePlayer {
     private var keyBuffers: [Int: AVAudioPCMBuffer] = [:]
     private var gongBuffer: AVAudioPCMBuffer?
     private var kempurBuffer: AVAudioPCMBuffer?
+    private var klentongBuffer: AVAudioPCMBuffer?
     private var kajarBuffer: AVAudioPCMBuffer?
 
     // R --------------------------------------------------------------------
@@ -47,7 +48,7 @@ final class CuePlayer {
     // R Now every cue takes the next free node out of a pool and starts it
     // R immediately, so a cue always sounds on the frame it was asked for.
     // R --------------------------------------------------------------------
-    private enum Voice: Hashable { case key(Int), gong, kempur, kajar, kempli } // R
+    private enum Voice: Hashable { case key(Int), gong, kempur, klentong, kajar, kempli } // R
     private let voiceCount = 12 // R
     private var voices: [AVAudioPlayerNode] = [] // R
 
@@ -97,15 +98,22 @@ final class CuePlayer {
         for i in 0 ..< 10 {
             keyBuffers[i] = samples.buffer("key\(i)")
         }
-        gongBuffer = samples.buffer("gong")
-        kempurBuffer = samples.buffer("kempur")
-        kajarBuffer = samples.buffer("kajar")
 
         // R All bundled samples share one processing format, so one pool serves
         // R every recorded cue. Taken BEFORE the player's own recordings go in:
         // R they are written at the mic's rate, and the pool stays wired for
         // R the bundled one.
-        let sampleFormat = keyBuffers[0]?.format ?? gongBuffer?.format ?? format
+        let sampleFormat = keyBuffers[0]?.format ?? format
+        /// The colotomic samples were not recorded alike (gong and kempur stereo,
+        /// klentong 16 kHz, kajar 44.1 kHz) and the pool is wired for the keys'
+        /// format, so each is brought to it here.
+        func pooled(_ name: String) -> AVAudioPCMBuffer? {
+            samples.buffer(name).flatMap { SampleLibrary.convert($0, to: sampleFormat) }
+        }
+        gongBuffer = pooled("gong")
+        kempurBuffer = pooled("kempur")
+        klentongBuffer = pooled("klentong")
+        kajarBuffer = pooled("kajar")
         // ponytail: decoded here on the main actor, ten short clips; move into
         // SampleLibrary's warm-up if the pause before the first cue is audible.
         if let instrumentID {
@@ -236,6 +244,11 @@ final class CuePlayer {
     func playKempur() {
         guard ensureLive(), let buf = kempurBuffer else { return }
         fire(buf, as: .kempur) // R
+    }
+
+    func playKlentong() {
+        guard ensureLive(), let buf = klentongBuffer else { return }
+        fire(buf, as: .klentong)
     }
 
     /// The beat itself, under the Create Kotek piano roll. There is no kempli

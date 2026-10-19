@@ -72,7 +72,7 @@ struct DraftNote: Hashable, Identifiable {
     var length: Int
 }
 
-/// A gong, kajar or klentong stroke, drawn as a circle on the line it sits on.
+/// A gong, kempur, klentong or kajar stroke, drawn as a circle on the line it sits on.
 struct DraftColotomic: Hashable {
     var instrument: ColotomicInstrument
     var tick: Int
@@ -202,7 +202,7 @@ final class KotekanDraft {
         }
     }
 
-    /// Take out the gong, kajar or klentong nearest the finger, if one is
+    /// Take out the gong, kempur, klentong or kajar nearest the finger, if one is
     /// within `tolerance` ticks.
     func eraseColotomic(near position: Int, tolerance: Int) {
         guard let nearest = colotomic.indices.min(by: {

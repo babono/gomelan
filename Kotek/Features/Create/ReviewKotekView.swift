@@ -179,7 +179,7 @@ private struct PatternOverview: View {
                         .font(.symbol(11, weight: .semibold))
                         .foregroundStyle(Theme.stone)
                         .frame(height: laneHeight)
-                        .accessibilityLabel("Gong, kajar and klentong")
+                        .accessibilityLabel("Gong, kempur, klentong and kajar")
                 }
                 .padding(.top, rulerHeight)
                 .frame(width: labelWidth)

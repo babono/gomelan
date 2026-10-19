@@ -12,7 +12,7 @@
 //  hit, writes it there for the half being written, and steps on by the snap
 //  value. Rest steps on without writing; a tap on the ruler moves the line.
 //
-//  Under the rows runs a colotomic lane: gong, kajar and klentong are written
+//  Under the rows runs a colotomic lane: gong, kempur, klentong and kajar are written
 //  there as circles sitting on the line they sound on, the way a gamelan score
 //  video marks them. The kempli is not written — it is every beat, so the
 //  preview plays it on its own.
@@ -213,7 +213,7 @@ private struct PianoRollGrid: View {
                         .font(.symbol(11, weight: .semibold))
                         .foregroundStyle(Theme.stone)
                         .frame(height: laneHeight)
-                        .accessibilityLabel("Gong, kajar and klentong")
+                        .accessibilityLabel("Gong, kempur, klentong and kajar")
                 }
                 .padding(.top, rulerHeight)
                 .frame(width: labelWidth)
@@ -526,7 +526,7 @@ struct PianoRollCanvas: View {
 }
 
 extension ColotomicInstrument {
-    /// Three hues apart from each other and from the two halves (blue and
+    /// Four hues apart from each other and from the two halves (blue and
     /// purple). The Play screen's colotomic family — cream, amber, stone — is
     /// meant to recede under the voices; here the player writes these and has
     /// to tell them apart at a glance, so they stand out instead.
@@ -535,14 +535,15 @@ extension ColotomicInstrument {
         // The gold and green the rank ladder used, kept by value when the
         // ladder went.
         case .gong: Color(hex: 0xE8B44A)
+        case .kempur: Color(hex: 0x4FB3A9)
         case .kajar: Color(hex: 0x7FB069)
         case .klentong: Color(hex: 0xE0765A)
         }
     }
 }
 
-/// How each instrument is drawn: a gong as a big ring, a klentong a smaller
-/// one, a kajar a dot — sized like the sounds, and nested when they coincide.
+/// How each instrument is drawn: a gong as a big ring, a kempur and a klentong
+/// smaller ones, a kajar a dot — sized like the sounds, and nested when they coincide.
 struct ColotomicMark: View {
     let instrument: ColotomicInstrument
     var scale: CGFloat = 1
@@ -560,6 +561,7 @@ struct ColotomicMark: View {
         }
         switch instrument {
         case .gong: ctx.stroke(circle(9 * scale), with: .color(instrument.color), lineWidth: 2.5 * scale)
+        case .kempur: ctx.stroke(circle(7 * scale), with: .color(instrument.color), lineWidth: 2.2 * scale)
         case .klentong: ctx.stroke(circle(5.5 * scale), with: .color(instrument.color), lineWidth: 2 * scale)
         case .kajar: ctx.fill(circle(4 * scale), with: .color(instrument.color))
         }

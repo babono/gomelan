@@ -2,20 +2,20 @@
 //  SampleLibrary.swift
 //  Kotek
 //
-//  The thirteen bundled samples — ten gangsa keys, gong, kempur, kajar —
+//  The fourteen bundled samples — ten gangsa keys, gong, kempur, klentong, kajar —
 //  decoded once for the whole process.
 //
 //  This exists because `CuePlayer.start()` used to do the decoding, and
 //  `CuePlayer` is main-actor isolated like everything else in this target. So
-//  the first time a session started, the main thread read thirteen WAVs off
+//  the first time a session started, the main thread read fourteen WAVs off
 //  disk, allocated a PCM buffer for each, and then walked every sample of every
 //  one of them TWICE — once to find the peak, once to find the attack (see
 //  `trimLeadingSilence`). That is a few hundred milliseconds of arithmetic on
 //  the thread that is supposed to be drawing, which is the pause you get
 //  between pressing play and hearing anything.
 //
-//  Nothing about that work is per-session: the same thirteen files decode to
-//  the same thirteen buffers every time. So it happens once, off the main
+//  Nothing about that work is per-session: the same fourteen files decode to
+//  the same fourteen buffers every time. So it happens once, off the main
 //  thread, while the splash screen is up — and `CuePlayer.start()` becomes a
 //  dictionary lookup.
 //
@@ -33,7 +33,7 @@ final nonisolated class SampleLibrary {
     /// Every sample the app ships, in the order the preloader warms them.
     /// Keys first: they are the ones a session cannot start without.
     static let allNames: [String] =
-        (0 ..< 10).map { "key\($0)" } + ["gong", "kempur", "kajar"]
+        (0 ..< 10).map { "key\($0)" } + ["gong", "kempur", "klentong", "kajar", "kempur_splash"]
 
     private let lock = NSLock()
     private var cache: [String: AVAudioPCMBuffer] = [:]
@@ -88,6 +88,13 @@ final nonisolated class SampleLibrary {
               ),
               (try? file.read(into: source)) != nil
         else { return nil }
+        return convert(source, to: format)
+    }
+
+    /// `source` in `format`, or as-is when it already is. A player node fed a
+    /// channel count or rate other than the one it was connected with either
+    /// raises or plays at the wrong pitch.
+    static func convert(_ source: AVAudioPCMBuffer, to format: AVAudioFormat) -> AVAudioPCMBuffer? {
         if source.format == format { return source }
 
         let ratio = format.sampleRate / source.format.sampleRate

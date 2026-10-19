@@ -10,7 +10,8 @@
 //
 //  THE PROBLEM THIS SOLVES, because it is not obvious from the code:
 //
-//  `kempur.wav` is very nearly a pure 125 Hz tone. Measured, not assumed: its
+//  `kempur_splash.wav` (the original kempur recording, kept for this after
+//  `kempur.wav` was re-recorded for the sessions) is very nearly a pure 125 Hz tone. Measured, not assumed: its
 //  second partial at 250 Hz is already 12 dB down, and there is nothing at all
 //  above 400 Hz — every band up there sits 85 dB or more below the fundamental.
 //  Its RMS is a perfectly healthy -13.8 dBFS, so the file is not quiet; it is
@@ -29,7 +30,7 @@
 //  its density, normalised to full scale, and handed to `AVAudioPlayer` as a
 //  WAV in memory. Same proven playback path, a signal that can be heard.
 //
-//  The original recording is never modified. `CuePlayer` plays that same sample
+//  The original recording is never modified. `CuePlayer` plays `kempur.wav`
 //  in the colotomic layer during a session, where its level is balanced against
 //  a peak limiter, and a hotter kempur there would change the gameplay mix.
 //
@@ -77,14 +78,14 @@ final class SplashChime {
         hasStruck = true
 
         guard let wav = Self.audibleStroke else {
-            print("[SplashChime] could not build the stroke from kempur.wav")
+            print("[SplashChime] could not build the stroke from kempur_splash.wav")
             return
         }
 
         // Offload session activation and prepareToPlay() off the main thread
         // to silence AVAudioSession_iOS.mm:978 and prevent UI hangs.
         guard let player = await buildPlayer(data: wav, gain: gain) else {
-            print("[SplashChime] could not prepare the player from kempur.wav")
+            print("[SplashChime] could not prepare the player from kempur_splash.wav")
             return
         }
 
@@ -181,7 +182,7 @@ final class SplashChime {
 
     private static func buildAudibleStroke() -> Data? {
         // Already decoded and trimmed by the preloader, so this is a lookup.
-        guard let source = SampleLibrary.shared.buffer("kempur"),
+        guard let source = SampleLibrary.shared.buffer("kempur_splash"),
               let channel = source.floatChannelData else { return nil }
 
         let count = Int(source.frameLength)

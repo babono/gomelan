@@ -288,13 +288,12 @@ final class CreateKotekViewModel {
         strike(instrument)
     }
 
-    /// ponytail: no klentong sample is bundled, so it sounds the kempur's —
-    /// the nearest hanging gong in the set.
     private func strike(_ instrument: ColotomicInstrument) {
         switch instrument {
         case .gong: cue.playGong()
+        case .kempur: cue.playKempur()
+        case .klentong: cue.playKlentong()
         case .kajar: cue.playKajar()
-        case .klentong: cue.playKempur()
         }
     }
 

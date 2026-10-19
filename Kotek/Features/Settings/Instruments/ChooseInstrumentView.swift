@@ -100,7 +100,7 @@ struct ChooseInstrumentView: View {
                             let centre = proxy.bounds(of: .scrollView)?.midX ?? 0
                             let dx = proxy.frame(in: .scrollView).midX - centre
                             let t = min(abs(dx) / step, 1)
-                            
+
                             let slide = (1 - side) * InstrumentCardView.width * max(abs(dx) / (2 * step) - 1, 0)
                             return card
                                 .scaleEffect(1 - (1 - side) * t, anchor: dx < 0 ? .trailing : .leading)

@@ -26,8 +26,9 @@ import Foundation
 /// it on its own rather than asking for it to be written.
 enum ColotomicInstrument: String, Codable, CaseIterable, Identifiable {
     case gong
-    case kajar
+    case kempur
     case klentong
+    case kajar
 
     var id: String {
         rawValue
@@ -37,20 +38,13 @@ enum ColotomicInstrument: String, Codable, CaseIterable, Identifiable {
         rawValue.capitalized
     }
 
-    /// `hit_type` in `kotekan_hits`, which allows gong / kempur / kajar. A
-    /// klentong is stored as kempur, the hanging gong the schema and the
-    /// bundled samples have in its place.
+    /// `hit_type` in `kotekan_hits`.
     var hitType: String {
-        self == .klentong ? "kempur" : rawValue
+        rawValue
     }
 
     init?(hitType: String) {
-        switch hitType {
-        case "gong": self = .gong
-        case "kajar": self = .kajar
-        case "kempur": self = .klentong
-        default: return nil
-        }
+        self.init(rawValue: hitType)
     }
 }
 
@@ -122,7 +116,7 @@ struct Kotekan: Identifiable, Codable, Equatable {
     var sangsih: [Int?]
     /// Milliseconds per grid slot — sets the tempo (smaller = faster).
     var strokeMs: Int
-    /// Gong, kajar and klentong strokes a player wrote into their own figure.
+    /// Gong, kempur, klentong and kajar strokes a player wrote into their own figure.
     /// Empty for every built-in.
     ///
     /// ponytail: stored and read back, but the play engine still lays its own
