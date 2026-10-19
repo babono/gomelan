@@ -197,7 +197,7 @@ private struct PatternOverview: View {
                         colotomic: colotomic,
                         lengthTicks: length,
                         patternTicks: length,
-                        snapTicks: Subdivision.sixteenth.ticks,
+                        snapTicks: Subdivision.eighth.ticks,
                         writing: nil,
                         rows: rows,
                         laneHeight: laneHeight,

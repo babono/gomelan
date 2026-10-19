@@ -44,7 +44,7 @@ final class CreateKotekViewModel {
     var step: Step = .compose
     /// The half the grid writes into, and the half the sensors record.
     var writing: KotekanHalf = .polos
-    var snap = Subdivision.sixteenth
+    var snap = Subdivision.eighth
 
     var saving = false
     var saveError: String?
@@ -247,7 +247,7 @@ final class CreateKotekViewModel {
         // The figure can shrink under the playhead when its last note is
         // taken out; pick it up from the top.
         var from = playhead < length ? playhead : 0
-        var to = from + elapsed * Double(draft.bpm) / 60 * Double(KotekanDraft.ticksPerQuarter)
+        var to = from + elapsed * Double(draft.bpm) / 60 * Double(KotekanDraft.ticksPerBeat)
         if to >= length {
             sound(from: from, to: length)
             from = 0
@@ -267,13 +267,6 @@ final class CreateKotekViewModel {
         }
         for hit in draft.colotomic where range.contains(Double(hit.tick)) {
             strike(hit.instrument)
-        }
-        // The kempli, on every beat. Not written, so it cannot be forgotten.
-        let quarter = Double(KotekanDraft.ticksPerQuarter)
-        var beat = (from / quarter).rounded(.up) * quarter
-        while beat < to {
-            cue.playKempli()
-            beat += quarter
         }
     }
 

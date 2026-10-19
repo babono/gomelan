@@ -121,7 +121,7 @@ extension Kotekan {
             polos: r.polos,
             sangsih: r.sangsih,
             strokeMs: Int((60000.0 / Double(r.bpm)).rounded()),
-            colotomic: r.source == .builtin ? [] : r.colotomic
+            colotomic: r.source == .builtin ? Kotekan.builtinKajar(slots: r.polos.count) : r.colotomic
         )
     }
 

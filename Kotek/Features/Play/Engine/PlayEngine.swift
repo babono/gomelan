@@ -171,7 +171,15 @@ final class PlayEngine {
         requiredKeys: 0,
         durationMs: 0,
         notes: []
-    )
+    ) {
+        didSet { kajarSlots = Set(song.kajarBeats ?? []) }
+    }
+
+    /// Where in the cycle the figure's own kajar falls. Only what the figure
+    /// carries is sounded: a kajar laid under it by the engine was a second,
+    /// unwritten pulse.
+    private var kajarSlots: Set<Int> = []
+    private var cycleBeats = 1
     private var profile: InstrumentProfile?
     private var tempoScale: Double = 1
     /// Whether strokes are scored. See `configure`. Views read it to drop the
@@ -510,6 +518,7 @@ final class PlayEngine {
         // R tempo-scaled, so the count is the same at 0.5× as at 2× and the score
         // R does not repaginate when somebody moves the speed dial.
         let beats = max(1, Int((patternMs / beatMs).rounded()))
+        cycleBeats = beats
         scorePageCount = max(1, (beats + Self.colotomicBeats - 1) / Self.colotomicBeats)
         // R Divided from `patternMs` rather than built up from the beat length, so
         // R the pages always sum to exactly the pattern. A pattern that is not a
@@ -521,6 +530,12 @@ final class PlayEngine {
 
     private func scaledTime(_ note: Note) -> Double {
         Double(note.timeMs) / tempoScale
+    }
+
+    /// Whether the figure writes a kajar on this beat. Wraps the count-in the
+    /// same way, so the lead-in is the tail of a cycle.
+    private func isKajar(beat: Int) -> Bool {
+        kajarSlots.contains(((beat - introBeats) % cycleBeats + cycleBeats) % cycleBeats)
     }
 
     /// Where an absolute beat sits in the 32-beat colotomic cycle, counted from
@@ -599,7 +614,7 @@ final class PlayEngine {
             FallingBeat(
                 id: b,
                 msAhead: Double(b) * beatMs - currentTimeMs,
-                strong: (b - introBeats) % 4 == 0
+                strong: isKajar(beat: b)
             )
         }
     }
@@ -711,29 +726,18 @@ final class PlayEngine {
         rebuildTrack(patternTime: patternTime, beatMs: beatMs)
     }
 
-    /// The gong, kempur and kajar of one beat of the 32-beat cycle.
+    /// The kajar the figure wrote, and the gong and kempur of one beat of the
+    /// 32-beat cycle.
     ///
     /// No metronome click under them any more. The kajar (kempli) already
     /// keeps the pulse, and a click on top of it was a second, synthetic
     /// beat competing with the real one.
     private func soundColotomic(beat: Int) {
+        if isKajar(beat: beat) { cue?.playKajar() }
         switch colotomicIndex(forBeat: beat) {
-        case 0:
-            cue?.playGong()
-            cue?.playKajar()
-
-        case 4, 8, 12:
-            cue?.playKajar()
-
-        case 16:
-            cue?.playKempur()
-            cue?.playKajar()
-
-        case 20, 24, 28:
-            cue?.playKajar()
-
-        default:
-            break
+        case 0: cue?.playGong()
+        case 16: cue?.playKempur()
+        default: break
         }
     }
 
@@ -1130,7 +1134,7 @@ final class PlayEngine {
             for b in firstBeat ... lastBeat {
                 let x = (Double(b) * beatMs - pageOriginMs) / pageMs
                 guard x >= 0, x < 1 else { continue }
-                marks.append(TrackMarker(id: b * 10 + 1, kind: .kajar, xFraction: x))
+                marks.append(TrackMarker(id: b * 10 + 1, kind: isKajar(beat: b) ? .kajar : .beat, xFraction: x))
                 switch colotomicIndex(forBeat: b) {
                 case 0: marks.append(TrackMarker(id: b * 10 + 2, kind: .gong, xFraction: x))
                 case 16: marks.append(TrackMarker(id: b * 10 + 2, kind: .kempur, xFraction: x))

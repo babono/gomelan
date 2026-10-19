@@ -6,58 +6,37 @@
 //  the piano roll writes it (by tap or from the sensors), the review screen
 //  corrects it, and Save turns it into a `Kotekan`.
 //
-//  Positions are TICKS, 96 to the quarter, not grid slots. The piano roll snaps
-//  to anything from a whole bar to 1/32 including triplets and dots, and 96 is the
-//  smallest count that puts every one of those on a whole number (a 1/32
-//  triplet is 8, a dotted 1/32 is 18). A slot grid would have to pick its
-//  resolution before the player had written a note.
+//  Positions are TICKS, 96 to the quarter, not grid slots. Gamelan is played
+//  straight, so the piano roll snaps from a whole bar down to an 8th and
+//  nothing else: no triplets, no dots.
 //
-//  The engine still wants slots, so `kotekan(id:)` picks the coarsest grid
-//  every note sits on — a 16th for anything written straight, which is what
-//  every bundled figure uses.
+//  A BEAT is the value labelled 1: one bar of the roll, which the snap menu
+//  divides into 2, 4 and 8. The engine counts a grid slot per stroke, so
+//  `kotekan(id:)` makes a slot an 8th of a beat, and BPM here is beats per
+//  minute — a slot's rate divided by eight.
 //
 
 import Foundation
 import Observation
 
-/// A note value the piano roll snaps to.
+/// A note value the piano roll snaps to: 1 is a whole bar, 8 an eighth.
 struct Subdivision: Hashable, Identifiable {
-    enum Feel: String, CaseIterable {
-        case straight, triplet, dotted
-    }
-
     var denominator: Int
-    var feel: Feel = .straight
 
-    /// 1 is a whole bar, offered straight only: a whole-bar triplet or a
-    /// dotted one runs past the bar it starts in.
-    static let denominators = [1, 2, 4, 8, 16, 32]
+    static let denominators = [1, 2, 4, 8]
 
-    static func denominators(_ feel: Feel) -> [Int] {
-        feel == .straight ? denominators : denominators.filter { $0 > 1 }
-    }
+    static let eighth = Subdivision(denominator: 8)
 
-    static let sixteenth = Subdivision(denominator: 16)
-
-    var id: String {
-        label
+    var id: Int {
+        denominator
     }
 
     var ticks: Int {
-        let base = KotekanDraft.ticksPerBar / denominator
-        switch feel {
-        case .straight: return base
-        case .triplet: return base * 2 / 3
-        case .dotted: return base * 3 / 2
-        }
+        KotekanDraft.ticksPerBar / denominator
     }
 
     var label: String {
-        switch feel {
-        case .straight: denominator == 1 ? "1" : "1/\(denominator)"
-        case .triplet: "1/\(denominator) T"
-        case .dotted: "1/\(denominator) ·"
-        }
+        "\(denominator)"
     }
 }
 
@@ -82,18 +61,20 @@ struct DraftColotomic: Hashable {
 final class KotekanDraft {
     static let ticksPerQuarter = 96
     static let ticksPerBar = ticksPerQuarter * 4
+    /// One BPM beat: the value labelled 1.
+    static let ticksPerBeat = ticksPerBar
     /// How far the piano roll scrolls. The figure itself is `bars` long and
     /// grows when a note is written past its end; this is just the room.
     static let timelineBars = 32
-    static let bpmRange = 40 ... 200
+    static let bpmRange = 1 ... 999
 
     /// Empty until the player names it on Save; `kotekan(id:)` falls back to
     /// "My kotekan" if they never do.
     var name = ""
     var source: KotekanSource = .manual
-    /// Quarter notes per minute, as in any DAW. Not the per-slot number the
-    /// database stores — `strokeMs` converts.
-    var bpm = 88
+    /// Beats per minute, a beat being the value labelled 1. Eight grid slots to
+    /// the beat, so the database's per-slot `bpm` is eight times this.
+    var bpm = 60
     private(set) var notes: [DraftNote] = []
     private(set) var colotomic: [DraftColotomic] = []
 
@@ -263,19 +244,14 @@ final class KotekanDraft {
 
     /// Open a saved figure for editing: its grid back onto the piano roll.
     ///
-    /// A saved figure keeps only slots and milliseconds per slot, not the snap
-    /// it was written at, so the slot is read as the longest note value that
-    /// puts the tempo inside `bpmRange` — a 16th for anything written
-    /// straight, which gives back exactly what was saved.
+    /// A saved figure keeps only slots and milliseconds per slot. A slot comes
+    /// back as an 8th of a beat.
     func load(_ k: Kotekan) {
         name = k.name
         source = k.source
-        let candidates = [Subdivision.sixteenth.ticks, 16, 12, 8, 6, 4, 3]
-        let slot = candidates.first { ticks in
-            Self.bpmRange.contains(Self.bpm(strokeMs: k.strokeMs, slotTicks: ticks))
-        } ?? Subdivision.sixteenth.ticks
-        bpm = min(
-            max(Self.bpm(strokeMs: k.strokeMs, slotTicks: slot), Self.bpmRange.lowerBound),
+        let slot = Subdivision.eighth.ticks
+        bpm = Self.bpm(strokeMs: k.strokeMs, slotTicks: slot).clamped(
+            to: Self.bpmRange.lowerBound,
             Self.bpmRange.upperBound
         )
         notes = [(KotekanHalf.polos, k.polos), (.sangsih, k.sangsih)].flatMap { half, grid in
@@ -289,26 +265,17 @@ final class KotekanDraft {
     }
 
     private static func bpm(strokeMs: Int, slotTicks: Int) -> Int {
-        guard strokeMs > 0 else { return 88 }
-        return Int((60000.0 * Double(slotTicks) / (Double(ticksPerQuarter) * Double(strokeMs))).rounded())
+        guard strokeMs > 0 else { return 60 }
+        return Int((60000.0 * Double(slotTicks) / (Double(ticksPerBeat) * Double(strokeMs))).rounded())
     }
 
     // MARK: - As a kotekan
 
-    /// Ticks per engine slot: the coarsest step every note lands on.
-    ///
-    /// Starts from a 16th rather than from the bar, so a sparse figure written
-    /// in quarters still plays on the 16-slot grid the bundled figures use —
-    /// the engine's kajar falls every 4 slots, which is only a beat if a slot
-    /// is a 16th.
-    ///
-    /// ponytail: anything finer than a 16th (triplets, 1/32) shrinks the slot,
-    /// and the engine's 32-slot gong cycle then no longer lands on a bar line.
-    /// Fine for practising the figure; revisit if the colotomic layer has to
-    /// follow the bar.
+    /// Ticks per engine slot: an 8th, unless a stroke was written off it (the
+    /// sensors can) — then the coarsest step every one lands on.
     var slotTicks: Int {
         let ticks = notes.map(\.tick) + colotomic.map(\.tick)
-        return ticks.reduce(Subdivision.sixteenth.ticks) { gcd($0, $1) }
+        return ticks.reduce(Subdivision.eighth.ticks) { gcd($0, $1) }
     }
 
     var slotCount: Int {
@@ -325,12 +292,12 @@ final class KotekanDraft {
 
     /// Milliseconds from the top of the figure to `tick` at `bpm`.
     func ms(atTick tick: Double) -> Double {
-        tick / Double(Self.ticksPerQuarter) * 60000 / Double(bpm)
+        tick / Double(Self.ticksPerBeat) * 60000 / Double(bpm)
     }
 
     /// Milliseconds per engine slot at `bpm`.
     var strokeMs: Int {
-        Int((60000.0 / Double(bpm) * Double(slotTicks) / Double(Self.ticksPerQuarter)).rounded())
+        Int((60000.0 / Double(bpm) * Double(slotTicks) / Double(Self.ticksPerBeat)).rounded())
     }
 
     func kotekan(id: String) -> Kotekan {
