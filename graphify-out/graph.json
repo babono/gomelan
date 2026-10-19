@@ -16158,7 +16158,7 @@
       "file_type": "code",
       "norm_label": ".swipe()",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L159"
+      "source_location": "L170"
     },
     {
       "id": "kotek_features_play_choose_choosekotekanviewmodel_choosekotekanviewmodel_clamptorail",
@@ -50578,7 +50578,7 @@
       "file_type": "code",
       "norm_label": ".footer",
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L142"
+      "source_location": "L154"
     },
     {
       "id": "kotek_features_settings_instruments_chooseinstrumentview_chooseinstrumentview_nomatches",
@@ -50589,7 +50589,7 @@
       "file_type": "code",
       "norm_label": ".nomatches",
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L126"
+      "source_location": "L138"
     },
     {
       "id": "kotek_features_settings_instruments_chooseinstrumentview_chooseinstrumentview_profiles",
@@ -63543,7 +63543,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L154",
+      "source_location": "L163",
       "weight": 1.0
     },
     {
@@ -94695,7 +94695,7 @@
       "confidence_score": 1.0,
       "context": "parameter_type",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L159",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -102150,7 +102150,7 @@
       "confidence_score": 1.0,
       "context": "return_type",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L159",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -137404,7 +137404,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L159",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -140770,7 +140770,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L126",
+      "source_location": "L138",
       "weight": 1.0
     },
     {
@@ -140781,7 +140781,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L142",
+      "source_location": "L154",
       "weight": 1.0
     },
     {
@@ -145844,7 +145844,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L134",
+      "source_location": "L137",
       "weight": 1.0
     },
     {
@@ -145856,7 +145856,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L139",
+      "source_location": "L142",
       "weight": 1.0
     },
     {
@@ -145868,7 +145868,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L142",
+      "source_location": "L145",
       "weight": 1.0
     },
     {
@@ -145880,7 +145880,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L162",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -145892,7 +145892,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L165",
+      "source_location": "L176",
       "weight": 1.0
     },
     {
@@ -147524,7 +147524,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L147",
+      "source_location": "L159",
       "weight": 1.0
     },
     {
@@ -148928,7 +148928,7 @@
       "confidence_score": 0.8,
       "context": "call",
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L143",
+      "source_location": "L155",
       "weight": 1.0
     },
     {
@@ -153152,7 +153152,7 @@
       "confidence_score": 0.85,
       "context": "call",
       "source_file": "Kotek/Features/Play/Choose/ChooseKotekanView.swift",
-      "source_location": "L135",
+      "source_location": "L138",
       "weight": 1.0
     },
     {
@@ -154676,7 +154676,7 @@
       "confidence_score": 0.85,
       "context": "call",
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L146",
+      "source_location": "L158",
       "weight": 1.0
     },
     {
@@ -154688,7 +154688,7 @@
       "confidence_score": 0.85,
       "context": "call",
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L128",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -154700,7 +154700,7 @@
       "confidence_score": 0.85,
       "context": "call",
       "source_file": "Kotek/Features/Settings/Instruments/ChooseInstrumentView.swift",
-      "source_location": "L89",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -156154,5 +156154,5 @@
       "source_file": "documentation/prd.md"
     }
   ],
-  "built_at_commit": "793b3c51d2ad034926a991689d8aca39a0bea408"
+  "built_at_commit": "242f53f6401475964ce7a80ec72582d8ed6b7e27"
 }

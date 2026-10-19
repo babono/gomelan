@@ -84,7 +84,7 @@ struct ChooseInstrumentView: View {
             let step = InstrumentCardView.width + gap
 
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: gap) {
+                HStack(spacing: gap) {
                     ForEach(profiles) { profile in
                         InstrumentCardView(
                             profile: profile,
@@ -100,8 +100,11 @@ struct ChooseInstrumentView: View {
                             let centre = proxy.bounds(of: .scrollView)?.midX ?? 0
                             let dx = proxy.frame(in: .scrollView).midX - centre
                             let t = min(abs(dx) / step, 1)
+                            
+                            let slide = (1 - side) * InstrumentCardView.width * max(abs(dx) / (2 * step) - 1, 0)
                             return card
                                 .scaleEffect(1 - (1 - side) * t, anchor: dx < 0 ? .trailing : .leading)
+                                .offset(x: dx < 0 ? slide : -slide)
                                 .opacity(1 - 0.55 * t)
                         }
                         .id(profile.id)
@@ -110,12 +113,11 @@ struct ChooseInstrumentView: View {
                 .scrollTargetLayout()
                 .frame(maxHeight: .infinity)
             }
+            .scrollClipDisabled()
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $centred, anchor: .center)
             .safeAreaPadding(.horizontal, max(0, (geo.size.width - InstrumentCardView.width) / 2))
         }
-        // A scroll view runs under the safe area; cut it at the rail's edge.
-        .clipped()
         .onAppear { centred = app.profile.id }
         // A search that hides the centred card centres the first match.
         .onChange(of: query) { _, _ in

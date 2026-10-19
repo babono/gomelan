@@ -125,8 +125,9 @@ private struct ChooseKotekanContentView: View {
             let side = CarouselFit.sideScale(width: geo.size.width, card: KotekanCardView.cardWidth)
             let gap = CarouselFit.gap(width: geo.size.width, card: KotekanCardView.cardWidth)
             let step = KotekanCardView.cardWidth / 2 + gap + side * KotekanCardView.cardWidth / 2
-            let first = Int((viewModel.position - 2).rounded(.down))
-            let last = Int((viewModel.position + 2).rounded(.up))
+
+            let first = Int((viewModel.position - 3).rounded(.down))
+            let last = Int((viewModel.position + 3).rounded(.up))
 
             ZStack {
                 ForEach(first ... last, id: \.self) { slot in
@@ -142,8 +143,12 @@ private struct ChooseKotekanContentView: View {
                             bestRecord: app.controllerConnected ? viewModel.bestRecord(k) : nil,
                             sideScale: side
                         )
+                        
                         .position(
-                            x: geo.size.width / 2 + CGFloat(offset) * step,
+                            x: geo.size.width / 2 + CGFloat(offset.sign == .minus ? -1 : 1)
+                                * (min(abs(CGFloat(offset)), 1) * step
+                                    + max(abs(CGFloat(offset)) - 1, 0)
+                                    * (side * KotekanCardView.cardWidth + gap)),
                             y: geo.size.height / 2
                         )
                     }
@@ -153,7 +158,6 @@ private struct ChooseKotekanContentView: View {
             .contentShape(Rectangle())
             .gesture(swipe(width: geo.size.width, step: step))
         }
-        .clipped()
     }
 
     private func swipe(width: CGFloat, step: CGFloat) -> some Gesture {
