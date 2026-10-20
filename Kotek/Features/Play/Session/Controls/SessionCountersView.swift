@@ -27,7 +27,8 @@ struct SessionCountersView: View {
             )
             .foregroundStyle(Theme.inkStone)
 
-            if engine.landedNotes > 0 {
+            // Guidance only (no sensor): the cycle count is all there is.
+            if engine.judging, engine.landedNotes > 0 {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark")
                         .font(.symbol(11, weight: .bold))
@@ -38,16 +39,18 @@ struct SessionCountersView: View {
             }
 
             // Always drawn, even before a single pass has closed.
-            HStack(spacing: 3) {
-                Text(engine.bestSoFar.map(percent) ?? "—")
-                    .foregroundStyle(beatingRecord ? Theme.hit : Theme.cream)
-                if let record {
-                    Text("/").foregroundStyle(Theme.inkStone.opacity(0.6))
-                    Text(percent(record)).foregroundStyle(Theme.gold)
+            if engine.judging {
+                HStack(spacing: 3) {
+                    Text(engine.bestSoFar.map(percent) ?? "—")
+                        .foregroundStyle(beatingRecord ? Theme.hit : Theme.cream)
+                    if let record {
+                        Text("/").foregroundStyle(Theme.inkStone.opacity(0.6))
+                        Text(percent(record)).foregroundStyle(Theme.gold)
+                    }
                 }
+                .coachTarget(.score)
+                .accessibilityLabel(accessibilityLabel)
             }
-            .coachTarget(.score)
-            .accessibilityLabel(accessibilityLabel)
         }
         .font(.sans(14))
         .contentTransition(.numericText())

@@ -290,7 +290,7 @@ private struct SessionTitle: View {
     private var text: String {
         var parts = [name, engine.phase == .countIn ? "Count-in" : "Cycle \(engine.loopIndex + 1)"]
         // Nothing until a pass has scored, rather than a 0% that reads as a verdict.
-        if showsScore, let best = engine.bestSoFar {
+        if showsScore, engine.judging, let best = engine.bestSoFar {
             parts.append("\(Int((best * 100).rounded()))%")
         }
         return parts.joined(separator: " - ")

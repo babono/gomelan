@@ -12,10 +12,9 @@
 //  hit, writes it there for the half being written, and steps on by the snap
 //  value. Rest steps on without writing; a tap on the ruler moves the line.
 //
-//  Under the rows runs a colotomic lane: gong, kajar and klentong are written
+//  Under the rows runs a colotomic lane: gong, kempur, klentong and kajar are written
 //  there as circles sitting on the line they sound on, the way a gamelan score
-//  video marks them. The kempli is not written — it is every beat, so the
-//  preview plays it on its own.
+//  video marks them. Nothing sounds under them but what is written.
 //
 //  Rows are key INDICES from the active instrument, top row highest — never
 //  pitches, same as everywhere else (PRD §7).
@@ -133,19 +132,15 @@ private struct PianoRollControls: View {
 
     private var snapMenu: some View {
         Menu {
-            ForEach(Subdivision.Feel.allCases, id: \.self) { feel in
-                Section(feel.rawValue.capitalized) {
-                    ForEach(Subdivision.denominators(feel), id: \.self) { d in
-                        let s = Subdivision(denominator: d, feel: feel)
-                        Button {
-                            viewModel.snap = s
-                        } label: {
-                            if s == viewModel.snap {
-                                Label(s.label, systemImage: "checkmark")
-                            } else {
-                                Text(s.label)
-                            }
-                        }
+            ForEach(Subdivision.denominators, id: \.self) { d in
+                let s = Subdivision(denominator: d)
+                Button {
+                    viewModel.snap = s
+                } label: {
+                    if s == viewModel.snap {
+                        Label(s.label, systemImage: "checkmark")
+                    } else {
+                        Text(s.label)
                     }
                 }
             }
@@ -170,7 +165,8 @@ private struct PianoRollControls: View {
 private struct PianoRollGrid: View {
     let viewModel: CreateKotekViewModel
 
-    /// Points per quarter note. nil until the player pinches: fit one bar.
+    /// Points per quarter note. nil until the player pinches: fit four bars, so
+    /// it is plain the figure can run on past one.
     @State private var pointsPerQuarter: CGFloat?
     @State private var pinchStart: CGFloat?
     @State private var scroll = ScrollPosition(edge: .leading)
@@ -201,7 +197,7 @@ private struct PianoRollGrid: View {
         GeometryReader { geo in
             let visible = max(1, geo.size.width - labelWidth)
             let fitAll = visible / CGFloat(KotekanDraft.timelineBars * 4)
-            let ppq = (pointsPerQuarter ?? visible / 4).clamped(to: fitAll, Self.maxPointsPerQuarter)
+            let ppq = (pointsPerQuarter ?? visible / 16).clamped(to: fitAll, Self.maxPointsPerQuarter)
             let pxPerTick = ppq / CGFloat(KotekanDraft.ticksPerQuarter)
             let width = CGFloat(timeline) * pxPerTick
             let rowHeight = max(12, (geo.size.height - rulerHeight - laneHeight) / CGFloat(rows))
@@ -213,7 +209,7 @@ private struct PianoRollGrid: View {
                         .font(.symbol(11, weight: .semibold))
                         .foregroundStyle(Theme.stone)
                         .frame(height: laneHeight)
-                        .accessibilityLabel("Gong, kajar and klentong")
+                        .accessibilityLabel("Gong, kempur, klentong and kajar")
                 }
                 .padding(.top, rulerHeight)
                 .frame(width: labelWidth)
@@ -491,20 +487,12 @@ struct PianoRollCanvas: View {
                 }
             }
 
-            // The colotomic lane. The kempli first, as faint dots on every beat
-            // of the figure — it is playing whether or not anything is written.
+            // The colotomic lane.
             let laneMid = rowsHeight + laneHeight / 2
             ctx.fill(
                 Path(CGRect(x: 0, y: rowsHeight, width: size.width, height: 1)),
                 with: .color(Theme.cream.opacity(0.12))
             )
-            for tick in stride(from: 0, to: patternTicks, by: KotekanDraft.ticksPerQuarter) {
-                let x = CGFloat(tick) * pxPerTick
-                ctx.fill(
-                    Path(ellipseIn: CGRect(x: x - 1.5, y: laneMid - 1.5, width: 3, height: 3)),
-                    with: .color(Theme.cream.opacity(0.25))
-                )
-            }
             // Then each written stroke: its line through the rows tinted, and
             // its circle on that line in the lane. Gong outermost, so three on
             // one beat nest instead of hiding each other.
@@ -526,7 +514,7 @@ struct PianoRollCanvas: View {
 }
 
 extension ColotomicInstrument {
-    /// Three hues apart from each other and from the two halves (blue and
+    /// Four hues apart from each other and from the two halves (blue and
     /// purple). The Play screen's colotomic family — cream, amber, stone — is
     /// meant to recede under the voices; here the player writes these and has
     /// to tell them apart at a glance, so they stand out instead.
@@ -535,14 +523,15 @@ extension ColotomicInstrument {
         // The gold and green the rank ladder used, kept by value when the
         // ladder went.
         case .gong: Color(hex: 0xE8B44A)
-        case .kajar: Color(hex: 0x7FB069)
+        case .kempur: Color(hex: 0x4FB3A9)
+        case .kajar: .white
         case .klentong: Color(hex: 0xE0765A)
         }
     }
 }
 
-/// How each instrument is drawn: a gong as a big ring, a klentong a smaller
-/// one, a kajar a dot — sized like the sounds, and nested when they coincide.
+/// How each instrument is drawn: a gong as a big ring, a kempur and a klentong
+/// smaller ones, a kajar a dot — sized like the sounds, and nested when they coincide.
 struct ColotomicMark: View {
     let instrument: ColotomicInstrument
     var scale: CGFloat = 1
@@ -560,13 +549,14 @@ struct ColotomicMark: View {
         }
         switch instrument {
         case .gong: ctx.stroke(circle(9 * scale), with: .color(instrument.color), lineWidth: 2.5 * scale)
+        case .kempur: ctx.stroke(circle(7 * scale), with: .color(instrument.color), lineWidth: 2.2 * scale)
         case .klentong: ctx.stroke(circle(5.5 * scale), with: .color(instrument.color), lineWidth: 2 * scale)
         case .kajar: ctx.fill(circle(4 * scale), with: .color(instrument.color))
         }
     }
 }
 
-/// Bar numbers over the bar lines, a tick on every beat.
+/// Bar numbers over the bar lines, a tick on every quarter.
 struct PianoRollRuler: View {
     let bars: Int
     let pxPerTick: CGFloat

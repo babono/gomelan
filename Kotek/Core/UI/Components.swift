@@ -261,7 +261,6 @@ struct ButtonSurface<S: Shape>: ViewModifier {
     let shape: S
     @Environment(\.isEnabled) private var isEnabled
 
-    @ViewBuilder
     func body(content: Content) -> some View {
         switch kind {
         case .prominent:
@@ -559,6 +558,11 @@ struct TopBar: View {
     var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
     var compact: Bool = false
+    /// The strike-controller icon, beside the gear: whether this session is scored.
+    var showsSensor: Bool = false
+    /// Space between the controls and the safe-area edge. The pickers pass 0 so
+    /// the buttons sit in the corners, on the line their carousel ends at.
+    var edgeInset: CGFloat = 24
 
     var body: some View {
         VStack(spacing: 0) {
@@ -586,7 +590,12 @@ struct TopBar: View {
                             if let backTitle {
                                 CapsuleButton(title: backTitle, glass: true, action: onBack)
                             } else {
-                                CircleIconButton(systemImage: "chevron.left", label: "Back", glass: true, action: onBack)
+                                CircleIconButton(
+                                    systemImage: "chevron.left",
+                                    label: "Back",
+                                    glass: true,
+                                    action: onBack
+                                )
                             }
                         }
                         Spacer()
@@ -595,13 +604,24 @@ struct TopBar: View {
                                 .font(.sans(13, weight: .medium))
                                 .foregroundStyle(accent)
                         }
+                        if showsSensor { SensorIndicator() }
                         // 44pt circles: a bare glyph in a corner is a 19pt
                         // target, and the HIG minimum is 44.
                         if let infoAction {
-                            CircleIconButton(systemImage: "questionmark", label: "How Kotek works", glass: true, action: infoAction)
+                            CircleIconButton(
+                                systemImage: "questionmark",
+                                label: "How Kotek works",
+                                glass: true,
+                                action: infoAction
+                            )
                         }
                         if let settingsAction {
-                            CircleIconButton(systemImage: "gearshape", label: "Settings", glass: true, action: settingsAction)
+                            CircleIconButton(
+                                systemImage: "gearshape",
+                                label: "Settings",
+                                glass: true,
+                                action: settingsAction
+                            )
                         }
                         if let status {
                             Circle()
@@ -613,7 +633,7 @@ struct TopBar: View {
                     }
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, edgeInset)
             .padding(.top, compact ? 10 : 18)
             .padding(.bottom, compact ? 8 : 12)
         }

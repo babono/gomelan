@@ -54,7 +54,9 @@ struct PlayTopBar: View {
             }
             .buttonStyle(.kajar)
             .accessibilityLabel(
-                bottomBarVisible ? "Hide the score" : "Show the score"
+                engine.judging
+                    ? (bottomBarVisible ? "Hide the score" : "Show the score")
+                    : (bottomBarVisible ? "Hide the controls" : "Show the controls")
             )
             .coachTarget(.panelToggle)
             .padding(.trailing, 10)

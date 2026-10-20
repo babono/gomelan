@@ -8,7 +8,8 @@
 //  The book is indexed on a Mac by `scripts/build-book-index.swift` into
 //  `Resources/BookIndex.json` (the passages) and `BookIndex.vectors` (one
 //  vector each, from Apple's contextual embedding, as raw Float16 — half the
-//  size of Float32 and no decoding, for a ranking that came out identical). Here the query is embedded with the same model and
+//  size of Float32 and no decoding, for a ranking that came out identical). Here the query is embedded with the same
+//  model and
 //  compared against every passage. No vector database: a book is a couple of
 //  thousand passages, and a dot product against each takes well under a
 //  millisecond.

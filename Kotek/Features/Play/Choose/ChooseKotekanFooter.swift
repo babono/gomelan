@@ -76,7 +76,6 @@ struct ChooseKotekanFooter: View {
                 .disabled(!playable)
             }
         }
-        .padding(.horizontal, 28)
         .padding(.bottom, 10)
     }
 }

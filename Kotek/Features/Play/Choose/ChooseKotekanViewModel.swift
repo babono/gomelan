@@ -26,13 +26,9 @@ final class ChooseKotekanViewModel {
     var query = "" {
         didSet { if query != oldValue { position = 0 } }
     }
+
     /// Whether the preview is what is driving the shared cue player right now.
     private var previewing = false
-
-    static let gap: CGFloat = 22
-    static var step: CGFloat {
-        KotekanCardView.cardWidth + gap
-    }
 
     init(app: AppState, cue: CuePlayer = Container.shared.cueService()) {
         self.app = app
@@ -203,10 +199,12 @@ final class ChooseKotekanViewModel {
         }
     }
 
-    func onDragChanged(translationWidth: CGFloat) {
+    /// `step` is the distance between card centres, which the view works out
+    /// from its width (`CarouselFit`) — it is not a constant.
+    func onDragChanged(translationWidth: CGFloat, step: CGFloat) {
         let origin = dragOrigin ?? position
         dragOrigin = origin
-        position = clampToRail(origin - translationWidth / Self.step)
+        position = clampToRail(origin - translationWidth / step)
     }
 
     private func clampToRail(_ p: Double) -> Double {
@@ -217,25 +215,26 @@ final class ChooseKotekanViewModel {
         translationWidth: CGFloat,
         predictedEndTranslationWidth: CGFloat,
         startLocationX: CGFloat,
-        width: CGFloat
+        width: CGFloat,
+        step: CGFloat
     ) {
         let origin = dragOrigin ?? position
         dragOrigin = nil
 
         guard abs(translationWidth) >= 10 else {
             position = origin
-            tap(slotUnder(x: startLocationX, width: width, origin: origin))
+            tap(slotUnder(x: startLocationX, width: width, step: step, origin: origin))
             return
         }
 
-        let landing = origin - predictedEndTranslationWidth / Self.step
+        let landing = origin - predictedEndTranslationWidth / step
         withAnimation(.snappy(duration: 0.32)) {
             position = clampToRail((landing.rounded()).clamped(to: origin - 1, origin + 1))
         }
     }
 
-    private func slotUnder(x: CGFloat, width: CGFloat, origin: Double) -> Int {
-        Int((Double(x - width / 2) / Double(Self.step) + origin).rounded())
+    private func slotUnder(x: CGFloat, width: CGFloat, step: CGFloat, origin: Double) -> Int {
+        Int((Double(x - width / 2) / Double(step) + origin).rounded())
     }
 
     func tap(_ slot: Int) {

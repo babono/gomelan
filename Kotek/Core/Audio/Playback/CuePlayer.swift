@@ -30,46 +30,49 @@ final class CuePlayer {
     private var keyBuffers: [Int: AVAudioPCMBuffer] = [:]
     private var gongBuffer: AVAudioPCMBuffer?
     private var kempurBuffer: AVAudioPCMBuffer?
+    private var klentongBuffer: AVAudioPCMBuffer?
     private var kajarBuffer: AVAudioPCMBuffer?
 
-    // R --------------------------------------------------------------------
-    // R Voice pool.
-    // R
-    // R Previously each sound owned ONE AVAudioPlayerNode and every cue called
-    // R scheduleBuffer(at: nil) on it. On an already-playing node that APPENDS to
-    // R the node's queue — the buffer starts only after everything before it has
-    // R finished. The samples are long (key* 2s, kajar 3s, gong 8s) and the cues
-    // R come fast (a key every ~230ms, a kajar every ~1.9s, a gong every 7.5s),
-    // R so each sound fell further and further behind its own visual cue and kept
-    // R sounding long after the example was over. Hence: gong not matching the
-    // R circle, gangsa not matching the bilah, gangsa still ringing in "Your turn".
-    // R
-    // R Now every cue takes the next free node out of a pool and starts it
-    // R immediately, so a cue always sounds on the frame it was asked for.
-    // R --------------------------------------------------------------------
-    private enum Voice: Hashable { case key(Int), gong, kempur, kajar, kempli } // R
-    private let voiceCount = 12 // R
-    private var voices: [AVAudioPlayerNode] = [] // R
+    /// R --------------------------------------------------------------------
+    /// R Voice mixer.
+    /// R
+    /// R Previously each sound owned ONE AVAudioPlayerNode and every cue called
+    /// R scheduleBuffer(at: nil) on it. On an already-playing node that APPENDS to
+    /// R the node's queue — the buffer starts only after everything before it has
+    /// R finished. The samples are long (key* 2s, kajar 3s, gong 8s) and the cues
+    /// R come fast, so each sound fell further and further behind its visual cue.
+    /// R A pool of nodes fixed that, but a node can only be stopped dead, and a
+    /// R dead stop of a ringing bass sample is a thump; ramping node.volume from a
+    /// R timer just moved the thump onto the ticks. CueMixer sums the samples in
+    /// R one source node and fades per sample on the audio thread, so a retrigger
+    /// R or a mute is a 20 ms ramp, never a cut.
+    /// R --------------------------------------------------------------------
+    private var mixer: CueMixer? // R
 
-    // R --------------------------------------------------------------------
-    // R Every bundled sample peaks at 0.708 (-3 dBFS), so any TWO sounding at
-    // R once already exceed full scale — and a dense passage routinely stacks
-    // R four (your half, your partner's, kajar on the beat, gong on the cycle).
-    // R The mixer was left at 1.0 under a comment claiming headroom it did not
-    // R actually give, so the sum clipped: that square-wave crunch is what makes
-    // R the output "explode" rather than simply sound loud.
-    // R
-    // R A peak limiter across the pool catches the overs and leaves everything
-    // R below the threshold untouched, so a single strike sounds exactly as it
-    // R did before — the gangsa and gong tone stays as recorded.
-    // R
-    // R The submix is not decoration. An effect node has a SINGLE input bus, so
-    // R connecting the pool straight to the limiter made each connect() evict the
-    // R one before it — eleven voices ended up dangling and fire() tripped
-    // R "player started when in a disconnected state". A mixer takes many inputs;
-    // R the limiter takes its one summed signal from that.
-    // R --------------------------------------------------------------------
-    private let submix = AVAudioMixerNode() // R
+    private enum Voice { case key(Int), gong, kempur, klentong, kajar } // R
+
+    /// What a re-strike replaces: each key, and each colotomic sound, is its own.
+    private func play(_ buffer: AVAudioPCMBuffer, as voice: Voice, pan: Float = 0, volume: Float = 1) { // R
+        let source: Int
+        let group: CueMixer.Group
+        switch voice {
+        case let .key(i): (source, group) = (i, .key)
+        case .gong: (source, group) = (100, .colotomic)
+        case .kempur: (source, group) = (101, .colotomic)
+        case .klentong: (source, group) = (102, .colotomic)
+        case .kajar: (source, group) = (103, .colotomic)
+        }
+        mixer?.play(buffer, source: source, group: group, pan: pan, volume: volume)
+    }
+
+    /// R --------------------------------------------------------------------
+    /// R Every bundled sample peaks near full scale, so any TWO sounding at once
+    /// R exceed it — and a dense passage routinely stacks four (your half, your
+    /// R partner's, kajar on the beat, gong on the cycle). Summed unchecked that
+    /// R clips: a square-wave crunch that makes the output "explode". A peak
+    /// R limiter after the mixer catches the overs and leaves a single strike
+    /// R exactly as recorded.
+    /// R --------------------------------------------------------------------
     private let limiter = AVAudioUnitEffect( // R
         audioComponentDescription: AudioComponentDescription(
             componentType: kAudioUnitType_Effect,
@@ -78,11 +81,7 @@ final class CuePlayer {
             componentFlags: 0,
             componentFlagsMask: 0
         ))
-    private var nextVoice = 0 // R
-    /// Node currently carrying each source, so a re-strike cuts its own ring.
-    private var activeVoice: [Voice: AVAudioPlayerNode] = [:] // R
-    /// Nodes carrying gangsa samples, so the example can be silenced wholesale.
-    private var keyVoices: Set<ObjectIdentifier> = [] // R
+    private var wired = false // R
 
     func start() {
         guard !started else { return }
@@ -97,15 +96,22 @@ final class CuePlayer {
         for i in 0 ..< 10 {
             keyBuffers[i] = samples.buffer("key\(i)")
         }
-        gongBuffer = samples.buffer("gong")
-        kempurBuffer = samples.buffer("kempur")
-        kajarBuffer = samples.buffer("kajar")
 
         // R All bundled samples share one processing format, so one pool serves
         // R every recorded cue. Taken BEFORE the player's own recordings go in:
         // R they are written at the mic's rate, and the pool stays wired for
         // R the bundled one.
-        let sampleFormat = keyBuffers[0]?.format ?? gongBuffer?.format ?? format
+        let sampleFormat = keyBuffers[0]?.format ?? format
+        /// The colotomic samples were not recorded alike (gong and kempur stereo,
+        /// klentong 16 kHz, kajar 44.1 kHz) and the pool is wired for the keys'
+        /// format, so each is brought to it here.
+        func pooled(_ name: String) -> AVAudioPCMBuffer? {
+            samples.buffer(name).flatMap { SampleLibrary.convert($0, to: sampleFormat) }
+        }
+        gongBuffer = pooled("gong")
+        kempurBuffer = pooled("kempur")
+        klentongBuffer = pooled("klentong")
+        kajarBuffer = pooled("kajar")
         // ponytail: decoded here on the main actor, ten short clips; move into
         // SampleLibrary's warm-up if the pause before the first cue is audible.
         if let instrumentID {
@@ -118,19 +124,23 @@ final class CuePlayer {
             }
         }
 
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: format)
-
-        // R The pool sums in the submix, and only that one signal hits the limiter.
-        engine.attach(submix) // R
-        engine.attach(limiter) // R
-        engine.connect(submix, to: limiter, format: sampleFormat) // R
-        engine.connect(limiter, to: engine.mainMixerNode, format: sampleFormat) // R
-        voices = (0 ..< voiceCount).map { _ in AVAudioPlayerNode() }
-        for node in voices {
+        // R Wired once: the source node and limiter survive engine.stop(), and
+        // R re-attaching them on every start leaked a node set per session.
+        if !wired {
+            let mixer = CueMixer(sampleRate: sampleFormat.sampleRate)
+            let stereo = AVAudioFormat(standardFormatWithSampleRate: sampleFormat.sampleRate, channels: 2)!
+            let node = mixer.makeNode()
+            engine.attach(player)
+            engine.connect(player, to: engine.mainMixerNode, format: format)
             engine.attach(node)
-            engine.connect(node, to: submix, format: sampleFormat) // R
+            engine.attach(limiter)
+            engine.connect(node, to: limiter, format: stereo)
+            engine.connect(limiter, to: engine.mainMixerNode, format: stereo)
+            self.mixer = mixer
+            wired = true
         }
+        // Voices left frozen by a stopped engine would resume with it.
+        if !engine.isRunning { mixer?.clear() }
 
         engine.mainMixerNode.outputVolume = 1.0
 
@@ -146,14 +156,16 @@ final class CuePlayer {
 
     func stop() {
         guard started else { return }
+        // R Stopping the engine with a gong ringing cuts it mid-waveform — a thump.
+        // R `started` goes false now so no new cue can start, the voices fade, and
+        // R the engine stops once they are silent. A start() in between wins.
+        started = false // R
         player.stop()
-        for node in voices {
-            node.stop()
+        mixer?.fade(nil) // R
+        Task { // R
+            try? await Task.sleep(for: .seconds(CueMixer.fadeSeconds * 2)) // R
+            if !started { engine.stop() } // R
         } // R
-        activeVoice = [:] // R
-        keyVoices = [] // R
-        engine.stop()
-        started = false
     }
 
     // R --------------------------------------------------------------------
@@ -225,30 +237,27 @@ final class CuePlayer {
     /// each other across the pair (§7).
     func playKeySample(index: Int, pan: Float = 0, volume: Float = 1) {
         guard ensureLive(), let buf = keyBuffers[index] else { return }
-        fire(buf, as: .key(index), isKeySample: true, pan: pan, volume: volume) // R
+        play(buf, as: .key(index), pan: pan, volume: volume) // R
     }
 
     func playGong() {
         guard ensureLive(), let buf = gongBuffer else { return }
-        fire(buf, as: .gong) // R
+        play(buf, as: .gong) // R
     }
 
     func playKempur() {
         guard ensureLive(), let buf = kempurBuffer else { return }
-        fire(buf, as: .kempur) // R
+        play(buf, as: .kempur) // R
     }
 
-    /// The beat itself, under the Create Kotek piano roll. There is no kempli
-    /// sample, so it is the kajar's, softer and on a voice of its own — a kajar
-    /// written on the same beat then rings over it instead of damping it.
-    func playKempli() {
-        guard ensureLive(), let buf = kajarBuffer else { return }
-        fire(buf, as: .kempli, volume: 0.45) // R
+    func playKlentong() {
+        guard ensureLive(), let buf = klentongBuffer else { return }
+        play(buf, as: .klentong)
     }
 
     func playKajar() {
         guard ensureLive(), let buf = kajarBuffer else { return }
-        fire(buf, as: .kajar) // R
+        play(buf, as: .kajar) // R
     }
 
     /// Silence the gangsa demo samples without touching the colotomic layer.
@@ -256,59 +265,16 @@ final class CuePlayer {
     /// doesn't keep ringing while the player is meant to be playing it.
     func stopKeySamples() { // R
         guard started, engine.isRunning else { return } // R
-        for node in voices where keyVoices.contains(ObjectIdentifier(node)) { // R
-            node.stop() // R
-        } // R
-        keyVoices = [] // R
-        activeVoice = activeVoice.filter { // R
-            if case .key = $0.key { false } else { true } // R
-        } // R
+        mixer?.fade(.key) // R
     } // R
 
     /// Silence the colotomic layer without touching the gangsa. A gong rings for
-    /// eight seconds, so muting it mid-stroke has to cut the one already sounding
-    /// or the switch appears not to work.
+    /// eight seconds, so muting it mid-stroke has to fade the one already
+    /// sounding or the switch appears not to work.
     func stopColotomic() { // R
         guard started, engine.isRunning else { return } // R
-        for (voice, node) in activeVoice { // R
-            if case .key = voice { continue } // R
-            node.stop() // R
-        } // R
-        activeVoice = activeVoice.filter { // R
-            if case .key = $0.key { true } else { false } // R
-        } // R
+        mixer?.fade(.colotomic) // R
     } // R
-
-    /// Take the next node from the pool and start `buffer` on it now.
-    private func fire(
-        _ buffer: AVAudioPCMBuffer,
-        as voice: Voice,
-        isKeySample: Bool = false,
-        pan: Float = 0,
-        volume: Float = 1
-    ) { // R
-        guard !voices.isEmpty else { return } // R
-        let node = voices[nextVoice] // R
-        nextVoice = (nextVoice + 1) % voices.count // R
-
-        // R A gong/kajar re-strike damps its own previous ring, as on the real
-        // R instrument — and stops two copies of an 8s gong overlapping.
-        if let previous = activeVoice[voice], previous !== node { // R
-            previous.stop() // R
-            keyVoices.remove(ObjectIdentifier(previous)) // R
-        } // R
-
-        node.stop() // R clears whatever this recycled node was still playing
-        // R Nodes are recycled, so placement is set on every fire, never once.
-        node.pan = pan // R
-        node.volume = volume // R
-        node.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil) // R
-        node.play() // R
-
-        activeVoice[voice] = node // R
-        if isKeySample { keyVoices.insert(ObjectIdentifier(node)) } // R
-        else { keyVoices.remove(ObjectIdentifier(node)) } // R
-    }
 
     // MARK: - Recorded sample scheduling
 

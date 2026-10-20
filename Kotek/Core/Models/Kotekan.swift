@@ -22,12 +22,12 @@
 import Foundation
 
 /// The colotomic instruments a player can write into a figure in Create Kotek.
-/// The kempli is not one of them: it marks every beat, so the piano roll plays
-/// it on its own rather than asking for it to be written.
+/// Nothing is sounded under them that is not written.
 enum ColotomicInstrument: String, Codable, CaseIterable, Identifiable {
     case gong
-    case kajar
+    case kempur
     case klentong
+    case kajar
 
     var id: String {
         rawValue
@@ -37,20 +37,13 @@ enum ColotomicInstrument: String, Codable, CaseIterable, Identifiable {
         rawValue.capitalized
     }
 
-    /// `hit_type` in `kotekan_hits`, which allows gong / kempur / kajar. A
-    /// klentong is stored as kempur, the hanging gong the schema and the
-    /// bundled samples have in its place.
+    /// `hit_type` in `kotekan_hits`.
     var hitType: String {
-        self == .klentong ? "kempur" : rawValue
+        rawValue
     }
 
     init?(hitType: String) {
-        switch hitType {
-        case "gong": self = .gong
-        case "kajar": self = .kajar
-        case "kempur": self = .klentong
-        default: return nil
-        }
+        self.init(rawValue: hitType)
     }
 }
 
@@ -122,11 +115,11 @@ struct Kotekan: Identifiable, Codable, Equatable {
     var sangsih: [Int?]
     /// Milliseconds per grid slot — sets the tempo (smaller = faster).
     var strokeMs: Int
-    /// Gong, kajar and klentong strokes a player wrote into their own figure.
+    /// Gong, kempur, klentong and kajar strokes a player wrote into their own figure.
     /// Empty for every built-in.
     ///
-    /// ponytail: stored and read back, but the play engine still lays its own
-    /// colotomic layer under every figure and does not play these.
+    /// ponytail: only the kajar is played from here. The engine still lays the
+    /// gong and kempur under every figure itself and ignores the rest.
     var colotomic: [ColotomicHit] = []
 
     ///    static let strokesPerCycle = 16
@@ -185,7 +178,10 @@ struct Kotekan: Identifiable, Codable, Equatable {
     var specLabel: String {
         let d = Duration.milliseconds(cycleMs)
         let length = cycleMs >= 3_600_000
-            ? d.formatted(.time(pattern: .hourMinuteSecond(padHourToLength: 1, roundFractionalSeconds: .toNearestOrEven)))
+            ? d.formatted(.time(pattern: .hourMinuteSecond(
+                padHourToLength: 1,
+                roundFractionalSeconds: .toNearestOrEven
+            )))
             : d.formatted(.time(pattern: .minuteSecond(padMinuteToLength: 1, roundFractionalSeconds: .toNearestOrEven)))
         return "\(length) · \(bpm) BPM"
     }
@@ -212,7 +208,8 @@ struct Kotekan: Identifiable, Codable, Equatable {
             bpm: slotsPerMinute,
             requiredKeys: requiredKeys,
             durationMs: duration,
-            notes: notes
+            notes: notes,
+            kajarBeats: colotomic.filter { $0.instrument == .kajar }.map(\.slot)
         )
     }
 }
@@ -257,7 +254,18 @@ extension Kotekan {
     /// Order is the rail order, and the figures come first deliberately. This is
     /// a kotekan app and the ladder is the point; the dolanan are the thing you
     /// swipe PAST the teaching material to reach, not the front door.
-    static let bundled: [Kotekan] = figures + melodies
+    static let bundled: [Kotekan] = (figures + melodies).map {
+        var k = $0
+        k.colotomic = builtinKajar(slots: k.slotsPerCycle)
+        return k
+    }
+
+    /// A built-in's kajar, written out as data: one every fourth slot. The
+    /// engine used to lay this under every figure itself; now a figure plays
+    /// the kajar it carries, so the built-ins carry the ones they always had.
+    static func builtinKajar(slots: Int) -> [ColotomicHit] {
+        stride(from: 0, to: slots, by: 4).map { ColotomicHit(slot: $0, instrument: .kajar) }
+    }
 
     /// The four figures, easiest first.
     /// Each figure keeps its source pattern exactly as notated in the reference

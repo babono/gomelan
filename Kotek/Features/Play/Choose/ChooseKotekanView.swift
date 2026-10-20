@@ -41,11 +41,8 @@ private struct ChooseKotekanContentView: View {
                 title: "Choose your kotekan",
                 onBack: { app.openChooseInstrument() },
                 settingsAction: { app.openSettings() },
-                // Sensors are optional; without them the waterfall plays the
-                // figure but scores nothing, so say which it will be up front.
-                status: app.controllerConnected
-                    ? (Theme.hit, "Sensors connected")
-                    : (Theme.cream.opacity(0.25), "No sensors connected")
+                showsSensor: true,
+                edgeInset: 0
             )
             SearchAndCreateBar(
                 query: $vm.query,
@@ -53,7 +50,6 @@ private struct ChooseKotekanContentView: View {
                 createTitle: "Create kotek",
                 onCreate: { vm.create() }
             )
-            ControllerStatusChip()
 
             Group {
                 if vm.kotekans.isEmpty {
@@ -124,8 +120,14 @@ private struct ChooseKotekanContentView: View {
 
     private var carousel: some View {
         GeometryReader { geo in
-            let first = Int((viewModel.position - 2).rounded(.down))
-            let last = Int((viewModel.position + 2).rounded(.up))
+            // The side cards are sized to end on the rail's edge, so at rest
+            // nothing is cut; `step` follows from that size.
+            let side = CarouselFit.sideScale(width: geo.size.width, card: KotekanCardView.cardWidth)
+            let gap = CarouselFit.gap(width: geo.size.width, card: KotekanCardView.cardWidth)
+            let step = KotekanCardView.cardWidth / 2 + gap + side * KotekanCardView.cardWidth / 2
+
+            let first = Int((viewModel.position - 3).rounded(.down))
+            let last = Int((viewModel.position + 3).rounded(.up))
 
             ZStack {
                 ForEach(first ... last, id: \.self) { slot in
@@ -137,10 +139,16 @@ private struct ChooseKotekanContentView: View {
                             offset: offset,
                             canPlay: viewModel.isPlayable(k),
                             engine: viewModel.engine,
-                            bestRecord: viewModel.bestRecord(k)
+                            // Nothing is scored without the sensor, so a record would be a number nobody can beat.
+                            bestRecord: app.controllerConnected ? viewModel.bestRecord(k) : nil,
+                            sideScale: side
                         )
+
                         .position(
-                            x: geo.size.width / 2 + CGFloat(offset) * ChooseKotekanViewModel.step,
+                            x: geo.size.width / 2 + CGFloat(offset.sign == .minus ? -1 : 1)
+                                * (min(abs(CGFloat(offset)), 1) * step
+                                    + max(abs(CGFloat(offset)) - 1, 0)
+                                    * (side * KotekanCardView.cardWidth + gap)),
                             y: geo.size.height / 2
                         )
                     }
@@ -148,22 +156,22 @@ private struct ChooseKotekanContentView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
-            .gesture(swipe(width: geo.size.width))
+            .gesture(swipe(width: geo.size.width, step: step))
         }
-        .clipped()
     }
 
-    private func swipe(width: CGFloat) -> some Gesture {
+    private func swipe(width: CGFloat, step: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                viewModel.onDragChanged(translationWidth: value.translation.width)
+                viewModel.onDragChanged(translationWidth: value.translation.width, step: step)
             }
             .onEnded { value in
                 viewModel.onDragEnded(
                     translationWidth: value.translation.width,
                     predictedEndTranslationWidth: value.predictedEndTranslation.width,
                     startLocationX: value.startLocation.x,
-                    width: width
+                    width: width,
+                    step: step
                 )
             }
     }

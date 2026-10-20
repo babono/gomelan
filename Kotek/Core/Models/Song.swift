@@ -34,4 +34,7 @@ struct Song: Codable, Equatable, Identifiable {
     var requiredKeys: Int
     var durationMs: Int
     var notes: [Note]
+    /// Beats within one cycle that sound a kajar. nil for a song with none
+    /// written; the engine no longer lays a kajar of its own under a figure.
+    var kajarBeats: [Int]?
 }

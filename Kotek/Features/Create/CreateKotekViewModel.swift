@@ -44,7 +44,7 @@ final class CreateKotekViewModel {
     var step: Step = .compose
     /// The half the grid writes into, and the half the sensors record.
     var writing: KotekanHalf = .polos
-    var snap = Subdivision.sixteenth
+    var snap = Subdivision.eighth
 
     var saving = false
     var saveError: String?
@@ -247,7 +247,7 @@ final class CreateKotekViewModel {
         // The figure can shrink under the playhead when its last note is
         // taken out; pick it up from the top.
         var from = playhead < length ? playhead : 0
-        var to = from + elapsed * Double(draft.bpm) / 60 * Double(KotekanDraft.ticksPerQuarter)
+        var to = from + elapsed * Double(draft.bpm) / 60 * Double(KotekanDraft.ticksPerBeat)
         if to >= length {
             sound(from: from, to: length)
             from = 0
@@ -268,13 +268,6 @@ final class CreateKotekViewModel {
         for hit in draft.colotomic where range.contains(Double(hit.tick)) {
             strike(hit.instrument)
         }
-        // The kempli, on every beat. Not written, so it cannot be forgotten.
-        let quarter = Double(KotekanDraft.ticksPerQuarter)
-        var beat = (from / quarter).rounded(.up) * quarter
-        while beat < to {
-            cue.playKempli()
-            beat += quarter
-        }
     }
 
     /// Sound one bilah — the piano roll's answer to a tap.
@@ -288,13 +281,12 @@ final class CreateKotekViewModel {
         strike(instrument)
     }
 
-    /// ponytail: no klentong sample is bundled, so it sounds the kempur's —
-    /// the nearest hanging gong in the set.
     private func strike(_ instrument: ColotomicInstrument) {
         switch instrument {
         case .gong: cue.playGong()
+        case .kempur: cue.playKempur()
+        case .klentong: cue.playKlentong()
         case .kajar: cue.playKajar()
-        case .klentong: cue.playKempur()
         }
     }
 
