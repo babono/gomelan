@@ -27,7 +27,6 @@ struct KeyCountView: View {
             TopBar(
                 title: "Set up your gangsa",
                 onBack: { app.cancelInstrumentSetup() },
-                trailingText: "1 / 2",
                 // Slim: at full size the header alone took a fifth of a
                 // landscape phone and pushed Next off the bottom.
                 compact: true
