@@ -32,6 +32,11 @@ struct DebugSectionView: View {
                 SecondaryButton(title: "Test Sensors", systemImage: "sensor.tag.radiowaves.forward") {
                     app.openSensorTest()
                 }
+                #if DEBUG
+                    SecondaryButton(title: "View Mock Results", systemImage: "chart.line.uptrend.xyaxis") {
+                        app.openMockResults()
+                    }
+                #endif
             }
         }
     }

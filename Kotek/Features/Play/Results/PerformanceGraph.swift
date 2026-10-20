@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// The kotekan as a piano roll — every bilah of the gangsa for rows, ONE pass
-/// of the figure across — with the strokes that slipped drawn differently.
+/// of the figure across — with the share of each stroke that landed written on it.
 ///
 /// One pass because that is all the figure is: practice loops it, the same
 /// slots come round every time, and every pass is folded onto them. So the
@@ -17,7 +17,7 @@ import SwiftUI
 ///
 /// A long figure scrolls sideways instead of being squeezed. Fitting every
 /// slot into the half-screen column was tried first: a 32-slot pattern came
-/// out ten points a slot, the blocks turned into slivers and the slip counts
+/// out ten points a slot, the blocks turned into slivers and the percentages
 /// had no room to show. The bilah numbers stay pinned outside the scroll so a
 /// row can still be read halfway along.
 ///
@@ -28,7 +28,7 @@ import SwiftUI
 /// playing against — and gets no marks, because it was never judged.
 ///
 /// No stroke numbers along the bottom. They were there so "stroke 7" in the
-/// feedback could be counted out, but the striped block already marks the
+/// feedback could be counted out, but the block already marks the
 /// stroke, and a row of numbers under a melody read as a second axis to decode.
 ///
 /// History, each tried and replaced:
@@ -43,14 +43,22 @@ struct PerformanceGraph: View {
     let slots: [PatternSlotScore]
     /// Every bilah of the gangsa, so the figure sits where it is played.
     let keyCount: Int
-    /// The stroke the feedback talks about first; given a heavier rim.
-    let worst: PatternSlotScore?
+    /// A stroke to outline: the one held on the percentage graph to get here.
+    var held: PatternSlotScore?
+    /// How many slots one screenful shows — shared with the graph and the
+    /// minimap, so all three agree on what the window covers.
+    let visible: Int
+    /// Leading edge of what is showing, in the percentage graph's slot units
+    /// (its origin is -0.5). Shared with the minimap.
+    @Binding var scrollSlot: Double
+
+    @State private var position = ScrollPosition(edge: .leading)
 
     private static let labelWidth: CGFloat = 28
     /// A slot never gets wider than this: a short figure stays compact.
     private static let maxColumn: CGFloat = 44
-    /// Nor narrower than this — past it the roll scrolls. Also the width the
-    /// slip counts need to be drawn at all (see `draw`).
+    /// Also the width the percentage chips need to be drawn at all (see `draw`).
+    /// `visible` is chosen so a slot is never narrower than this.
     private static let minColumn: CGFloat = 26
 
     private var columns: Int {
@@ -64,20 +72,31 @@ struct PerformanceGraph: View {
     var body: some View {
         GeometryReader { geo in
             let space = max(0, geo.size.width - Self.labelWidth)
-            let fits = CGFloat(columns) * Self.minColumn <= space
-            let rollWidth = fits
-                ? min(space, CGFloat(columns) * Self.maxColumn)
-                : CGFloat(columns) * Self.minColumn
+            let fits = columns <= visible
+            // Exactly `visible` slots across the space when it scrolls, so the
+            // minimap's window is the width of what is on screen.
+            let column = fits
+                ? min(Self.maxColumn, space / CGFloat(max(columns, 1)))
+                : space / CGFloat(max(visible, 1))
+            let rollWidth = CGFloat(columns) * column
 
             HStack(spacing: 0) {
                 Canvas { ctx, size in drawLabels(ctx, size) }
                     .frame(width: Self.labelWidth)
-                ScrollView(.horizontal, showsIndicators: !fits) {
+                ScrollView(.horizontal, showsIndicators: false) {
                     Canvas { ctx, size in draw(ctx, size) }
                         .frame(width: rollWidth)
                 }
+                .scrollPosition($position)
                 .scrollDisabled(fits)
                 .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
+                    let slot = Double(x / column) - 0.5
+                    if abs(slot - scrollSlot) > 0.01 { scrollSlot = slot }
+                }
+                .onChange(of: scrollSlot, initial: true) {
+                    position.scrollTo(x: CGFloat(scrollSlot + 0.5) * column)
+                }
             }
             .frame(width: Self.labelWidth + min(rollWidth, space))
             .background(Theme.deep.opacity(0.75), in: RoundedRectangle(cornerRadius: Theme.radius))
@@ -86,11 +105,13 @@ struct PerformanceGraph: View {
     }
 
     /// The bilah numbers, top row highest — outside the scroll so they stay put.
+    /// Plain 1…n: `bilahLabel` calls the top key "1·", which on this screen read
+    /// as the same number twice.
     private func drawLabels(_ ctx: GraphicsContext, _ size: CGSize) {
         let rowHeight = size.height / CGFloat(rows)
         for key in 0 ..< rows {
             ctx.draw(
-                Text(bilahLabel(key, count: rows)).font(.sans(11, weight: .semibold)).foregroundStyle(Theme.stone),
+                Text("\(key + 1)").font(.sans(11, weight: .semibold)).foregroundStyle(Theme.stone),
                 at: CGPoint(x: size.width / 2 + 2, y: CGFloat(rows - 1 - key) * rowHeight + rowHeight / 2)
             )
         }
@@ -127,11 +148,10 @@ struct PerformanceGraph: View {
         }
         let played = Set(slots.filter { $0.attempts > 0 }.map(\.half))
 
-        /// The figure. Unplayed half first, then clean strokes, then slips on
-        /// top — a stroke both halves share must never hide the one that
-        /// slipped under the one that did not.
+        /// The figure, the half that was never played underneath so a stroke
+        /// both halves share cannot hide the one that was judged.
         func layer(_ s: PatternSlotScore) -> Int {
-            !played.contains(s.half) ? 0 : s.slips == 0 ? 1 : 2
+            played.contains(s.half) ? 1 : 0
         }
         for s in slots.sorted(by: { layer($0) < layer($1) }) {
             guard let key = s.keyIndex else { continue }
@@ -141,69 +161,49 @@ struct PerformanceGraph: View {
             )
             let block = Path(roundedRect: rect, cornerRadius: 4)
             let voice = s.half == .polos ? Theme.polosVoice : Theme.sangsihVoice
+            defer {
+                if s == held { ctx.stroke(block, with: .color(Theme.gold), lineWidth: 3) }
+            }
 
-            switch layer(s) {
-            case 0:
+            guard let rate = s.landedRate else {
                 ctx.fill(block, with: .color(voice.opacity(0.25)))
-            case 1:
-                ctx.fill(block, with: .color(voice.opacity(0.9)))
-                ctx.stroke(block, with: .color(Theme.cream.opacity(0.5)), lineWidth: 1)
-            default:
-                // A different LOOK, not only a different colour: the block
-                // keeps its half's colour — you still need to know which side
-                // slipped — but is struck through with the slip's stripes and
-                // rimmed in it. Filling it with the slip colour instead was
-                // tried first, and lost the half.
-                let slip = Self.color(s)
-                ctx.fill(block, with: .color(voice.opacity(0.55)))
-                var stripes = ctx
-                stripes.clip(to: block)
-                var x = rect.minX - rect.height
-                while x < rect.maxX {
-                    var line = Path()
-                    line.move(to: CGPoint(x: x, y: rect.maxY))
-                    line.addLine(to: CGPoint(x: x + rect.height, y: rect.minY))
-                    stripes.stroke(line, with: .color(slip.opacity(0.9)), lineWidth: 2.5)
-                    x += 7
-                }
-                ctx.stroke(block, with: .color(slip), lineWidth: s == worst ? 3 : 2)
-                if column >= Self.minColumn {
-                    // Above the block, or below it on the top row.
-                    let y = rect.minY >= 16 ? rect.minY - 9 : rect.maxY + 9
-                    // A share, not "5/10": the counts depend on how long you
-                    // played, so 5/5 and 5/10 had to be divided in your head
-                    // before two strokes could be compared. The share that
-                    // LANDED, so it reads like every other score in the app —
-                    // the slip share was tried first, and a stroke that never
-                    // once landed read "100%".
-                    chip(
-                        "\(Int(((1 - s.slipRate) * 100).rounded()))%",
-                        color: slip,
-                        at: CGPoint(x: rect.midX, y: y),
-                        ctx,
-                        size
-                    )
-                }
+                continue
+            }
+            ctx.fill(block, with: .color(voice.opacity(0.9)))
+            ctx.stroke(block, with: .color(Theme.cream.opacity(0.5)), lineWidth: 1)
+            // A share, not "5/10": the counts depend on how long you played,
+            // so 5/5 and 5/10 had to be divided in your head before two
+            // strokes could be compared. The share that LANDED, so it reads
+            // like every other score in the app. Above the block, as it
+            // always was, or below it on the top row — and in no colour but
+            // the cream of the rest of the graph: the number is the rating,
+            // and the stripes and slip colours it used to sit beside are gone.
+            if column >= Self.minColumn {
+                let y = rect.minY >= 16 ? rect.minY - 9 : rect.maxY + 9
+                chip(
+                    "\(Int((rate * 100).rounded()))%",
+                    color: Theme.cream,
+                    at: CGPoint(x: rect.midX, y: y),
+                    ctx,
+                    size
+                )
             }
         }
     }
 
     /// A count on a backing chip — bare text over the grid lines was unreadable.
+    /// 8 pt with 2 pt of padding: at 10 pt and 4 pt a "100%" was wider than the
+    /// narrowest slot and neighbouring chips ran into each other.
     private func chip(_ text: String, color: Color, at p: CGPoint, _ ctx: GraphicsContext, _ size: CGSize) {
-        let label = ctx.resolve(Text(text).font(.sans(10, weight: .semibold)).foregroundStyle(color))
+        let label = ctx.resolve(Text(text).font(.sans(8, weight: .semibold)).foregroundStyle(color))
         let box = label.measure(in: size)
         ctx.fill(
             Path(roundedRect: CGRect(
-                x: p.x - box.width / 2 - 4, y: p.y - box.height / 2 - 1,
-                width: box.width + 8, height: box.height + 2
+                x: p.x - box.width / 2 - 2, y: p.y - box.height / 2 - 1,
+                width: box.width + 4, height: box.height + 2
             ), cornerRadius: 4),
             with: .color(Theme.deep)
         )
         ctx.draw(label, at: p)
-    }
-
-    /// Wrong bilah or missed, whichever this stroke did more of.
-    static func color(_ s: PatternSlotScore) -> Color {
-        s.wrongKey >= s.missed ? Theme.wrong : Theme.miss
     }
 }
