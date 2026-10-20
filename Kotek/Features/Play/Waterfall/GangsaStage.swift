@@ -20,11 +20,14 @@ struct GangsaStage: View {
     var sensedStrike: (Double) -> (key: Int, age: Double)? = { _ in nil }
 
     var body: some View {
-        GangsaView(layout: layout, cues: cues, tilted: tilted)
+        let figure = figure
+        GangsaView(layout: layout, cues: figure.cues, mallet: figure.mallet, damper: figure.damper, tilted: tilted)
     }
 
-    private var cues: [Int: BilahCue] {
+    private var figure: (cues: [Int: BilahCue], mallet: HandCue?, damper: HandCue?) {
         var cues: [Int: BilahCue] = [:]
+        var mallet: HandCue?
+        var damper: HandCue?
         func struck(_ key: Int, age: Double) {
             let earlier = cues[key]?.struckAge ?? .infinity
             cues[key, default: BilahCue()].struckAge = min(earlier, age)
@@ -47,20 +50,53 @@ struct GangsaStage: View {
         //
         // Unlike the strike cue it does not vanish when you hit: it is the
         // left hand's moment, not the right's.
+        //
+        // The same walk gives the mallet its notes: the right hand is a guide
+        // too, carried from stroke to stroke so it lands as the block does.
         let beat = engine.beatLengthMs
         if beat > 0 {
-            for note in engine.fallingNotes(aheadMs: 0, behindMs: beat * 2)
-                where note.voice == .yours && note.dampsAfter
-            {
+            // Four beats each way, so a hand is still found across a rest and
+            // keeps standing on its last bar instead of vanishing.
+            let notes = engine.fallingNotes(aheadMs: max(GangsaHands.travelMs, beat * 4), behindMs: beat * 4)
+                .filter { $0.voice == .yours }
+                .sorted { $0.msAhead < $1.msAhead }
+            var damps: [(key: Int, ms: Double, hold: Double)] = []
+            for note in notes {
+                guard note.dampsAfter else { continue }
                 let hold = min(max(note.durationMs, 90), 400)
                 let held = -(note.msAhead + note.durationMs)
-                // Eased over 60 ms each way so the bar visibly shrinks
-                // into the pinch and back, instead of popping.
-                let damp = min(1, held / 60, (hold - held) / 60)
+                damps.append((note.keyIndex, note.msAhead + note.durationMs, hold))
+                // Eased over 90 ms each way so the bar visibly shrinks
+                // into the pinch and back, instead of popping, and the thumb's
+                // turn onto it can be seen (60 ms was a blink).
+                let damp = min(1, held / 90, (hold - held) / 90)
                 if damp > 0 {
                     let earlier = cues[note.keyIndex]?.damp ?? 0
                     cues[note.keyIndex, default: BilahCue()].damp = max(earlier, damp)
                 }
+            }
+            // One hump per stroke, spread over the whole gap to the next, so the
+            // mallet leaves the bar once and comes down once. It had a small
+            // bounce off each bar and then the hop to the next in the last
+            // 320 ms; over any gap past ~400 ms that was a tap, a rest, and
+            // then the real stroke — which looked like hitting twice.
+            mallet = Self.carriage(notes.map { ($0.keyIndex, $0.msAhead, 0) }).map { c in
+                let lift = if c.from == c.to, c.since == nil {
+                    0.7 * (1 - c.travel * c.travel) // lowering onto the first bar
+                } else if let hump = c.phase {
+                    0.7 * sin(.pi * hump)
+                } else {
+                    0.2 // nothing to land on yet: hold clear of the bar
+                }
+                return HandCue(from: c.from, to: c.to, travel: c.travel, pose: lift)
+            }
+            damper = Self.carriage(damps).map { c in
+                HandCue(
+                    from: c.from,
+                    to: c.to,
+                    travel: c.travel,
+                    pose: cues.values.map(\.damp).max() ?? 0
+                )
             }
         }
 
@@ -68,6 +104,34 @@ struct GangsaStage: View {
         if let sensed = sensedStrike(engine.renderNow) {
             struck(sensed.key, age: sensed.age)
         }
-        return cues
+        return (cues, mallet, damper)
+    }
+
+    /// A hand between two timed strokes: the last one at or before now and the
+    /// next after it. It stays on the last bar, then crosses to the next over
+    /// the last `travelMs` before it (or the gap, if shorter, less `hold`, the
+    /// time the last stroke keeps it there — so a run of fast notes never
+    /// stops, and a pinch is never dragged along the bars).
+    ///
+    /// The mallet was a copy per bar, fading in over each note and out after,
+    /// and the damp hand likewise; they read as things blinking on, not as a
+    /// hand moving. Nil only when no stroke is anywhere near.
+    private static func carriage(
+        _ events: [(key: Int, ms: Double, hold: Double)]
+    ) -> (from: Int, to: Int, travel: Double, since: Double?, phase: Double?)? {
+        let prev = events.last { $0.ms <= 0 }
+        let next = events.first { $0.ms > 0 }
+        switch (prev, next) {
+        case (nil, nil):
+            return nil
+        case let (p?, nil):
+            return (p.key, p.key, 0, -p.ms, nil)
+        case let (nil, n?):
+            // Nothing before it: waiting over the first bar.
+            return (n.key, n.key, max(0, 1 - n.ms / GangsaHands.travelMs), nil, nil)
+        case let (p?, n?):
+            let crossing = max(40, min(n.ms - p.ms - p.hold, GangsaHands.travelMs))
+            return (p.key, n.key, n.ms < crossing ? 1 - n.ms / crossing : 0, -p.ms, -p.ms / (n.ms - p.ms))
+        }
     }
 }
