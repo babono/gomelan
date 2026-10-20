@@ -162,7 +162,11 @@ private struct WaterfallContentView: View {
         @Bindable var bindableApp = app
         if vm.paused, vm.resumeCount == nil {
             HStack(spacing: 14) {
-                HalfSwitch(chosenHalf: app.chosenHalf) { app.setHalf($0) }
+                AppSwitcher(
+                    options: [KotekanHalf.polos, .sangsih],
+                    selection: app.chosenHalf,
+                    title: \.title
+                ) { app.setHalf($0) }
                     .fixedSize()
                 SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: vm.sensing)
                 sensorDot
@@ -172,7 +176,7 @@ private struct WaterfallContentView: View {
                     partnerAudible: $bindableApp.partnerAudible
                 )
                 .fixedSize()
-                TempoPicker(tempoScale: tempo)
+                AppMenuPicker<Double>.tempo(tempo)
                     .fixedSize()
             }
             .padding(.horizontal, 12)
@@ -329,14 +333,14 @@ private struct PauseStage: View {
                     .transition(.scale.combined(with: .opacity))
             } else {
                 VStack(spacing: 22) {
-                    CircleIconButton(
+                    AppIconButton(
                         systemImage: "play.fill",
                         label: "Resume",
-                        size: 72,
-                        filled: true,
+                        prominence: .primary,
+                        size: .large,
                         action: onResume
                     )
-                    CapsuleButton(
+                    AppButton(
                         title: "Quit the session",
                         trailingSystemImage: "rectangle.portrait.and.arrow.right",
                         action: onQuit
@@ -361,11 +365,11 @@ struct WaterfallPauseOverlay: View {
             VStack(spacing: 22) {
                 Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
-                    PillButton(title: "Resume", style: .filled, action: onResume)
+                    AppButton(title: "Resume", prominence: .primary, size: .large, action: onResume)
                     if let onEnd {
-                        PillButton(title: "End practice", style: .outlined, tint: Theme.copper, action: onEnd)
+                        AppButton(title: "End practice", size: .large, action: onEnd)
                     }
-                    PillButton(title: "Leave", style: .outlined, tint: Theme.copper, action: onLeave)
+                    AppButton(title: "Leave", size: .large, action: onLeave)
                 }
             }
         }

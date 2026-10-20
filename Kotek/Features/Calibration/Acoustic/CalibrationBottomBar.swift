@@ -21,56 +21,56 @@ struct CalibrationBottomBar: View {
     let onCommit: () -> Void
 
     var body: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    SectionLabel(
-                        learned
-                            ? "Kotek knows this gangsa's voice"
-                            : "Strike any key — soft, then hard",
-                        color: Theme.copper
-                    )
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                    if let lastAccepted {
-                        Label(
-                            lastAccepted ? "heard a strike" : "ignored — didn't match the others",
-                            systemImage: lastAccepted ? "checkmark.circle" : "xmark.circle"
+        GlassEffectContainer {
+            HStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 10) {
+                        SectionLabel(
+                            learned
+                                ? "Kotek knows this gangsa's voice"
+                                : "Strike any key — soft, then hard",
+                            color: Theme.copper
                         )
-                        .font(.sans(12, weight: .medium))
-                        .foregroundStyle(lastAccepted ? Theme.cream : Theme.inkStone)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .transition(.opacity)
+
+                        if let lastAccepted {
+                            Label(
+                                lastAccepted ? "heard a strike" : "ignored — didn't match the others",
+                                systemImage: lastAccepted ? "checkmark.circle" : "xmark.circle"
+                            )
+                            .font(.sans(12, weight: .medium))
+                            .foregroundStyle(lastAccepted ? Theme.cream : Theme.inkStone)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .transition(.opacity)
+                        }
                     }
+
+                    MicSpectrumView(micLevel: micLevel, micLevelTime: micLevelTime, height: 26)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                StrikeMeterView(
+                    strikeCount: strikeCount,
+                    strikesNeeded: strikesNeeded,
+                    confidence: confidence
+                )
+
+                AppButton(title: "Reset", size: .regular, tint: Theme.inkStone) {
+                    onReset()
                 }
 
-                MicSpectrumView(micLevel: micLevel, micLevelTime: micLevelTime, height: 26)
+                AppButton(
+                    title: learned ? "Continue" : "Listening…",
+                    size: .regular
+                ) {
+                    if learned { onCommit() }
+                }
+                .disabled(!learned || committing)
+                .opacity(learned ? 1 : 0.5)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            StrikeMeterView(
-                strikeCount: strikeCount,
-                strikesNeeded: strikesNeeded,
-                confidence: confidence
-            )
-
-            PillButton(title: "Reset", style: .outlined, tint: Theme.inkStone, compact: true) {
-                onReset()
-            }
-
-            PillButton(
-                title: learned ? "Continue" : "Listening…",
-                style: learned ? .filled : .outlined,
-                tint: Theme.copper,
-                compact: true
-            ) {
-                if learned { onCommit() }
-            }
-            .disabled(!learned || committing)
-            .opacity(learned ? 1 : 0.5)
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)

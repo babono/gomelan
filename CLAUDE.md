@@ -131,7 +131,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
   - `CalibrationFile.swift` — binary format for pitch/strike calibration recordings.
 - **`Playback/`**:
   - `CuePlayer.swift` — metronome, reference tones, hit/miss synthesis.
-  - `KajarTick.swift` — dedicated low-latency `AVAudioPlayer` pool for button feedback (`.buttonStyle(.kajar)` / `.toggleStyle(.kajar)`).
+  - `KajarTick.swift` — dedicated low-latency `AVAudioPlayer` pool for button feedback (`AppButtonStyle`, `AppToggleStyle`).
   - `SampleLibrary.swift`, `PCMWav.swift`, `SplashChime.swift`, `TitleMusic.swift`.
 - **`Session/`**:
   - `AudioSessionManager.swift` — hardware session configuration (`.measurement` mode disables AGC and echo cancellation).
@@ -151,7 +151,8 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
 ### `Kotek/Core/UI/` — design system and shared visual components
 
 - `Theme.swift` — unified warm-brown palette (`Theme.ground`), corner radiuses, typography, and button metrics.
-- `Components.swift` — shared button and toggle styles (`.kajar`), custom controls, and typography helpers.
+- `Buttons/` — every control, one type per file: `AppButton` (labelled), `AppIconButton` (one symbol), `AppSwitcher`, `AppMenuPicker`, `AppStepper`, plus `AppButtonSize` (the one size/type scale) and `AppControlSurface` (the glass, drawn with `glassEffect` — the system `.glass` style ignores `.tint` and sizes circles from the glyph — ground-tinted, gold for the primary) and `AppButtonStyle` (just the kajar tick). One `AppButtonSize` per bar (footers/headers `.regular`, strips over the camera `.compact`, `.large` only for a lone hero button). `AppSwitcher` has two looks: `.toggle` (one pill, a sliding thumb) on the play screens and `.pills` on Create; selecting never changes the font. The Create tool rail uses the same `AppThumb`. Use `.appPlain` for what you tap that is not a control (cards, grid cells).
+- `Components.swift` — toggle style, top bar, dialogs, and typography helpers.
 - `PatternBackground.swift` — single animated canvas providing continuous background drift across view transitions.
 
 ### `Kotek/Features/` — feature-oriented UI modules
@@ -166,6 +167,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
   - `MalletTestView.swift` — raw per-frame vision hit probabilities.
   - `DetectionTestView.swift` — real-time fused vision + audio pipeline test.
   - `CaptureTrainingView.swift` / `TrainingCapture.swift` — harvest labelled crops through the inference path.
+- **`Create/`**: the piano-roll composer. Its tools (colotomic instruments, eraser) are icon-only in `ToolRail`; a name shows only while an icon is held and the first time that tool is tapped (`toolNameSeen.<id>` in `Defaults`).
 - **`Onboarding/`**:
   - `WelcomeView.swift` — landing screen and flow entry.
   - `PermissionsView.swift` — camera and microphone authorization.

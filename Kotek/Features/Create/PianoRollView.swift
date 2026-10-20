@@ -30,17 +30,19 @@ struct PianoRollView: View {
 
         VStack(spacing: 8) {
             CreateTopBar(title: "New Kotek") {
-                CircleIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
+                AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
             } trailing: {
                 RecordButton(recording: viewModel.recording) { viewModel.toggleRecording() }
-                CapsuleButton(title: "Next", filled: true) { viewModel.review() }
+                AppButton(title: "Next", prominence: .primary) { viewModel.review() }
                     .disabled(draft.isEmpty)
-                    .opacity(draft.isEmpty ? 0.4 : 1)
             }
 
             PianoRollControls(viewModel: viewModel)
 
-            PianoRollGrid(viewModel: viewModel)
+            HStack(alignment: .top, spacing: 10) {
+                ToolRail(viewModel: viewModel)
+                PianoRollGrid(viewModel: viewModel)
+            }
 
             PianoRollTransport(viewModel: viewModel)
         }
@@ -56,107 +58,31 @@ private struct PianoRollControls: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            HalfPicker(
-                half: Binding(
-                    get: { viewModel.writing },
-                    set: { viewModel.writing = $0
-                        viewModel.tool = .notes
-                    }
-                ),
-                active: viewModel.tool == .notes
-            )
-            divider
-            HStack(spacing: 8) {
-                ForEach(ColotomicInstrument.allCases) { tool($0) }
+            AppSwitcher(
+                options: [KotekanHalf.polos, .sangsih],
+                // Not drawn as selected while the roll is writing a colotomic
+                // instrument: the half stays remembered.
+                selection: viewModel.tool == .notes ? viewModel.writing : nil,
+                title: \.title,
+                dot: { $0 == .polos ? Theme.polosVoice : Theme.sangsihVoice },
+                style: .pills
+            ) {
+                viewModel.writing = $0
+                viewModel.tool = .notes
             }
-            divider
-            eraser
             Spacer(minLength: 0)
             snapMenu
         }
     }
 
-    /// Arms a colotomic instrument for the next taps. Tapping it again goes
-    /// back to writing the half.
-    private func tool(_ instrument: ColotomicInstrument) -> some View {
-        let selected = viewModel.tool == .colotomic(instrument)
-        let color = instrument.color
-        return Button {
-            viewModel.tool = selected ? .notes : .colotomic(instrument)
-        } label: {
-            HStack(spacing: 6) {
-                ColotomicMark(instrument: instrument, scale: 0.7)
-                Text(instrument.title).font(.sans(14, weight: selected ? .semibold : .regular))
-            }
-            .foregroundStyle(selected ? Theme.cream : Theme.stone)
-            .fixedSize()
-            .padding(.horizontal, 10)
-            .frame(height: 34)
-            .background(color.opacity(selected ? 0.2 : 0), in: RoundedRectangle(cornerRadius: 9))
-            .overlay(
-                RoundedRectangle(cornerRadius: 9)
-                    .strokeBorder(selected ? color : Theme.cream.opacity(0.18), lineWidth: selected ? 1.5 : 1)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 9))
-        }
-        .buttonStyle(.kajar)
-        .accessibilityLabel("Add \(instrument.title)")
-    }
-
-    private var divider: some View {
-        Rectangle().fill(Theme.cream.opacity(0.15)).frame(width: 1, height: 24)
-    }
-
-    /// The Delete tool: taps take out whatever is under the finger instead of
-    /// writing. Tapping a stroke in the notes tool still removes it too — this
-    /// is for clearing several without one stray tap writing a new one.
-    private var eraser: some View {
-        let selected = viewModel.tool == .erase
-        return Button {
-            viewModel.tool = selected ? .notes : .erase
-        } label: {
-            Image(systemName: "eraser")
-                .font(.symbol(15, weight: selected ? .semibold : .regular))
-                .foregroundStyle(selected ? Theme.cream : Theme.stone)
-                .frame(width: 44, height: 34)
-                .background(Theme.miss.opacity(selected ? 0.3 : 0), in: RoundedRectangle(cornerRadius: 9))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9)
-                        .strokeBorder(selected ? Theme.miss : Theme.cream.opacity(0.18), lineWidth: selected ? 1.5 : 1)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 9))
-        }
-        .buttonStyle(.kajar)
-        .accessibilityLabel("Delete")
-    }
-
     private var snapMenu: some View {
-        Menu {
-            ForEach(Subdivision.denominators, id: \.self) { d in
-                let s = Subdivision(denominator: d)
-                Button {
-                    viewModel.snap = s
-                } label: {
-                    if s == viewModel.snap {
-                        Label(s.label, systemImage: "checkmark")
-                    } else {
-                        Text(s.label)
-                    }
-                }
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "squareshape.split.3x3").font(.symbol(12)).foregroundStyle(Theme.stone)
-                Text(viewModel.snap.label).font(.sans(14, weight: .semibold))
-                Image(systemName: "chevron.up.chevron.down").font(.symbol(10))
-            }
-            .fixedSize()
-            .foregroundStyle(Theme.cream)
-            .padding(.horizontal, 12)
-            .frame(height: 32)
-            .background(Theme.cream.opacity(0.08), in: Capsule())
-        }
-        .kajarOnChange(of: viewModel.snap)
+        AppMenuPicker(
+            options: Subdivision.denominators.map(Subdivision.init(denominator:)),
+            selection: Bindable(viewModel).snap,
+            title: \.label,
+            label: "Snap",
+            systemImage: "squareshape.split.3x3"
+        )
     }
 }
 
@@ -622,36 +548,29 @@ private struct PianoRollTransport: View {
         HStack(spacing: 14) {
             Spacer(minLength: 0)
             HStack(spacing: 10) {
-                CircleIconButton(systemImage: "arrow.uturn.backward", label: "Undo") { draft.undo() }
+                AppIconButton(systemImage: "arrow.uturn.backward", label: "Undo", size: .compact) { draft.undo() }
                     .disabled(!draft.canUndo)
-                    .opacity(draft.canUndo ? 1 : 0.4)
-                CircleIconButton(systemImage: "arrow.uturn.forward", label: "Redo") { draft.redo() }
+                AppIconButton(systemImage: "arrow.uturn.forward", label: "Redo", size: .compact) { draft.redo() }
                     .disabled(!draft.canRedo)
-                    .opacity(draft.canRedo ? 1 : 0.4)
             }
 
             divider
 
             HStack(spacing: 10) {
-                CircleIconButton(systemImage: "stop.fill", label: "Back to start") {
+                AppIconButton(systemImage: "stop.fill", label: "Back to start", size: .compact) {
                     viewModel.stopPreview()
                 }
                 if viewModel.recording {
-                    CapsuleButton(title: "Rest") { viewModel.recordRest() }
+                    AppButton(title: "Rest", size: .compact) { viewModel.recordRest() }
                         .accessibilityHint("Steps the line on without writing a note")
                 } else {
-                    Button { viewModel.togglePlay() } label: {
-                        Image(systemName: viewModel.playing ? "pause.fill" : "play.fill")
-                            .font(.symbol(18, weight: .bold))
-                            .foregroundStyle(Theme.onGlassFill)
-                            .frame(width: 50, height: 50)
-                            .glassButton(filled: true, in: Circle())
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.kajar)
-                    .accessibilityLabel(viewModel.playing ? "Pause" : "Play")
-                    .disabled(draft.isEmpty)
-                    .opacity(draft.isEmpty ? 0.4 : 1)
+                    AppIconButton(
+                        systemImage: viewModel.playing ? "pause.fill" : "play.fill",
+                        label: viewModel.playing ? "Pause" : "Play",
+                        prominence: .primary,
+                        size: .compact
+                    ) { viewModel.togglePlay() }
+                        .disabled(draft.isEmpty)
                 }
             }
 
@@ -710,30 +629,12 @@ private struct PianoRollTransport: View {
                     .background(Theme.cream.opacity(0.08), in: Capsule())
                     .accessibilityLabel("Recording from \(link.name)")
             } else {
-                Menu {
-                    ForEach(viewModel.sensorPlacements, id: \.self) { first in
-                        Button {
-                            viewModel.firstSensorKey = first
-                        } label: {
-                            if first == viewModel.firstSensorKey {
-                                Label("Bilah \(range(first))", systemImage: "checkmark")
-                            } else {
-                                Text("Bilah \(range(first))")
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 5) {
-                        Text("Bilah \(range(viewModel.firstSensorKey))").font(.sans(14, weight: .semibold))
-                        Image(systemName: "chevron.up.chevron.down").font(.symbol(10))
-                    }
-                    .fixedSize()
-                    .foregroundStyle(Theme.cream)
-                    .padding(.horizontal, 12)
-                    .frame(height: 32)
-                    .background(Theme.cream.opacity(0.08), in: Capsule())
-                }
-                .accessibilityLabel("Sensors on bilah \(range(viewModel.firstSensorKey))")
+                AppMenuPicker(
+                    options: viewModel.sensorPlacements,
+                    selection: Bindable(viewModel).firstSensorKey,
+                    title: { "Bilah \(range($0))" },
+                    label: "Sensors on"
+                )
             }
         }
     }
@@ -768,7 +669,7 @@ struct PlayheadClock: View {
     }
 }
 
-/// − value + in one capsule, for a row too tight for `CountStepper`. Holding a
+/// − value + in one capsule, for a row too tight for `AppStepper`. Holding a
 /// button repeats, so 88 → 120 bpm is a press, not thirty-two taps.
 ///
 /// `editable` makes the value a number field as well, for a jump the buttons
@@ -855,7 +756,7 @@ struct MiniStepper: View {
                 .frame(width: 36, height: 32)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(.appPlain)
         .buttonRepeatBehavior(.enabled)
         .disabled(!enabled)
     }
@@ -868,24 +769,13 @@ private struct RecordButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: recording ? "stop.fill" : "circle.fill")
-                    .font(.symbol(recording ? 11 : 12, weight: .bold))
-                    .foregroundStyle(recording ? Theme.cream : Theme.miss)
-                    .symbolEffect(.pulse, isActive: recording)
-                Text(recording ? "Recording" : "Record")
-                    .font(.sans(16, weight: .semibold))
-                    .foregroundStyle(Theme.cream)
-            }
-            .fixedSize()
-            .padding(.horizontal, 20)
-            .frame(minHeight: 44)
-            .background(recording ? Theme.miss : .clear, in: Capsule())
-            .tintedButton(Theme.miss)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.kajar)
+        AppButton(
+            title: recording ? "Recording" : "Record",
+            systemImage: recording ? "stop.fill" : "circle.fill",
+            prominence: recording ? .primary : .secondary,
+            tint: Theme.miss,
+            action: action
+        )
         .accessibilityLabel(recording ? "Stop recording" : "Record from the sensors")
     }
 }

@@ -64,7 +64,7 @@ struct GangsaPhotoPicker: View {
                     )
             )
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(.appPlain)
         .accessibilityLabel(image == nil ? "Add a photo of this gangsa" : "Change the photo of this gangsa")
         .onChange(of: item) { _, picked in
             guard let picked else { return }

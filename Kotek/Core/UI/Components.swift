@@ -5,18 +5,15 @@
 //  Shared UI pieces, in the Kotek design language: one warm brown ground,
 //  cream type, capsule buttons.
 //
-//  Liquid Glass follows Apple's rule for it: it is the layer of controls that
-//  floats above the content, never the content itself (`ButtonSurface`).
-//   - Start / Next / Resume in a floating bar: glass tinted gold (`prominent`).
-//   - back, help, settings, search, Create / Add: regular glass (`glass`).
-//   - the way on INSIDE content — an empty state, the guide card, a panel:
-//     opaque gold (`solid`), not glass.
-//   - Quit, Coop, Edit, undo, the utility buttons in cards: a flat wash
-//     (`wash`), like the Edit button in Photos.
-//  Regular glass on everything was tried first and flattened the hierarchy;
-//  clear glass on the secondary buttons was tried after and was still too loud.
-//  Back and settings were a wash until they moved to glass with the rest of
-//  the navigation layer, as iOS draws them.
+//  Every action control is Liquid Glass (`Buttons/`, drawn by
+//  `AppControlSurface`): gold-tinted for the screen's way on, tinted with the
+//  ground for the rest.
+//  That is an explicit product decision — Apple's guidance keeps glass to the
+//  floating layer. What was tried before: glass for bars only, opaque gold for
+//  the way on inside content, a flat 12% wash for secondaries (clear glass was
+//  tried there and was still too loud). Three looks for one kind of control is
+//  what read as inconsistent. What you tap that is not a control — cards, grid
+//  cells, tab rails, dots, the dev screens — stays `.appPlain`.
 //
 
 import SwiftUI
@@ -121,54 +118,16 @@ struct KotekWordmark: View {
 
 // MARK: - The tick under every control
 
-/// Every button in the app strikes a kajar when you press it.
-///
-/// A `PrimitiveButtonStyle` rather than a wrapper view or a call added to each
-/// action, because it is the only thing that sits between the tap and the
-/// action WITHOUT the call sites having to remember: a button gets the tick by
-/// being a button. There are fifty-odd of them across the flow screens and the
-/// dev screens, and one of them being silent reads as a bug.
-///
-/// It re-applies `.plain` inside, so the look and the press dimming are exactly
-/// what they were — this style replaced `.buttonStyle(.plain)` throughout, and
-/// adds a sound and nothing else.
-///
-/// A disabled button never triggers, so it never ticks. That falls out of
-/// `.disabled()` being applied outside the style, and is the behaviour we want:
-/// the stepper at its limit should feel like nothing happened, because nothing did.
-struct KajarButtonStyle: PrimitiveButtonStyle {
-    /// False for a button whose own sound must not be spoiled by a tick, e.g.
-    /// one that starts the mic or plays a recording back.
-    var ticks = true
-
-    func makeBody(configuration: Configuration) -> some View {
-        Button(role: configuration.role) {
-            if ticks { KajarTick.strike() }
-            configuration.trigger()
-        } label: {
-            configuration.label
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-extension PrimitiveButtonStyle where Self == KajarButtonStyle {
-    /// `.buttonStyle(.kajar)` — the app's `.plain`.
-    static var kajar: KajarButtonStyle {
-        KajarButtonStyle()
-    }
-}
-
 /// Every switch in the app ticks when it flips.
 ///
-/// Set ONCE, on the root — unlike `.kajar` on buttons, which has to be written
+/// Set ONCE, on the root — unlike `.appPlain` on buttons, which has to be written
 /// at each call site because every button in this codebase already names
 /// `.plain` and an explicit style beats an inherited one. Nothing sets a toggle
 /// style, so the environment carries this everywhere by itself.
 ///
 /// Renders `.switch` inside, which is what these were getting from the default
 /// on iOS anyway.
-struct KajarToggleStyle: ToggleStyle {
+struct AppToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Toggle(isOn: configuration.$isOn) { configuration.label }
             .toggleStyle(.switch)
@@ -180,9 +139,9 @@ struct KajarToggleStyle: ToggleStyle {
     }
 }
 
-extension ToggleStyle where Self == KajarToggleStyle {
-    static var kajar: KajarToggleStyle {
-        KajarToggleStyle()
+extension ToggleStyle where Self == AppToggleStyle {
+    static var app: AppToggleStyle {
+        AppToggleStyle()
     }
 }
 
@@ -201,325 +160,6 @@ extension View {
         onChange(of: value) {
             KajarTick.strike()
         }
-    }
-}
-
-// MARK: - Buttons
-
-extension View {
-    /// System Liquid Glass, for the navigation layer. `filled` is the screen's
-    /// main action: the glass tinted gold at 60% with dark type
-    /// (`Theme.onGlassFill`) — 75% painted over the refraction, 40% with cream
-    /// type let the label sink into the glass.
-    func glassButton(filled: Bool = false, in shape: some Shape = Capsule()) -> some View {
-        glassEffect(
-            filled ? .regular.tint(Theme.buttonFill.opacity(0.6)).interactive() : .regular.interactive(),
-            in: shape
-        )
-    }
-
-    /// Secondary buttons: a flat wash of `tint`, no glass. Clear glass
-    /// (`.clear`) was tried here and still stood up as loud as the calls to
-    /// action.
-    func tintedButton(_ tint: Color = Theme.cream, in shape: some Shape = Capsule()) -> some View {
-        background(tint.opacity(0.12), in: shape)
-    }
-
-    /// How every button in the app is drawn — see `ButtonSurface`.
-    func buttonSurface(_ kind: ButtonSurface<Capsule>.Kind) -> some View {
-        modifier(ButtonSurface(kind: kind, shape: Capsule()))
-    }
-
-    func buttonSurface<S: Shape>(_ kind: ButtonSurface<S>.Kind, in shape: S) -> some View {
-        modifier(ButtonSurface(kind: kind, shape: shape))
-    }
-}
-
-/// The three ways a button is drawn, by which layer it sits in (Apple's
-/// Liquid Glass guidance: glass is for the controls that float above the
-/// content, never for the content itself).
-///
-/// - `prominent`: the screen's way on, in a floating bar — glass tinted gold,
-///   dark type. Apple's own prominent buttons colour the glass, not the label.
-/// - `glass`: any other floating control — back, settings, search, Create.
-/// - `solid`: the way on when it sits INSIDE content (an empty state, a card,
-///   a panel). Same gold, as an opaque slab: glass there would be glass in the
-///   content layer, and on a flat card it has nothing to refract anyway.
-/// - `wash`: everything else — a flat 12% wash of the tint.
-///
-/// Applied to the label itself rather than to a clear view behind it, the
-/// way Apple's custom-glass examples do, so the glass is the view the touch
-/// lands on and `interactive()` gives it the system press response.
-///
-/// Disabled buttons drop the gold and the press response, and their type
-/// fades — rather than the whole button going to 40% opacity, which left a
-/// muddy glass with its label at 2:1.
-struct ButtonSurface<S: Shape>: ViewModifier {
-    enum Kind { case prominent, glass, solid, wash(Color) }
-
-    let kind: Kind
-    let shape: S
-    @Environment(\.isEnabled) private var isEnabled
-
-    func body(content: Content) -> some View {
-        switch kind {
-        case .prominent:
-            content.glassEffect(
-                isEnabled ? .regular.tint(Theme.buttonFill.opacity(0.6)).interactive() : .regular,
-                in: shape
-            )
-        case .glass:
-            content.glassEffect(isEnabled ? .regular.interactive() : .regular, in: shape)
-        case .solid:
-            content.background(isEnabled ? Theme.buttonFill : Theme.cream.opacity(0.12), in: shape)
-        case let .wash(tint):
-            content.background(tint.opacity(isEnabled ? 0.12 : 0.06), in: shape)
-        }
-    }
-
-    /// The label's colour on this surface.
-    static func label(_ kind: Kind, enabled: Bool) -> Color {
-        guard enabled else { return Theme.cream.opacity(0.4) }
-        switch kind {
-        case .prominent, .solid: return Theme.onGlassFill
-        case .glass: return Theme.cream
-        case let .wash(tint): return tint == Theme.gold ? Theme.cream : tint
-        }
-    }
-}
-
-/// `filled` is the way on in a floating bar (gold glass); `solid` is the way on
-/// inside content (opaque gold) — see `ButtonSurface`.
-enum PillStyle { case filled, solid, outlined }
-
-/// The canonical pill button (GO, NEXT, CALIBRATE, START PRACTICE, RETRY …).
-/// Labels are tracked and uppercased by default to match the spec.
-struct PillButton: View {
-    let title: String
-    var systemImage: String?
-    /// An icon AFTER the label. For the buttons that carry you forward through
-    /// a flow — a leading icon labels what a button is, a trailing arrow says
-    /// where it goes, and those are different jobs on the same control.
-    var trailingSystemImage: String?
-    var style: PillStyle = .outlined
-    var tint: Color = Theme.gold
-    var uppercase: Bool = true
-    var fullWidth: Bool = false
-    var compact: Bool = false
-    /// No kajar tick on press, for buttons that record or play audio.
-    var silent: Bool = false
-    let action: () -> Void
-
-    @Environment(\.isEnabled) private var isEnabled
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: compact ? 8 : 10) {
-                if let systemImage {
-                    // Symbol metrics, not text metrics — see `Font.symbol`.
-                    Image(systemName: systemImage)
-                        .font(.symbol(compact ? 14 : 18, weight: .semibold))
-                }
-                Text(title)
-                    .textCase(uppercase ? .uppercase : nil)
-                    // One tracking for every button, uppercase or not: the
-                    // labels are short and set heavy, and heavy short words
-                    // need the air whichever case they are in.
-                    .tracking(Theme.buttonTracking)
-                    // SF has real weights, unlike the face this used to be, so
-                    // a button label can simply BE the weight it wants.
-                    .font(.sans(compact ? 14 : 19, weight: Theme.buttonWeight))
-                    // A button label never wraps. Uppercase + tracking makes
-                    // even a short word wide, and in a narrow column SwiftUI
-                    // will happily break "Listening…" across two lines and
-                    // blow out the pill's fixed height rather than let it
-                    // overflow. Whoever adds a long label sees it clipped —
-                    // which reads as "shorten this", not as a broken control.
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-
-                if let trailingSystemImage {
-                    Image(systemName: trailingSystemImage)
-                        .font(.symbol(compact ? 13 : 16, weight: .semibold))
-                }
-            }
-            .foregroundStyle(ButtonSurface<Capsule>.label(surface, enabled: isEnabled))
-            .padding(.horizontal, compact ? 18 : 30)
-            .frame(maxWidth: fullWidth ? .infinity : nil)
-            .frame(height: compact ? 38 : Theme.buttonHeight)
-            .buttonSurface(surface)
-            // The compact pill is drawn 38pt tall because that is what the
-            // design calls for, but the HIG minimum target is 44 — so the
-            // TARGET is grown to 44 without changing what is drawn. Someone
-            // reaching for this is standing over an instrument holding a
-            // mallet, which is not the moment for a six-point miss.
-            .frame(minHeight: 44)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(KajarButtonStyle(ticks: !silent))
-    }
-
-    /// Only the filled pill is glass — it is the screen's way on. Dark type
-    /// on it: cream was tried at a lighter tint and disappeared into the
-    /// background showing through. Outlined ones (Coop, Edit, Cancel) are a
-    /// wash.
-    private var surface: ButtonSurface<Capsule>.Kind {
-        switch style {
-        case .filled: .prominent
-        case .solid: .solid
-        case .outlined: .wash(tint == Theme.gold ? Theme.cream : tint)
-        }
-    }
-}
-
-/// A round button holding one symbol. Quiet glass — back, undo, stop;
-/// `glass` for a call to action (search), `filled` for the main one (Resume).
-struct CircleIconButton: View {
-    let systemImage: String
-    let label: String
-    var size: CGFloat = 44
-    var glass = false
-    var filled = false
-    let action: () -> Void
-
-    @Environment(\.isEnabled) private var isEnabled
-
-    private var surface: ButtonSurface<Circle>.Kind {
-        filled ? .prominent : glass ? .glass : .wash(Theme.cream)
-    }
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.symbol(size * 17 / 44, weight: .semibold))
-                .foregroundStyle(ButtonSurface<Circle>.label(surface, enabled: isEnabled))
-                .frame(width: size, height: size)
-                .buttonSurface(surface, in: Circle())
-                .contentShape(Circle())
-        }
-        .buttonStyle(.kajar)
-        .accessibilityLabel(label)
-    }
-}
-
-/// A capsule button with a sentence-case label, and optionally a symbol after
-/// it. `filled` is the step's main action, in tinted glass; `glass` is a
-/// secondary call to action (Create kotek, Add gangsa); otherwise a tinted
-/// fill.
-struct CapsuleButton: View {
-    let title: String
-    var trailingSystemImage: String?
-    var filled = false
-    var glass = false
-    var fullWidth = false
-    let action: () -> Void
-
-    @Environment(\.isEnabled) private var isEnabled
-
-    private var surface: ButtonSurface<Capsule>.Kind {
-        filled ? .prominent : glass ? .glass : .wash(Theme.cream)
-    }
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                Text(title)
-                if let trailingSystemImage {
-                    Image(systemName: trailingSystemImage)
-                        .font(.symbol(16, weight: .semibold))
-                }
-            }
-            .font(.sans(16, weight: .semibold))
-            .foregroundStyle(ButtonSurface<Capsule>.label(surface, enabled: isEnabled))
-            .lineLimit(1)
-            .fixedSize(horizontal: !fullWidth, vertical: false)
-            .padding(.horizontal, 24)
-            .frame(maxWidth: fullWidth ? .infinity : nil, minHeight: 44)
-            .buttonSurface(surface)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.kajar)
-    }
-}
-
-/// The trash circle in a picker's bottom bar, beside its way on: delete the
-/// card in the middle. Always behind a `.confirm` — nothing goes on one tap.
-/// Shared by the kotekan and gangsa pickers so the two bars stay one design.
-struct DeleteIconButton: View {
-    /// What VoiceOver hears: "Delete Pemade 1".
-    let label: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "trash")
-                .font(.symbol(14, weight: .semibold))
-                .foregroundStyle(Theme.cream.opacity(0.7))
-                .frame(width: 38, height: 38)
-                .buttonSurface(.wash(Theme.cream), in: Circle())
-                // Drawn at 38, targeted at 44 — see `PillButton`.
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.kajar)
-        .accessibilityLabel(label)
-    }
-}
-
-/// The cream call-to-action. Kept as a distinct name because many call sites
-/// use it; it is just a non-uppercased filled `PillButton` with an icon.
-struct PrimaryButton: View {
-    let title: String
-    var systemImage: String?
-    var tint: Color = Theme.cream
-    let action: () -> Void
-
-    var body: some View {
-        PillButton(
-            title: title,
-            systemImage: systemImage,
-            style: .filled,
-            tint: tint,
-            uppercase: false,
-            fullWidth: true,
-            action: action
-        )
-    }
-}
-
-/// The utility button inside cards and settings: Switch gangsa, History,
-/// Connect controller. A capsule wash like the app's other secondary buttons —
-/// it was the last rounded rectangle with a gold hairline, from before the
-/// buttons became capsules, and read as a different app beside them. Never
-/// glass: it sits in the content layer.
-struct SecondaryButton: View {
-    let title: String
-    var systemImage: String?
-    let action: () -> Void
-
-    @Environment(\.isEnabled) private var isEnabled
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                if let systemImage {
-                    Image(systemName: systemImage).font(.symbol(15))
-                }
-                Text(title)
-                    .font(.sans(15, weight: Theme.buttonWeight))
-                    .tracking(Theme.buttonTracking)
-            }
-            .foregroundStyle(ButtonSurface<Capsule>.label(.wash(Theme.cream), enabled: isEnabled))
-            .padding(.vertical, 11)
-            .padding(.horizontal, 18)
-            // 15pt type plus 11pt either side lands a point or two under the
-            // HIG's 44pt minimum, which is exactly the kind of near-miss that
-            // never gets noticed. Stated explicitly instead.
-            .frame(minHeight: 44)
-            .buttonSurface(.wash(Theme.cream))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.kajar)
     }
 }
 
@@ -588,12 +228,11 @@ struct TopBar: View {
                         // R and how iOS itself draws them.
                         if let onBack {
                             if let backTitle {
-                                CapsuleButton(title: backTitle, glass: true, action: onBack)
+                                AppButton(title: backTitle, action: onBack)
                             } else {
-                                CircleIconButton(
+                                AppIconButton(
                                     systemImage: "chevron.left",
                                     label: "Back",
-                                    glass: true,
                                     action: onBack
                                 )
                             }
@@ -608,18 +247,16 @@ struct TopBar: View {
                         // 44pt circles: a bare glyph in a corner is a 19pt
                         // target, and the HIG minimum is 44.
                         if let infoAction {
-                            CircleIconButton(
+                            AppIconButton(
                                 systemImage: "questionmark",
                                 label: "How Kotek works",
-                                glass: true,
                                 action: infoAction
                             )
                         }
                         if let settingsAction {
-                            CircleIconButton(
+                            AppIconButton(
                                 systemImage: "gearshape",
                                 label: "Settings",
-                                glass: true,
                                 action: settingsAction
                             )
                         }
@@ -657,65 +294,6 @@ struct SectionLabel: View {
             .textCase(.uppercase)
             .tracking(2.5)
             .foregroundStyle(color)
-    }
-}
-
-// MARK: - Stepper
-
-/// A −/number/+ stepper. Big serif number, circular buttons — the shared control
-/// for key count and cycle count.
-struct CountStepper: View {
-    @Binding var value: Int
-    var range: ClosedRange<Int>
-    var numberSize: CGFloat = 64
-    var buttonSize: CGFloat = 64
-    var tint: Color = Theme.gold
-    var numberColor: Color = Theme.cream
-    var lineColor: Color = Theme.cream
-
-    var body: some View {
-        HStack(spacing: 22) {
-            circle(system: "minus", enabled: value > range.lowerBound) {
-                value = max(range.lowerBound, value - 1)
-            }
-            Text("\(value)")
-                .font(.serif(numberSize, weight: .regular))
-                .foregroundStyle(numberColor)
-                .frame(minWidth: numberSize * 1.1)
-                .contentTransition(.numericText())
-            circle(system: "plus", enabled: value < range.upperBound) {
-                value = min(range.upperBound, value + 1)
-            }
-        }
-        .animation(.snappy(duration: 0.2), value: value)
-    }
-
-    private func circle(
-        system: String,
-        enabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: system)
-                .font(.symbol(buttonSize * 24 / 64, weight: .semibold))
-                .foregroundStyle(enabled ? tint : lineColor.opacity(0.3))
-                .frame(width: buttonSize, height: buttonSize)
-                .background(
-                    Circle()
-                        .fill(enabled ? tint.opacity(0.08) : Color.clear)
-                )
-                .overlay(
-                    Circle()
-                        .strokeBorder(
-                            enabled
-                                ? tint.opacity(0.75) : lineColor.opacity(0.2),
-                            lineWidth: 2
-                        )
-                )
-                .contentShape(Circle())
-        }
-        .buttonStyle(.kajar)
-        .disabled(!enabled)
     }
 }
 
@@ -843,37 +421,18 @@ struct ConfirmDialog: View {
                     .lineSpacing(1)
                     .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 12) {
-                    Spacer(minLength: 0)
-                    PillButton(
-                        title: "Cancel",
-                        style: .outlined,
-                        tint: Theme.cream,
-                        compact: true
-                    ) {
-                        onCancel()
+                GlassEffectContainer(spacing: 12) {
+                    HStack(spacing: 12) {
+                        Spacer(minLength: 0)
+                        AppButton(title: "Cancel", size: .compact) {
+                            onCancel()
+                        }
+                        // R The destructive button is plain glass with type in
+                        // R its own colour rather than the gold-tinted way on.
+                        // R `.primary` is the app's one "do this" — and the
+                        // R delete is precisely not the thing being recommended.
+                        AppButton(title: confirmTitle, size: .compact, tint: confirmTint, action: onConfirm)
                     }
-                    // R The destructive button is outlined in its own colour
-                    // R rather than filled with it. `.filled` is the cream slab —
-                    // R the app's one "do this" — and the delete is precisely not
-                    // R the thing being recommended.
-                    Button(action: onConfirm) {
-                        Text(confirmTitle)
-                            .textCase(.uppercase)
-                            .tracking(Theme.buttonTracking)
-                            .font(.sans(14, weight: Theme.buttonWeight))
-                            .foregroundStyle(confirmTint)
-                            .lineLimit(1)
-                            .padding(.horizontal, 18)
-                            .frame(height: 38)
-                            // A wash of the action's colour, like Cancel
-                            // beside it — not an outline, the one left.
-                            .buttonSurface(.wash(confirmTint))
-                            // Drawn at 38, targeted at 44 — see `PillButton`.
-                            .frame(minHeight: 44)
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.kajar)
                 }
                 .padding(.top, 4)
             }
@@ -937,34 +496,6 @@ extension View {
         overlay {
             if let message { BusyOverlay(message: message) }
         }
-    }
-}
-
-// MARK: - Realign affordance
-
-/// A persistent "keys misaligned?" affordance (PRD §13.4).
-struct RealignButton: View {
-    let action: () -> Void
-    var body: some View {
-        Button(action: action) {
-            Label("Realign", systemImage: "viewfinder")
-                .font(.sans(13, weight: Theme.buttonWeight))
-                .tracking(Theme.buttonTracking)
-                .foregroundStyle(Theme.terracotta)
-                .padding(.vertical, 8)
-                .padding(.horizontal, 14)
-                .overlay(
-                    Capsule().strokeBorder(
-                        Theme.terracotta.opacity(0.5),
-                        lineWidth: 1
-                    )
-                )
-                // Drawn small on purpose — it is a persistent affordance, not a
-                // call to action — but still tappable to the HIG minimum.
-                .frame(minHeight: 44)
-                .contentShape(Capsule())
-        }
-        .buttonStyle(.kajar)
     }
 }
 

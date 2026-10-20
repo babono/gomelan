@@ -78,7 +78,7 @@ struct InstrumentCardView: View {
                     )
             )
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(.appPlain)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(isCurrent ? [.isButton, .isSelected] : .isButton)
         .accessibilityHint("Selects this gangsa")

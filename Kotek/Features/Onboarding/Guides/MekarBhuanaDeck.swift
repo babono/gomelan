@@ -39,7 +39,7 @@ struct GuideSlides: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
 
-            PageDots(count: slides.count, index: $index)
+            AppPageDots(count: slides.count, index: $index)
         }
     }
 

@@ -23,11 +23,10 @@ struct FramingBottomBar: View {
 
             Spacer(minLength: 12)
 
-            PillButton(
+            AppButton(
                 title: "Continue",
-                style: .filled,
-                tint: Theme.copper,
-                compact: true,
+                prominence: .primary,
+                size: .regular,
                 action: onContinue
             )
             .disabled(!cameraReady)

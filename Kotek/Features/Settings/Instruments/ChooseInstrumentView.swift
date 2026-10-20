@@ -161,9 +161,9 @@ struct ChooseInstrumentView: View {
         return HStack(spacing: 14) {
             Spacer()
             if let selected {
-                DeleteIconButton(label: "Delete \(selected.name)") { pendingDelete = selected }
+                AppIconButton(systemImage: "trash", label: "Delete \(selected.name)") { pendingDelete = selected }
             }
-            PillButton(title: "Next", style: .filled, compact: true) {
+            AppButton(title: "Next", prominence: .primary, size: .regular) {
                 app.selectInstrument(app.profile)
             }
             .disabled(selected == nil)

@@ -12,17 +12,19 @@ struct ResultsBottomBar: View {
     let onRetry: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            // Compact: the bar shares a half-width column with the feedback
-            // now, and at full size "Choose another kotekan" pushed Retry off
-            // the edge of the screen.
-            PillButton(title: "Other kotekan", style: .outlined, tint: Theme.charcoal, compact: true) {
-                onChooseAnother()
+        GlassEffectContainer {
+            HStack(spacing: 14) {
+                // Compact: the bar shares a half-width column with the feedback
+                // now, and at full size "Choose another kotekan" pushed Retry off
+                // the edge of the screen.
+                AppButton(title: "Other kotekan", size: .regular) {
+                    onChooseAnother()
+                }
+                AppButton(title: "Retry", prominence: .primary, size: .regular) {
+                    onRetry()
+                }
+                Spacer()
             }
-            PillButton(title: "Retry", style: .filled, tint: Theme.terracotta, compact: true) {
-                onRetry()
-            }
-            Spacer()
         }
         .padding(.top, 2)
         .padding(.bottom, 8)

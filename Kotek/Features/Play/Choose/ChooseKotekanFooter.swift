@@ -24,56 +24,51 @@ struct ChooseKotekanFooter: View {
     let onCoop: (Kotekan) -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            Button {
-                muted.toggle()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                        .font(.symbol(13, weight: .semibold))
-                    Text(muted ? "Muted" : "Playing")
-                        .font(.sans(13, weight: .medium))
-                }
-                .foregroundStyle(muted ? Theme.cream.opacity(0.5) : Theme.gold)
-                .padding(.horizontal, 14)
-                .frame(height: 38)
-                .tintedButton()
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.kajar)
-            .accessibilityLabel(muted ? "Unmute the preview" : "Mute the preview")
-
-            Spacer()
-
-            Text("Swipe to hear another")
-                .font(.sans(13))
-                .foregroundStyle(Theme.cream.opacity(0.45))
-
-            Spacer()
-
-            if let current, current.source != .builtin {
-                DeleteIconButton(label: "Delete \(current.name)") { onDelete(current) }
-
-                PillButton(title: "Edit", style: .outlined, compact: true) {
-                    onEdit(current)
-                }
-            }
-
-            // Nothing to start when a search matches nothing; Create is up top.
-            if let current {
-                PillButton(title: "Coop", systemImage: "person.2.fill", style: .outlined, compact: true) {
-                    onCoop(current)
-                }
-                .disabled(!playable)
-
-                PillButton(
-                    title: "Start",
-                    style: .filled,
-                    compact: true
+        GlassEffectContainer {
+            HStack(spacing: 14) {
+                AppButton(
+                    title: muted ? "Muted" : "Playing",
+                    systemImage: muted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                    size: .regular
                 ) {
-                    onStart(current)
+                    muted.toggle()
                 }
-                .disabled(!playable)
+                .accessibilityLabel(muted ? "Unmute the preview" : "Mute the preview")
+
+                Spacer()
+
+                Text("Swipe to hear another")
+                    .font(.sans(13))
+                    .foregroundStyle(Theme.cream.opacity(0.45))
+
+                Spacer()
+
+                if let current, current.source != .builtin {
+                    AppIconButton(systemImage: "trash", label: "Delete \(current.name)", size: .regular) {
+                        onDelete(current)
+                    }
+
+                    AppButton(title: "Edit", size: .regular) {
+                        onEdit(current)
+                    }
+                }
+
+                // Nothing to start when a search matches nothing; Create is up top.
+                if let current {
+                    AppButton(title: "Coop", systemImage: "person.2.fill", size: .regular) {
+                        onCoop(current)
+                    }
+                    .disabled(!playable)
+
+                    AppButton(
+                        title: "Start",
+                        prominence: .primary,
+                        size: .regular
+                    ) {
+                        onStart(current)
+                    }
+                    .disabled(!playable)
+                }
             }
         }
         .padding(.bottom, 10)

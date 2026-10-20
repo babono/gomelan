@@ -81,7 +81,7 @@ private struct ControllerSetupContent: View {
                 Label(why, systemImage: "exclamationmark.triangle")
                     .font(.sans(16, weight: .semibold))
                     .foregroundStyle(Theme.miss)
-                SecondaryButton(title: "Open Settings", systemImage: "gear") {
+                AppButton(title: "Open Settings", systemImage: "gear", size: .compact) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
                     }
@@ -187,7 +187,7 @@ private struct ControllerSetupContent: View {
             .background(Theme.deep.opacity(0.55), in: RoundedRectangle(cornerRadius: Theme.radius))
             .contentShape(RoundedRectangle(cornerRadius: Theme.radius))
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(.appPlain)
     }
 
     /// Nearest first is the sort; the bars are for telling two apart. 0 is a
@@ -227,7 +227,7 @@ private struct ControllerSetupContent: View {
                 Spacer()
                 HStack {
                     Spacer()
-                    PillButton(title: "Test key hits", style: .filled) {
+                    AppButton(title: "Test key hits", prominence: .primary, size: .large) {
                         vm.startTest()
                     }
                     .disabled(info.hasPlugDetect && info.plugged.isEmpty)
@@ -289,11 +289,10 @@ private struct ControllerSetupContent: View {
                         .font(.sans(13))
                         .foregroundStyle(Theme.cream.opacity(0.55))
                     Spacer()
-                    PillButton(title: "Finish", systemImage: "checkmark", style: .filled) {
+                    AppButton(title: "Finish", systemImage: "checkmark", prominence: .primary, size: .large) {
                         vm.finish()
                     }
                     .disabled(!vm.isDone)
-                    .opacity(vm.isDone ? 1 : 0.4)
                 }
             } else {
                 connectingLine
@@ -319,8 +318,8 @@ private struct ControllerSetupContent: View {
                         .foregroundStyle(Theme.cream.opacity(0.65))
                 }
                 Spacer()
-                SecondaryButton(title: "Try again", systemImage: "arrow.counterclockwise") { vm.tryAgain() }
-                PillButton(title: "Remap", systemImage: "arrow.left.arrow.right", style: .filled, compact: true) {
+                AppButton(title: "Try again", systemImage: "arrow.counterclockwise", size: .compact) { vm.tryAgain() }
+                AppButton(title: "Remap", systemImage: "arrow.left.arrow.right", prominence: .primary, size: .compact) {
                     vm.remap()
                 }
             }
@@ -338,7 +337,7 @@ private struct ControllerSetupContent: View {
                 }
                 Spacer()
                 if vm.inputForKey[k] != nil {
-                    SecondaryButton(title: "No sensor on key \(k + 1)", systemImage: "camera") {
+                    AppButton(title: "No sensor on key \(k + 1)", systemImage: "camera", size: .compact) {
                         vm.markNoSensor()
                     }
                 }
@@ -414,7 +413,7 @@ private struct ControllerKeyTile: View {
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(.appPlain)
         .opacity(input == nil && !isCurrent ? 0.5 : 1)
         .accessibilityLabel(accessibilityText)
         .onChange(of: litHit) { _, id in

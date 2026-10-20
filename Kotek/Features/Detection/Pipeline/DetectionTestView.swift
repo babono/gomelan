@@ -89,7 +89,7 @@ struct DetectionTestView: View {
         @Bindable var app = app
         return VStack {
             HStack(spacing: 16) {
-                SecondaryButton(title: "Back", systemImage: "chevron.left") {
+                AppButton(title: "Back", systemImage: "chevron.left", size: .compact) {
                     app.closeDetectionTest()
                 }
                 Spacer()
@@ -136,7 +136,7 @@ struct DetectionTestView: View {
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(.black.opacity(0.6), in: Capsule())
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(.appPlain)
     }
 
     /// Every value `applyMarkerSettings` pushes into the fusion actor, in one
