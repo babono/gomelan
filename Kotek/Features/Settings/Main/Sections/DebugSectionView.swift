@@ -33,7 +33,7 @@ struct DebugSectionView: View {
                     app.openSensorTest()
                 }
                 #if DEBUG
-                    SecondaryButton(title: "View Mock Results", systemImage: "chart.line.uptrend.xyaxis") {
+                    AppButton(title: "View Mock Results", systemImage: "chart.line.uptrend.xyaxis", size: .compact) {
                         app.openMockResults()
                     }
                 #endif

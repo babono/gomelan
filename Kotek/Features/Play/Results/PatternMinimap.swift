@@ -20,8 +20,8 @@ struct PatternMinimap: View {
     let visible: Int
     /// Leading edge of the graph, in slot units (the chart's own origin is -0.5).
     @Binding var scrollSlot: Double
-    /// The held stroke, picked out on the strip.
-    let cursor: PatternSlotScore?
+    /// The half the roll is reading; the other is faded here too.
+    let shown: KotekanHalf
 
     /// The strip's and the window's, the same: the window fills the strip's
     /// height, so at either end its corners sit in the strip's.
@@ -62,14 +62,16 @@ struct PatternMinimap: View {
         }
         .background(Theme.deep.opacity(0.75), in: RoundedRectangle(cornerRadius: Self.radius))
         .clipShape(RoundedRectangle(cornerRadius: Self.radius))
-        .accessibilityHidden(true) // the Details toggle is the way to every stroke
+        .accessibilityHidden(true) // the roll above carries every stroke
     }
 
     private func draw(_ ctx: GraphicsContext, _ size: CGSize) {
         guard columns > 0 else { return }
         let column = size.width / CGFloat(columns)
         let rowHeight = size.height / CGFloat(rows)
-        let played = Set(slots.filter { $0.attempts > 0 }.map(\.half))
+        // The same curve as the roll above, so the strip shows where the
+        // whole figure dips, not only the part on screen.
+        PerformanceGraph.drawCurve(slots, shown: shown, ctx, CGRect(origin: .zero, size: size), column: column, lineWidth: 1.5)
 
         for s in slots {
             guard let key = s.keyIndex else { continue }
@@ -78,12 +80,9 @@ struct PatternMinimap: View {
                 width: max(1, column - 1), height: max(1, rowHeight - 1)
             )
             let voice = s.half == .polos ? Theme.polosVoice : Theme.sangsihVoice
-            // Paler the less of it landed.
-            let fill = voice.opacity(!played.contains(s.half) ? 0.25 : 0.3 + 0.6 * (s.landedRate ?? 1))
-            ctx.fill(Path(rect), with: .color(fill))
-            if s == cursor {
-                ctx.stroke(Path(rect.insetBy(dx: -1, dy: -1)), with: .color(Theme.cream), lineWidth: 1.5)
-            }
+            // Paler the less of it landed; the other half, or one never judged, faded.
+            let lit = s.half == shown ? s.landedRate : nil
+            ctx.fill(Path(rect), with: .color(voice.opacity(lit.map { 0.3 + 0.6 * $0 } ?? 0.15)))
         }
     }
 }

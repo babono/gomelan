@@ -26,7 +26,11 @@ struct ResultsView: View {
                 HStack(alignment: .top, spacing: 32) {
                     Group {
                         if result.best != nil {
-                            ResultsPerformanceView(slots: slots(result), keyCount: app.profile.keyCount)
+                            ResultsPerformanceView(
+                                slots: slots(result),
+                                keyCount: app.profile.keyCount,
+                                half: app.chosenHalf
+                            )
                         } else {
                             tooShort
                         }
