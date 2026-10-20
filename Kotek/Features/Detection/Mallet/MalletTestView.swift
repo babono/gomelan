@@ -70,7 +70,7 @@ struct MalletTestView: View {
             // Top HUD.
             VStack {
                 HStack(spacing: 16) {
-                    SecondaryButton(title: "Back", systemImage: "chevron.left") {
+                    AppButton(title: "Back", systemImage: "chevron.left", size: .compact) {
                         app.closeMalletTest()
                     }
 

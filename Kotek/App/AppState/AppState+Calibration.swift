@@ -10,9 +10,9 @@ import Foundation
 extension AppState {
     // MARK: - Setup Flow
 
-    /// Step 1/2: how many keys does this gangsa have, and what is it called?
+    /// Step 1: how many keys does this gangsa have, and what is it called?
     ///
-    /// Goes straight on to the voice (step 2/2). Framing and aligning the
+    /// Goes straight on to recording the keys. Framing and aligning the
     /// camera mask were dropped from adding a gangsa: the keys start on the
     /// default `layout(count:)` from `resize(to:)`, and `realign()` /
     /// `realignInstrument(_:)` still reach `.aligning` for anyone who wants
@@ -46,14 +46,29 @@ extension AppState {
         screen = .aligning
     }
 
-    /// Aligning done (or skipped by `keyCountChosen`) → the baseline.
+    /// Aligning done (or skipped by `keyCountChosen`). A new gangsa goes
+    /// straight on to recording its keys and then the controller; a realign
+    /// of an existing one continues to the baseline as before.
+    ///
+    /// The baseline step was dropped from adding a gangsa: it is a camera
+    /// screen (key outlines over the top-view feed), and the camera mount is
+    /// no longer part of setting one up. It is still reachable from Settings
+    /// (`openCalibration()`), and until it is learned strikes are not
+    /// sound-confirmed — the same as skipping it used to leave them.
     func alignmentConfirmed() {
-        if isAddingNewInstrument {
-            isAddingNewInstrument = false
-            previousProfile = nil
-            offerControllerAfterSetup = true
+        guard isAddingNewInstrument else {
+            if baselineLearned { finishSetup() } else { screen = .calibrating }
+            return
         }
-        if baselineLearned { finishSetup() } else { screen = .calibrating }
+        isAddingNewInstrument = false
+        previousProfile = nil
+        // `baselineLearned` still describes the previous gangsa.
+        baselineLearned = profile.hasLearnedBaseline
+        if !baselineLearned { requireStrikeSound = false }
+        // Saved here, not by the baseline step: recording may be skipped.
+        saveProfile()
+        offerControllerAfterSetup = true
+        finishSetup()
     }
 
     /// Baseline captured: strikes will now be confirmed by sound.

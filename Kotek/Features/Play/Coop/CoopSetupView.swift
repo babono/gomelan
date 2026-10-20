@@ -45,18 +45,9 @@ struct CoopSetupView: View {
                         profiles: app.savedProfiles,
                         profile: app.coopProfile(setup.wrappedValue.left)
                     )
-                    Button {
+                    AppIconButton(systemImage: "arrow.left.arrow.right", label: "Swap seats") {
                         withAnimation(.snappy) { setup.wrappedValue.swapSeats() }
-                    } label: {
-                        Image(systemName: "arrow.left.arrow.right")
-                            .font(.symbol(15, weight: .semibold))
-                            .foregroundStyle(Theme.cream.opacity(0.8))
-                            .frame(width: 44, height: 44)
-                            .overlay(Circle().strokeBorder(Theme.cream.opacity(0.22), lineWidth: 1))
-                            .contentShape(Circle())
                     }
-                    .buttonStyle(.kajar)
-                    .accessibilityLabel("Swap seats")
                     PlayerCard(
                         player: setup.right,
                         profiles: app.savedProfiles,
@@ -65,15 +56,14 @@ struct CoopSetupView: View {
                 }
 
                 HStack(spacing: 14) {
-                    PillButton(
+                    AppButton(
                         title: "Swap halves",
                         systemImage: "arrow.up.arrow.down",
-                        style: .outlined,
-                        compact: true
+                        size: .compact
                     ) {
                         withAnimation(.snappy) { setup.wrappedValue.swapHalves() }
                     }
-                    TempoPicker(tempoScale: $bindableApp.tempoScale)
+                    AppMenuPicker<Double>.tempo($bindableApp.tempoScale)
                         .fixedSize()
                     Toggle("Guide voices", isOn: setup.guideVoices)
                         .font(.sans(14))
@@ -98,15 +88,14 @@ struct CoopSetupView: View {
                 .font(.sans(13))
                 .foregroundStyle(playable ? Theme.cream.opacity(0.45) : Theme.wrong)
             Spacer()
-            PillButton(
+            AppButton(
                 title: "Start",
-                style: .filled,
-                compact: true
+                prominence: .primary,
+                size: .regular
             ) {
                 app.startCoop()
             }
             .disabled(!playable)
-            .opacity(playable ? 1 : 0.4)
         }
         .padding(.horizontal, 28)
         .padding(.bottom, 10)

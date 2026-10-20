@@ -15,64 +15,45 @@ struct PlayTopBar: View {
     let onPause: () -> Void
 
     var body: some View {
-        HStack {
-            Text(title)
-                .font(.sans(13, weight: .semibold))
-                .textCase(.uppercase)
-                .tracking(2)
-                .foregroundStyle(Theme.copper)
+        GlassEffectContainer {
+            HStack {
+                Text(title)
+                    .font(.sans(13, weight: .semibold))
+                    .textCase(.uppercase)
+                    .tracking(2)
+                    .foregroundStyle(Theme.copper)
 
-            Spacer()
+                Spacer()
 
-            // Its own view so the clock ticking doesn't re-evaluate the whole
-            // screen sixty times a second just to move a counter.
-            SessionCountersView(engine: engine, record: record)
+                // Its own view so the clock ticking doesn't re-evaluate the whole
+                // screen sixty times a second just to move a counter.
+                SessionCountersView(engine: engine, record: record)
 
-            Spacer()
+                Spacer()
 
-            ControllerStatusChip(compact: true)
+                ControllerStatusChip(compact: true)
+                    .padding(.trailing, 10)
+
+                // Bring the score and controls up. Down by default.
+                // Lit (gold glass) while the bar is showing, as the copper fill was.
+                AppIconButton(
+                    systemImage: bottomBarVisible
+                        ? "rectangle.bottomthird.inset.filled" : "rectangle",
+                    label: engine.judging
+                        ? (bottomBarVisible ? "Hide the score" : "Show the score")
+                        : (bottomBarVisible ? "Hide the controls" : "Show the controls"),
+                    prominence: bottomBarVisible ? .primary : .secondary,
+                    size: .compact
+                ) {
+                    bottomBarVisible.toggle()
+                }
+                .coachTarget(.panelToggle)
                 .padding(.trailing, 10)
 
-            // Bring the score and controls up. Down by default.
-            Button {
-                bottomBarVisible.toggle()
-            } label: {
-                Image(
-                    systemName: bottomBarVisible
-                        ? "rectangle.bottomthird.inset.filled" : "rectangle"
-                )
-                .font(.sans(15, weight: .medium))
-                .foregroundStyle(
-                    bottomBarVisible ? Theme.ink : Theme.copper
-                )
-                .frame(width: 44, height: 34)
-                .background(
-                    bottomBarVisible ? Theme.copper : .clear,
-                    in: Capsule()
-                )
-                .tintedButton()
+                AppIconButton(systemImage: "pause.fill", label: "Pause", size: .compact) {
+                    onPause()
+                }
             }
-            .buttonStyle(.kajar)
-            .accessibilityLabel(
-                engine.judging
-                    ? (bottomBarVisible ? "Hide the score" : "Show the score")
-                    : (bottomBarVisible ? "Hide the controls" : "Show the controls")
-            )
-            .coachTarget(.panelToggle)
-            .padding(.trailing, 10)
-
-            Button {
-                onPause()
-            } label: {
-                Image(systemName: "pause.fill")
-                    .font(.symbol(14, weight: .semibold))
-                    .foregroundStyle(Theme.cream)
-                    .frame(width: 44, height: 34)
-                    .tintedButton()
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.kajar)
-            .accessibilityLabel("Pause")
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 14)

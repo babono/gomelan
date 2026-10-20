@@ -91,7 +91,7 @@ struct AudioTestView: View {
 
     private var header: some View {
         HStack(spacing: 16) {
-            SecondaryButton(title: "Back", systemImage: "chevron.left") { app.closeAudioTest() }
+            AppButton(title: "Back", systemImage: "chevron.left", size: .compact) { app.closeAudioTest() }
             Spacer()
             HStack(spacing: 8) {
                 Circle().fill(audio.isRunning ? Theme.hit : Theme.miss).frame(width: 10, height: 10)
@@ -175,10 +175,11 @@ struct AudioTestView: View {
     private var baselineControls: some View {
         VStack(spacing: 10) {
             HStack(spacing: 12) {
-                SecondaryButton(
+                AppButton(
                     title: capturingBaseline ? "Done" :
                         (baselineCount == nil ? "Learn strike baseline" : "Re-learn baseline"),
-                    systemImage: capturingBaseline ? "checkmark" : "waveform.badge.plus"
+                    systemImage: capturingBaseline ? "checkmark" : "waveform.badge.plus",
+                    size: .compact
                 ) {
                     if capturingBaseline {
                         audio.finishBaselineCapture { count, _ in

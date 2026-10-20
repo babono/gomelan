@@ -31,48 +31,33 @@ struct AligningBottomBar: View {
             .font(.sans(13, weight: .medium))
             .foregroundStyle(Theme.inkStone)
             .underline()
-            .buttonStyle(.kajar)
+            .buttonStyle(.appPlain)
 
             // Spanner: reveal/hide the row-level fit controls.
-            Button {
+            // Lit (gold glass) while the row's fit controls are showing.
+            AppIconButton(
+                systemImage: "wrench.adjustable",
+                label: "Adjust fit",
+                prominence: viewModel.showAdjust ? .primary : .secondary,
+                size: .regular
+            ) {
                 withAnimation(.snappy(duration: 0.2)) {
                     viewModel.showAdjust.toggle()
                 }
-            } label: {
-                Image(systemName: "wrench.adjustable")
-                    .font(.sans(15, weight: .medium))
-                    .foregroundStyle(
-                        viewModel.showAdjust ? Theme.ink : Theme.copper
-                    )
-                    .frame(width: 38, height: 38)
-                    .background(
-                        viewModel.showAdjust ? Theme.copper : .clear,
-                        in: Circle()
-                    )
-                    .overlay(
-                        Circle().strokeBorder(
-                            Theme.copper.opacity(0.6),
-                            lineWidth: 1.5
-                        )
-                    )
             }
-            .buttonStyle(.kajar)
 
-            PillButton(
+            AppButton(
                 title: "Auto-detect",
-                style: .outlined,
-                tint: Theme.copper,
-                compact: true
+                size: .regular
             ) {
                 Task { await viewModel.autoDetect() }
             }
             .disabled(viewModel.detecting)
 
-            PillButton(
+            AppButton(
                 title: "Next",
-                style: .filled,
-                tint: Theme.copper,
-                compact: true
+                prominence: .primary,
+                size: .regular
             ) {
                 viewModel.confirmAlignment()
             }
@@ -145,18 +130,11 @@ struct AligningAdjustBar: View {
         _ system: String,
         _ action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            Image(systemName: system)
-                .font(.sans(11, weight: .semibold))
-                .foregroundStyle(Theme.copper)
-                .frame(width: 26, height: 26)
-                .overlay(
-                    Circle().strokeBorder(
-                        Theme.copper.opacity(0.6),
-                        lineWidth: 1.5
-                    )
-                )
-        }
-        .buttonStyle(.kajar)
+        AppIconButton(
+            systemImage: system,
+            label: system == "plus" ? "Increase" : "Decrease",
+            size: .compact,
+            action: action
+        )
     }
 }

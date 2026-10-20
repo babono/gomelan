@@ -35,7 +35,7 @@ struct NoteKeyBarsView: View {
                         }
                         .frame(maxWidth: 72, maxHeight: 220)
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
                 .disabled(!enabled)
                 .accessibilityLabel("Key \(number), \(recorded.contains(index) ? "recorded" : "not recorded")")
                 .accessibilityAddTraits(index == selected ? .isSelected : [])

@@ -20,9 +20,10 @@ struct WelcomeSlide: View {
         ) {
             SpinningMark()
         } action: {
-            PillButton(
+            AppButton(
                 title: "Next",
-                style: .filled,
+                prominence: .primary,
+                size: .large,
                 action: onNext
             )
         }
@@ -44,9 +45,10 @@ struct InterlockSlide: View {
                 DotLottieArt(name: "sangsih")
             }
         } action: {
-            PillButton(
+            AppButton(
                 title: "Next",
-                style: .filled,
+                prominence: .primary,
+                size: .large,
                 action: onNext
             )
         }
@@ -67,7 +69,7 @@ struct TrackingSlide: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
         } action: {
-            PillButton(title: "Finish", style: .filled, action: onFinish)
+            AppButton(title: "Finish", prominence: .primary, size: .large, action: onFinish)
         }
     }
 }

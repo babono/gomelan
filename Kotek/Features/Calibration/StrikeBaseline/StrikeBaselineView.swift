@@ -62,7 +62,7 @@ private struct StrikeBaselineContentView: View {
 
     private var header: some View {
         HStack {
-            SecondaryButton(title: "Skip", systemImage: "chevron.right") {
+            AppButton(title: "Skip", systemImage: "chevron.right", size: .compact) {
                 viewModel.finish(enableGate: false)
             }
             Spacer()
@@ -85,28 +85,30 @@ private struct StrikeBaselineContentView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
 
-            Button(action: { viewModel.toggleCapture() }) {
-                HStack(spacing: 10) {
-                    Image(systemName: viewModel.capturing ? "checkmark" : "waveform.badge.plus")
-                        .font(.symbol(22))
-                    Text(viewModel.recordTitle)
-                }
-                .font(.sans(17))
-                .foregroundStyle(viewModel.capturing ? .white : .black)
-                .padding(.vertical, 14)
-                .padding(.horizontal, 24)
-                .frame(maxWidth: 420)
-                .background(viewModel.capturing ? Color.red : Theme.accent, in: RoundedRectangle(cornerRadius: 14))
-            }
-            // `.plain`, not `.kajar` — the ONE control in the app with no tick
+            // `silent`, not a tick — the ONE control in the app with no tick
             // on it. This button starts the microphone learning what a strike
             // on this gangsa sounds like, and a kajar rung by the press itself
             // would still be decaying inside the first window that capture
             // records. The app would learn that a button is a strike.
-            .buttonStyle(.plain)
+            AppButton(
+                title: viewModel.recordTitle,
+                systemImage: viewModel.capturing ? "checkmark" : "waveform.badge.plus",
+                prominence: .primary,
+                size: .large,
+                tint: viewModel.capturing ? .red : nil,
+                fullWidth: true,
+                silent: true
+            ) { viewModel.toggleCapture() }
+                .frame(maxWidth: 420)
 
             if let count = viewModel.strikeCount, count > 0, !viewModel.capturing {
-                PrimaryButton(title: "Continue", systemImage: "checkmark.circle.fill") {
+                AppButton(
+                    title: "Continue",
+                    systemImage: "checkmark.circle.fill",
+                    prominence: .primary,
+                    size: .large,
+                    fullWidth: true
+                ) {
                     viewModel.finish(enableGate: true)
                 }
                 .frame(width: 280)

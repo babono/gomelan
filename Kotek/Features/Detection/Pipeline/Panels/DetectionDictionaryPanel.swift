@@ -28,7 +28,7 @@ struct DetectionDictionaryPanel: View {
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.white.opacity(0.6))
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
             }
 
             ScrollView(.vertical, showsIndicators: true) {
@@ -92,7 +92,7 @@ struct DetectionDictionaryPanel: View {
                                 in: Capsule()
                             )
                     }
-                    .buttonStyle(.kajar)
+                    .buttonStyle(.appPlain)
                 }
             }
             Text(MarkerColour(rawValue: app.markerColour)?.note ?? "")
@@ -114,7 +114,7 @@ struct DetectionDictionaryPanel: View {
                                 in: Capsule()
                             )
                     }
-                    .buttonStyle(.kajar)
+                    .buttonStyle(.appPlain)
                 }
             }
 
@@ -308,7 +308,7 @@ struct DetectionDictionaryPanel: View {
                             in: Capsule()
                         )
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
             }
         }
         if let failure = MalletHitClassifier.lastFailure {
@@ -417,7 +417,7 @@ struct DetectionDictionaryPanel: View {
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.white.opacity(0.6))
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
             }
         }
     }

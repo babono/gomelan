@@ -114,14 +114,9 @@ private struct WaterfallContentView: View {
                 // screen now — so it sits in the empty corner just above it,
                 // clear of the frame in both views (the tilt widens the frame).
                 .overlay(alignment: .bottomTrailing) {
-                    Label(
-                        vm.tilted ? "Swipe up for flat" : "Swipe up to tilt",
-                        systemImage: "chevron.up"
-                    )
-                    .font(.sans(11, weight: .medium))
-                    .foregroundStyle(Theme.cream.opacity(0.35))
-                    .padding(.trailing, 24)
-                    .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
+                    TiltHint(engine: vm.engine, tilted: vm.tilted)
+                        .padding(.trailing, 24)
+                        .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
                 }
             }
             // Down to the physical edge of the screen, so "sunk" is measured
@@ -167,7 +162,11 @@ private struct WaterfallContentView: View {
         @Bindable var bindableApp = app
         if vm.paused, vm.resumeCount == nil {
             HStack(spacing: 14) {
-                HalfSwitch(chosenHalf: app.chosenHalf) { app.setHalf($0) }
+                AppSwitcher(
+                    options: [KotekanHalf.polos, .sangsih],
+                    selection: app.chosenHalf,
+                    title: \.title
+                ) { app.setHalf($0) }
                     .fixedSize()
                 SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: vm.sensing)
                 sensorDot
@@ -177,7 +176,7 @@ private struct WaterfallContentView: View {
                     partnerAudible: $bindableApp.partnerAudible
                 )
                 .fixedSize()
-                TempoPicker(tempoScale: tempo)
+                AppMenuPicker<Double>.tempo(tempo)
                     .fixedSize()
             }
             .padding(.horizontal, 12)
@@ -237,6 +236,30 @@ struct StartCaption: View {
         .foregroundStyle(Theme.cream)
         .shadow(color: .black.opacity(0.6), radius: 8)
         .animation(.snappy(duration: 0.25), value: engine.countdownNumber)
+        .allowsHitTesting(false)
+    }
+}
+
+/// "Swipe up to tilt", during the count-in only. It stayed up the whole
+/// session and pulled the eye off the falling notes; the count-in is the one
+/// stretch with nothing to play, so that is when it gets read.
+///
+/// Its own view, like `StartCaption`, so reading the clock redraws this label
+/// and not the screen around it.
+private struct TiltHint: View {
+    let engine: PlayEngine
+    let tilted: Bool
+
+    var body: some View {
+        Group {
+            if engine.msUntilFirstNote != nil {
+                Label(tilted ? "Swipe up for flat" : "Swipe up to tilt", systemImage: "chevron.up")
+                    .font(.sans(11, weight: .medium))
+                    .foregroundStyle(Theme.cream.opacity(0.35))
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.4), value: engine.msUntilFirstNote == nil)
         .allowsHitTesting(false)
     }
 }
@@ -310,14 +333,14 @@ private struct PauseStage: View {
                     .transition(.scale.combined(with: .opacity))
             } else {
                 VStack(spacing: 22) {
-                    CircleIconButton(
+                    AppIconButton(
                         systemImage: "play.fill",
                         label: "Resume",
-                        size: 72,
-                        filled: true,
+                        prominence: .primary,
+                        size: .large,
                         action: onResume
                     )
-                    CapsuleButton(
+                    AppButton(
                         title: "Quit the session",
                         trailingSystemImage: "rectangle.portrait.and.arrow.right",
                         action: onQuit
@@ -342,11 +365,11 @@ struct WaterfallPauseOverlay: View {
             VStack(spacing: 22) {
                 Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
                 HStack(spacing: 16) {
-                    PillButton(title: "Resume", style: .filled, action: onResume)
+                    AppButton(title: "Resume", prominence: .primary, size: .large, action: onResume)
                     if let onEnd {
-                        PillButton(title: "End practice", style: .outlined, tint: Theme.copper, action: onEnd)
+                        AppButton(title: "End practice", size: .large, action: onEnd)
                     }
-                    PillButton(title: "Leave", style: .outlined, tint: Theme.copper, action: onLeave)
+                    AppButton(title: "Leave", size: .large, action: onLeave)
                 }
             }
         }

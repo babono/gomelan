@@ -36,7 +36,7 @@ struct OnboardingView: View {
 
             VStack {
                 Spacer()
-                PageDots(count: Self.slideCount, index: $index)
+                AppPageDots(count: Self.slideCount, index: $index)
                     .padding(.bottom, 10)
             }
         }

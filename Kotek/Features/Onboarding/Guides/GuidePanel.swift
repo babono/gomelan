@@ -89,10 +89,10 @@ struct GuidePanel<Content: View>: View {
 
             // Solid: it sits on the guide's own card, where glass would have
             // nothing to refract and would be glass in the content layer.
-            PillButton(
+            AppButton(
                 title: "Got it",
-                style: .solid,
-                compact: true,
+                prominence: .primary,
+                size: .compact,
                 action: onClose
             )
             .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 8 }

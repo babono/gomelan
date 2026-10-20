@@ -125,7 +125,7 @@ struct CaptureTrainingView: View {
     private var chrome: some View {
         VStack(spacing: 0) {
             HStack {
-                SecondaryButton(title: "Back", systemImage: "chevron.left") {
+                AppButton(title: "Back", systemImage: "chevron.left", size: .compact) {
                     app.closeCaptureTraining()
                 }
                 Spacer()
@@ -191,7 +191,7 @@ struct CaptureTrainingView: View {
                                 in: Capsule()
                             )
                     }
-                    .buttonStyle(.kajar)
+                    .buttonStyle(.appPlain)
                 }
 
                 Button(action: captureNow) {
@@ -207,7 +207,7 @@ struct CaptureTrainingView: View {
                         in: Capsule()
                     )
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
                 .disabled(!canCapture)
 
                 Button(action: exportAll) {
@@ -217,7 +217,7 @@ struct CaptureTrainingView: View {
                         .padding(10)
                         .background(Theme.copper.opacity(0.85), in: Circle())
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
                 .disabled(exporting)
 
                 Button { capture.clear() } label: {
@@ -227,7 +227,7 @@ struct CaptureTrainingView: View {
                         .padding(10)
                         .background(.black.opacity(0.55), in: Circle())
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
             }
             .padding(.bottom, 22)
         }
