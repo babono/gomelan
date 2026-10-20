@@ -43,15 +43,18 @@ struct KotekanMiniScore: View {
                 size.height - CGFloat(key - range.lowerBound + 1) * lane + (lane - blockH) / 2
             }
 
-            func draw(_ key: Int, slot: Int, color: Color, half: Bool, rightHalf: Bool) {
+            // Same skin as the waterfall's blocks, with a rim scaled down to
+            // the card: the waterfall's 1.5pt eats most of a 6pt block.
+            let rimWidth = min(1, blockH * 0.12)
+
+            func draw(_ key: Int, slot: Int, skin: VoiceSkin, half: Bool, rightHalf: Bool) {
                 let rect = CGRect(
                     x: CGFloat(slot) * slotW,
                     y: y(key),
                     width: blockW,
                     height: blockH
                 )
-                let block = Path(roundedRect: rect, cornerRadius: 1.5)
-                guard half else { ctx.fill(block, with: .color(color))
+                guard half else { skin.draw(ctx, rect, rimWidth: rimWidth)
                     return
                 }
                 var layer = ctx
@@ -61,7 +64,7 @@ struct KotekanMiniScore: View {
                     width: rect.width / 2,
                     height: rect.height
                 )))
-                layer.fill(block, with: .color(color))
+                skin.draw(layer, rect, rimWidth: rimWidth)
             }
 
             for offset in 0 ..< pageSlots {
@@ -71,12 +74,12 @@ struct KotekanMiniScore: View {
                 let s = kotekan.sangsih[slot]
 
                 if let p, p == s {
-                    draw(p, slot: offset, color: Theme.polosVoice, half: true, rightHalf: false)
-                    draw(p, slot: offset, color: Theme.sangsihVoice, half: true, rightHalf: true)
+                    draw(p, slot: offset, skin: .polos, half: true, rightHalf: false)
+                    draw(p, slot: offset, skin: .sangsih, half: true, rightHalf: true)
                     continue
                 }
-                if let p { draw(p, slot: offset, color: Theme.polosVoice, half: false, rightHalf: false) }
-                if let s { draw(s, slot: offset, color: Theme.sangsihVoice, half: false, rightHalf: false) }
+                if let p { draw(p, slot: offset, skin: .polos, half: false, rightHalf: false) }
+                if let s { draw(s, slot: offset, skin: .sangsih, half: false, rightHalf: false) }
             }
         }
     }

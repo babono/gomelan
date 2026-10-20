@@ -29,34 +29,12 @@ struct WaterfallCanvas: View {
         max(34, height / 6)
     }
 
-    /// A voice's block, from the design drawing: lighter at the top, a
-    /// brighter rim. Not `Theme.polosVoice`/`sangsihVoice` — the drawing
-    /// deepens both so they sit on the warm ground without glowing.
-    private struct Skin {
-        var top: Color, bottom: Color, rim: Color
-        static let polos = Skin(
-            top: Color(hex: 0x678BC6),
-            bottom: Color(hex: 0x3E527F),
-            rim: Color(hex: 0x7BA2E4)
-        )
-        static let sangsih = Skin(
-            top: Color(hex: 0xA382C6),
-            bottom: Color(hex: 0x78529F),
-            rim: Color(hex: 0xB391D8)
-        )
-        static let damp = Skin(
-            top: Color(hex: 0x715736),
-            bottom: Color(hex: 0x55422D),
-            rim: Color(hex: 0x9E7B49)
-        )
+    private var yourSkin: VoiceSkin {
+        .of(yourHalf)
     }
 
-    private var yourSkin: Skin {
-        yourHalf == .polos ? .polos : .sangsih
-    }
-
-    private var partnerSkin: Skin {
-        yourHalf == .polos ? .sangsih : .polos
+    private var partnerSkin: VoiceSkin {
+        VoiceSkin.of(yourHalf == .polos ? .sangsih : .polos).muted
     }
 
     var body: some View {
@@ -173,31 +151,16 @@ struct WaterfallCanvas: View {
         }
     }
 
-    private func drawBlock(_ ctx: GraphicsContext, _ r: CGRect, skin: Skin) {
-        let shape = Path(roundedRect: r, cornerRadius: min(r.width, r.height) * 0.22)
-        ctx.fill(shape, with: .linearGradient(
-            Gradient(colors: [skin.top, skin.bottom]),
-            startPoint: CGPoint(x: r.midX, y: r.minY), endPoint: CGPoint(x: r.midX, y: r.maxY)
-        ))
-        ctx.stroke(
-            Path(
-                roundedRect: r.insetBy(dx: 0.75, dy: 0.75),
-                cornerRadius: min(r.width, r.height) * 0.22 - 0.75
-            ),
-            with: .color(skin.rim),
-            lineWidth: 1.5
-        )
-    }
-
-    /// The other half, drawn as solid as yours: the interlock is the lesson,
-    /// and the colour already says whose stroke it is.
+    /// The other half, muted (`polos-mute`): a slate block with its voice's
+    /// rim. It used to be drawn as solid as yours; now only your strokes are
+    /// lit, and the rim still shows where the partner's land.
     private func drawPartner(
         _ ctx: GraphicsContext,
         note: FallingNote,
         y: (Double) -> CGFloat,
         pxPerMs: Double
     ) {
-        drawBlock(ctx, block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs), skin: partnerSkin)
+        partnerSkin.draw(ctx, block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs))
     }
 
     /// Keeps its colour after it is judged — the verdict is painted on the
@@ -208,7 +171,7 @@ struct WaterfallCanvas: View {
         y: (Double) -> CGFloat,
         pxPerMs: Double
     ) {
-        drawBlock(ctx, block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs), skin: yourSkin)
+        yourSkin.draw(ctx, block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs))
     }
 
     /// Follows its stroke up the same lane, as long as the stroke, reaching
@@ -232,7 +195,7 @@ struct WaterfallCanvas: View {
             width: width,
             height: stroke.height
         )
-        drawBlock(ctx, r, skin: .damp)
+        VoiceSkin.damp.draw(ctx, r)
         let iconH = min(r.width * 0.5, r.height - 6)
         let iconW = iconH * 0.8
         DampGlyph.draw(
