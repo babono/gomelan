@@ -25,6 +25,11 @@ struct PadScale<Content: View>: View {
         CGSize(width: 874, height: 402)
     }
 
+    /// Minimum side inset, in layout points (scaled up with everything else).
+    private static var sideMargin: CGFloat {
+        20
+    }
+
     var body: some View {
         if UIDevice.current.userInterfaceIdiom == .pad {
             GeometryReader { geo in
@@ -34,11 +39,18 @@ struct PadScale<Content: View>: View {
                     // The screen's safe area, carried into the smaller layout:
                     // ignored, a footer sits under the home indicator; left to
                     // SwiftUI, a frame smaller than the screen gets none.
+                    //
+                    // The sides get at least the HIG's regular-width margin.
+                    // A landscape iPhone has ~62pt of safe area each side from
+                    // the Dynamic Island, and the pickers lean on it — their
+                    // top bar, search row and footer add no padding of their
+                    // own. A landscape iPad has none, so those buttons sat
+                    // flush against the glass.
                     .safeAreaPadding(EdgeInsets(
                         top: insets.top / s,
-                        leading: insets.leading / s,
+                        leading: max(insets.leading / s, Self.sideMargin),
                         bottom: insets.bottom / s,
-                        trailing: insets.trailing / s
+                        trailing: max(insets.trailing / s, Self.sideMargin)
                     ))
                     .frame(width: geo.size.width / s, height: geo.size.height / s)
                     .scaleEffect(s)
