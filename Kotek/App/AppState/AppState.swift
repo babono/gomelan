@@ -99,15 +99,20 @@ final class AppState {
         didSet { Defaults.set("yourVoiceAudible", yourVoiceAudible) }
     }
 
-    /// Whether the practice screen shows where to damp: the hand tile behind
-    /// each note and the pinch on the bar as the note ends. On by default —
-    /// damping is half of playing a gangsa — and off for anyone who would
-    /// rather read the strokes alone. Display only; damping is never judged.
+    /// How much the practice screen shows of where to damp: the hand tile
+    /// behind each note and the pinch on the bar as the note ends. All of it
+    /// by default — damping is half of playing a gangsa. Set in the Gangsa
+    /// card and from the pause screen, and read live, so a change while
+    /// paused shows on resume. Display only; damping is never judged.
+    ///
+    /// Was a Bool, `showsDamp`; a stored "off" carries over.
     ///
     /// ponytail: one setting for the app, not one per gangsa, though it sits
     /// in the Gangsa card. Nothing yet needs a different answer per gangsa.
-    var showsDamp: Bool = Defaults.bool("showsDamp", true) {
-        didSet { Defaults.set("showsDamp", showsDamp) }
+    var dampGuide: DampGuide = DampGuide(rawValue: Defaults.string("dampGuide") ?? "")
+        ?? (Defaults.bool("showsDamp", true) ? .all : .off)
+    {
+        didSet { Defaults.set("dampGuide", dampGuide.rawValue) }
     }
 
     /// Whether the practice screen's bottom panel — the half switch, the tempo,

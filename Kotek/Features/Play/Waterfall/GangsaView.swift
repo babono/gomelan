@@ -99,6 +99,8 @@ struct HandCue: Equatable {
     /// The mallet: 0 head on the bar, 1 fully raised. The damp hand: 0 open,
     /// 1 pinched.
     var pose: Double
+    /// The mallet: seconds since it last landed, for the rebound off the bar.
+    var strikeAge: Double?
 }
 
 struct GangsaView: View {
@@ -145,6 +147,7 @@ struct GangsaView: View {
                             ctx,
                             bar: handBar(mallet, height: size.height),
                             lift: mallet.pose,
+                            strikeAge: mallet.strikeAge,
                             reduceMotion: reduceMotion
                         )
                     }

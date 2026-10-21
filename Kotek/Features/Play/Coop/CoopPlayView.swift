@@ -79,10 +79,12 @@ private struct CoopPlayContentView: View {
                 engine: lane.engine,
                 layout: layout,
                 voiced: vm.voicedKeys,
-                yourHalf: lane.player.half
+                yourHalf: lane.player.half,
+                damp: app.dampGuide
             )
             .frame(width: layout.width, height: stage.canvasHeight)
-            GangsaStage(engine: lane.engine, layout: layout, tilted: false)
+            // Play-along: nothing is sensed, so the bars ring for every stroke.
+            GangsaStage(engine: lane.engine, layout: layout, tilted: false, damp: app.dampGuide, autoStrikes: true)
                 .frame(width: layout.frameWidth, height: stage.gangsaHeight)
         }
         // Taller than the stage by the sunk half of the gangsa; aligned to the

@@ -74,7 +74,19 @@ enum GangsaHands {
     /// clockwise about where the hand holds the handle, so the head lifts away
     /// to the right and comes back down onto its bar, instead of sliding
     /// sideways onto the wrong one.
-    static func mallet(_ ctx: GraphicsContext, bar: CGRect, lift: Double, reduceMotion: Bool) {
+    ///
+    /// It casts a shadow on the bars that tells how high the head is: well
+    /// off to the lower left and soft while it is up, closing in and sharpening
+    /// as it comes down, and gone at contact — the head is on the bar, so there
+    /// is nowhere for a shadow to fall. Watching the head meet its shadow is
+    /// how you see the stroke land, the way you would on a real gangsa.
+    static func mallet(
+        _ ctx: GraphicsContext,
+        bar: CGRect,
+        lift: Double,
+        strikeAge: Double?,
+        reduceMotion: Bool
+    ) {
         let unit = bar.width / 44.18
         let s = unit * malletScale
         let cap = CGPoint(x: 17, y: 10) // art: centre of the head's round end
@@ -87,8 +99,21 @@ enum GangsaHands {
         let pivot = grip.applying(seated)
 
         var c = ctx
+        if !reduceMotion, lift > 0 {
+            // Added before any transform, so the offset is in screen space
+            // and the light stays put while the mallet swings.
+            let h = CGFloat(lift)
+            let near = min(1, h / 0.12) // fades out over the last of the fall
+            c.addFilter(.shadow(
+                color: Color(hex: 0x140D09, alpha: 0.5 * near * (1 - 0.35 * h)),
+                radius: unit * (0.6 + 6 * h),
+                x: -unit * 9 * h,
+                y: unit * 13 * h
+            ))
+        }
         c.translateBy(x: pivot.x, y: pivot.y)
-        c.rotate(by: .degrees(reduceMotion ? 0 : windUp * lift))
+        let rebound = reduceMotion ? 0 : strikeAge.map(Self.rebound) ?? 0
+        c.rotate(by: .degrees(reduceMotion ? 0 : windUp * lift + rebound))
         c.translateBy(x: -pivot.x, y: -pivot.y)
         c.concatenate(seated)
         c.draw(c.resolve(Image("play-mallet")), in: CGRect(x: 0, y: 0, width: 61, height: 121))
@@ -96,6 +121,38 @@ enum GangsaHands {
 
     /// Raised angle in degrees, at `lift` 1.
     private static let windUp = 30.0
+
+    /// How high the mallet is, 0…`peak`, `phase` of the way from one stroke
+    /// (0) to the next (1), `gapMs` apart.
+    ///
+    /// Up fast and easing out over the first 40%, a hang at the top, then
+    /// thrown down along a cubic Bézier that is still steepening when it
+    /// reaches the bar — the head arrives at full speed, as a struck panggul
+    /// does, so contact is a sharp moment and not a settle. Fast figures lift
+    /// less: there is no time for a full swing between close strokes.
+    static func strokeLift(phase: Double, gapMs: Double) -> Double {
+        let peak = 0.7 * min(1, max(0.35, gapMs / 450))
+        let top = 0.4
+        let p = min(max(phase, 0), 1)
+        if p < top { return peak * UnitCurve.easeOut.value(at: p / top) }
+        return peak * (1 - throwDown.value(at: (p - top) / (1 - top)))
+    }
+
+    /// Slow off the top, accelerating all the way down: it ends at a slope of
+    /// ~3.7, against 0 at the start.
+    private static let throwDown = UnitCurve.bezier(
+        startControlPoint: UnitPoint(x: 0.5, y: 0),
+        endControlPoint: UnitPoint(x: 0.85, y: 0.45)
+    )
+
+    /// The kick back off the bar at contact, in degrees, `age` seconds after
+    /// it: a couple of quick bounces, always away from the bar — a mallet
+    /// cannot go through bronze — dying away in about a tenth of a second,
+    /// alongside the bar's own ring.
+    private static func rebound(age: Double) -> Double {
+        guard age >= 0 else { return 0 }
+        return 5 * abs(sin(2 * .pi * 12 * age)) * exp(-age / 0.045)
+    }
 
     /// Against the art's own scale. 0.75 read as a toy beside the bar.
     private static let malletScale: CGFloat = 1.1

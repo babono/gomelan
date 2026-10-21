@@ -112,14 +112,16 @@ struct FallingNote: Identifiable, Equatable {
     let durationMs: Double
     var outcome: JudgementResult?
     /// Whether the left hand pinches THIS bilah as soon as the note ends
-    /// (§5.5). False for the partner's half, when the damp cues are switched
-    /// off, and when the next stroke of the same half is this same bilah: the
+    /// (§5.5). False for the partner's half, and when the next stroke of the same half is this same bilah: the
     /// mallet re-strikes a bar that is still ringing, so there is nothing to
     /// damp in between.
     ///
     /// It used to be the previous stroke's bilah, pinched as this one was
     /// struck. That made the damp wait for the next note, so a note before a
     /// rest rang on through the rest with no damp shown at all.
+    ///
+    /// The musical fact only: whether it is SHOWN is `DampGuide`, applied by
+    /// the views, so it can change mid-session from the pause screen.
     let dampsAfter: Bool
 }
 
