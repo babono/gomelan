@@ -64,6 +64,11 @@ struct GangsaLayout {
         (height - 24) / 2.25
     }
 
+    /// The inverse: how tall a gangsa is whose lane is `lane`.
+    static func height(forLane lane: CGFloat) -> CGFloat {
+        lane * 2.25 + 24
+    }
+
     /// The lane run for `keyCount` bars at `height`, narrowed so the frame —
     /// whose posts scale with the bars — still fits in `available`.
     static func width(keyCount: Int, height: CGFloat, fitting available: CGFloat) -> CGFloat {

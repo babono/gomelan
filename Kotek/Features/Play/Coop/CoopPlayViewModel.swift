@@ -40,6 +40,10 @@ final class CoopPlayViewModel {
     private let displayLink = DisplayLink()
 
     var paused = false
+    /// 3, 2, 1 between Resume and the clock running again, as in solo — two
+    /// players need their hands back over the bilah too. Nil otherwise.
+    private(set) var resumeCount: Int?
+    private var resumeTask: Task<Void, Never>?
     private var pauseStartedAt: Double = 0
 
     init(app: AppState, cue: CuePlayer = Container.shared.cueService()) {
@@ -102,6 +106,7 @@ final class CoopPlayViewModel {
     }
 
     func teardown() {
+        resumeTask?.cancel()
         displayLink.stop()
         cue.stop()
     }
@@ -116,7 +121,22 @@ final class CoopPlayViewModel {
         cue.stopKeySamples()
     }
 
+    /// Count 3, 2, 1, then run. Still paused while it counts, so the clock is
+    /// shifted past the countdown too — see `WaterfallPlayViewModel.resume`.
     func resume() {
+        guard paused, resumeCount == nil else { return }
+        resumeTask = Task { [weak self] in
+            for n in [3, 2, 1] {
+                self?.resumeCount = n
+                try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
+            }
+            self?.finishResume()
+        }
+    }
+
+    private func finishResume() {
+        resumeCount = nil
         guard paused else { return }
         let seconds = CACurrentMediaTime() - pauseStartedAt
         for lane in lanes {
@@ -126,9 +146,18 @@ final class CoopPlayViewModel {
         paused = false
     }
 
+    /// Backgrounded mid-count: stay paused, and ask for Resume again.
+    private func cancelResume() {
+        resumeTask?.cancel()
+        resumeTask = nil
+        resumeCount = nil
+    }
+
     /// Both lanes at once, on one instant — see `PlayEngine.setTempoScale`.
+    /// Tempo is set while paused now, so anchored at the pause, as in solo:
+    /// anchored to now, the resume added the whole pause on top.
     func tempoChanged(_ scale: Double) {
-        let now = CACurrentMediaTime()
+        let now = paused ? pauseStartedAt : CACurrentMediaTime()
         for lane in lanes {
             lane.engine.setTempoScale(scale, now: now)
         }
@@ -147,11 +176,14 @@ final class CoopPlayViewModel {
     }
 
     func leave() {
+        cancelResume()
         teardown()
         app.leaveCoop()
     }
 
     func handleScenePhase(_ phase: ScenePhase) {
-        if phase != .active { pause() }
+        guard phase != .active else { return }
+        cancelResume()
+        pause()
     }
 }

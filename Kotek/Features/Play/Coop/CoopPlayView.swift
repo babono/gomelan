@@ -34,8 +34,20 @@ private struct CoopPlayContentView: View {
     var body: some View {
         @Bindable var bindableApp = app
 
+        // Laid out as the solo waterfall: nothing to reach for while playing
+        // — only the title — and a tap anywhere pauses, with every control on
+        // the pause screen and a 3, 2, 1 back in.
         VStack(spacing: 0) {
             topBar(tempo: $bindableApp.tempoScale)
+                .frame(height: 50)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity)
+                .background {
+                    if vm.paused {
+                        Color.black.opacity(PauseStage.dim).ignoresSafeArea(edges: [.top, .horizontal])
+                    }
+                }
             GeometryReader { geo in
                 let stage = CoopStageLayout(size: geo.size, keyCounts: vm.lanes.map(\.keyCount))
                 ZStack(alignment: .topLeading) {
@@ -54,13 +66,18 @@ private struct CoopPlayContentView: View {
             // Down to the glass, as the solo waterfall does, so the sunk half
             // of each gangsa is measured from the edge of the screen.
             .ignoresSafeArea(.container, edges: .bottom)
-        }
-        .background(Theme.ground.ignoresSafeArea())
-        .overlay {
-            if vm.paused {
-                WaterfallPauseOverlay(onResume: vm.resume, onEnd: nil, onLeave: vm.leave)
+            .overlay {
+                if vm.paused {
+                    PauseStage(resumeCount: vm.resumeCount, onResume: vm.resume, onQuit: vm.leave)
+                }
             }
         }
+        .background(Theme.ground.ignoresSafeArea())
+        .contentShape(Rectangle())
+        .onTapGesture(perform: vm.pause)
+        .accessibilityAction(named: "Pause", vm.pause)
+        .animation(.easeInOut(duration: 0.2), value: vm.paused)
+        .animation(.easeInOut(duration: 0.2), value: vm.resumeCount == nil)
         .onAppear(perform: vm.setup)
         .onDisappear(perform: vm.teardown)
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
@@ -92,24 +109,19 @@ private struct CoopPlayContentView: View {
         .frame(width: stage.columnWidth, height: stage.size.height, alignment: .top)
     }
 
+    /// Playing: the figure and the cycle, nothing else. Paused: the session's
+    /// controls in one panel around the same title.
+    @ViewBuilder
     private func topBar(tempo: Binding<Double>) -> some View {
-        GlassEffectContainer {
-            HStack(spacing: 12) {
-                AppIconButton(systemImage: "pause.fill", label: "Pause", size: .compact, action: vm.pause)
-
-                Text(vm.kotekan?.name ?? "")
-                    .font(.sans(13, weight: .semibold))
-                    .textCase(.uppercase)
-                    .tracking(2)
-                    .foregroundStyle(Theme.copper)
-                    .lineLimit(1)
-
-                Spacer()
-
+        @Bindable var bindableApp = app
+        let title = SessionTitle(name: vm.kotekan?.name ?? "", engine: vm.clock, showsScore: false)
+        if vm.paused, vm.resumeCount == nil {
+            HStack(spacing: 14) {
+                title
                 Text("Play along · not scored")
                     .font(.sans(12))
                     .foregroundStyle(Theme.cream.opacity(0.45))
-
+                    .lineLimit(1)
                 AppButton(
                     title: "Guide",
                     systemImage: vm.guideVoices ? "speaker.wave.2.fill" : "speaker.slash.fill",
@@ -118,13 +130,27 @@ private struct CoopPlayContentView: View {
                     vm.setGuideVoices(!vm.guideVoices)
                 }
                 .accessibilityLabel(vm.guideVoices ? "Mute the guide voices" : "Play the guide voices")
-
+                .fixedSize()
                 AppMenuPicker<Double>.tempo(tempo)
                     .fixedSize()
+                AppMenuPicker(
+                    options: DampGuide.allCases,
+                    selection: $bindableApp.dampGuide,
+                    title: \.title,
+                    label: "Damping guide",
+                    systemImage: "hand.raised"
+                )
+                .fixedSize()
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.deep.opacity(0.92), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .transition(.opacity)
+        } else {
+            title
+                .frame(minHeight: 34)
+                .transition(.opacity)
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
     }
 }
 
@@ -145,8 +171,17 @@ private struct CoopStageLayout {
         max(0, (size.width - Self.outerPad * 2 - Self.gap) / 2)
     }
 
+    /// No taller than the narrowest lane allows. Each gangsa is narrowed to
+    /// fit its column, and at solo's height that left long thin bars: the
+    /// hands, which scale with a bar's width, ended partway down them and
+    /// floated there instead of reaching off the screen edge as in solo.
     var gangsaHeight: CGFloat {
-        min(150, size.height * 0.36)
+        let fitted = keyCounts.map { keys in
+            GangsaLayout.width(keyCount: keys, height: .greatestFiniteMagnitude, fitting: columnWidth)
+                / CGFloat(max(1, keys))
+        }
+        let byWidth = GangsaLayout.height(forLane: fitted.min() ?? .greatestFiniteMagnitude)
+        return min(150, size.height * 0.36, byWidth)
     }
 
     var canvasHeight: CGFloat {
@@ -177,6 +212,8 @@ private struct CoopStageLayout {
 
 private struct LaneHeader: View {
     let player: CoopPlayer
+    private static let nameCapHeight = KotekFonts.displayRegular
+        .flatMap { UIFont(name: $0, size: 22)?.capHeight } ?? 15
     /// Only when the two players are on different gangsa.
     let gangsa: String?
 
@@ -187,6 +224,13 @@ private struct LaneHeader: View {
                 .font(.serif(22))
                 .foregroundStyle(Theme.cream)
                 .lineLimit(1)
+                // Neither box nor capitals centre it on the pill: Katibeh's
+                // line box has a deep descent, so box-centred it sat ~5pt
+                // high, and centred on its cap height ~2.5pt low. Cap-centred
+                // plus that measured 2.5pt sits it on the pill's middle.
+                .alignmentGuide(VerticalAlignment.center) { d in
+                    d[.firstTextBaseline] - Self.nameCapHeight / 2 + 2.5
+                }
             Text(player.half.title)
                 .font(.sans(11, weight: .bold))
                 .textCase(.uppercase)

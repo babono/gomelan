@@ -297,7 +297,8 @@ private struct SensorDot: View {
 
 /// "Ubitan Nyendok - Cycle 12", and on the pause screen " - 86%" after it.
 /// Its own view so the cycle ticking over doesn't re-evaluate the screen.
-private struct SessionTitle: View {
+/// Coop's title too.
+struct SessionTitle: View {
     let name: String
     let engine: PlayEngine
     let showsScore: Bool
@@ -324,8 +325,8 @@ private struct SessionTitle: View {
 
 /// Over the stage while paused: Resume and Quit in glass, or the 3, 2, 1
 /// after Resume. The waterfall stays visible behind, dimmed, so you can see
-/// where in the figure you will pick up.
-private struct PauseStage: View {
+/// where in the figure you will pick up. Coop pauses the same way.
+struct PauseStage: View {
     let resumeCount: Int?
     let onResume: () -> Void
     let onQuit: () -> Void
@@ -361,28 +362,5 @@ private struct PauseStage: View {
             }
         }
         .animation(.snappy(duration: 0.25), value: resumeCount)
-    }
-}
-
-struct WaterfallPauseOverlay: View {
-    let onResume: () -> Void
-    /// Nil where there is nothing to score, so nothing to end — coop's play-along.
-    let onEnd: (() -> Void)?
-    let onLeave: () -> Void
-
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.65).ignoresSafeArea()
-            VStack(spacing: 22) {
-                Text("Paused").font(.serif(44)).foregroundStyle(Theme.cream)
-                HStack(spacing: 16) {
-                    AppButton(title: "Resume", prominence: .primary, size: .large, action: onResume)
-                    if let onEnd {
-                        AppButton(title: "End practice", size: .large, action: onEnd)
-                    }
-                    AppButton(title: "Leave", size: .large, action: onLeave)
-                }
-            }
-        }
     }
 }
