@@ -65,6 +65,6 @@ struct VoiceMixer: View {
             .overlay(Capsule().strokeBorder(Theme.inkStone.opacity(0.35), lineWidth: 1))
             .contentShape(Capsule())
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(.appPlain)
     }
 }

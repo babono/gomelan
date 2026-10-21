@@ -193,13 +193,13 @@ struct PracticeCoachOverlay: View {
                     Button("Skip", action: onSkip)
                         .font(.sans(13, weight: .medium))
                         .foregroundStyle(Theme.cream.opacity(0.5))
-                        .buttonStyle(.kajar)
+                        .buttonStyle(.appPlain)
                 }
                 Spacer()
-                PillButton(
+                AppButton(
                     title: isLast ? "Start" : "Next",
-                    style: .filled,
-                    compact: true,
+                    prominence: .primary,
+                    size: .compact,
                     action: onNext
                 )
             }

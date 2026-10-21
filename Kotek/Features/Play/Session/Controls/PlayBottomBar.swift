@@ -15,24 +15,28 @@ struct PlayBottomBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                HalfSwitch(
-                    chosenHalf: app.chosenHalf,
-                    onSelect: { app.setHalf($0) }
-                )
-                .coachTarget(.half)
+            GlassEffectContainer {
+                HStack(spacing: 10) {
+                    AppSwitcher(
+                        options: [KotekanHalf.polos, .sangsih],
+                        selection: app.chosenHalf,
+                        title: \.title,
+                        onSelect: { app.setHalf($0) }
+                    )
+                    .coachTarget(.half)
 
-                TempoPicker(tempoScale: $app.tempoScale)
-                    .coachTarget(.tempo)
+                    AppMenuPicker<Double>.tempo($app.tempoScale)
+                        .coachTarget(.tempo)
 
-                Spacer()
+                    Spacer()
 
-                VoiceMixer(
-                    yourHalf: app.chosenHalf,
-                    yourVoiceAudible: $app.yourVoiceAudible,
-                    partnerAudible: $app.partnerAudible
-                )
-                .coachTarget(.voices)
+                    VoiceMixer(
+                        yourHalf: app.chosenHalf,
+                        yourVoiceAudible: $app.yourVoiceAudible,
+                        partnerAudible: $app.partnerAudible
+                    )
+                    .coachTarget(.voices)
+                }
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 9)

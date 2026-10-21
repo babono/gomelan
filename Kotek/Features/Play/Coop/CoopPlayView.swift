@@ -91,51 +91,35 @@ private struct CoopPlayContentView: View {
     }
 
     private func topBar(tempo: Binding<Double>) -> some View {
-        HStack(spacing: 12) {
-            Button(action: vm.pause) {
-                Image(systemName: "pause.fill")
-                    .font(.symbol(14, weight: .semibold))
-                    .foregroundStyle(Theme.cream)
-                    .frame(width: 44, height: 34)
-                    .tintedButton()
-                    .contentShape(Capsule())
-            }
-            .buttonStyle(.kajar)
-            .accessibilityLabel("Pause")
+        GlassEffectContainer {
+            HStack(spacing: 12) {
+                AppIconButton(systemImage: "pause.fill", label: "Pause", size: .compact, action: vm.pause)
 
-            Text(vm.kotekan?.name ?? "")
-                .font(.sans(13, weight: .semibold))
-                .textCase(.uppercase)
-                .tracking(2)
-                .foregroundStyle(Theme.copper)
-                .lineLimit(1)
+                Text(vm.kotekan?.name ?? "")
+                    .font(.sans(13, weight: .semibold))
+                    .textCase(.uppercase)
+                    .tracking(2)
+                    .foregroundStyle(Theme.copper)
+                    .lineLimit(1)
 
-            Spacer()
+                Spacer()
 
-            Text("Play along · not scored")
-                .font(.sans(12))
-                .foregroundStyle(Theme.cream.opacity(0.45))
+                Text("Play along · not scored")
+                    .font(.sans(12))
+                    .foregroundStyle(Theme.cream.opacity(0.45))
 
-            Button {
-                vm.setGuideVoices(!vm.guideVoices)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: vm.guideVoices ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                        .font(.symbol(12, weight: .semibold))
-                    Text("Guide")
-                        .font(.sans(12, weight: .semibold))
+                AppButton(
+                    title: "Guide",
+                    systemImage: vm.guideVoices ? "speaker.wave.2.fill" : "speaker.slash.fill",
+                    size: .compact
+                ) {
+                    vm.setGuideVoices(!vm.guideVoices)
                 }
-                .foregroundStyle(vm.guideVoices ? Theme.copper : Theme.cream.opacity(0.5))
-                .padding(.horizontal, 12)
-                .frame(minHeight: 34)
-                .overlay(Capsule().strokeBorder(Theme.copper.opacity(0.45), lineWidth: 1))
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.kajar)
-            .accessibilityLabel(vm.guideVoices ? "Mute the guide voices" : "Play the guide voices")
+                .accessibilityLabel(vm.guideVoices ? "Mute the guide voices" : "Play the guide voices")
 
-            TempoPicker(tempoScale: tempo)
-                .fixedSize()
+                AppMenuPicker<Double>.tempo(tempo)
+                    .fixedSize()
+            }
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 10)

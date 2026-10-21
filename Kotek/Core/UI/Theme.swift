@@ -102,15 +102,20 @@ enum Theme {
     static let buttonFill = Color("Tertiary")
     /// Type sitting on that slab.
     static let onButtonFill = Color("LaunchBackground")
-    /// Type on the main action, gold glass or solid gold (`ButtonSurface`).
+    /// The tint of every secondary glass control: the ground itself, so a button
+    /// reads as a raised piece of the background rather than a bright pane.
+    static let glassTint = ground
+    /// Type on the main action, gold glass (`AppButtonStyle.prominent`).
     static let onGlassFill = onButtonFill
 
     // MARK: - Geometry
 
     /// Corner radius for buttons, cards and wells.
     static let radius: CGFloat = 14
-    /// Height of a primary button.
-    static let buttonHeight: CGFloat = 56
+    /// Height of a primary button: what the system draws a `.large` AppButton
+    /// at (`.extraLarge` control size, measured), so the one control that is not
+    /// ours — Sign in with Apple — sits at the same height beside it.
+    static let buttonHeight: CGFloat = 52
 
     /// Weight and letter-spacing shared by every button label.
     ///

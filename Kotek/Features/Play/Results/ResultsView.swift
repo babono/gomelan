@@ -26,7 +26,11 @@ struct ResultsView: View {
                 HStack(alignment: .top, spacing: 32) {
                     Group {
                         if result.best != nil {
-                            performance(result)
+                            ResultsPerformanceView(
+                                slots: slots(result),
+                                keyCount: app.profile.keyCount,
+                                half: app.chosenHalf
+                            )
                         } else {
                             tooShort
                         }
@@ -107,50 +111,6 @@ struct ResultsView: View {
             half: app.chosenHalf.title.lowercased(),
             tempo: Theme.tempoLabel(app.tempoScale)
         )
-    }
-
-    /// The figure as a piano roll, both halves, with where it went wrong
-    /// marked on it — every pass folded onto one.
-    private func performance(_ result: SongResult) -> some View {
-        let slots = slots(result)
-        let worst = PatternSlotScore.worst(slots, limit: 1).first
-        return VStack(alignment: .leading, spacing: 8) {
-            SectionLabel("Performance", color: Theme.stone)
-
-            // Takes whatever height the screen has left — no scroll to reach it.
-            PerformanceGraph(slots: slots, keyCount: app.profile.keyCount, worst: worst)
-                .frame(maxHeight: .infinity)
-
-            HStack(spacing: 14) {
-                legend("Polos", Theme.polosVoice)
-                legend("Sangsih", Theme.sangsihVoice)
-                legend("Wrong bilah", Theme.wrong)
-                legend("Missed", Theme.miss)
-            }
-            .font(.sans(12))
-            .foregroundStyle(Theme.stone)
-
-            Group {
-                if let worst {
-                    Text(
-                        "most slips · \(worst.half.title) on bilah \(worst.keyIndex.map { bilahLabel($0, count: app.profile.keyCount) } ?? "–")"
-                    )
-                    .foregroundStyle(Theme.terracotta)
-                } else {
-                    Text("no slips")
-                        .foregroundStyle(Theme.hit)
-                }
-            }
-            .font(.sans(12))
-            .foregroundStyle(Theme.stone)
-        }
-    }
-
-    private func legend(_ label: String, _ color: Color) -> some View {
-        HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 12, height: 8)
-            Text(label)
-        }
     }
 
     /// Ended before a single pass came round.

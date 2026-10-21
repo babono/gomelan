@@ -125,7 +125,7 @@ struct ResultsFeedbackView: View {
                     Button(expanded ? "Show less" : "Show more") {
                         withAnimation(.snappy(duration: 0.25)) { expanded.toggle() }
                     }
-                    .buttonStyle(.kajar)
+                    .buttonStyle(.appPlain)
                     .font(.sans(13, weight: .semibold))
                     .foregroundStyle(Theme.terracotta)
                 }

@@ -23,7 +23,7 @@ struct PermissionsBlockedView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 480)
                 .lineSpacing(4)
-            PillButton(title: "Open Settings", systemImage: "gear", style: .outlined, uppercase: false) {
+            AppButton(title: "Open Settings", systemImage: "gear", size: .large) {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }

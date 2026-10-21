@@ -41,7 +41,7 @@ struct SaveProgressPrompt: View {
 
                 HStack(spacing: 12) {
                     Spacer(minLength: 0)
-                    PillButton(title: "Not now", style: .outlined, tint: Theme.cream, compact: true) {
+                    AppButton(title: "Not now", size: .compact) {
                         app.dismissSavePrompt()
                     }
                     AppleSignInButton { token, nonce, name in

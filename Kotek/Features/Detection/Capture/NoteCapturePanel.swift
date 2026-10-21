@@ -18,19 +18,10 @@ struct NoteCapturePanel: View {
             HStack {
                 SectionLabel("Key \(NoteCaptureViewModel.number(for: viewModel.keyIndex))", color: Theme.copper)
                 Spacer()
-                Button {
+                AppIconButton(systemImage: "trash", label: "Delete recording", size: .compact, tint: Theme.miss) {
                     confirmingDelete = true
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.symbol(16, weight: .semibold))
-                        .foregroundStyle(Theme.miss)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.kajar)
                 .disabled(!canPlay)
-                .opacity(canPlay ? 1 : 0.35)
-                .accessibilityLabel("Delete recording")
             }
             .frame(height: 24)
 
@@ -45,46 +36,33 @@ struct NoteCapturePanel: View {
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
 
-            PillButton(
+            AppButton(
                 title: "Record",
                 systemImage: "record.circle",
-                style: .solid,
-                tint: Theme.copper,
+                prominence: .primary,
+                size: .compact,
                 fullWidth: true,
-                compact: true,
                 silent: true,
                 action: { viewModel.record() }
             )
             .disabled(viewModel.isRecording)
 
             HStack(spacing: 8) {
-                PillButton(
+                AppButton(
                     title: viewModel.isPlaying ? "Stop" : "Play",
                     systemImage: viewModel.isPlaying ? "stop.fill" : "play.fill",
-                    style: .outlined,
-                    tint: Theme.copper,
+                    size: .compact,
                     fullWidth: true,
-                    compact: true,
                     silent: true,
                     action: { viewModel.togglePlayback() }
                 )
                 .disabled(!canPlay)
 
-                // Arrow only: a capsule wash, the same as Play beside it.
-                Button {
+                // Arrow only, beside Play.
+                AppIconButton(systemImage: "arrow.right", label: "Next key", size: .compact) {
                     viewModel.next()
-                } label: {
-                    Image(systemName: "arrow.right")
-                        .font(.symbol(14, weight: .semibold))
-                        .foregroundStyle(ButtonSurface<Capsule>.label(.wash(Theme.copper), enabled: canNext))
-                        .frame(width: 44, height: 38)
-                        .buttonSurface(.wash(Theme.copper))
-                        .frame(minHeight: 44)
-                        .contentShape(Capsule())
                 }
-                .buttonStyle(.kajar)
                 .disabled(!canNext)
-                .accessibilityLabel("Next key")
             }
         }
         .padding(14)

@@ -7,7 +7,7 @@ import Foundation
 
 nonisolated struct KotekanHitRow: Codable {
     var kotekanID: String
-    /// `hit_type`: polos | sangsih | gong | kempur | kajar.
+    /// `hit_type`: polos | sangsih | gong | kempur | klentong | kajar.
     var type: String
     var beatIndex: Int
     var keyIndex: Int?

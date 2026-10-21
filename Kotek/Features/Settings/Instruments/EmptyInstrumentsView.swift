@@ -31,7 +31,7 @@ struct EmptyInstrumentsView: View {
 
             // Solid, not glass: an empty state is content, and glass is for
             // the controls that float above it.
-            PillButton(title: "Set up · 4 steps", style: .solid) {
+            AppButton(title: "Set up · 4 steps", prominence: .primary, size: .large) {
                 onAdd()
             }
             .padding(.top, 4)

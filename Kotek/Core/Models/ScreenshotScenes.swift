@@ -85,6 +85,21 @@
             }
         }
 
+        /// The results screen over a made-up session of Babaru, from Settings → Debug.
+        ///
+        /// Babaru because it is the longest bundled figure (32 slots, past the
+        /// graph's 16-slot window), so the minimap and scrolling are on screen.
+        ///
+        /// ponytail: leaves Babaru as `selectedKotekan`, so Retry from here plays it.
+        func openMockResults() {
+            let babaru = kotekans.first { $0.id == "babaru" } ?? kotekans[0]
+            selectedKotekan = babaru
+            lastResult = Self.sampleResult(kotekan: babaru, half: chosenHalf, tempo: tempoScale, landed: 260)
+            previousRecord = 0.74
+            lastSetRecord = true
+            screen = .results
+        }
+
         /// Twelve passes of a half that starts shaky and settles, and keeps
         /// slipping in its third quarter — the shape a real session has, so the
         /// cycle chart and the overview have something to say.

@@ -2,7 +2,7 @@
 //  AppleSignInButton.swift
 //  Kotek
 //
-//  Apple's own button, sized to sit beside a `PillButton`, handing back the ID
+//  Apple's own button, sized to sit beside an `AppButton`, handing back the ID
 //  token Supabase signs in with. Shared by the welcome screen and Settings.
 //
 

@@ -41,15 +41,15 @@ struct SearchAndCreateBar: View {
                         Image(systemName: "magnifyingglass")
                             .font(.symbol(17, weight: .semibold))
                             .foregroundStyle(Theme.cream)
-                            .frame(width: 44, height: 44)
-                            .glassEffect(.regular.interactive(), in: Circle())
+                            .frame(width: AppButtonSize.regular.height, height: AppButtonSize.regular.height)
+                            .glassEffect(.regular.tint(Theme.glassTint).interactive(), in: Circle())
                             .glassEffectID("search", in: glass)
                             .contentShape(Circle())
                     }
-                    .buttonStyle(.kajar)
+                    .buttonStyle(.appPlain)
                     .accessibilityLabel(prompt)
                 }
-                CapsuleButton(title: createTitle, trailingSystemImage: "plus", glass: true, action: onCreate)
+                AppButton(title: createTitle, trailingSystemImage: "plus", size: .regular, action: onCreate)
             }
         }
         // No side padding: flush to the safe-area edge, where the top bar's
@@ -79,13 +79,13 @@ struct SearchAndCreateBar: View {
                     .frame(width: 32, height: 44)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.kajar)
+            .buttonStyle(.appPlain)
             .accessibilityLabel("Close search")
         }
         .padding(.leading, 14)
         .padding(.trailing, 6)
         .frame(width: 280, height: 44)
-        .glassEffect(.regular.interactive(), in: Capsule())
+        .glassEffect(.regular.tint(Theme.glassTint).interactive(), in: Capsule())
         .glassEffectID("search", in: glass)
     }
 

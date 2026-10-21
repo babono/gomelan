@@ -22,7 +22,7 @@ struct SensorIndicator: View {
     var body: some View {
         // `sensor.radiowaves.left.and.right` is the live glyph: it scales and
         // weighs like the gear beside it, at the same 17pt as the glyph inside
-        // the gear's 44pt circle (`CircleIconButton`). SF Symbols has no slashed
+        // the gear's 44pt circle (`AppIconButton`). SF Symbols has no slashed
         // version of it, so "no sensor" is the drawn `sensor-disabled` art — the
         // same 2:1 shape, sized to the symbol's width.
         glyph

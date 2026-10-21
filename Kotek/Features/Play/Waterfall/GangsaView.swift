@@ -88,10 +88,26 @@ struct BilahCue: Equatable {
     var damp: Double = 0
 }
 
+/// Where one of the player's hands is: on its way from bar `from` to bar
+/// `to`, and how far through its stroke. Taken from the figure, not the
+/// sensor, so it is a guide and works with no controller.
+struct HandCue: Equatable {
+    var from: Int
+    var to: Int
+    /// 0…1 of the way from `from` to `to`.
+    var travel: Double
+    /// The mallet: 0 head on the bar, 1 fully raised. The damp hand: 0 open,
+    /// 1 pinched.
+    var pose: Double
+}
+
 struct GangsaView: View {
     let layout: GangsaLayout
     let cues: [Int: BilahCue]
+    var mallet: HandCue?
+    var damper: HandCue?
     let tilted: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var u: CGFloat {
         layout.unit
@@ -103,6 +119,9 @@ struct GangsaView: View {
                 frame(height: geo.size.height)
                 Canvas { ctx, size in
                     drawCord(ctx)
+                    if let damper {
+                        GangsaHands.palm(ctx, bar: handBar(damper, height: size.height), pinch: damper.pose)
+                    }
                     // Struck bars last: the halo reaches into the gaps.
                     let keys = 0 ..< layout.keyCount
                     for key in keys where cues[key]?.struckAge == nil {
@@ -110,6 +129,24 @@ struct GangsaView: View {
                     }
                     for key in keys where cues[key]?.struckAge != nil {
                         drawBar(ctx, key: key, height: size.height)
+                    }
+                    // Hands last, over every bar. (The palm is the exception:
+                    // it is behind them, so it goes down first.)
+                    if let damper {
+                        GangsaHands.thumb(
+                            ctx,
+                            bar: handBar(damper, height: size.height),
+                            pinch: damper.pose,
+                            reduceMotion: reduceMotion
+                        )
+                    }
+                    if let mallet {
+                        GangsaHands.mallet(
+                            ctx,
+                            bar: handBar(mallet, height: size.height),
+                            lift: mallet.pose,
+                            reduceMotion: reduceMotion
+                        )
                     }
                 }
                 .drawingGroup()
@@ -225,15 +262,31 @@ struct GangsaView: View {
         )
     }
 
-    private func drawBar(_ ctx: GraphicsContext, key: Int, height: CGFloat) {
-        let cue = cues[key] ?? BilahCue()
+    /// The bar a hand is over: its two bars, blended by how far along it is.
+    /// Reduced motion: no glide, it is on whichever bar it is nearer.
+    private func handBar(_ hand: HandCue, height: CGFloat) -> CGRect {
+        let u = hand.travel
+        let t = reduceMotion ? u.rounded() : u * u * (3 - 2 * u)
+        var bar = barRect(hand.from, height: height)
+        bar.origin.x += (barRect(hand.to, height: height).minX - bar.minX) * t
+        return bar
+    }
+
+    /// A bar at rest, before any ring or pinch moves it.
+    private func barRect(_ key: Int, height: CGFloat) -> CGRect {
         let w = layout.barWidth
-        var rect = CGRect(
+        return CGRect(
             x: layout.framePad + layout.laneCenter(key) - w / 2,
             y: barTop,
             width: w,
             height: max(0, height - barTop)
         )
+    }
+
+    private func drawBar(_ ctx: GraphicsContext, key: Int, height: CGFloat) {
+        let cue = cues[key] ?? BilahCue()
+        let w = layout.barWidth
+        var rect = barRect(key, height: height)
 
         if let age = cue.struckAge {
             // Struck: the bar rings. A sideways shake that dies away fast,

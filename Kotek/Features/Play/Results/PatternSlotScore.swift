@@ -38,6 +38,11 @@ struct PatternSlotScore: Identifiable, Equatable {
         attempts > 0 ? Double(slips) / Double(attempts) : 0
     }
 
+    /// Fraction of attempts that landed, 0…1; nil if it was never judged.
+    var landedRate: Double? {
+        attempts > 0 ? 1 - slipRate : nil
+    }
+
     /// One entry per grid slot of `pattern` — rests included, so the graph
     /// keeps the figure's real spacing and the off-beat gaps stay visible.
     ///

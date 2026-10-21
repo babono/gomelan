@@ -27,7 +27,7 @@ struct ControllerStatusChip: View {
                 } label: {
                     chip(color: Theme.wrong, text: "Sensors changed since \(app.profile.name) was set up · Check keys")
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
             } else {
                 chip(color: color, text: compact ? shortText : "\(app.profile.name) · \(longText(link))")
                     .accessibilityElement(children: .combine)

@@ -33,7 +33,7 @@ struct ReviewKotekView: View {
                 title: "Review",
                 subtitle: "\(draft.bpm) BPM · \(draft.bars) \(draft.bars == 1 ? "bar" : "bars") · \(draft.source == .automatic ? "Recorded" : "Tapped in")"
             ) {
-                CircleIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
+                AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
             } trailing: {
                 EmptyView()
             }
@@ -46,19 +46,14 @@ struct ReviewKotekView: View {
             PatternOverview(viewModel: viewModel)
 
             HStack(spacing: 12) {
-                CircleIconButton(systemImage: "stop.fill", label: "Back to start") {
+                AppIconButton(systemImage: "stop.fill", label: "Back to start") {
                     viewModel.stopPreview()
                 }
-                Button { viewModel.togglePlay() } label: {
-                    Image(systemName: viewModel.playing ? "pause.fill" : "play.fill")
-                        .font(.symbol(18, weight: .bold))
-                        .foregroundStyle(Theme.onGlassFill)
-                        .frame(width: 50, height: 50)
-                        .glassButton(filled: true, in: Circle())
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.kajar)
-                .accessibilityLabel(viewModel.playing ? "Pause" : "Play")
+                AppIconButton(
+                    systemImage: viewModel.playing ? "pause.fill" : "play.fill",
+                    label: viewModel.playing ? "Pause" : "Play",
+                    prominence: .primary
+                ) { viewModel.togglePlay() }
                 PlayheadClock(viewModel: viewModel)
                     .padding(.leading, 4)
 
@@ -70,13 +65,12 @@ struct ReviewKotekView: View {
                         .foregroundStyle(Theme.miss)
                         .lineLimit(2)
                 }
-                CapsuleButton(title: "Edit") { viewModel.back() }
-                CapsuleButton(title: viewModel.saving ? "Saving…" : "Save", filled: true) {
+                AppButton(title: "Edit") { viewModel.back() }
+                AppButton(title: viewModel.saving ? "Saving…" : "Save", prominence: .primary) {
                     viewModel.pause()
                     naming = true
                 }
                 .disabled(!viewModel.canSave)
-                .opacity(viewModel.canSave ? 1 : 0.45)
             }
         }
         .padding(.horizontal, 40)
@@ -129,8 +123,8 @@ private struct NamePopup: View {
                     .background(Theme.deep, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.buttonFill, lineWidth: 2))
                 HStack(spacing: 12) {
-                    CapsuleButton(title: "Cancel", fullWidth: true, action: onCancel)
-                    CapsuleButton(title: "Save", filled: true, fullWidth: true, action: onSave)
+                    AppButton(title: "Cancel", fullWidth: true, action: onCancel)
+                    AppButton(title: "Save", prominence: .primary, fullWidth: true, action: onSave)
                 }
             }
             .padding(20)

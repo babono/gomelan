@@ -61,16 +61,16 @@ struct KeyCountView: View {
 
                 // Stepper + bilah preview + next
                 VStack(spacing: 14) {
-                    CountStepper(value: $count, range: range, numberSize: 52, buttonSize: 48)
+                    AppStepper(value: $count, range: range, numberSize: 52)
 
                     BilahBarsView(count: count, height: 44)
                         .frame(height: 44)
                         .frame(maxWidth: 260)
 
-                    PillButton(
+                    AppButton(
                         title: "Next",
-                        style: .filled,
-                        compact: true
+                        prominence: .primary,
+                        size: .regular
                     ) {
                         // Landscape keyboards cover most of the screen, so this
                         // button can be tapped while the field still holds an

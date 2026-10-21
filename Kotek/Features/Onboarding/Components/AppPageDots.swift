@@ -1,5 +1,5 @@
 //
-//  PageDots.swift
+//  AppPageDots.swift
 //  Kotek
 //
 //  Created by Dimas Nugraha on 06/10/26.
@@ -9,7 +9,7 @@ import SwiftUI
 
 /// Shared custom page indicator dots styled to the Kotek theme.
 /// Used by OnboardingView and GuideSlides.
-struct PageDots: View {
+struct AppPageDots: View {
     let count: Int
     @Binding var index: Int
 
@@ -27,7 +27,7 @@ struct PageDots: View {
                         .frame(width: 30, height: 26)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.kajar)
+                .buttonStyle(.appPlain)
                 .accessibilityLabel("Slide \(i + 1) of \(count)")
             }
         }

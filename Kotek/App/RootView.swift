@@ -140,10 +140,10 @@ struct RootView: View {
             app.sensor.use(phase == .background ? .none : target)
         }
         // Every switch under here ticks like a kajar when it flips. Buttons get
-        // the same treatment one at a time (`.buttonStyle(.kajar)`), because
+        // the same treatment one at a time (`.buttonStyle(.appPlain)`), because
         // each of them already names a style and the nearest one wins; toggles
         // name none, so the environment reaches all of them from here.
-        .toggleStyle(.kajar)
+        .toggleStyle(.app)
         .preferredColorScheme(.dark)
         .statusBarHidden(true)
     }

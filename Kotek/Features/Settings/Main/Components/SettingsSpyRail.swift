@@ -54,7 +54,7 @@ struct SettingsSpyRail: View {
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 10))
         }
-        .buttonStyle(.kajar)
+        .buttonStyle(.appPlain)
         .animation(.snappy(duration: 0.2), value: active)
         .id(SettingsViewModel.chipID(id))
     }
