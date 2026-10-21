@@ -5,7 +5,7 @@
 //  Created by Dimas Nugraha on 05/10/26.
 //
 
-import AppIntents
+import Foundation
 
 enum Route: String, Hashable {
     case welcome
@@ -47,39 +47,4 @@ enum Route: String, Hashable {
             false
         }
     }
-}
-
-nonisolated extension Route: AppEnum {
-    static let typeDisplayRepresentation: TypeDisplayRepresentation =
-        "Screen Option"
-
-    static let caseDisplayRepresentations: [Self: DisplayRepresentation] = [
-        .welcome: "Welcome",
-        .checkingPermissions: "Checking Permissions",
-        .permissionsBlocked: "Permissions Blocked",
-        .profileSetup: "Profile Setup",
-        .chooseInstrument: "Choose Instrument",
-        .choosingKeyCount: "Choosing Key Count",
-        .framing: "Framing",
-        .aligning: "Aligning",
-        .calibrating: "Calibrating",
-        .baseline: "Baseline",
-        .chooseKotekan: "Choose Kotekan",
-        .createKotek: "Create Kotek",
-        .countdown: "Countdown",
-        .playing: "Playing",
-        .results: "Results",
-        .settings: "Settings",
-        .history: "Practice History",
-        .malletTest: "Mallet Test",
-        .detectionTest: "Detection Test",
-        .audioTest: "Audio Test",
-        .captureTraining: "Capture Training",
-        .noteCapture: "Capture Note Clips",
-        .sensorTest: "Sensor Test",
-        .controllerSetup: "Controller Setup",
-        .waterfall: "Waterfall Practice",
-        .coopSetup: "Coop Setup",
-        .coopPlay: "Coop Play"
-    ]
 }

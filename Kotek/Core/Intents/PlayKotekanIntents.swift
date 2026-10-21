@@ -30,23 +30,28 @@ struct KotekanEntity: AppEntity {
     }
 }
 
+/// The picker's whole catalogue — the built-ins and the player's own
+/// patterns from Create — not just `Kotekan.bundled`, which left anything the
+/// player had made out of reach of Siri and Shortcuts.
 struct KotekanQuery: EntityStringQuery {
+    @Dependency var app: AppState
+
+    @MainActor
     func entities(for identifiers: [String]) async throws -> [KotekanEntity] {
-        await Kotekan.bundled.filter { identifiers.contains($0.id) }.map(
-            KotekanEntity.init
-        )
+        app.kotekans.filter { identifiers.contains($0.id) }.map(KotekanEntity.init)
     }
 
-    func entities(matching string: String) async throws
-        -> [KotekanEntity]
-    {
-        await Kotekan.bundled.filter {
+    @MainActor
+    func entities(matching string: String) async throws -> [KotekanEntity] {
+        app.kotekans.filter {
             $0.name.localizedCaseInsensitiveContains(string)
         }.map(KotekanEntity.init)
     }
 
+    /// Only what fits the gangsa in use, as the picker shows it.
+    @MainActor
     func suggestedEntities() async throws -> [KotekanEntity] {
-        await Kotekan.bundled.map(KotekanEntity.init)
+        app.kotekans.filter { app.kotekan($0, playableOn: app.profile) }.map(KotekanEntity.init)
     }
 }
 
@@ -65,11 +70,24 @@ struct PlayKotekanIntents: AppIntent {
 
     @MainActor
     func perform() throws -> some IntentResult {
-        guard let full = Kotekan.bundled.first(where: { $0.id == kotekan.id })
-        else {
+        guard let full = app.kotekans.first(where: { $0.id == kotekan.id }) else {
             throw $kotekan.needsValueError()
+        }
+        // Matched by name, so a pattern too wide for this gangsa can still be
+        // asked for; the picker would have greyed it out.
+        guard app.kotekan(full, playableOn: app.profile) else {
+            throw TooFewKeys(pattern: full.name, gangsa: app.profile.name)
         }
         app.playKotekan(full)
         return .result()
+    }
+}
+
+private struct TooFewKeys: Error, CustomLocalizedStringResourceConvertible {
+    let pattern: String
+    let gangsa: String
+
+    var localizedStringResource: LocalizedStringResource {
+        "\(pattern) needs more keys than \(gangsa) has."
     }
 }

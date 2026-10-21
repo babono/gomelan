@@ -22,10 +22,10 @@ struct AppShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: NavigateScreenIntents(),
             phrases: [
-                "Go To \(\.$navigationOptions) in \(.applicationName)"
+                "Go to \(\.$navigationOptions) in \(.applicationName)"
             ],
             shortTitle: "Navigate to",
-            systemImageName: "arrow.right.circle    "
+            systemImageName: "arrow.right.circle"
         )
     }
 }
