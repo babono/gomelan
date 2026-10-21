@@ -71,6 +71,6 @@ struct ChooseKotekanFooter: View {
                 }
             }
         }
-        .padding(.bottom, 10)
+        .padding(.bottom, Theme.footerBottom)
     }
 }

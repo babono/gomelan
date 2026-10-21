@@ -30,6 +30,8 @@ extension SessionFacts {
         var lines: [String] = []
         lines.append("Pattern: \(figure), playing the \(half) half, at \(tempo) speed.")
         lines.append("Full cycles played: \(result.cycles.count).")
+        let minutes = Int((result.practiceSeconds / 60).rounded())
+        if minutes > 0 { lines.append("Time practised: \(minutes) minute\(minutes == 1 ? "" : "s").") }
         if let best = result.best {
             lines.append("Best accuracy over \(best.range.count) cycles in a row: \(Self.percent(best.accuracy)).")
         }

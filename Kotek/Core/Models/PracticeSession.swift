@@ -21,6 +21,8 @@ nonisolated struct PracticeSession {
     var landedNotes: Int
     var bestStreak: Int
     var driftMs: Double?
+    /// Time spent playing, whole seconds, pauses and count-in left out.
+    var practiceSeconds: Int?
 
     init(
         kotekanID: String? = nil,
@@ -35,7 +37,8 @@ nonisolated struct PracticeSession {
         missedCount: Int,
         landedNotes: Int,
         bestStreak: Int,
-        driftMs: Double? = nil
+        driftMs: Double? = nil,
+        practiceSeconds: Int? = nil
     ) {
         self.kotekanID = kotekanID
         self.half = half
@@ -50,6 +53,7 @@ nonisolated struct PracticeSession {
         self.landedNotes = landedNotes
         self.bestStreak = bestStreak
         self.driftMs = driftMs
+        self.practiceSeconds = practiceSeconds
     }
 }
 
@@ -86,7 +90,8 @@ extension PracticeSession {
             missedCount: result.missedCount,
             landedNotes: result.landedNotes,
             bestStreak: best,
-            driftMs: hits.isEmpty ? nil : result.driftMs
+            driftMs: hits.isEmpty ? nil : result.driftMs,
+            practiceSeconds: Int(result.practiceSeconds.rounded())
         )
     }
 }

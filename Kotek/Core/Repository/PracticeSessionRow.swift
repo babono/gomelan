@@ -31,6 +31,7 @@ nonisolated struct PracticeSessionRow: Encodable {
         case landedNotes = "landed_notes"
         case bestStreak = "best_streak"
         case driftMs = "drift_ms"
+        case practiceSeconds = "practice_seconds"
     }
 
     func encode(to encoder: Encoder) throws {
@@ -50,6 +51,7 @@ nonisolated struct PracticeSessionRow: Encodable {
         try c.encode(session.landedNotes, forKey: .landedNotes)
         try c.encode(session.bestStreak, forKey: .bestStreak)
         try c.encodeIfPresent(session.driftMs, forKey: .driftMs)
+        try c.encodeIfPresent(session.practiceSeconds, forKey: .practiceSeconds)
     }
 }
 

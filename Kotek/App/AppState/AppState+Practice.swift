@@ -111,6 +111,7 @@ extension AppState {
         fileRecord(result)
         recordSession(landed: result.landedNotes)
         lastResult = result
+        lastResultIsSample = false
         screen = .results
         offerSaveIfDue()
 

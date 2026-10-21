@@ -98,7 +98,7 @@ struct CoopSetupView: View {
             .disabled(!playable)
         }
         .padding(.horizontal, 28)
-        .padding(.bottom, 10)
+        .padding(.bottom, Theme.footerBottom)
     }
 }
 

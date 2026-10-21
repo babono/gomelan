@@ -49,7 +49,10 @@ struct PadScale<Content: View>: View {
                     .safeAreaPadding(EdgeInsets(
                         top: insets.top / s,
                         leading: max(insets.leading / s, Self.sideMargin),
-                        bottom: insets.bottom / s,
+                        // The bottom too: the phone's home-indicator inset
+                        // is ~21pt, and an iPad in this mode reports almost
+                        // none, so footers sat on the bottom edge.
+                        bottom: max(insets.bottom / s, Self.sideMargin),
                         trailing: max(insets.trailing / s, Self.sideMargin)
                     ))
                     .frame(width: geo.size.width / s, height: geo.size.height / s)
