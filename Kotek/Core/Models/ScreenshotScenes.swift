@@ -95,6 +95,7 @@
             let babaru = kotekans.first { $0.id == "babaru" } ?? kotekans[0]
             selectedKotekan = babaru
             lastResult = Self.sampleResult(kotekan: babaru, half: chosenHalf, tempo: tempoScale, landed: 260)
+            lastResultIsSample = true
             previousRecord = 0.74
             lastSetRecord = true
             screen = .results
@@ -163,7 +164,9 @@
                 cycles: cycles,
                 strokes: song.notes,
                 cycleMs: song.durationMs,
-                landedNotes: landed
+                landedNotes: landed,
+                // Twelve passes at the figure's own speed.
+                practiceSeconds: Double(song.durationMs) * 12 / tempo / 1000
             )
         }
     }

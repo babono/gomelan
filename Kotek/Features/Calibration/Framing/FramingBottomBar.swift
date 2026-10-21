@@ -33,7 +33,7 @@ struct FramingBottomBar: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 10)
-        .padding(.bottom, 2)
+        .padding(.bottom, Theme.footerBottom)
         .background(
             LinearGradient(
                 colors: [.clear, .black.opacity(0.65)],

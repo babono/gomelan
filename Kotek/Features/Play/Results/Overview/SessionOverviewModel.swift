@@ -12,6 +12,7 @@
 //  simply not there.
 //
 
+import Foundation
 import FoundationModels
 import Observation
 import os
@@ -93,6 +94,38 @@ final class SessionOverviewModel {
     Base your advice on the teaching notes when they are relevant; otherwise \
     give general practice advice. Never mention the notes, a book or passages.
     """
+
+    /// A finished overview with nothing behind it, for the mock results
+    /// screen. Without it the feedback was blank on every device that cannot
+    /// run Apple Intelligence (an iPad mini 6, say), and its layout could not
+    /// be reviewed there.
+    ///
+    /// Written to match `openMockResults`' session — shaky start, settling,
+    /// slipping in the third quarter — and credited to real pages of the
+    /// bundled books that say the same thing, so it demos as the real one does.
+    func showSample() {
+        summary = "77% overall, and you got steadier with every pass. The start and end of the cycle are secure; the third quarter is where the interlock still slips."
+        suggestion = "Take the third quarter on its own at 0.75×, keeping a steady beat with your foot, until it locks in. Then join it back to the rest and bring the tempo up again."
+        citations = [
+            BookCitation(
+                book: BookInfo(
+                    title: "Balinese Gamelan Music",
+                    author: "Michael Tenzer",
+                    url: URL(string: "https://www.tuttlepublishing.com/books-by-country/balinese-gamelan-music-paperback-with-disc")
+                ),
+                pages: [69, 75]
+            ),
+            BookCitation(
+                book: BookInfo(
+                    title: "Gamelan Gong Kebyar",
+                    author: "Michael Tenzer",
+                    url: URL(string: "https://press.uchicago.edu/ucp/books/book/chicago/G/bo3630827.html")
+                ),
+                pages: [213]
+            )
+        ]
+        phase = .done
+    }
 
     func run(facts: SessionFacts) async {
         switch SystemLanguageModel.default.availability {

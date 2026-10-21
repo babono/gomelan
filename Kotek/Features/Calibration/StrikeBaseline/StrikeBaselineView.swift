@@ -116,6 +116,6 @@ private struct StrikeBaselineContentView: View {
         }
         .padding(20)
         .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 18))
-        .padding(.bottom, 16)
+        .padding(.bottom, Theme.footerBottom)
     }
 }

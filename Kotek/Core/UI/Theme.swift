@@ -112,6 +112,10 @@ enum Theme {
 
     /// Corner radius for buttons, cards and wells.
     static let radius: CGFloat = 14
+    /// Space under a screen's bottom action bar, above the safe area. The
+    /// footers had grown 2, 8, 10, 16 and 20 each, and the narrow ones sat
+    /// cramped on the bottom edge — most visibly Results on iPad.
+    static let footerBottom: CGFloat = 16
     /// Height of a primary button: what the system draws a `.large` AppButton
     /// at (`.extraLarge` control size, measured), so the one control that is not
     /// ours — Sign in with Apple — sits at the same height beside it.

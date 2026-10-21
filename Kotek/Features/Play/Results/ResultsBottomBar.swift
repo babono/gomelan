@@ -27,6 +27,6 @@ struct ResultsBottomBar: View {
             }
         }
         .padding(.top, 2)
-        .padding(.bottom, 8)
+        .padding(.bottom, Theme.footerBottom)
     }
 }

@@ -85,7 +85,7 @@ struct KeyCountView: View {
                 .padding(.leading, 32)
             }
             .padding(.horizontal, 40)
-            .padding(.bottom, 8)
+            .padding(.bottom, Theme.footerBottom)
             .frame(maxHeight: .infinity)
         }
         // The keyboard eats half a landscape phone and has no Done key of its

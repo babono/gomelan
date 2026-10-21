@@ -168,6 +168,6 @@ struct ChooseInstrumentView: View {
             }
             .disabled(selected == nil)
         }
-        .padding(.bottom, 10)
+        .padding(.bottom, Theme.footerBottom)
     }
 }

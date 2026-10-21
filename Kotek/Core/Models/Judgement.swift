@@ -193,6 +193,8 @@ struct SongResult: Equatable {
     /// of the kotekan are just as much playing. Switching sides costs you the
     /// accuracy history for the half you left; it never costs you the notes.
     let landedNotes: Int
+    /// How long the session was played, pauses and count-in left out.
+    var practiceSeconds: Double = 0
 
     var totalScore: Int {
         judgements.reduce(0) { $0 + $1.result.score }

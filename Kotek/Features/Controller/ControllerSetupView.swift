@@ -51,7 +51,7 @@ private struct ControllerSetupContent: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 40)
-            .padding(.bottom, 20)
+            .padding(.bottom, Theme.footerBottom)
         }
         .onAppear { vm.onAppear() }
         .onDisappear { vm.onDisappear() }

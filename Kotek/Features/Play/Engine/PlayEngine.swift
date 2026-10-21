@@ -133,6 +133,9 @@ final class PlayEngine {
     private(set) var scorePage = 0
     private(set) var scorePageCount = 1
     private(set) var currentTimeMs: Double = 0
+    /// Time spent playing since the first note fell due, pauses excluded.
+    private(set) var practiceSeconds: Double = 0
+    private var lastTickHostTime: Double?
     private(set) var currentBeatIndex: Int = 0
     private(set) var isFinished = false
     private(set) var phase: SessionPhase = .countIn
@@ -517,7 +520,8 @@ final class PlayEngine {
             cycles: cyclesByPart[partKey] ?? [],
             strokes: notes,
             cycleMs: song.durationMs,
-            landedNotes: landedNotes
+            landedNotes: landedNotes,
+            practiceSeconds: practiceSeconds
         ) : nil)
     }
 
@@ -642,6 +646,14 @@ final class PlayEngine {
 
     func tick(now: Double) {
         guard !isFinished else { return }
+        // Wall-clock frames, not the song clock: `currentTimeMs` is rebased on
+        // every tempo change, so it is musical time, not time spent. Gaps are
+        // capped, so a pause (the display link stops) adds nothing, and the
+        // count-in is not practice.
+        if let last = lastTickHostTime, msUntilFirstNote == nil {
+            practiceSeconds += min(now - last, 0.1)
+        }
+        lastTickHostTime = now
         currentTimeMs = (now - startHostTime) * 1000
         renderNow = now
         // R Monotonic, so this falls to nil exactly once and never returns — the

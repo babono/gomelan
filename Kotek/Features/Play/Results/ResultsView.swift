@@ -72,6 +72,7 @@ struct ResultsView: View {
             .animation(.easeInOut(duration: 0.2), value: app.showingSavePrompt)
             .task(id: result) {
                 guard result.best != nil else { return }
+                if app.lastResultIsSample { return overview.showSample() }
                 await overview.run(facts: facts(result))
             }
         } else {
