@@ -18,6 +18,13 @@ struct GangsaStage: View {
     /// `renderNow` — nil when none did in the last moment. A closure,
     /// evaluated in this body, so the per-frame read stays in here too.
     var sensedStrike: (Double) -> (key: Int, age: Double)? = { _ in nil }
+    /// Whether the thumb and the pinched bar show (`DampGuide`).
+    var damp: DampGuide = .all
+    /// No sensors behind this gangsa: ring each of your bars as its stroke
+    /// lands, as if you had hit it. Nothing hears you, so nothing is judged —
+    /// no verdict glow, no PERFECT — but the bars still answer the figure.
+    /// With sensors the bars only ring for strokes that were actually heard.
+    var autoStrikes = false
 
     var body: some View {
         let figure = figure
@@ -61,8 +68,15 @@ struct GangsaStage: View {
                 .filter { $0.voice == .yours }
                 .sorted { $0.msAhead < $1.msAhead }
             var damps: [(key: Int, ms: Double, hold: Double)] = []
+            if autoStrikes {
+                // The engine's own flash length, so a played-for-you bar
+                // rings exactly as long as a heard one would.
+                for note in notes where note.msAhead <= 0 && -note.msAhead < engine.flashDuration * 1000 {
+                    struck(note.keyIndex, age: -note.msAhead / 1000)
+                }
+            }
             for note in notes {
-                guard note.dampsAfter else { continue }
+                guard note.dampsAfter, damp.showsHand else { continue }
                 let hold = min(max(note.durationMs, 90), 400)
                 let held = -(note.msAhead + note.durationMs)
                 damps.append((note.keyIndex, note.msAhead + note.durationMs, hold))
@@ -80,15 +94,29 @@ struct GangsaStage: View {
             // bounce off each bar and then the hop to the next in the last
             // 320 ms; over any gap past ~400 ms that was a tap, a rest, and
             // then the real stroke — which looked like hitting twice.
+            //
+            // The hump was a sine — as slow arriving as leaving, so the head
+            // drifted onto the bar and the eye could not find the instant of
+            // the stroke. A real stroke is not symmetric: the mallet springs
+            // up off the bar, hangs, and is thrown down, fastest at contact.
+            // `GangsaHands.strokeLift` draws that, so the hit is the sharpest
+            // moment of the whole motion and lines up with the sound.
             mallet = Self.carriage(notes.map { ($0.keyIndex, $0.msAhead, 0) }).map { c in
                 let lift = if c.from == c.to, c.since == nil {
-                    0.7 * (1 - c.travel * c.travel) // lowering onto the first bar
-                } else if let hump = c.phase {
-                    0.7 * sin(.pi * hump)
+                    // Lowering onto the first bar, with the same throw down.
+                    GangsaHands.strokeLift(phase: 0.4 + 0.6 * c.travel, gapMs: GangsaHands.travelMs)
+                } else if let hump = c.phase, let gap = c.gap {
+                    GangsaHands.strokeLift(phase: hump, gapMs: gap)
                 } else {
                     0.2 // nothing to land on yet: hold clear of the bar
                 }
-                return HandCue(from: c.from, to: c.to, travel: c.travel, pose: lift)
+                return HandCue(
+                    from: c.from,
+                    to: c.to,
+                    travel: c.travel,
+                    pose: lift,
+                    strikeAge: c.since.map { $0 / 1000 }
+                )
             }
             damper = Self.carriage(damps).map { c in
                 HandCue(
@@ -118,20 +146,21 @@ struct GangsaStage: View {
     /// hand moving. Nil only when no stroke is anywhere near.
     private static func carriage(
         _ events: [(key: Int, ms: Double, hold: Double)]
-    ) -> (from: Int, to: Int, travel: Double, since: Double?, phase: Double?)? {
+    ) -> (from: Int, to: Int, travel: Double, since: Double?, phase: Double?, gap: Double?)? {
         let prev = events.last { $0.ms <= 0 }
         let next = events.first { $0.ms > 0 }
         switch (prev, next) {
         case (nil, nil):
             return nil
         case let (p?, nil):
-            return (p.key, p.key, 0, -p.ms, nil)
+            return (p.key, p.key, 0, -p.ms, nil, nil)
         case let (nil, n?):
             // Nothing before it: waiting over the first bar.
-            return (n.key, n.key, max(0, 1 - n.ms / GangsaHands.travelMs), nil, nil)
+            return (n.key, n.key, max(0, 1 - n.ms / GangsaHands.travelMs), nil, nil, nil)
         case let (p?, n?):
             let crossing = max(40, min(n.ms - p.ms - p.hold, GangsaHands.travelMs))
-            return (p.key, n.key, n.ms < crossing ? 1 - n.ms / crossing : 0, -p.ms, -p.ms / (n.ms - p.ms))
+            let gap = n.ms - p.ms
+            return (p.key, n.key, n.ms < crossing ? 1 - n.ms / crossing : 0, -p.ms, -p.ms / gap, gap)
         }
     }
 }

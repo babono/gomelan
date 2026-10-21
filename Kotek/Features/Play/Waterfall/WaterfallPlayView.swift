@@ -84,7 +84,8 @@ private struct WaterfallContentView: View {
                             engine: vm.engine,
                             layout: layout,
                             voiced: vm.voicedKeys,
-                            yourHalf: app.chosenHalf
+                            yourHalf: app.chosenHalf,
+                            damp: app.dampGuide
                         )
                         StartCaption(engine: vm.engine)
                             .padding(.top, 18)
@@ -96,7 +97,9 @@ private struct WaterfallContentView: View {
                         engine: vm.engine,
                         layout: layout,
                         tilted: vm.tilted,
-                        sensedStrike: vm.sensedStrike
+                        sensedStrike: vm.sensedStrike,
+                        damp: app.dampGuide,
+                        autoStrikes: !vm.sensing
                     )
                     .frame(width: layout.frameWidth, height: gangsaHeight)
                     .contentShape(Rectangle())
@@ -178,6 +181,14 @@ private struct WaterfallContentView: View {
                 .fixedSize()
                 AppMenuPicker<Double>.tempo(tempo)
                     .fixedSize()
+                AppMenuPicker(
+                    options: DampGuide.allCases,
+                    selection: $bindableApp.dampGuide,
+                    title: \.title,
+                    label: "Damping guide",
+                    systemImage: "hand.raised"
+                )
+                .fixedSize()
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

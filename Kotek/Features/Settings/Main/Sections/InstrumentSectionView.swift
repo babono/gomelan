@@ -165,16 +165,17 @@ struct InstrumentSectionView: View {
         }
     }
 
-    /// Read when a practice starts, so a change here applies from the next one.
+    /// Read live, like the same menu on the pause screen.
     private var damping: some View {
         @Bindable var bindableApp = app
         return VStack(alignment: .leading, spacing: 10) {
             SectionLabel("Damping")
-            Toggle("Show damping", isOn: $bindableApp.showsDamp)
-                .tint(Theme.terracotta)
-                .frame(maxWidth: 360)
-                .foregroundStyle(Theme.cream)
-            Text("A hand on each bilah as its note ends, on the waterfall and the gangsa.")
+            Picker("Damping guide", selection: $bindableApp.dampGuide) {
+                ForEach(DampGuide.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 360)
+            Text("Where to damp each bilah as its note ends: a hand tile falling on the waterfall, and the thumb on the gangsa. Also on the pause screen.")
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
                 .frame(maxWidth: 520, alignment: .leading)

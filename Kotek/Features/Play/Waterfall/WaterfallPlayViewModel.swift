@@ -98,7 +98,6 @@ final class WaterfallPlayViewModel {
         engine.cue = cue
         engine.partnerAudible = app.partnerAudible
         engine.yourVoiceAudible = app.yourVoiceAudible
-        engine.showsDamp = app.showsDamp
         engine.sessionSubtitle = title
         engine.onComplete = { [weak self] result in
             Task { @MainActor in

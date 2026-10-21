@@ -18,6 +18,8 @@ struct WaterfallCanvas: View {
     let layout: GangsaLayout
     let voiced: ClosedRange<Int>
     let yourHalf: KotekanHalf
+    /// Whether the falling damp tiles show (`DampGuide`).
+    var damp: DampGuide = .all
 
     /// How tall one beat is. Beats, not ms, so the speed of the fall follows
     /// the tempo control and the spacing on screen means the same at 0.5× as
@@ -74,7 +76,7 @@ struct WaterfallCanvas: View {
             for note in notes where note.voice == .partner {
                 drawPartner(ctx, note: note, y: y, pxPerMs: pxPerMs)
             }
-            for note in notes where note.voice == .yours {
+            for note in notes where note.voice == .yours && damp.showsTiles {
                 drawDamp(ctx, note: note, y: y, pxPerMs: pxPerMs)
             }
             for note in notes where note.voice == .yours {
