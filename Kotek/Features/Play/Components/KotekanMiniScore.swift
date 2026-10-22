@@ -36,8 +36,12 @@ struct KotekanMiniScore: View {
             let pageSlots = min(total, PlayEngine.colotomicBeats)
             let firstSlot = min(page * pageSlots, max(0, total - pageSlots))
             let slotW = size.width / CGFloat(pageSlots)
-            let blockH = max(3, lane - 2)
             let blockW = max(3, slotW * 0.82)
+            // A tile, never a bar: filling the lane made every block as tall as
+            // the card allowed, and on a taller card the score read as a row of
+            // needles. Extra height is air between the rows instead. The 7pt
+            // floor is for the dense figures, whose narrow slots made the tiles dots.
+            let blockH = max(3, min(lane - 2, max(7, blockW * 0.65)))
 
             func y(_ key: Int) -> CGFloat {
                 size.height - CGFloat(key - range.lowerBound + 1) * lane + (lane - blockH) / 2

@@ -167,7 +167,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
   - `MalletTestView.swift` — raw per-frame vision hit probabilities.
   - `DetectionTestView.swift` — real-time fused vision + audio pipeline test.
   - `CaptureTrainingView.swift` / `TrainingCapture.swift` — harvest labelled crops through the inference path.
-- **`Create/`**: the piano-roll composer. Its tools (colotomic instruments, eraser) are icon-only in `ToolRail`; a name shows only while an icon is held and the first time that tool is tapped (`toolNameSeen.<id>` in `Defaults`).
+- **`Create/`**: the piano-roll composer. Its tools (colotomic instruments, eraser) are named chips in the top row beside the Polos / Sangsih pills; snap and the typed BPM sit in the bottom transport.
 - **`Onboarding/`**:
   - `WelcomeView.swift` — landing screen and flow entry.
   - `PermissionsView.swift` — camera and microphone authorization.

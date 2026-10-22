@@ -60,13 +60,11 @@ extension AppState {
             if baselineLearned { finishSetup() } else { screen = .calibrating }
             return
         }
-        isAddingNewInstrument = false
-        previousProfile = nil
         // `baselineLearned` still describes the previous gangsa.
         baselineLearned = profile.hasLearnedBaseline
         if !baselineLearned { requireStrikeSound = false }
-        // Saved here, not by the baseline step: recording may be skipped.
-        saveProfile()
+        // Not saved here: the gangsa is added when the whole setup is done
+        // (`closeControllerSetup`), so backing out of a later step adds nothing.
         offerControllerAfterSetup = true
         finishSetup()
     }

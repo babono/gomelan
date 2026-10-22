@@ -12,6 +12,7 @@ struct InstrumentCardView: View {
     let isCurrent: Bool
     /// As tall as the rail allows, up to `maxHeight` — see there.
     var height: CGFloat = InstrumentCardView.maxHeight
+    /// Centres a side card; on the centred one, goes on to its kotekan.
     let onSelect: () -> Void
 
     /// The kotekan card's width (`KotekanCardView`), so the two pickers line up.
@@ -21,7 +22,9 @@ struct InstrumentCardView: View {
     /// Not fixed: on a small phone in landscape the rail has less than this
     /// (it was once 240 and ran into the footer), so the card takes what the
     /// rail has, and the photo gives up the difference.
-    static let maxHeight: CGFloat = 214
+    /// The kotekan card's height, now the Next footer is gone; 240 crowded
+    /// the search row.
+    static let maxHeight = KotekanCardView.maxHeight
     /// Name, keys line and set-up marks, with their padding.
     private static let infoHeight: CGFloat = 90
 
@@ -70,6 +73,7 @@ struct InstrumentCardView: View {
             .frame(width: Self.width, height: height, alignment: .topLeading)
             .background(Theme.deep)
             .clipShape(RoundedRectangle(cornerRadius: 20))
+            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 20))
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
                     .strokeBorder(
@@ -81,7 +85,7 @@ struct InstrumentCardView: View {
         .buttonStyle(.appPlain)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityAddTraits(isCurrent ? [.isButton, .isSelected] : .isButton)
-        .accessibilityHint("Selects this gangsa")
+        .accessibilityHint(isCurrent ? "Opens this gangsa's kotekan" : "Selects this gangsa")
     }
 
     /// The gangsa's photo, or an image symbol where it has none — a plain
