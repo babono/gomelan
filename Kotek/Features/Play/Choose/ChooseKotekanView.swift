@@ -2,10 +2,14 @@
 //  ChooseKotekanView.swift
 //  Kotek
 //
-//  Pick the interlocking figure to learn. Tapping a card only brings it to the
-//  middle and plays it; Start, bottom right, is the one way on to the count-in.
-//  A tap on the focused card used to start the session, and a tap meant to
-//  hear a figure again kept throwing the player into one.
+//  Pick the interlocking figure to learn. A swipe or a tap on a side card
+//  brings it to the middle and plays it; a tap on the centred card starts it,
+//  and a long press there lifts it for Edit / Delete.
+//
+//  Start, bottom right, was the one way on for a while, because a tap on the
+//  focused card used to start the session and a tap meant to hear a figure
+//  again kept throwing the player into one. A side card still only centres
+//  (that is how you hear it), so the tap that starts is always the second one.
 //
 
 import FactoryKit
@@ -33,22 +37,18 @@ private struct ChooseKotekanContentView: View {
     var body: some View {
         @Bindable var vm = viewModel
 
-        // The page ignores the keyboard: the search field is up top beside
-        // Create, so the keyboard has nothing to push out of the way, and
-        // letting the page avoid it squeezed the carousel into a sliver.
+        // The field is at the bottom now, so the page has to make room for the
+        // keyboard (it used to ignore it, with the field up top).
         VStack(spacing: 0) {
             TopBar(
                 title: "Choose your kotekan",
                 onBack: { app.openChooseInstrument() },
                 settingsAction: { app.openSettings() },
-                showsSensor: true,
+                showsMenu: true,
+                accessory: vm.current.map { k in
+                    (title: "Co-op", systemImage: "person.2.fill", isEnabled: vm.playable, action: { vm.coop(k) })
+                },
                 edgeInset: 0
-            )
-            SearchAndCreateBar(
-                query: $vm.query,
-                prompt: "Search kotekan",
-                createTitle: "Create kotek",
-                onCreate: { vm.create() }
             )
 
             Group {
@@ -58,21 +58,15 @@ private struct ChooseKotekanContentView: View {
                     carousel
                 }
             }
-            // Inside the safe area: run to the screen edge, the side cards
-            // slid under the Dynamic Island.
             .frame(maxHeight: .infinity)
 
-            ChooseKotekanFooter(
-                muted: $vm.muted,
-                current: vm.current,
-                playable: vm.playable,
-                onStart: { vm.start($0) },
-                onEdit: { vm.edit($0) },
-                onDelete: { vm.pendingDelete = $0 },
-                onCoop: { vm.coop($0) }
+            SearchAndCreateBar(
+                query: $vm.query,
+                prompt: "Search",
+                createTitle: "Create kotek",
+                onCreate: { vm.create() }
             )
         }
-        .ignoresSafeArea(.keyboard)
         .confirm(
             Binding(get: { vm.pendingDelete != nil }, set: { if !$0 { vm.pendingDelete = nil } }),
             title: "Delete this kotekan?",
@@ -126,6 +120,8 @@ private struct ChooseKotekanContentView: View {
             let gap = CarouselFit.gap(width: geo.size.width, card: KotekanCardView.cardWidth)
             let step = KotekanCardView.cardWidth / 2 + gap + side * KotekanCardView.cardWidth / 2
 
+            let height = min(KotekanCardView.maxHeight, geo.size.height - 16)
+
             let first = Int((viewModel.position - 3).rounded(.down))
             let last = Int((viewModel.position + 3).rounded(.up))
 
@@ -133,24 +129,14 @@ private struct ChooseKotekanContentView: View {
                 ForEach(first ... last, id: \.self) { slot in
                     let offset = Double(slot) - viewModel.position
                     if let k = viewModel.kotekan(atSlot: slot) {
-                        KotekanCardView(
-                            kotekan: k,
-                            isPlaying: slot == viewModel.focusedSlot,
-                            offset: offset,
-                            canPlay: viewModel.isPlayable(k),
-                            engine: viewModel.engine,
-                            // Nothing is scored without the sensor, so a record would be a number nobody can beat.
-                            bestRecord: app.controllerConnected ? viewModel.bestRecord(k) : nil,
-                            sideScale: side
-                        )
-
-                        .position(
-                            x: geo.size.width / 2 + CGFloat(offset.sign == .minus ? -1 : 1)
-                                * (min(abs(CGFloat(offset)), 1) * step
-                                    + max(abs(CGFloat(offset)) - 1, 0)
-                                    * (side * KotekanCardView.cardWidth + gap)),
-                            y: geo.size.height / 2
-                        )
+                        card(k, focused: slot == viewModel.focusedSlot, offset: offset, side: side, height: height)
+                            .position(
+                                x: geo.size.width / 2 + CGFloat(offset.sign == .minus ? -1 : 1)
+                                    * (min(abs(CGFloat(offset)), 1) * step
+                                        + max(abs(CGFloat(offset)) - 1, 0)
+                                        * (side * KotekanCardView.cardWidth + gap)),
+                                y: geo.size.height / 2
+                            )
                     }
                 }
             }
@@ -174,5 +160,37 @@ private struct ChooseKotekanContentView: View {
                     step: step
                 )
             }
+    }
+
+    /// Only the centred card takes touches, for its mute and its long press;
+    /// the rest stay out of the drag's way, as every card did before.
+    private func card(_ k: Kotekan, focused: Bool, offset: Double, side: CGFloat, height: CGFloat) -> some View {
+        @Bindable var vm = viewModel
+        return KotekanCardView(
+            kotekan: k,
+            isPlaying: focused,
+            canPlay: vm.isPlayable(k),
+            engine: vm.engine,
+            // Nothing is scored without the sensor, so a record would be a number nobody can beat.
+            bestRecord: app.controllerConnected ? vm.bestRecord(k) : nil,
+            muted: $vm.muted,
+            offset: offset,
+            sideScale: side,
+            height: height
+        )
+        .contextMenu {
+            // The built-ins are the app's: shown, but greyed with the reason,
+            // so a long press never looks like it did nothing.
+            let builtin = k.source == .builtin
+            Section {
+                Button("Edit", systemImage: "pencil") { vm.edit(k) }
+                    .disabled(builtin)
+                Button("Delete", systemImage: "trash", role: .destructive) { vm.pendingDelete = k }
+                    .disabled(builtin)
+            } header: {
+                if builtin { Text("Built-in kotekan can't be edited or deleted") }
+            }
+        }
+        .allowsHitTesting(focused)
     }
 }

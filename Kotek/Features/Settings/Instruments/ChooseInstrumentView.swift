@@ -5,13 +5,17 @@
 //  Choose which saved gamelan to play. Profiles persist key alignments and
 //  strike baselines across app launches and builds.
 //
-//  Laid out like Choose your kotekan: search and Add above a centred carousel
-//  of the same card size, Next bottom right. The card in the middle is the
-//  selected one — swiping or tapping a card brings it there; Next is the one
-//  way on. A tap on a card used to go straight to the kotekan picker, which
-//  made a mis-tap on the wrong gangsa a trip back. The cards were 240pt tall
-//  photo cards, which with the search row and the footer ran off the bottom
-//  of a landscape phone.
+//  Laid out like Choose your kotekan: a centred carousel of the same card
+//  size, search and + under it. The card in the middle is the selected one —
+//  swiping or tapping a card brings it there; a tap on the centred card goes
+//  on, and a long press lifts it for Edit (its section in Settings) / Delete.
+//
+//  A tap on any card used to go straight to the kotekan picker, which made a
+//  mis-tap on the wrong gangsa a trip back, so Next took over. Next is gone
+//  again, but a side card still only centres, so going on is always a second,
+//  deliberate tap. The cards were once 240pt tall photo cards, which with the
+//  search row and a footer ran off a landscape phone; they are the kotekan
+//  card's 210 now the footer is gone, and still capped by the rail's height.
 //
 
 import SwiftUI
@@ -37,6 +41,8 @@ struct ChooseInstrumentView: View {
                 onBack: { app.screen = .welcome },
                 trailingText: app.savedProfiles.isEmpty
                     ? nil : "\(app.savedProfiles.count) saved",
+                settingsAction: { app.openSettings() },
+                showsMenu: true,
                 edgeInset: 0
             )
 
@@ -44,22 +50,18 @@ struct ChooseInstrumentView: View {
                 EmptyInstrumentsView(onAdd: { app.addNewInstrument() })
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                SearchAndCreateBar(
-                    query: $query,
-                    prompt: "Search gangsa",
-                    createTitle: "Add gangsa",
-                    onCreate: { app.addNewInstrument() }
-                )
                 Group {
                     if profiles.isEmpty { noMatches } else { rail }
                 }
                 .frame(maxHeight: .infinity)
-                footer
+                SearchAndCreateBar(
+                    query: $query,
+                    prompt: "Search",
+                    createTitle: "Add gangsa",
+                    onCreate: { app.addNewInstrument() }
+                )
             }
         }
-        // As on the kotekan picker: the field is up top, so the keyboard has
-        // nothing to push out of the way.
-        .ignoresSafeArea(.keyboard)
         .confirm(
             Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             title: "Delete this gangsa?",
@@ -103,9 +105,24 @@ struct ChooseInstrumentView: View {
                         InstrumentCardView(
                             profile: profile,
                             isCurrent: app.profile.id == profile.id,
-                            height: min(InstrumentCardView.maxHeight, geo.size.height),
-                            onSelect: { withAnimation(.snappy(duration: 0.32)) { centred = profile.id } }
+                            height: min(InstrumentCardView.maxHeight, geo.size.height - 16),
+                            onSelect: {
+                                if centred == profile.id {
+                                    app.selectInstrument(profile)
+                                } else {
+                                    withAnimation(.snappy(duration: 0.32)) { centred = profile.id }
+                                }
+                            }
                         )
+                        .contextMenu {
+                            Button("Edit", systemImage: "pencil") {
+                                app.activateInstrument(profile)
+                                app.openSettings()
+                            }
+                            Button("Delete", systemImage: "trash", role: .destructive) {
+                                pendingDelete = profile
+                            }
+                        }
                         // Shrink and dim off-centre, as the kotekan carousel does,
                         // pinned at the edge facing the middle so the gap to the
                         // selected card stays `gap` and the outer edge is what moves.
@@ -152,22 +169,5 @@ struct ChooseInstrumentView: View {
         .multilineTextAlignment(.center)
         .padding(.horizontal, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    /// Next goes with whichever card is selected — the one the app is already
-    /// on until another is tapped. Delete beside it, as on the kotekan picker.
-    private var footer: some View {
-        let selected = app.savedProfiles.first { $0.id == app.profile.id }
-        return HStack(spacing: 14) {
-            Spacer()
-            if let selected {
-                AppIconButton(systemImage: "trash", label: "Delete \(selected.name)") { pendingDelete = selected }
-            }
-            AppButton(title: "Next", prominence: .primary, size: .regular) {
-                app.selectInstrument(app.profile)
-            }
-            .disabled(selected == nil)
-        }
-        .padding(.bottom, Theme.footerBottom)
     }
 }

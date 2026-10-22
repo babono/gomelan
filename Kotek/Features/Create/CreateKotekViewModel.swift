@@ -221,7 +221,7 @@ final class CreateKotekViewModel {
     }
 
     func play() {
-        guard !draft.isEmpty, !playing else { return }
+        guard !draft.isSilent, !playing else { return }
         stopRecording()
         if playhead >= Double(draft.lengthTicks) { playhead = 0 }
         cue.start()
@@ -244,7 +244,7 @@ final class CreateKotekViewModel {
     }
 
     private func frame(now: Double) {
-        guard !draft.isEmpty else { return stopPreview() }
+        guard !draft.isSilent else { return stopPreview() }
         let length = Double(draft.lengthTicks)
         let elapsed = lastFrame.map { now - $0 } ?? 0
         lastFrame = now

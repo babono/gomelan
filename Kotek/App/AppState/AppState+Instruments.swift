@@ -46,6 +46,12 @@ extension AppState {
     func cancelInstrumentSetup() {
         savedProfiles = ProfileStore.loadAll()
         if isAddingNewInstrument {
+            // Never saved, so nothing else will clean up what setup wrote for it.
+            if !savedProfiles.contains(where: { $0.id == profile.id }) {
+                InstrumentPhotoStore.delete(id: profile.id)
+                NoteClipCapture.deleteInstrument(instrumentID: profile.id)
+                UserDefaults.standard.removeObject(forKey: Self.recordedSoundsKey(profile.id))
+            }
             if let prev = previousProfile,
                savedProfiles.contains(where: { $0.id == prev.id })
             {

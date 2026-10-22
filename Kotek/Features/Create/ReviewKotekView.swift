@@ -164,7 +164,7 @@ private struct PatternOverview: View {
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
                     ForEach((0 ..< rows).reversed(), id: \.self) { key in
-                        Text(bilahLabel(key, count: rows))
+                        Text("\(key + 1)")
                             .font(.sans(11, weight: .semibold))
                             .foregroundStyle(Theme.stone)
                             .frame(height: rowHeight)

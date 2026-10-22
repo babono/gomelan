@@ -35,7 +35,11 @@ struct AppMenuPicker<Option: Hashable>: View {
                     Image(systemName: systemImage)
                         .font(.symbol(size.symbolPoints, weight: .semibold))
                 }
-                Text(title(selection)).appLabel(size)
+                // As wide as the widest option.
+                ZStack {
+                    ForEach(options, id: \.self) { Text(title($0)).appLabel(size).hidden() }
+                    Text(title(selection)).appLabel(size)
+                }
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.symbol(size.symbolPoints - 4, weight: .semibold))
             }

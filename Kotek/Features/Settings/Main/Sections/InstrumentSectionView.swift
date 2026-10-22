@@ -175,10 +175,12 @@ struct InstrumentSectionView: View {
             }
             .pickerStyle(.segmented)
             .frame(maxWidth: 360)
-            Text("Where to damp each bilah as its note ends: a hand tile falling on the waterfall, and the thumb on the gangsa. Also on the pause screen.")
-                .font(.sans(14))
-                .foregroundStyle(Theme.cream.opacity(0.62))
-                .frame(maxWidth: 520, alignment: .leading)
+            Text(
+                "Where to damp each bilah as its note ends: a hand tile falling on the waterfall, and the thumb on the gangsa. Also on the pause screen."
+            )
+            .font(.sans(14))
+            .foregroundStyle(Theme.cream.opacity(0.62))
+            .frame(maxWidth: 520, alignment: .leading)
         }
     }
 

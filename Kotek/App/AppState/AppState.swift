@@ -109,7 +109,7 @@ final class AppState {
     ///
     /// ponytail: one setting for the app, not one per gangsa, though it sits
     /// in the Gangsa card. Nothing yet needs a different answer per gangsa.
-    var dampGuide: DampGuide = DampGuide(rawValue: Defaults.string("dampGuide") ?? "")
+    var dampGuide: DampGuide = .init(rawValue: Defaults.string("dampGuide") ?? "")
         ?? (Defaults.bool("showsDamp", true) ? .all : .off)
     {
         didSet { Defaults.set("dampGuide", dampGuide.rawValue) }
@@ -582,6 +582,13 @@ final class AppState {
         }
         noteCaptureIsSetup = false
         openControllerSetup(returnTo: .chooseKotekan, offer: true)
+    }
+
+    /// Back from setup's note capture to the key count. Still mid-add, so
+    /// confirming runs the same hand-off again and cancelling discards it.
+    func backToKeyCount() {
+        noteCaptureIsSetup = false
+        screen = .choosingKeyCount
     }
 
     func openAudioTest() {

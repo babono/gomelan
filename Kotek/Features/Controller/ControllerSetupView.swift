@@ -38,9 +38,10 @@ private struct ControllerSetupContent: View {
         VStack(spacing: 0) {
             TopBar(
                 title: "Strike controller",
-                backTitle: backTitle,
                 onBack: back,
-                trailingText: vm.app.profile.name
+                trailingText: vm.app.profile.name,
+                trailingTitle: skipTitle,
+                onTrailing: vm.close
             )
             Group {
                 switch vm.step {
@@ -58,15 +59,17 @@ private struct ControllerSetupContent: View {
         .onChange(of: sensor.info) { _, _ in vm.infoChanged() }
     }
 
-    /// nil is the plain back chevron; only Skip is spelled out.
-    private var backTitle: String? {
-        if vm.step == .summary { return nil }
-        return vm.app.controllerSetupIsOffer ? "Skip" : nil
+    /// Skip sits in the trailing corner, so Back keeps the leading one.
+    private var skipTitle: String? {
+        vm.step != .summary && vm.app.controllerSetupIsOffer ? "Skip" : nil
     }
 
     private func back() {
         if vm.step == .summary || (vm.step == .test && !vm.app.controllerSetupRecheck) {
             vm.backToScan()
+        } else if vm.app.controllerSetupIsOffer {
+            // The offer's previous step is recording the keys.
+            vm.app.openNoteCapture(setup: true)
         } else {
             vm.close()
         }
