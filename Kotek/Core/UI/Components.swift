@@ -198,8 +198,11 @@ struct TopBar: View {
     var accent: Color = Theme.gold
     /// Slimmer header with no divider — used over full-bleed camera screens.
     var compact: Bool = false
-    /// The strike-controller icon, beside the gear: whether this session is scored.
-    var showsSensor: Bool = false
+    /// Folds the gear and the strike-controller status into one ⋯ menu, as the
+    /// pickers draw it: the status is worth a glance, not a corner of its own.
+    var showsMenu: Bool = false
+    /// A primary capsule before the trailing controls — the kotekan picker's Duet.
+    var accessory: (title: String, systemImage: String, isEnabled: Bool, action: () -> Void)?
     /// Space between the controls and the safe-area edge. The pickers pass 0 so
     /// the buttons sit in the corners, on the line their carousel ends at.
     var edgeInset: CGFloat = 24
@@ -215,7 +218,10 @@ struct TopBar: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     // Never let the title grow under the controls either side.
-                    .padding(.horizontal, 96)
+                    // Symmetric, so it stays centred on the screen: 96 clears
+                    // two circles, but Duet + ⋯ is ~170 wide, and the title
+                    // ran on under Duet, which read as off-centre.
+                    .padding(.horizontal, accessory == nil ? 96 : 180)
 
                 // One container for the bar's glass, as Apple recommends
                 // wherever glass controls sit together: they render as one
@@ -243,7 +249,15 @@ struct TopBar: View {
                                 .font(.sans(13, weight: .medium))
                                 .foregroundStyle(accent)
                         }
-                        if showsSensor { SensorIndicator() }
+                        if let accessory {
+                            AppButton(
+                                title: accessory.title,
+                                systemImage: accessory.systemImage,
+                                prominence: .primary,
+                                action: accessory.action
+                            )
+                            .disabled(!accessory.isEnabled)
+                        }
                         // 44pt circles: a bare glyph in a corner is a 19pt
                         // target, and the HIG minimum is 44.
                         if let infoAction {
@@ -253,7 +267,9 @@ struct TopBar: View {
                                 action: infoAction
                             )
                         }
-                        if let settingsAction {
+                        if showsMenu {
+                            MoreMenu(settingsAction: settingsAction)
+                        } else if let settingsAction {
                             AppIconButton(
                                 systemImage: "gearshape",
                                 label: "Settings",
@@ -274,6 +290,36 @@ struct TopBar: View {
             .padding(.top, compact ? 10 : 18)
             .padding(.bottom, compact ? 8 : 12)
         }
+    }
+}
+
+/// The ⋯ in a picker's top bar: the sensor's state, then Settings.
+private struct MoreMenu: View {
+    @Environment(AppState.self) private var app
+    let settingsAction: (() -> Void)?
+
+    var body: some View {
+        let status = SensorIndicator.summary(for: app)
+        Menu {
+            // A row that reports, not an action: disabled so it reads as status.
+            Button {} label: { Label { Text(status.text) } icon: { status.icon } }
+                .disabled(true)
+            if let settingsAction {
+                Button("Settings", systemImage: "gearshape", action: settingsAction)
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.symbol(AppButtonSize.regular.symbolPoints, weight: .semibold))
+                .foregroundStyle(Theme.cream)
+                .appControlSurface(size: .regular, shape: .circle, prominence: .secondary, growsHitArea: false)
+                .overlay(alignment: .topTrailing) {
+                    if app.controllerNeedsCheck {
+                        Circle().fill(Theme.wrong).frame(width: 9, height: 9)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("More, \(status.text)")
     }
 }
 

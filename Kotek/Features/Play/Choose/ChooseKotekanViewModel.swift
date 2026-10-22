@@ -108,9 +108,20 @@ final class ChooseKotekanViewModel {
     }
 
     func handleMutedChanged(_ isMuted: Bool) {
-        engine.partnerAudible = !isMuted
-        engine.yourVoiceAudible = !isMuted
-        if isMuted { cue.stopKeySamples() }
+        applyMuted()
+        if isMuted {
+            cue.stopKeySamples()
+            cue.stopColotomic()
+        }
+    }
+
+    /// Mute is the whole preview, gong and kajar included. The engine keeps the
+    /// colotomic frame on in a session because judging is measured against it;
+    /// the preview never judges, so here it is just more sound under a "Muted" label.
+    private func applyMuted() {
+        engine.partnerAudible = !muted
+        engine.yourVoiceAudible = !muted
+        engine.colotomicAudible = !muted
     }
 
     func onSlotChanged() {
@@ -120,8 +131,7 @@ final class ChooseKotekanViewModel {
     func startPreview() {
         guard let k = current else { return stopPreview() }
         engine.cue = cue
-        engine.partnerAudible = !muted
-        engine.yourVoiceAudible = !muted
+        applyMuted()
         engine.configure(
             song: k.makeSong(half: .polos, cycles: 1),
             partner: k.makeSong(half: .sangsih, cycles: 1),
@@ -237,12 +247,15 @@ final class ChooseKotekanViewModel {
         Int((Double(x - width / 2) / Double(step) + origin).rounded())
     }
 
+    /// The carousel's taps arrive through its drag, not a button, so the tick is
+    /// struck here. The centred card goes on to the session (Start is gone);
+    /// a side card is brought to the middle, which is how a figure is heard.
     func tap(_ slot: Int) {
-        Task { @concurrent in
-            await KajarTick.strike()
-        }
-        // The focused card does nothing on a tap: Start is the only way in.
-        if slot != focusedSlot, kotekan(atSlot: slot) != nil {
+        KajarTick.strike()
+        guard let k = kotekan(atSlot: slot) else { return }
+        if slot == focusedSlot {
+            if isPlayable(k) { start(k) }
+        } else {
             withAnimation(.snappy(duration: 0.32)) { position = Double(slot) }
         }
     }
