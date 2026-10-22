@@ -80,7 +80,7 @@ final class CreateKotekViewModel {
     let sensor: GangsaSensor
     private(set) var recording = false
     /// Without a controller set up: which bilah input 0 is taped to. The
-    /// prototype has three sensors, on three neighbouring bilah.
+    /// prototype's sensors sit on neighbouring bilah, in input order.
     var firstSensorKey = 4
 
     init(
@@ -93,7 +93,12 @@ final class CreateKotekViewModel {
         self.sensor = sensor
         editing = app.editingKotekan
         if let editing { draft.load(editing) }
-        firstSensorKey = min(firstSensorKey, max(0, keyCount - GangsaSensor.legacyInputCount))
+        firstSensorKey = min(firstSensorKey, max(0, keyCount - sensorCount))
+    }
+
+    /// Inputs on the connected controller; the prototype's three until it says.
+    var sensorCount: Int {
+        sensor.info?.inputCount ?? GangsaSensor.legacyInputCount
     }
 
     /// The gangsa has its own controller map (§3.6.5), so there is nothing to
@@ -103,16 +108,16 @@ final class CreateKotekViewModel {
     }
 
     var sensorKeys: ClosedRange<Int> {
-        firstSensorKey ... firstSensorKey + GangsaSensor.legacyInputCount - 1
+        firstSensorKey ... firstSensorKey + sensorCount - 1
     }
 
-    /// Every placement of the three prototype sensors that fits the instrument.
+    /// Every placement of the prototype sensors that fits the instrument.
     var sensorPlacements: [Int] {
-        Array(0 ... max(0, keyCount - GangsaSensor.legacyInputCount))
+        Array(0 ... max(0, keyCount - sensorCount))
     }
 
     /// Controller input → key, the same rule the waterfall plays by: the
-    /// gangsa's own map, or the prototype's three neighbouring bilah. Nil is
+    /// gangsa's own map, or the prototype's neighbouring bilah. Nil is
     /// an input with no key on it, and its hits are dropped.
     func key(forInput input: Int) -> Int? {
         if usesControllerMap { return app.profile.keyForInput[input] }

@@ -91,7 +91,8 @@ final class GangsaSensor: NSObject {
     static let levelChar = CBUUID(string: "7A1F0003-5C3E-4B8E-9D2A-6E0B1C2D3E4F")
     static let infoChar = CBUUID(string: "7A1F0004-5C3E-4B8E-9D2A-6E0B1C2D3E4F")
     static let inputsChar = CBUUID(string: "7A1F0005-5C3E-4B8E-9D2A-6E0B1C2D3E4F")
-    /// What the prototype firmware, which has no INFO, is wired with.
+    /// What the prototype firmware, which has no INFO, was first wired with.
+    /// Only a default now: its real count is the length of its LEVEL packet.
     static let legacyInputCount = 3
     static let legacyPrefix = "LEGACY-"
 
@@ -122,6 +123,9 @@ final class GangsaSensor: NSObject {
     private var central: CBCentralManager?
     private var peripheral: CBPeripheral?
     private var lastSensorMs: UInt32?
+    /// Connected to prototype firmware (no INFO), waiting for its first LEVEL
+    /// packet to say how many inputs it has.
+    private var awaitingLegacyLevels = false
     /// Controllers that answered INFO with the wrong hardware ID during this
     /// search, so the scan stops offering them.
     private var rejected: Set<UUID> = []
@@ -203,6 +207,7 @@ final class GangsaSensor: NSObject {
         peripheral = nil
         info = nil
         levels = []
+        awaitingLegacyLevels = false
     }
 
     private func satisfies(_ p: CBPeripheral) -> Bool {
@@ -287,6 +292,7 @@ final class GangsaSensor: NSObject {
         peripheral = p // must be retained or CB drops it
         p.delegate = self
         info = nil
+        awaitingLegacyLevels = false
         status = .connecting
         central?.connect(p)
     }
@@ -355,12 +361,16 @@ final class GangsaSensor: NSObject {
     /// own identifier for it instead — so it can be set up and reconnects
     /// here, but a second phone cannot find it.
     ///
+    /// Its input count comes from the LEVEL packet, one byte per input. A
+    /// fixed 3 rejected every hit on a 4th sensor as a bad packet, and the
+    /// setup never offered that input to a key.
+    ///
     /// ponytail: drop once every controller runs the INFO firmware.
-    private func legacyInfo(for p: CBPeripheral) {
+    private func legacyInfo(for p: CBPeripheral, inputCount: Int) {
         ready(Info(
             hardwareID: Self.legacyPrefix + p.identifier.uuidString,
             name: p.name ?? "Gangsa-Sensor",
-            inputCount: Self.legacyInputCount,
+            inputCount: inputCount,
             hasPlugDetect: false,
             plugged: [],
             firmware: nil
@@ -425,6 +435,10 @@ final class GangsaSensor: NSObject {
     private func ingestLevels(_ data: Data) {
         let b = [UInt8](data)
         levelPackets += 1
+        if awaitingLegacyLevels, let peripheral, !b.isEmpty {
+            awaitingLegacyLevels = false
+            legacyInfo(for: peripheral, inputCount: b.count)
+        }
         guard !levels.isEmpty else { return }
         levels = (0 ..< levels.count).map { $0 < b.count ? Double(b[$0]) / 255 : 0 }
     }
@@ -543,7 +557,8 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
             if let infoChar = chars.first(where: { $0.uuid == Self.infoChar }) {
                 peripheral.readValue(for: infoChar)
             } else {
-                legacyInfo(for: peripheral)
+                // Not ready until its first LEVEL packet (50 Hz) gives the count.
+                awaitingLegacyLevels = true
             }
         }
     }
