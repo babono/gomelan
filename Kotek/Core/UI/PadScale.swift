@@ -19,6 +19,8 @@ import UIKit
 
 struct PadScale<Content: View>: View {
     @ViewBuilder var content: Content
+    /// How far the keyboard reaches up the screen, in screen points.
+    @State private var keyboard: CGFloat = 0
 
     /// The iPhone 17's landscape screen, which every layout was tuned on.
     private static var reference: CGSize {
@@ -52,7 +54,11 @@ struct PadScale<Content: View>: View {
                         // The bottom too: the phone's home-indicator inset
                         // is ~21pt, and an iPad in this mode reports almost
                         // none, so footers sat on the bottom edge.
-                        bottom: max(insets.bottom / s, Self.sideMargin),
+                        //
+                        // And the keyboard: ignoring every safe area hid it
+                        // from the layout too, so the pickers' search field,
+                        // at the bottom, stayed under it while you typed.
+                        bottom: max(max(insets.bottom, keyboard) / s, Self.sideMargin),
                         trailing: max(insets.trailing / s, Self.sideMargin)
                     ))
                     .frame(width: geo.size.width / s, height: geo.size.height / s)
@@ -60,6 +66,21 @@ struct PadScale<Content: View>: View {
                     .frame(width: geo.size.width, height: geo.size.height)
             }
             .ignoresSafeArea()
+            // From UIKit's notifications rather than the safe area: a view
+            // that ignores only the container's safe area, measured against
+            // the screen, read the keyboard's height in the simulator and
+            // nothing on a real iPad.
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
+                guard let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                      let screen = note.object as? UIScreen ?? UIApplication.shared.connectedScenes
+                      .compactMap({ ($0 as? UIWindowScene)?.screen }).first
+                else { return }
+                keyboard = max(0, screen.bounds.maxY - end.minY)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+                keyboard = 0
+            }
+            .animation(.smooth(duration: 0.25), value: keyboard)
         } else {
             content
         }

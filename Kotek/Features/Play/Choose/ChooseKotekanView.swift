@@ -3,8 +3,9 @@
 //  Kotek
 //
 //  Pick the interlocking figure to learn. A swipe or a tap on a side card
-//  brings it to the middle and plays it; a tap on the centred card starts it,
-//  and a long press there lifts it for Edit / Delete.
+//  brings it to the middle and plays it; a tap on the centred card starts it
+//  — alone, or into the coop setup when the corner menu says Co-op — and a
+//  long press there lifts it for Edit / Delete.
 //
 //  Start, bottom right, was the one way on for a while, because a tap on the
 //  focused card used to start the session and a tap meant to hear a figure
@@ -45,9 +46,7 @@ private struct ChooseKotekanContentView: View {
                 onBack: { app.openChooseInstrument() },
                 settingsAction: { app.openSettings() },
                 showsMenu: true,
-                accessory: vm.current.map { k in
-                    (title: "Co-op", systemImage: "person.2.fill", isEnabled: vm.playable, action: { vm.coop(k) })
-                },
+                accessory: AnyView(modeMenu),
                 edgeInset: 0
             )
 
@@ -94,6 +93,19 @@ private struct ChooseKotekanContentView: View {
         .onChange(of: vm.current?.id) { _, _ in vm.onSlotChanged() }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
         .onChange(of: vm.muted) { _, isMuted in vm.handleMutedChanged(isMuted) }
+    }
+
+    private var modeMenu: some View {
+        @Bindable var app = app
+        return AppMenuPicker(
+            options: PlayMode.allCases,
+            selection: $app.playMode,
+            title: \.title,
+            label: "Mode",
+            systemImage: app.playMode == .solo ? "person.fill" : "person.2.fill",
+            size: .regular
+        )
+        .fixedSize()
     }
 
     private var noMatches: some View {
