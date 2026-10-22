@@ -593,7 +593,7 @@ private struct PianoRollTransport: View {
         .frame(height: 54)
     }
 
-    /// The sensors' state, and which three bilah they are taped to.
+    /// The sensors' state, and which bilah they are taped to.
     private var sensorSetup: some View {
         let (text, color): (String, Color) = switch viewModel.sensor.status {
         case .off: ("Sensor off", Theme.stone)
@@ -604,7 +604,7 @@ private struct PianoRollTransport: View {
         }
         let count = viewModel.keyCount
         func range(_ first: Int) -> String {
-            "\(bilahLabel(first, count: count))–\(bilahLabel(first + GangsaSensor.legacyInputCount - 1, count: count))"
+            "\(bilahLabel(first, count: count))–\(bilahLabel(first + viewModel.sensorCount - 1, count: count))"
         }
 
         // The status is a coloured icon, its words only for VoiceOver: the bar
