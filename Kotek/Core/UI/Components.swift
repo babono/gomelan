@@ -187,6 +187,10 @@ struct TopBar: View {
     var backTitle: String?
     var onBack: (() -> Void)?
     var trailingText: String?
+    /// A trailing action in words — a setup step's Skip / Done, in the corner
+    /// so the leading slot stays Back. Secondary glass, as Settings' Done.
+    var trailingTitle: String?
+    var onTrailing: (() -> Void)?
     /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
     var settingsAction: (() -> Void)?
     /// When set, a help button is shown at the trailing edge, before the gear.
@@ -253,6 +257,9 @@ struct TopBar: View {
                             Text(trailingText)
                                 .font(.sans(13, weight: .medium))
                                 .foregroundStyle(accent)
+                        }
+                        if let trailingTitle, let onTrailing {
+                            AppButton(title: trailingTitle, action: onTrailing)
                         }
                         if let accessory {
                             AppButton(

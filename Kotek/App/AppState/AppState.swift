@@ -584,6 +584,13 @@ final class AppState {
         openControllerSetup(returnTo: .chooseKotekan, offer: true)
     }
 
+    /// Back from setup's note capture to the key count. Still mid-add, so
+    /// confirming runs the same hand-off again and cancelling discards it.
+    func backToKeyCount() {
+        noteCaptureIsSetup = false
+        screen = .choosingKeyCount
+    }
+
     func openAudioTest() {
         screen = .audioTest
     }

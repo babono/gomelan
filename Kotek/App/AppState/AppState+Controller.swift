@@ -20,6 +20,12 @@ extension AppState {
     }
 
     func closeControllerSetup() {
+        // The offer is setup's last step: a new gangsa is added here.
+        if isAddingNewInstrument {
+            isAddingNewInstrument = false
+            previousProfile = nil
+            saveProfile()
+        }
         screen = controllerSetupReturn
     }
 
