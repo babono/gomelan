@@ -46,7 +46,7 @@ private struct ChooseKotekanContentView: View {
                 settingsAction: { app.openSettings() },
                 showsMenu: true,
                 accessory: vm.current.map { k in
-                    (title: "Duet", systemImage: "person.2.fill", isEnabled: vm.playable, action: { vm.coop(k) })
+                    (title: "Co-op", systemImage: "person.2.fill", isEnabled: vm.playable, action: { vm.coop(k) })
                 },
                 edgeInset: 0
             )

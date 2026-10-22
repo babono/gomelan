@@ -205,7 +205,9 @@ struct TopBar: View {
     /// Folds the gear and the strike-controller status into one ⋯ menu, as the
     /// pickers draw it: the status is worth a glance, not a corner of its own.
     var showsMenu: Bool = false
-    /// A primary capsule before the trailing controls — the kotekan picker's Duet.
+    /// A labelled button before the trailing controls — the kotekan picker's Co-op.
+    /// Secondary, like Settings' Done: it was a gold primary, which shouted over
+    /// the carousel it sits above.
     var accessory: (title: String, systemImage: String, isEnabled: Bool, action: () -> Void)?
     /// Space between the controls and the safe-area edge. The pickers pass 0 so
     /// the buttons sit in the corners, on the line their carousel ends at.
@@ -223,7 +225,7 @@ struct TopBar: View {
                     .minimumScaleFactor(0.7)
                     // Never let the title grow under the controls either side.
                     // Symmetric, so it stays centred on the screen: 96 clears
-                    // two circles, but Duet + ⋯ is ~170 wide, and the title
+                    // two circles, but Duet + ⋯ was ~170 wide, and the title
                     // ran on under Duet, which read as off-centre.
                     .padding(.horizontal, accessory == nil ? 96 : 180)
                     // Katibeh sets its capitals high in the line box (a deep
@@ -265,7 +267,6 @@ struct TopBar: View {
                             AppButton(
                                 title: accessory.title,
                                 systemImage: accessory.systemImage,
-                                prominence: .primary,
                                 action: accessory.action
                             )
                             .disabled(!accessory.isEnabled)

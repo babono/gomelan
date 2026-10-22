@@ -792,7 +792,7 @@ struct NumberField: View {
 ///
 /// Not an `AppButton`: its primary sets the label heavy and uppercase like
 /// NEXT, so "Recording" jumped in weight and case. Like the half pills, only
-/// the glass changes; the type stays put.
+/// the glass changes. Now icon-only (the label is dropped), so it's a circle.
 private struct RecordButton: View {
     let recording: Bool
     let action: () -> Void
@@ -800,18 +800,15 @@ private struct RecordButton: View {
     var body: some View {
         let prominence: AppButton.Prominence = recording ? .primary : .secondary
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: recording ? "stop.fill" : "circle.fill")
-                    .font(.symbol(AppButtonSize.regular.symbolPoints, weight: .semibold))
-                Text(recording ? "Recording" : "Record").appLabel(.regular)
-            }
-            .foregroundStyle(prominence.labelColor(tint: Theme.miss, enabled: true))
-            .appControlSurface(
-                size: .regular,
-                shape: .capsule,
-                prominence: prominence,
-                tint: recording ? Theme.miss : nil
-            )
+            Image(systemName: recording ? "stop.fill" : "circle.fill")
+                .font(.symbol(AppButtonSize.regular.symbolPoints, weight: .semibold))
+                .foregroundStyle(prominence.labelColor(tint: Theme.miss, enabled: true))
+                .appControlSurface(
+                    size: .regular,
+                    shape: .circle,
+                    prominence: prominence,
+                    tint: recording ? Theme.miss : nil
+                )
         }
         .buttonStyle(AppButtonStyle())
         .accessibilityLabel(recording ? "Stop recording" : "Record from the sensors")
