@@ -109,7 +109,7 @@ final class AppState {
     ///
     /// ponytail: one setting for the app, not one per gangsa, though it sits
     /// in the Gangsa card. Nothing yet needs a different answer per gangsa.
-    var dampGuide: DampGuide = DampGuide(rawValue: Defaults.string("dampGuide") ?? "")
+    var dampGuide: DampGuide = .init(rawValue: Defaults.string("dampGuide") ?? "")
         ?? (Defaults.bool("showsDamp", true) ? .all : .off)
     {
         didSet { Defaults.set("dampGuide", dampGuide.rawValue) }

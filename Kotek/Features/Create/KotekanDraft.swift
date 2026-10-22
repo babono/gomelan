@@ -36,7 +36,7 @@ struct Subdivision: Hashable, Identifiable {
     }
 
     var label: String {
-        "\(denominator)"
+        denominator == 1 ? "1" : "1/\(denominator)"
     }
 }
 
@@ -102,8 +102,14 @@ final class KotekanDraft {
         timelineBars * ticksPerBar
     }
 
+    /// No strokes: nothing to save as a kotekan, though a gong line alone
+    /// still plays (`isSilent`).
     var isEmpty: Bool {
         notes.isEmpty
+    }
+
+    var isSilent: Bool {
+        notes.isEmpty && colotomic.isEmpty
     }
 
     // MARK: - Editing

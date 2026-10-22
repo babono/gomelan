@@ -71,7 +71,14 @@ struct PatternMinimap: View {
         let rowHeight = size.height / CGFloat(rows)
         // The same curve as the roll above, so the strip shows where the
         // whole figure dips, not only the part on screen.
-        PerformanceGraph.drawCurve(slots, shown: shown, ctx, CGRect(origin: .zero, size: size), column: column, lineWidth: 1.5)
+        PerformanceGraph.drawCurve(
+            slots,
+            shown: shown,
+            ctx,
+            CGRect(origin: .zero, size: size),
+            column: column,
+            lineWidth: 1.5
+        )
 
         for s in slots {
             guard let key = s.keyIndex else { continue }

@@ -28,7 +28,7 @@ struct PianoRollView: View {
     var body: some View {
         let draft = viewModel.draft
 
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             CreateTopBar(title: "New Kotek") {
                 AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
             } trailing: {
@@ -39,50 +39,98 @@ struct PianoRollView: View {
 
             PianoRollControls(viewModel: viewModel)
 
-            HStack(alignment: .top, spacing: 10) {
-                ToolRail(viewModel: viewModel)
-                PianoRollGrid(viewModel: viewModel)
-            }
+            PianoRollGrid(viewModel: viewModel)
 
             PianoRollTransport(viewModel: viewModel)
         }
-        .padding(.horizontal, 40)
-        .padding(.vertical, 10)
+        // On top of the safe area, not instead of it: the landscape inset
+        // already clears the notch and home indicator. Tight both ways: the
+        // tools row needs the width, and fourteen bilah rows need the height.
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
     }
 }
 
 // MARK: - Controls row
 
+/// The halves, then the tools: the four colotomic instruments and the eraser,
+/// named. The snap menu lives in the transport, which is what leaves this row
+/// room for the names. A row too wide for a small phone scrolls rather than
+/// squeezing one chip over the next.
 private struct PianoRollControls: View {
     @Bindable var viewModel: CreateKotekViewModel
 
     var body: some View {
-        HStack(spacing: 10) {
-            AppSwitcher(
-                options: [KotekanHalf.polos, .sangsih],
-                // Not drawn as selected while the roll is writing a colotomic
-                // instrument: the half stays remembered.
-                selection: viewModel.tool == .notes ? viewModel.writing : nil,
-                title: \.title,
-                dot: { $0 == .polos ? Theme.polosVoice : Theme.sangsihVoice },
-                style: .pills
-            ) {
-                viewModel.writing = $0
-                viewModel.tool = .notes
+        ScrollView(.horizontal) {
+            HStack(spacing: 10) {
+                halves
+                divider
+                HStack(spacing: 8) {
+                    ForEach(ColotomicInstrument.allCases) { tool($0) }
+                }
+                divider
+                eraser
             }
-            Spacer(minLength: 0)
-            snapMenu
+        }
+        .scrollIndicators(.hidden)
+        .scrollBounceBehavior(.basedOnSize)
+    }
+
+    private var halves: some View {
+        AppSwitcher(
+            options: [KotekanHalf.polos, .sangsih],
+            // Not drawn as selected while the roll is writing a colotomic
+            // instrument: the half stays remembered.
+            selection: viewModel.tool == .notes ? viewModel.writing : nil,
+            title: \.title,
+            dot: { $0 == .polos ? Theme.polosVoice : Theme.sangsihVoice },
+            style: .pills
+        ) {
+            viewModel.writing = $0
+            viewModel.tool = .notes
         }
     }
 
-    private var snapMenu: some View {
-        AppMenuPicker(
-            options: Subdivision.denominators.map(Subdivision.init(denominator:)),
-            selection: Bindable(viewModel).snap,
-            title: \.label,
-            label: "Snap",
-            systemImage: "squareshape.split.3x3"
-        )
+    /// Arms a colotomic instrument for the next taps. Tapping it again goes
+    /// back to writing the half. Drawn like the half pills, so a chosen tool
+    /// and a chosen half look the same.
+    private func tool(_ instrument: ColotomicInstrument) -> some View {
+        let selected = viewModel.tool == .colotomic(instrument)
+        return Button {
+            viewModel.tool = selected ? .notes : .colotomic(instrument)
+        } label: {
+            HStack(spacing: 6) {
+                ColotomicMark(instrument: instrument, scale: 0.7)
+                Text(instrument.title).appLabel(.compact)
+            }
+            .foregroundStyle(selected ? Theme.onGlassFill : Theme.cream)
+            .appControlSurface(size: .compact, shape: .capsule, prominence: selected ? .primary : .secondary)
+        }
+        .buttonStyle(AppButtonStyle())
+        .accessibilityLabel("Add \(instrument.title)")
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    /// The Delete tool: taps take out whatever is under the finger instead of
+    /// writing. Tapping a stroke in the notes tool still removes it too — this
+    /// is for clearing several without one stray tap writing a new one.
+    private var eraser: some View {
+        let selected = viewModel.tool == .erase
+        return Button {
+            viewModel.tool = selected ? .notes : .erase
+        } label: {
+            Image(systemName: "eraser")
+                .font(.symbol(AppButtonSize.compact.symbolPoints, weight: .semibold))
+                .foregroundStyle(selected ? Theme.onGlassFill : Theme.cream)
+                .appControlSurface(size: .compact, shape: .circle, prominence: selected ? .primary : .secondary)
+        }
+        .buttonStyle(AppButtonStyle())
+        .accessibilityLabel("Delete")
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private var divider: some View {
+        Rectangle().fill(Theme.cream.opacity(0.15)).frame(width: 1, height: 24)
     }
 }
 
@@ -126,7 +174,7 @@ private struct PianoRollGrid: View {
             let ppq = (pointsPerQuarter ?? visible / 16).clamped(to: fitAll, Self.maxPointsPerQuarter)
             let pxPerTick = ppq / CGFloat(KotekanDraft.ticksPerQuarter)
             let width = CGFloat(timeline) * pxPerTick
-            let rowHeight = max(12, (geo.size.height - rulerHeight - laneHeight) / CGFloat(rows))
+            let rowHeight = max(10, (geo.size.height - rulerHeight - laneHeight) / CGFloat(rows))
 
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
@@ -225,7 +273,7 @@ private struct PianoRollGrid: View {
     private func keyLabels(rows: Int, rowHeight: CGFloat) -> some View {
         VStack(spacing: 0) {
             ForEach((0 ..< rows).reversed(), id: \.self) { key in
-                Text(bilahLabel(key, count: rows))
+                Text("\(key + 1)")
                     .font(.sans(11, weight: .semibold))
                     .foregroundStyle(Theme.stone)
                     .frame(height: rowHeight)
@@ -522,7 +570,7 @@ struct PreviewPlayhead: View {
     let pxPerTick: CGFloat
 
     var body: some View {
-        if !viewModel.draft.isEmpty || viewModel.recording {
+        if !viewModel.draft.isSilent || viewModel.recording {
             Rectangle()
                 .fill(viewModel.recording ? Theme.miss : Theme.cream)
                 .frame(width: 2)
@@ -570,18 +618,24 @@ private struct PianoRollTransport: View {
                         prominence: .primary,
                         size: .compact
                     ) { viewModel.togglePlay() }
-                        .disabled(draft.isEmpty)
+                        .disabled(draft.isSilent)
                 }
             }
 
             divider
 
             HStack(spacing: 10) {
-                MiniStepper(
+                NumberField(
                     value: Binding(get: { draft.bpm }, set: { draft.bpm = $0 }),
                     range: KotekanDraft.bpmRange,
-                    suffix: "BPM",
-                    editable: true
+                    suffix: "BPM"
+                )
+                AppMenuPicker(
+                    options: Subdivision.denominators.map(Subdivision.init(denominator:)),
+                    selection: Bindable(viewModel).snap,
+                    title: \.label,
+                    label: "Snap",
+                    systemImage: "squareshape.split.3x3"
                 )
             }
 
@@ -590,7 +644,7 @@ private struct PianoRollTransport: View {
             if viewModel.recording { sensorSetup } else { PlayheadClock(viewModel: viewModel) }
             Spacer(minLength: 0)
         }
-        .frame(height: 54)
+        .frame(height: 44)
     }
 
     /// The sensors' state, and which three bilah they are taped to.
@@ -602,9 +656,8 @@ private struct PianoRollTransport: View {
         case .connected: ("Connected", Theme.hit)
         case let .unavailable(why): (why, Theme.miss)
         }
-        let count = viewModel.keyCount
         func range(_ first: Int) -> String {
-            "\(bilahLabel(first, count: count))–\(bilahLabel(first + GangsaSensor.legacyInputCount - 1, count: count))"
+            "\(first + 1)–\(first + GangsaSensor.legacyInputCount)"
         }
 
         // The status is a coloured icon, its words only for VoiceOver: the bar
@@ -669,44 +722,29 @@ struct PlayheadClock: View {
     }
 }
 
-/// − value + in one capsule, for a row too tight for `AppStepper`. Holding a
-/// button repeats, so 88 → 120 bpm is a press, not thirty-two taps.
+/// A typed number, e.g. the tempo. The − / + stepper it replaced gave its room
+/// to the snap menu; typing makes 88 → 160 one entry, not seventy-two taps.
 ///
-/// `editable` makes the value a number field as well, for a jump the buttons
-/// would take a while over (88 → 160). It writes through while the number is in
-/// range, so typing "1" on the way to "120" does not set 1, and settles to the
-/// nearest allowed value when the field is left.
-struct MiniStepper: View {
+/// It writes through while the number is in range, so typing "1" on the way to
+/// "120" does not set 1, and settles to the nearest allowed value when the
+/// field is left.
+struct NumberField: View {
     @Binding var value: Int
     let range: ClosedRange<Int>
     var suffix: String?
-    var editable = false
 
     @State private var text = ""
     @FocusState private var focused: Bool
 
     var body: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 3) {
-                if editable { field } else {
-                    Text("\(value)")
-                        .font(.sans(15, weight: .semibold))
-                        .contentTransition(.numericText())
-                }
-                if let suffix {
-                    Text(suffix).font(.sans(13)).foregroundStyle(Theme.stone)
-                }
+        HStack(spacing: 3) {
+            field
+            if let suffix {
+                Text(suffix).font(.sans(13)).foregroundStyle(Theme.stone)
             }
-            .foregroundStyle(Theme.cream)
-            .fixedSize()
-
-            HStack(spacing: 0) {
-                button("minus", enabled: value > range.lowerBound) { value -= 1 }
-                Rectangle().fill(Theme.cream.opacity(0.2)).frame(width: 1, height: 16)
-                button("plus", enabled: value < range.upperBound) { value += 1 }
-            }
-            .background(Theme.cream.opacity(0.08), in: Capsule())
         }
+        .foregroundStyle(Theme.cream)
+        .fixedSize()
     }
 
     private var field: some View {
@@ -747,35 +785,35 @@ struct MiniStepper: View {
         value = (Int(text) ?? value).clamped(to: range.lowerBound, range.upperBound)
         text = "\(value)"
     }
-
-    private func button(_ symbol: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.symbol(12, weight: .bold))
-                .foregroundStyle(enabled ? Theme.cream : Theme.cream.opacity(0.25))
-                .frame(width: 36, height: 32)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.appPlain)
-        .buttonRepeatBehavior(.enabled)
-        .disabled(!enabled)
-    }
 }
 
 /// Arms the sensors. Red, and filled while recording, so it is never a
 /// question whether a hit on the gangsa is being written down.
+///
+/// Not an `AppButton`: its primary sets the label heavy and uppercase like
+/// NEXT, so "Recording" jumped in weight and case. Like the half pills, only
+/// the glass changes; the type stays put.
 private struct RecordButton: View {
     let recording: Bool
     let action: () -> Void
 
     var body: some View {
-        AppButton(
-            title: recording ? "Recording" : "Record",
-            systemImage: recording ? "stop.fill" : "circle.fill",
-            prominence: recording ? .primary : .secondary,
-            tint: Theme.miss,
-            action: action
-        )
+        let prominence: AppButton.Prominence = recording ? .primary : .secondary
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: recording ? "stop.fill" : "circle.fill")
+                    .font(.symbol(AppButtonSize.regular.symbolPoints, weight: .semibold))
+                Text(recording ? "Recording" : "Record").appLabel(.regular)
+            }
+            .foregroundStyle(prominence.labelColor(tint: Theme.miss, enabled: true))
+            .appControlSurface(
+                size: .regular,
+                shape: .capsule,
+                prominence: prominence,
+                tint: recording ? Theme.miss : nil
+            )
+        }
+        .buttonStyle(AppButtonStyle())
         .accessibilityLabel(recording ? "Stop recording" : "Record from the sensors")
     }
 }

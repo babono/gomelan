@@ -111,7 +111,9 @@ final class SessionOverviewModel {
                 book: BookInfo(
                     title: "Balinese Gamelan Music",
                     author: "Michael Tenzer",
-                    url: URL(string: "https://www.tuttlepublishing.com/books-by-country/balinese-gamelan-music-paperback-with-disc")
+                    url: URL(
+                        string: "https://www.tuttlepublishing.com/books-by-country/balinese-gamelan-music-paperback-with-disc"
+                    )
                 ),
                 pages: [69, 75]
             ),
