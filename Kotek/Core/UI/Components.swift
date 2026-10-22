@@ -222,6 +222,11 @@ struct TopBar: View {
                     // two circles, but Duet + ⋯ is ~170 wide, and the title
                     // ran on under Duet, which read as off-centre.
                     .padding(.horizontal, accessory == nil ? 96 : 180)
+                    // Katibeh sets its capitals high in the line box (a deep
+                    // descender under them), so a centred frame left the
+                    // uppercase title ~7pt above the buttons' middle. Measured
+                    // off a screenshot; scales with the size.
+                    .offset(y: (compact ? 22 : 30) * 0.23)
 
                 // One container for the bar's glass, as Apple recommends
                 // wherever glass controls sit together: they render as one
