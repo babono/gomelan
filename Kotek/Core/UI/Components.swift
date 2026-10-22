@@ -205,10 +205,10 @@ struct TopBar: View {
     /// Folds the gear and the strike-controller status into one ⋯ menu, as the
     /// pickers draw it: the status is worth a glance, not a corner of its own.
     var showsMenu: Bool = false
-    /// A labelled button before the trailing controls — the kotekan picker's Co-op.
-    /// Secondary, like Settings' Done: it was a gold primary, which shouted over
-    /// the carousel it sits above.
-    var accessory: (title: String, systemImage: String, isEnabled: Bool, action: () -> Void)?
+    /// A control before the trailing ones — the kotekan picker's Solo / Co-op
+    /// menu. It was a Co-op button, first a gold primary, which shouted over
+    /// the carousel it sits above; keep whatever goes here secondary glass.
+    var accessory: AnyView?
     /// Space between the controls and the safe-area edge. The pickers pass 0 so
     /// the buttons sit in the corners, on the line their carousel ends at.
     var edgeInset: CGFloat = 24
@@ -264,12 +264,7 @@ struct TopBar: View {
                             AppButton(title: trailingTitle, action: onTrailing)
                         }
                         if let accessory {
-                            AppButton(
-                                title: accessory.title,
-                                systemImage: accessory.systemImage,
-                                action: accessory.action
-                            )
-                            .disabled(!accessory.isEnabled)
+                            accessory
                         }
                         // 44pt circles: a bare glyph in a corner is a 19pt
                         // target, and the HIG minimum is 44.

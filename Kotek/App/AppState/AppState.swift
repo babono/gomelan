@@ -445,6 +445,9 @@ final class AppState {
     /// One-screen coop's players. Kept between sessions, so a pair who play
     /// again do not type their names twice; nil until coop is first opened.
     var coop: CoopSetup?
+    /// The picker's Solo / Co-op. Held here, not in the picker, so coming back
+    /// from the coop setup finds it still on Co-op; every launch starts solo.
+    var playMode: PlayMode = .solo
     /// The splash is up and drawing its own gangsa over the landing screen's.
     /// The landing screen holds its copy still meanwhile — two animated
     /// gangsa, one hidden, on the busiest seconds of launch.

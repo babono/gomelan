@@ -75,11 +75,6 @@ final class ChooseKotekanViewModel {
         kotekan(atSlot: focusedSlot)
     }
 
-    var playable: Bool {
-        guard let current else { return false }
-        return app.kotekan(current, playableOn: app.profile)
-    }
-
     func isPlayable(_ kotekan: Kotekan) -> Bool {
         app.kotekan(kotekan, playableOn: app.profile)
     }
@@ -168,17 +163,15 @@ final class ChooseKotekanViewModel {
 
     func start(_ k: Kotekan) {
         stopPreview()
-        app.playKotekan(k)
+        switch app.playMode {
+        case .solo: app.playKotekan(k)
+        case .coop: app.openCoop(k)
+        }
     }
 
     func create() {
         stopPreview()
         app.openCreateKotek()
-    }
-
-    func coop(_ k: Kotekan) {
-        stopPreview()
-        app.openCoop(k)
     }
 
     func edit(_ k: Kotekan) {
