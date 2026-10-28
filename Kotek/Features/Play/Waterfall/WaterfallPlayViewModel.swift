@@ -22,6 +22,7 @@ final class WaterfallPlayViewModel {
     let sensor: GangsaSensor
     let engine = PlayEngine()
     private let displayLink = DisplayLink()
+    let voice = VoiceCommandListener()
 
     /// The Learn step this screen is running, or nil for free play. Fixed for
     /// the screen's life: `LearnView` gives each step a fresh one.
@@ -48,6 +49,20 @@ final class WaterfallPlayViewModel {
     var tilted: Bool = Defaults.bool("waterfallTilted", false) {
         didSet { UserDefaults.standard.set(tilted, forKey: "waterfallTilted") }
     }
+    /// Voice commands, for when both hands are on the panggul. Off until
+    /// turned on from the pause screen — it asks for the microphone, and the
+    /// question should come from a tap on the mic, not from opening a pattern.
+    var voiceOn: Bool = Defaults.bool("voiceCommands", false) {
+        didSet {
+            Defaults.set("voiceCommands", voiceOn)
+            if voiceOn { voice.start() } else { voice.stop() }
+        }
+    }
+
+    /// What was heard and done — "Slower · 0.75×" — for a moment under the
+    /// title, so a misheard command is seen and can be undone.
+    private(set) var voiceCaption: String?
+    private var captionTask: Task<Void, Never>?
 
     init(
         app: AppState,
@@ -119,7 +134,6 @@ final class WaterfallPlayViewModel {
         default: app.yourVoiceAudible
         }
         engine.waitsForEachNote = isStep
-        engine.sessionSubtitle = title
         engine.onComplete = { [weak self] result in
             Task { @MainActor in
                 guard let self else { return }
@@ -134,18 +148,7 @@ final class WaterfallPlayViewModel {
                 }
             }
         }
-        if let song = app.selectedSong {
-            engine.configure(
-                song: song,
-                partner: app.partnerSong,
-                profile: app.profile,
-                tempoScale: lessonTempo ?? app.tempoScale,
-                judging: sensing && (lesson == nil || isBuildUp),
-                // Step waits on each note anyway; a count-in would only delay
-                // the first wait.
-                countIn: !isStep
-            )
-        }
+        configureEngine()
         everSensed = sensing
 
         sensor.onHit = { [weak self] hit in
@@ -160,6 +163,26 @@ final class WaterfallPlayViewModel {
         engine.start()
         displayLink.onFrame = { [weak self] now in self?.engine.tick(now: now) }
         displayLink.start()
+
+        voice.onCommand = { [weak self] in self?.heard($0) }
+        if voiceOn { voice.start() }
+    }
+
+    /// From the top of the figure, count-in and all — setup's half, and
+    /// Restart's whole.
+    private func configureEngine() {
+        guard let song = app.selectedSong else { return }
+        engine.sessionSubtitle = title
+        engine.configure(
+            song: song,
+            partner: app.partnerSong,
+            profile: app.profile,
+            tempoScale: lessonTempo ?? app.tempoScale,
+            judging: sensing && (lesson == nil || isBuildUp),
+            // Step waits on each note anyway; a count-in would only delay
+            // the first wait.
+            countIn: !isStep
+        )
     }
 
     func teardown() {
@@ -168,6 +191,9 @@ final class WaterfallPlayViewModel {
         resumeTask?.cancel()
         displayLink.stop()
         sensor.onHit = nil
+        voice.onCommand = nil
+        voice.stop()
+        captionTask?.cancel()
         // Not `use(.none)`: RootView hands the controller back to the active
         // gangsa as this screen goes, and may already have.
         cue.stop()
@@ -216,6 +242,20 @@ final class WaterfallPlayViewModel {
         cancelResume()
         displayLink.stop()
         engine.end()
+    }
+
+    /// The figure again from its count-in, the session's scores with it — a
+    /// Build up starts back at its slowest.
+    func restart() {
+        guard live, !engine.isFinished else { return }
+        cancelResume()
+        paused = false
+        tempoStep = 0
+        passesAtTempo = 0
+        cue.stopKeySamples()
+        configureEngine()
+        engine.start()
+        displayLink.start()
     }
 
     func sensingChanged(_ on: Bool) {
@@ -337,6 +377,68 @@ final class WaterfallPlayViewModel {
         cancelResume()
         teardown()
         app.startLearn(k, fromStart: true)
+    }
+
+    // MARK: - Voice
+
+    private func heard(_ command: VoiceCommand) {
+        guard live, !engine.isFinished else { return }
+        switch command {
+        case .slower, .faster, .normalSpeed:
+            // A Learn step sets its own speed; Build up's climb is the point.
+            guard lesson == nil else { return say(command, "the step sets the speed") }
+            let scales = Theme.tempoScales
+            let i = scales.firstIndex(of: app.tempoScale) ?? scales.firstIndex(of: 1) ?? 0
+            let next = switch command {
+            case .slower: scales[max(0, i - 1)]
+            case .faster: scales[min(scales.count - 1, i + 1)]
+            default: 1.0
+            }
+            app.tempoScale = next
+            say(command, Theme.tempoLabel(next))
+        case let .half(half):
+            guard lesson == nil else { return say(command, "the step sets your half") }
+            app.setHalf(half)
+            say(command, "you play \(half.title.lowercased())")
+        case .switchHalf:
+            guard lesson == nil else { return say(command, "the step sets your half") }
+            app.setHalf(app.chosenHalf.other)
+            say(command, "you play \(app.chosenHalf.title.lowercased())")
+        case .pause:
+            // Not over the opening count-in, for the same reason a tap does not.
+            guard !paused, engine.msUntilFirstNote == nil else { return }
+            pause()
+            say(command, nil)
+        case .resume:
+            guard paused, resumeCount == nil else { return }
+            resume()
+            say(command, nil)
+        case .end:
+            say(command, nil)
+            end()
+        case .restart:
+            restart()
+            say(command, nil)
+        case .next:
+            if isStep, engine.heldKey != nil {
+                engine.releaseStep()
+            } else if lesson != nil {
+                nextStep()
+            } else {
+                return
+            }
+            say(command, nil)
+        }
+    }
+
+    private func say(_ command: VoiceCommand, _ detail: String?) {
+        voiceCaption = ["“\(command.title)”", detail].compactMap(\.self).joined(separator: " · ")
+        captionTask?.cancel()
+        captionTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.8))
+            guard !Task.isCancelled else { return }
+            self?.voiceCaption = nil
+        }
     }
 
     func handleScenePhase(_ phase: ScenePhase) {
