@@ -23,6 +23,19 @@ final class WaterfallPlayViewModel {
     let engine = PlayEngine()
     private let displayLink = DisplayLink()
 
+    /// The Learn step this screen is running, or nil for free play. Fixed for
+    /// the screen's life: `LearnView` gives each step a fresh one.
+    let lesson: LearnStage?
+    /// Build up's place: which of `LearnStage.buildUpTempos`, and how many
+    /// passes at it (counted only without sensors).
+    private(set) var tempoStep = 0
+    private var passesAtTempo = 0
+    /// Between `setup` and `teardown`. Teardown runs twice on the way to the
+    /// next step — called before moving on, then from `onDisappear` — and the
+    /// second `cue.stop()` would land after the next step had started the
+    /// same cue player, and silence it (see `ChooseKotekanViewModel.stopPreview`).
+    private var live = false
+
     var paused = false
     /// 3, 2, 1 between pressing Resume and the clock running again — nil
     /// otherwise. Resuming straight away dropped the player back into a
@@ -44,6 +57,7 @@ final class WaterfallPlayViewModel {
         self.app = app
         self.cue = cue
         self.sensor = sensor
+        lesson = app.learnStage
     }
 
     // MARK: - Derived
@@ -95,15 +109,25 @@ final class WaterfallPlayViewModel {
     // MARK: - Lifecycle
 
     func setup() {
+        live = true
         engine.cue = cue
-        engine.partnerAudible = app.partnerAudible
-        engine.yourVoiceAudible = app.yourVoiceAudible
+        engine.partnerAudible = lesson.map { $0.half == .sangsih } ?? app.partnerAudible
+        engine.yourVoiceAudible = switch lesson {
+        case .listen: true
+        // Your stroke sounds when you make it: the real bar, or the sample on a tap.
+        case .step: false
+        default: app.yourVoiceAudible
+        }
+        engine.waitsForEachNote = isStep
         engine.sessionSubtitle = title
         engine.onComplete = { [weak self] result in
             Task { @MainActor in
                 guard let self else { return }
                 self.teardown()
-                if let result, self.everSensed {
+                if self.lesson != nil {
+                    // Nothing in Learn is filed; quitting it is leaving it.
+                    self.app.exitLearn()
+                } else if let result, self.everSensed {
                     self.app.finish(result: result)
                 } else {
                     self.app.backToKotekan()
@@ -115,8 +139,11 @@ final class WaterfallPlayViewModel {
                 song: song,
                 partner: app.partnerSong,
                 profile: app.profile,
-                tempoScale: app.tempoScale,
-                judging: sensing
+                tempoScale: lessonTempo ?? app.tempoScale,
+                judging: sensing && (lesson == nil || isBuildUp),
+                // Step waits on each note anyway; a count-in would only delay
+                // the first wait.
+                countIn: !isStep
             )
         }
         everSensed = sensing
@@ -136,6 +163,8 @@ final class WaterfallPlayViewModel {
     }
 
     func teardown() {
+        guard live else { return }
+        live = false
         resumeTask?.cancel()
         displayLink.stop()
         sensor.onHit = nil
@@ -190,7 +219,8 @@ final class WaterfallPlayViewModel {
     }
 
     func sensingChanged(_ on: Bool) {
-        engine.setJudging(on)
+        // Listen and Step score nothing, sensors or not.
+        if lesson == nil || isBuildUp { engine.setJudging(on) }
         if on { everSensed = true }
     }
 
@@ -207,6 +237,106 @@ final class WaterfallPlayViewModel {
         // playhead jumped back by however long the menu took.
         engine.setTempoScale(scale, now: paused ? pauseStartedAt : CACurrentMediaTime())
         engine.sessionSubtitle = title
+    }
+
+    // MARK: - Learn
+
+    private var isStep: Bool {
+        if case .step = lesson { true } else { false }
+    }
+
+    private var isBuildUp: Bool {
+        if case .buildUp = lesson { true } else { false }
+    }
+
+    /// Listen is the figure as written; Step moves at half speed between its
+    /// waits; Build up starts at the bottom of its climb.
+    private var lessonTempo: Double? {
+        switch lesson {
+        case .listen: 1
+        case .step: 0.5
+        case .buildUp: LearnStage.buildUpTempos[tempoStep]
+        case .watch, nil: nil
+        }
+    }
+
+    /// The line under the strip: what to do, and in Build up how far up.
+    var lessonCaption: String? {
+        switch lesson {
+        case .listen: "Hear your part once, or tap Next"
+        case .step: sensing ? "Strike the lit bar, or tap for the next note" : "Tap for the next note"
+        case .buildUp:
+            "\(Theme.tempoLabel(LearnStage.buildUpTempos[tempoStep])) · " + (engine.judging
+                ? "a pass at \(Int(LearnStage.accuracyToSpeedUp * 100))% to go faster"
+                : "pass \(passesAtTempo + 1) of \(LearnStage.passesPerTempoUnsensed)")
+        case .watch, nil: nil
+        }
+    }
+
+    /// The figure came round. Listen is one pass; Build up decides here
+    /// whether the pass just finished earns the next speed.
+    func loopChanged() {
+        guard engine.phase == .userTurn, engine.loopIndex > 0 else { return }
+        switch lesson {
+        case .listen:
+            nextStep()
+        case .buildUp:
+            if engine.judging {
+                guard let last = engine.lastClosedCycle, last.index == engine.loopIndex - 1,
+                      last.accuracy >= LearnStage.accuracyToSpeedUp else { return }
+            } else {
+                passesAtTempo += 1
+                guard passesAtTempo >= LearnStage.passesPerTempoUnsensed else { return }
+            }
+            speedUp()
+        default:
+            break
+        }
+    }
+
+    private func speedUp() {
+        passesAtTempo = 0
+        guard tempoStep + 1 < LearnStage.buildUpTempos.count else { return nextStep() }
+        tempoStep += 1
+        // On the turn of the cycle, so the pass just begun is all at the new
+        // speed and counts.
+        engine.setTempoScale(LearnStage.buildUpTempos[tempoStep], voidsPass: false)
+    }
+
+    /// A tap during Step lets the held note go; anywhere else it pauses —
+    /// except over the opening count-in, which is already a countdown:
+    /// paused there, Resume's 3, 2, 1 ran into it and there were two.
+    func tapped() {
+        if isStep, engine.heldKey != nil {
+            engine.releaseStep()
+        } else if engine.msUntilFirstNote == nil {
+            pause()
+        }
+    }
+
+    func stepsDone() {
+        if engine.stepsDone { nextStep() }
+    }
+
+    /// On to the next step — torn down first, see `live`.
+    func nextStep() {
+        cancelResume()
+        teardown()
+        app.advanceLearn()
+    }
+
+    func skipLearn() {
+        cancelResume()
+        teardown()
+        app.skipLearn()
+    }
+
+    /// From free play's pause screen: this pattern's Learn, from the top.
+    func learnAgain() {
+        guard let k = app.selectedKotekan else { return }
+        cancelResume()
+        teardown()
+        app.startLearn(k, fromStart: true)
     }
 
     func handleScenePhase(_ phase: ScenePhase) {

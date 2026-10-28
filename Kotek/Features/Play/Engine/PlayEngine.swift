@@ -158,6 +158,24 @@ final class PlayEngine {
 
     /// Live judgement feed (for debug / practice feedback)
     private(set) var lastJudgement: NoteJudgement?
+    /// The pass banked last — Learn's Build up reads it to decide whether to
+    /// speed up. Voided passes never reach it.
+    private(set) var lastClosedCycle: CycleScore?
+
+    /// Learn's Step: the clock stops on each of your notes until it is struck
+    /// (`registerStrike`, on the right bar) or let go (`releaseStep`). One
+    /// pass, then it runs on and `stepsDone` says so. Set before `start`, on
+    /// an engine configured with no count-in and judging off: nothing here is
+    /// scored, a note is simply waited for.
+    ///
+    /// The stop is made by moving the clock's origin, the way a pause is, so
+    /// everything downstream — the falling blocks, the cue on the bar — sees
+    /// time standing still with the block sitting on its bilah.
+    var waitsForEachNote = false
+    /// The bar the clock is held on, while it is.
+    private(set) var heldKey: Int?
+    private(set) var stepsDone = false
+    private var stepIndex = 0
 
     // Dependencies set before start
     var cue: CuePlayer?
@@ -367,6 +385,10 @@ final class PlayEngine {
         phase = .countIn
         loopIndex = 0
         bestSoFar = nil
+        lastClosedCycle = nil
+        stepIndex = 0
+        heldKey = nil
+        stepsDone = false
         playhead = 0
         // R Reset with it. A figure configured while the last one was on page 4
         // R keeps that page until the first tick, and page 4 of a single-page
@@ -452,16 +474,27 @@ final class PlayEngine {
     /// `now` lets coop's two engines rebase on one instant: each reading the
     /// clock for itself would land them microseconds apart, and every later
     /// change would add to the gap.
-    func setTempoScale(_ scale: Double, now: Double = CACurrentMediaTime()) {
+    ///
+    /// `voidsPass` false is for a change made on the turn of a cycle (Learn's
+    /// Build up), where the pass just begun is all at the new speed and is
+    /// exactly the one whose score decides the next step.
+    func setTempoScale(_ scale: Double, now: Double = CACurrentMediaTime(), voidsPass: Bool = true) {
         let next = min(2, max(0.25, scale))
         guard abs(next - tempoScale) > 0.001 else { return }
         let beatsElapsed = currentTimeMs / beatMs
         tempoScale = next
         recomputeTiming()
         startHostTime = now - beatsElapsed * beatMs / 1000
+        // R The clock too, not only its origin. Left for the next tick, the
+        // R screen drew one frame of new-tempo note times against the old
+        // R clock — every block somewhere else, then back — and Learn's Build
+        // R up, which changes speed from a view update between ticks, blinked
+        // R at every step up.
+        currentTimeMs = beatsElapsed * beatMs
+        if currentTimeMs >= introMs { patternOriginMs = introMs + Double(loopIndex) * patternMs }
         // R The pass in progress spans two speeds, so it is not a fair reading of
         // R either. Same reasoning as a mid-pass change of half.
-        cycleVoided = true
+        if voidsPass { cycleVoided = true }
         refreshBestSoFar()
     }
 
@@ -655,6 +688,7 @@ final class PlayEngine {
         }
         lastTickHostTime = now
         currentTimeMs = (now - startHostTime) * 1000
+        holdOnStep(now: now)
         renderNow = now
         // R Monotonic, so this falls to nil exactly once and never returns — the
         // R cue cannot reappear at the top of a loop.
@@ -770,16 +804,16 @@ final class PlayEngine {
     /// Bank the pass that just ended.
     private func closeCycle(index: Int) {
         guard !cycleVoided, tally.noteCount > 0 else { return }
-        cyclesByPart[partKey, default: []].append(
-            CycleScore(
-                index: index,
-                startMs: tally.startMs,
-                noteCount: tally.noteCount,
-                score: tally.score,
-                onBeat: tally.onBeat,
-                mistakes: tally.mistakes
-            )
+        let cycle = CycleScore(
+            index: index,
+            startMs: tally.startMs,
+            noteCount: tally.noteCount,
+            score: tally.score,
+            onBeat: tally.onBeat,
+            mistakes: tally.mistakes
         )
+        cyclesByPart[partKey, default: []].append(cycle)
+        lastClosedCycle = cycle
         refreshBestSoFar()
     }
 
@@ -1008,9 +1042,46 @@ final class PlayEngine {
         //        }
     }
 
+    // MARK: - Step (Learn)
+
+    /// Keeps the clock on the note being waited for. Before it arrives the
+    /// figure falls at tempo, so the gaps between notes still have their
+    /// shape; once it is on its bilah, time stops there.
+    private func holdOnStep(now: Double) {
+        guard waitsForEachNote, !stepsDone, notes.indices.contains(stepIndex) else { return }
+        let dueAt = introMs + scaledTime(notes[stepIndex])
+        guard currentTimeMs >= dueAt else { return }
+        currentTimeMs = dueAt
+        startHostTime = now - dueAt / 1000
+        heldKey = notes[stepIndex].keyIndex
+    }
+
+    /// Lets the held note go, as struck: it lights green on its bar, and
+    /// sounds when nothing real did (`sounds` — a tap, not a sensor).
+    func releaseStep(now: Double = CACurrentMediaTime(), sounds: Bool = true) {
+        guard let key = heldKey else { return }
+        heldKey = nil
+        judged[stepIndex] = true
+        flash(at: key, result: .perfect, now: now)
+        if sounds { cue?.playKeySample(index: key, pan: yourPan) }
+        stepIndex += 1
+        if stepIndex >= notes.count { stepsDone = true }
+    }
+
     // MARK: - Strike handling (from AudioEngineController, main queue)
 
     func registerStrike(keyIndex: Int, hostTime: Double, confidence: Double) {
+        if waitsForEachNote {
+            // Only while held, and only the bar it is held on: a stroke on
+            // another bar shows red there and the wait goes on.
+            guard let heldKey, !isFinished else { return }
+            if keyIndex == heldKey {
+                releaseStep(now: hostTime, sounds: false)
+            } else {
+                flash(at: keyIndex, result: .miss, now: hostTime)
+            }
+            return
+        }
         guard judging, !isFinished, phase.isUserPlaying else { return }
 
         // R The eye and the ear both report now, so one strike can arrive twice.

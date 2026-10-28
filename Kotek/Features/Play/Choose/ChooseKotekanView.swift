@@ -194,6 +194,11 @@ private struct ChooseKotekanContentView: View {
             // The built-ins are the app's: shown, but greyed with the reason,
             // so a long press never looks like it did nothing.
             let builtin = k.source == .builtin
+            // Learn again, or skip ahead to it: the tap opens a learned
+            // pattern straight into free play.
+            if vm.isPlayable(k) {
+                Button("Learn step by step", systemImage: "graduationcap") { vm.learn(k) }
+            }
             Section {
                 Button("Edit", systemImage: "pencil") { vm.edit(k) }
                     .disabled(builtin)
