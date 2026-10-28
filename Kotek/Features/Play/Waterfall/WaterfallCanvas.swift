@@ -35,10 +35,6 @@ struct WaterfallCanvas: View {
         .of(yourHalf)
     }
 
-    private var partnerSkin: VoiceSkin {
-        VoiceSkin.of(yourHalf == .polos ? .sangsih : .polos).muted
-    }
-
     var body: some View {
         // Read here, in body, so Observation ties this view to the clock. The
         // Canvas renderer runs outside body tracking, and without this the
@@ -71,11 +67,11 @@ struct WaterfallCanvas: View {
             }
 
             let notes = engine.fallingNotes(aheadMs: aheadMs, behindMs: beatMs)
-            // Partner first, then damp cues, then yours — so the thing you
-            // strike is always on top of everything else in its lane.
-            for note in notes where note.voice == .partner {
-                drawPartner(ctx, note: note, y: y, pxPerMs: pxPerMs)
-            }
+            // Only your half falls. The other half used to come down beside
+            // it as a muted slate block, and between the two the lanes were
+            // twice as busy as the part you actually play; you still hear
+            // it. Damp cues first, then yours, so the thing you strike is on
+            // top in its lane.
             for note in notes where note.voice == .yours && damp.showsTiles {
                 drawDamp(ctx, note: note, y: y, pxPerMs: pxPerMs)
             }
@@ -151,18 +147,6 @@ struct WaterfallCanvas: View {
                 endPoint: CGPoint(x: r.midX, y: r.minY + u * (hit ? 11 : 0))
             ))
         }
-    }
-
-    /// The other half, muted (`polos-mute`): a slate block with its voice's
-    /// rim. It used to be drawn as solid as yours; now only your strokes are
-    /// lit, and the rim still shows where the partner's land.
-    private func drawPartner(
-        _ ctx: GraphicsContext,
-        note: FallingNote,
-        y: (Double) -> CGFloat,
-        pxPerMs: Double
-    ) {
-        partnerSkin.draw(ctx, block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs))
     }
 
     /// Keeps its colour after it is judged — the verdict is painted on the
