@@ -448,6 +448,8 @@ final class AppState {
     /// The picker's Solo / Co-op. Held here, not in the picker, so coming back
     /// from the coop setup finds it still on Co-op; every launch starts solo.
     var playMode: PlayMode = .solo
+    /// Where Learn is, while it runs; nil otherwise.
+    var learnStage: LearnStage?
     /// The splash is up and drawing its own gangsa over the landing screen's.
     /// The landing screen holds its copy still meanwhile — two animated
     /// gangsa, one hidden, on the busiest seconds of launch.

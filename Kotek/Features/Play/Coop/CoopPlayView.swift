@@ -48,24 +48,7 @@ private struct CoopPlayContentView: View {
                         Color.black.opacity(PauseStage.dim).ignoresSafeArea(edges: [.top, .horizontal])
                     }
                 }
-            GeometryReader { geo in
-                let stage = CoopStageLayout(size: geo.size, keyCounts: vm.lanes.map(\.keyCount))
-                ZStack(alignment: .topLeading) {
-                    UnisonBands(lanes: vm.lanes, stage: stage)
-                    HStack(alignment: .top, spacing: CoopStageLayout.gap) {
-                        ForEach(vm.lanes) { lane in
-                            column(lane, stage: stage)
-                        }
-                    }
-                    .padding(.horizontal, CoopStageLayout.outerPad)
-                    StartCaption(engine: vm.clock)
-                        .frame(width: geo.size.width)
-                        .padding(.top, CoopStageLayout.header + 18)
-                }
-            }
-            // Down to the glass, as the solo waterfall does, so the sunk half
-            // of each gangsa is measured from the edge of the screen.
-            .ignoresSafeArea(.container, edges: .bottom)
+            CoopStage(lanes: vm.lanes, voicedKeys: vm.voicedKeys, damp: app.dampGuide)
             .overlay {
                 if vm.paused {
                     PauseStage(resumeCount: vm.resumeCount, onResume: vm.resume, onQuit: vm.leave)
@@ -74,7 +57,7 @@ private struct CoopPlayContentView: View {
         }
         .background(Theme.ground.ignoresSafeArea())
         .contentShape(Rectangle())
-        .onTapGesture(perform: vm.pause)
+        .onTapGesture(perform: vm.tapped)
         .accessibilityAction(named: "Pause", vm.pause)
         .animation(.easeInOut(duration: 0.2), value: vm.paused)
         .animation(.easeInOut(duration: 0.2), value: vm.resumeCount == nil)
@@ -82,31 +65,6 @@ private struct CoopPlayContentView: View {
         .onDisappear(perform: vm.teardown)
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
         .onChange(of: app.tempoScale) { _, new in vm.tempoChanged(new) }
-    }
-
-    private func column(_ lane: CoopPlayViewModel.Lane, stage: CoopStageLayout) -> some View {
-        let layout = stage.layout(lane.id)
-        return VStack(spacing: 0) {
-            LaneHeader(
-                player: lane.player,
-                gangsa: vm.lanes.allSatisfy { $0.profile.id == lane.profile.id } ? nil : lane.profile.name
-            )
-            .frame(height: CoopStageLayout.header)
-            WaterfallCanvas(
-                engine: lane.engine,
-                layout: layout,
-                voiced: vm.voicedKeys,
-                yourHalf: lane.player.half,
-                damp: app.dampGuide
-            )
-            .frame(width: layout.width, height: stage.canvasHeight)
-            // Play-along: nothing is sensed, so the bars ring for every stroke.
-            GangsaStage(engine: lane.engine, layout: layout, tilted: false, damp: app.dampGuide, autoStrikes: true)
-                .frame(width: layout.frameWidth, height: stage.gangsaHeight)
-        }
-        // Taller than the stage by the sunk half of the gangsa; aligned to the
-        // top, that half hangs off the bottom of the screen.
-        .frame(width: stage.columnWidth, height: stage.size.height, alignment: .top)
     }
 
     /// Playing: the figure and the cycle, nothing else. Paused: the session's
@@ -151,6 +109,61 @@ private struct CoopPlayContentView: View {
                 .frame(minHeight: 34)
                 .transition(.opacity)
         }
+    }
+}
+
+/// The two lanes side by side, each player's gangsa under their waterfall,
+/// the unisons banded across the gap. Coop plays on it; so does Learn's
+/// Watch, with the halves for players.
+struct CoopStage: View {
+    let lanes: [CoopPlayViewModel.Lane]
+    let voicedKeys: ClosedRange<Int>
+    let damp: DampGuide
+
+    var body: some View {
+        GeometryReader { geo in
+            let stage = CoopStageLayout(size: geo.size, keyCounts: lanes.map(\.keyCount))
+            ZStack(alignment: .topLeading) {
+                UnisonBands(lanes: lanes, stage: stage)
+                HStack(alignment: .top, spacing: CoopStageLayout.gap) {
+                    ForEach(lanes) { lane in
+                        column(lane, stage: stage)
+                    }
+                }
+                .padding(.horizontal, CoopStageLayout.outerPad)
+                StartCaption(engine: lanes[0].engine)
+                    .frame(width: geo.size.width)
+                    .padding(.top, CoopStageLayout.header + 18)
+            }
+        }
+        // Down to the glass, as the solo waterfall does, so the sunk half
+        // of each gangsa is measured from the edge of the screen.
+        .ignoresSafeArea(.container, edges: .bottom)
+    }
+
+    private func column(_ lane: CoopPlayViewModel.Lane, stage: CoopStageLayout) -> some View {
+        let layout = stage.layout(lane.id)
+        return VStack(spacing: 0) {
+            LaneHeader(
+                player: lane.player,
+                gangsa: lanes.allSatisfy { $0.profile.id == lane.profile.id } ? nil : lane.profile.name
+            )
+            .frame(height: CoopStageLayout.header)
+            WaterfallCanvas(
+                engine: lane.engine,
+                layout: layout,
+                voiced: voicedKeys,
+                yourHalf: lane.player.half,
+                damp: damp
+            )
+            .frame(width: layout.width, height: stage.canvasHeight)
+            // Play-along: nothing is sensed, so the bars ring for every stroke.
+            GangsaStage(engine: lane.engine, layout: layout, tilted: false, damp: damp, autoStrikes: true)
+                .frame(width: layout.frameWidth, height: stage.gangsaHeight)
+        }
+        // Taller than the stage by the sunk half of the gangsa; aligned to the
+        // top, that half hangs off the bottom of the screen.
+        .frame(width: stage.columnWidth, height: stage.size.height, alignment: .top)
     }
 }
 
@@ -220,17 +233,20 @@ private struct LaneHeader: View {
     var body: some View {
         let colour = player.half == .polos ? Theme.polosVoice : Theme.sangsihVoice
         HStack(spacing: 10) {
-            Text(player.name)
-                .font(.serif(22))
-                .foregroundStyle(Theme.cream)
-                .lineLimit(1)
-                // Neither box nor capitals centre it on the pill: Katibeh's
-                // line box has a deep descent, so box-centred it sat ~5pt
-                // high, and centred on its cap height ~2.5pt low. Cap-centred
-                // plus that measured 2.5pt sits it on the pill's middle.
-                .alignmentGuide(VerticalAlignment.center) { d in
-                    d[.firstTextBaseline] - Self.nameCapHeight / 2 + 2.5
-                }
+            // Learn's Watch has halves, not players: no name, the pill alone.
+            if !player.name.isEmpty {
+                Text(player.name)
+                    .font(.serif(22))
+                    .foregroundStyle(Theme.cream)
+                    .lineLimit(1)
+                    // Neither box nor capitals centre it on the pill: Katibeh's
+                    // line box has a deep descent, so box-centred it sat ~5pt
+                    // high, and centred on its cap height ~2.5pt low. Cap-centred
+                    // plus that measured 2.5pt sits it on the pill's middle.
+                    .alignmentGuide(VerticalAlignment.center) { d in
+                        d[.firstTextBaseline] - Self.nameCapHeight / 2 + 2.5
+                    }
+            }
             Text(player.half.title)
                 .font(.sans(11, weight: .bold))
                 .textCase(.uppercase)

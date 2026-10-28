@@ -169,6 +169,11 @@ final class ChooseKotekanViewModel {
         }
     }
 
+    func learn(_ k: Kotekan) {
+        stopPreview()
+        app.startLearn(k, fromStart: true)
+    }
+
     func create() {
         stopPreview()
         app.openCreateKotek()

@@ -70,8 +70,16 @@ extension AppState {
 
     /// Take this figure into whichever play screen is current: the waterfall
     /// by default, the camera top view when `topView` is on.
+    /// A pattern not yet learned opens into Learn; one that has been, into
+    /// free play. The camera's top view has no Learn yet.
     func playKotekan(_ k: Kotekan) {
-        if topView { chooseKotekan(k) } else { chooseKotekanWaterfall(k) }
+        if topView {
+            chooseKotekan(k)
+        } else if LearnProgress.isDone(k.id) {
+            chooseKotekanWaterfall(k)
+        } else {
+            startLearn(k)
+        }
     }
 
     /// Take this figure and advance to countdown (the camera top view).

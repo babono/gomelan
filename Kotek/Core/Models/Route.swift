@@ -35,6 +35,7 @@ enum Route: String, Hashable {
     case waterfall // play without the camera: notes fall onto a drawn gangsa
     case coopSetup // one-screen coop: two players, their gangsa and halves
     case coopPlay // one-screen coop: both halves, side by side
+    case learn // a pattern taught in steps, before free play (`LearnStage`)
 
     /// Screens whose ground is the live camera feed rather than the pattern.
     var isCameraScreen: Bool {

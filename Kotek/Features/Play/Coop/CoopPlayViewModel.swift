@@ -46,12 +46,20 @@ final class CoopPlayViewModel {
     private var resumeTask: Task<Void, Never>?
     private var pauseStartedAt: Double = 0
 
-    init(app: AppState, cue: CuePlayer = Container.shared.cueService()) {
+    /// Learn's Watch runs this too: both halves on this gangsa, unnamed,
+    /// polos on the left, each sounding its own half.
+    private let watching: Bool
+    private var live = false
+
+    init(app: AppState, cue: CuePlayer = Container.shared.cueService(), watching: Bool = false) {
         self.app = app
         self.cue = cue
+        self.watching = watching
         kotekan = app.selectedKotekan
-        let setup = app.coop ?? CoopSetup(playerName: app.playerName, instrumentID: app.profile.id)
-        lanes = setup.players.enumerated().map { i, player in
+        let players = watching
+            ? [KotekanHalf.polos, .sangsih].map { CoopPlayer(name: "", instrumentID: app.profile.id, half: $0) }
+            : (app.coop ?? CoopSetup(playerName: app.playerName, instrumentID: app.profile.id)).players
+        lanes = players.enumerated().map { i, player in
             Lane(id: i, player: player, profile: app.coopProfile(player))
         }
     }
@@ -69,7 +77,9 @@ final class CoopPlayViewModel {
 
     func setup() {
         guard let kotekan else { return }
-        let guideVoices = app.coop?.guideVoices ?? false
+        live = true
+        // Watching, nobody plays along, so the halves are heard.
+        let guideVoices = watching || (app.coop?.guideVoices ?? false)
         for lane in lanes {
             let engine = lane.engine
             engine.cue = cue
@@ -84,7 +94,8 @@ final class CoopPlayViewModel {
             engine.configure(
                 song: kotekan.makeSong(half: lane.player.half, cycles: 1),
                 profile: lane.profile,
-                tempoScale: app.tempoScale,
+                // Watching is the figure as written; coop plays at the pair's speed.
+                tempoScale: watching ? 1 : app.tempoScale,
                 judging: false
             )
         }
@@ -106,12 +117,22 @@ final class CoopPlayViewModel {
     }
 
     func teardown() {
+        // Once: Watch tears down before moving on, then again on disappear,
+        // and a late `cue.stop()` would silence the next step's session.
+        guard live else { return }
+        live = false
         resumeTask?.cancel()
         displayLink.stop()
         cue.stop()
     }
 
     // MARK: - Controls
+
+    /// A tap, unless the opening count-in is running — see
+    /// `WaterfallPlayViewModel.tapped`.
+    func tapped() {
+        if clock.msUntilFirstNote == nil { pause() }
+    }
 
     func pause() {
         guard !paused else { return }

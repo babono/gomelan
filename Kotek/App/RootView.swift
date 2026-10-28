@@ -203,6 +203,8 @@ struct RootView: View {
             CoopSetupView()
         case .coopPlay:
             CoopPlayView()
+        case .learn:
+            LearnView()
         }
     }
 }

@@ -99,7 +99,7 @@ private struct WaterfallContentView: View {
                         tilted: vm.tilted,
                         sensedStrike: vm.sensedStrike,
                         damp: app.dampGuide,
-                        autoStrikes: !vm.sensing
+                        autoStrikes: autoStrikes
                     )
                     .frame(width: layout.frameWidth, height: gangsaHeight)
                     .contentShape(Rectangle())
@@ -132,7 +132,8 @@ private struct WaterfallContentView: View {
                     PauseStage(
                         resumeCount: vm.resumeCount,
                         onResume: vm.resume,
-                        onQuit: vm.end
+                        onQuit: vm.end,
+                        actions: pauseActions
                     )
                 }
             }
@@ -141,7 +142,7 @@ private struct WaterfallContentView: View {
         // A tap anywhere pauses. The pause button it replaces was a 40pt target
         // in a corner, hard to find mid-figure with a panggul in each hand.
         .contentShape(Rectangle())
-        .onTapGesture(perform: vm.pause)
+        .onTapGesture(perform: vm.tapped)
         .accessibilityAction(named: "Pause", vm.pause)
         .animation(.easeInOut(duration: 0.2), value: vm.paused)
         .animation(.easeInOut(duration: 0.2), value: vm.resumeCount == nil)
@@ -153,6 +154,30 @@ private struct WaterfallContentView: View {
         .onChange(of: app.yourVoiceAudible) { _, new in vm.engine.yourVoiceAudible = new }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
         .onChange(of: vm.sensing) { _, on in vm.sensingChanged(on) }
+        .onChange(of: vm.engine.loopIndex) { _, _ in vm.loopChanged() }
+        .onChange(of: vm.engine.stepsDone) { _, _ in vm.stepsDone() }
+    }
+
+    /// Listen plays the bars for you; Step lights them as you strike or tap
+    /// (`PlayEngine.releaseStep`); otherwise, only when nothing hears you.
+    private var autoStrikes: Bool {
+        switch vm.lesson {
+        case .listen: true
+        case .step: false
+        default: !vm.sensing
+        }
+    }
+
+    /// Free play offers Learn; Learn offers its ways out.
+    private var pauseActions: [PauseAction] {
+        guard vm.lesson != nil else {
+            return [PauseAction(title: "Learn this pattern", systemImage: "graduationcap", action: vm.learnAgain)]
+        }
+        var actions = [PauseAction(title: "Skip this step", systemImage: "forward.end", action: vm.nextStep)]
+        if LearnProgress.learnedAny {
+            actions.append(PauseAction(title: "Go to free play", systemImage: "forward", action: vm.skipLearn))
+        }
+        return actions
     }
 
     // MARK: - Chrome
@@ -163,7 +188,9 @@ private struct WaterfallContentView: View {
     @ViewBuilder
     private func topBar(tempo: Binding<Double>) -> some View {
         @Bindable var bindableApp = app
-        if vm.paused, vm.resumeCount == nil {
+        if let lesson = vm.lesson {
+            lessonBar(lesson)
+        } else if vm.paused, vm.resumeCount == nil {
             HStack(spacing: 14) {
                 AppSwitcher(
                     options: [KotekanHalf.polos, .sangsih],
@@ -200,6 +227,59 @@ private struct WaterfallContentView: View {
                 sensorDot
             }
             .frame(minHeight: 34)
+            .transition(.opacity)
+        }
+    }
+
+    /// Learn: where you are and what to do; paused, the voices and the damping
+    /// guide — speed and half are the step's to set.
+    @ViewBuilder
+    private func lessonBar(_ lesson: LearnStage) -> some View {
+        @Bindable var bindableApp = app
+        if vm.paused, vm.resumeCount == nil {
+            HStack(spacing: 14) {
+                LearnStrip(stage: lesson)
+                VoiceMixer(
+                    yourHalf: app.chosenHalf,
+                    yourVoiceAudible: $bindableApp.yourVoiceAudible,
+                    partnerAudible: $bindableApp.partnerAudible
+                )
+                .fixedSize()
+                AppMenuPicker(
+                    options: DampGuide.allCases,
+                    selection: $bindableApp.dampGuide,
+                    title: \.title,
+                    label: "Damping guide",
+                    systemImage: "hand.raised"
+                )
+                .fixedSize()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Theme.deep.opacity(0.92), in: RoundedRectangle(cornerRadius: Theme.radius))
+            .transition(.opacity)
+        } else {
+            HStack(spacing: 14) {
+                VStack(alignment: .leading, spacing: 2) {
+                    LearnStrip(stage: lesson)
+                    if let caption = vm.lessonCaption {
+                        Text(caption)
+                            .font(.sans(12))
+                            .foregroundStyle(Theme.cream.opacity(0.6))
+                            .lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+                sensorDot
+                // Step's taps let notes go, so pausing needs a button there.
+                if case .step = lesson {
+                    AppIconButton(systemImage: "pause.fill", label: "Pause", size: .compact, action: vm.pause)
+                }
+                if case .listen = lesson {
+                    AppButton(title: "Next", trailingSystemImage: "chevron.right", size: .compact, action: vm.nextStep)
+                        .fixedSize()
+                }
+            }
             .transition(.opacity)
         }
     }
@@ -330,6 +410,8 @@ struct PauseStage: View {
     let resumeCount: Int?
     let onResume: () -> Void
     let onQuit: () -> Void
+    /// Between Resume and Quit: Learn's ways on, or free play's way into Learn.
+    var actions: [PauseAction] = []
 
     static let dim = 0.35
 
@@ -352,6 +434,9 @@ struct PauseStage: View {
                         size: .large,
                         action: onResume
                     )
+                    ForEach(actions) { a in
+                        AppButton(title: a.title, systemImage: a.systemImage, action: a.action)
+                    }
                     AppButton(
                         title: "Quit the session",
                         trailingSystemImage: "rectangle.portrait.and.arrow.right",
@@ -362,5 +447,15 @@ struct PauseStage: View {
             }
         }
         .animation(.snappy(duration: 0.25), value: resumeCount)
+    }
+}
+
+struct PauseAction: Identifiable {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var id: String {
+        title
     }
 }

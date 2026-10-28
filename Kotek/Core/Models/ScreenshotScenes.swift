@@ -67,6 +67,14 @@
                 coop = CoopSetup(playerName: "Wayan", instrumentID: savedProfiles[0].id)
                 coop?.right.name = "Komang"
                 screen = scene == "coop" ? .coopPlay : .coopSetup
+            case "learn":
+                startLearn(kotekans[0], fromStart: true)
+            case "learn-step", "learn-buildup":
+                // Straight to a waterfall step, past Watch and Listen.
+                startLearn(kotekans[0], fromStart: true)
+                advanceLearn()
+                advanceLearn()
+                if scene == "learn-buildup" { advanceLearn() }
             case "guide":
                 screen = .chooseKotekan
                 visibleGuide = .kotekan
