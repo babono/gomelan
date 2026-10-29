@@ -53,7 +53,7 @@ enum VoiceCommand: Equatable {
         ("finish", .end),
         ("end", .end),
         ("next", .next),
-        ("skip", .next),
+        ("skip", .next)
     ]
 
     /// Fed to the recogniser so these win over their sound-alikes.

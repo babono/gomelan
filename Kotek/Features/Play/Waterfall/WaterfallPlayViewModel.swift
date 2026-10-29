@@ -49,6 +49,7 @@ final class WaterfallPlayViewModel {
     var tilted: Bool = Defaults.bool("waterfallTilted", false) {
         didSet { UserDefaults.standard.set(tilted, forKey: "waterfallTilted") }
     }
+
     /// Voice commands, for when both hands are on the panggul. Off until
     /// turned on from the pause screen — it asks for the microphone, and the
     /// question should come from a tap on the mic, not from opening a pattern.

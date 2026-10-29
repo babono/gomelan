@@ -70,7 +70,9 @@ struct PadScale<Content: View>: View {
             // that ignores only the container's safe area, measured against
             // the screen, read the keyboard's height in the simulator and
             // nothing on a real iPad.
-            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
+            .onReceive(NotificationCenter.default
+                .publisher(for: UIResponder.keyboardWillChangeFrameNotification))
+            { note in
                 guard let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
                       let screen = note.object as? UIScreen ?? UIApplication.shared.connectedScenes
                       .compactMap({ ($0 as? UIWindowScene)?.screen }).first
