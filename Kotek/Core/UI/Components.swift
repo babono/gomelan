@@ -195,6 +195,8 @@ struct TopBar: View {
     var settingsAction: (() -> Void)?
     /// When set, a help button is shown at the trailing edge, before the gear.
     var infoAction: (() -> Void)?
+    /// What the help button opens, for VoiceOver.
+    var infoLabel = "How Kotek works"
     /// When set, a status dot in the far corner, beside the gear — e.g. the
     /// kotekan picker's "sensors connected".
     var status: (color: Color, label: String)?
@@ -271,7 +273,7 @@ struct TopBar: View {
                         if let infoAction {
                             AppIconButton(
                                 systemImage: "questionmark",
-                                label: "How Kotek works",
+                                label: infoLabel,
                                 action: infoAction
                             )
                         }
