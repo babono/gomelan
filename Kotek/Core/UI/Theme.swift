@@ -184,7 +184,8 @@ enum Theme {
 
     /// "0.75×". Trailing zeroes trimmed — "1.0×" beside "0.75×" reads as a
     /// precision the setting does not have.
-    static func tempoLabel(_ scale: Double) -> String {
+    /// Nonisolated so a menu can take it as its (nonisolated) title function.
+    nonisolated static func tempoLabel(_ scale: Double) -> String {
         String(format: "%g×", scale)
     }
 

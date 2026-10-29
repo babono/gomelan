@@ -2,9 +2,11 @@
 //  GuideView.swift
 //  Kotek
 //
-//  The explainer panels: what a gangsa card keeps, what a kotekan is, and
-//  who we made this with. Each is reached by ASKING for it — a help button in a
-//  top bar, or the Mekar Bhuana mark in the corner of the landing screen.
+//  The explainer panels: what a gangsa card keeps, what a kotekan is, where
+//  the strike controller's sensors go and how to check them, and who we made
+//  this with. Each is reached by ASKING for it — a help button in a top bar,
+//  or the Mekar Bhuana mark in the corner of the landing screen. (The sensor
+//  pair also open once by themselves, the first time their step comes up.)
 //
 
 import SwiftUI
@@ -31,6 +33,14 @@ struct GuideView: View {
                 scrolls: false
             ) {
                 GuideSlides(slides: MekarBhuanaDeck.slides)
+            }
+        case .sensor:
+            GuidePanel(title: "Fitting the sensors", onClose: onClose, scrolls: false) {
+                SensorGuideView()
+            }
+        case .sensorCheck:
+            GuidePanel(title: "Checking the sensors", onClose: onClose, scrolls: false) {
+                SensorCheckGuideView()
             }
         }
     }

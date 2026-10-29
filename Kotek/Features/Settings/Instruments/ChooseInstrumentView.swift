@@ -98,6 +98,9 @@ struct ChooseInstrumentView: View {
             let side = CarouselFit.sideScale(width: geo.size.width, card: InstrumentCardView.width)
             let gap = CarouselFit.gap(width: geo.size.width, card: InstrumentCardView.width)
             let step = InstrumentCardView.width + gap
+            // Read here, not in `visualEffect`: its closure is Sendable and
+            // cannot reach a main-actor static.
+            let cardWidth = InstrumentCardView.width
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: gap) {
@@ -133,7 +136,7 @@ struct ChooseInstrumentView: View {
                             let dx = proxy.frame(in: .scrollView).midX - centre
                             let t = min(abs(dx) / step, 1)
 
-                            let slide = (1 - side) * InstrumentCardView.width * max(abs(dx) / (2 * step) - 1, 0)
+                            let slide = (1 - side) * cardWidth * max(abs(dx) / (2 * step) - 1, 0)
                             return card
                                 .scaleEffect(1 - (1 - side) * t, anchor: dx < 0 ? .trailing : .leading)
                                 .offset(x: dx < 0 ? slide : -slide)

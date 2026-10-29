@@ -15,7 +15,9 @@ import Observation
 import os
 import QuartzCore
 
-private let cameraLog = Logger(subsystem: "me.babono.kotek", category: "camera")
+/// Nonisolated: logged from the session queue as well as the main actor,
+/// and `Logger` is thread-safe.
+private nonisolated let cameraLog = Logger(subsystem: "me.babono.kotek", category: "camera")
 
 @Observable
 final nonisolated class CameraController: NSObject, @unchecked Sendable {

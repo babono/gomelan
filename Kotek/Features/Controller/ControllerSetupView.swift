@@ -41,7 +41,9 @@ private struct ControllerSetupContent: View {
                 onBack: back,
                 trailingText: vm.app.profile.name,
                 trailingTitle: skipTitle,
-                onTrailing: vm.close
+                onTrailing: vm.close,
+                infoAction: { vm.app.openGuide(guide) },
+                infoLabel: vm.step == .test ? "How the key check works" : "How to fit the sensors"
             )
             Group {
                 switch vm.step {
@@ -54,9 +56,23 @@ private struct ControllerSetupContent: View {
             .padding(.horizontal, 40)
             .padding(.bottom, Theme.footerBottom)
         }
-        .onAppear { vm.onAppear() }
+        .onAppear {
+            vm.onAppear()
+            // Before any scanning matters: the sensors have to be on the
+            // bilah first. Once only; the help button brings it back. A
+            // re-check opens on the key check, so that is the one it gets.
+            vm.app.showGuideIfFirstRun(guide)
+        }
+        .onChange(of: vm.step) { _, step in
+            if step == .test { vm.app.showGuideIfFirstRun(.sensorCheck) }
+        }
         .onDisappear { vm.onDisappear() }
         .onChange(of: sensor.info) { _, _ in vm.infoChanged() }
+    }
+
+    /// The help button explains the step you are on.
+    private var guide: AppState.Guide {
+        vm.step == .test ? .sensorCheck : .sensor
     }
 
     /// Skip sits in the trailing corner, so Back keeps the leading one.
@@ -110,22 +126,21 @@ private struct ControllerSetupContent: View {
                 Text(vm.app.controllerSetupIsOffer ? "Got a strike controller?" : "Connect a controller")
                     .font(.serif(34))
                     .foregroundStyle(Theme.cream)
-                Text(
-                    "Switch the controller on, clip a sensor onto each bilah, and plug them in. It talks to this iPhone over Bluetooth — no Wi‑Fi, no pairing in Settings."
-                )
-                .font(.sans(15))
-                .foregroundStyle(Theme.cream.opacity(0.7))
-                .fixedSize(horizontal: false, vertical: true)
-                Text("You do this once for each gangsa. One controller can be set up on as many gangsa as you like.")
-                    .font(.sans(13))
-                    .foregroundStyle(Theme.cream.opacity(0.5))
+                // Short on purpose: fitting the sensors is the guide's job (the
+                // ? button), so this only has to get the controller listed.
+                Text("Turn on Bluetooth and switch the controller on. An active controller shows up on the right.")
+                    .font(.sans(15))
+                    .foregroundStyle(Theme.cream.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
                 problem
             }
             .frame(maxWidth: 360, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 10) {
-                SectionLabel("Nearby")
+                // Sentence case, not `SectionLabel`'s tracked capitals.
+                Text("Nearby")
+                    .font(.sans(15, weight: .semibold))
+                    .foregroundStyle(Theme.gold)
                 if sensor.found.isEmpty {
                     if quietTooLong {
                         Text(
@@ -279,7 +294,7 @@ private struct ControllerSetupContent: View {
                             level: level(for: vm.inputForKey[k]),
                             isChecked: vm.checked.contains(k),
                             isCurrent: vm.current == k,
-                            isMismatched: vm.mismatch?.key == k,
+                            mixUp: mixUp(for: k),
                             litHit: vm.litKey == k ? vm.litHit : nil
                         ) {
                             vm.select(k)
@@ -287,6 +302,14 @@ private struct ControllerSetupContent: View {
                     }
                 }
                 .frame(maxHeight: .infinity)
+                // Room kept for it whether or not it shows, so the tiles do
+                // not jump while you are looking at them.
+                swapArc
+                    .frame(height: 36)
+                    // Tucked up under the captions: the stack's 18 apart
+                    // would leave the arrows pointing at nothing.
+                    .padding(.top, -14)
+                    .animation(.easeOut(duration: 0.25), value: vm.mismatch)
                 HStack {
                     Text("\(vm.checked.count) of \(vm.sensorCount) checked · tap a key to check it again")
                         .font(.sans(13))
@@ -307,16 +330,36 @@ private struct ControllerSetupContent: View {
         .padding(.top, 8)
     }
 
+    private func mixUp(for k: Int) -> ControllerKeyTile.MixUp? {
+        guard let m = vm.mismatch else { return nil }
+        if m.key == k { return .hit }
+        return m.heardAs == k ? .heard : nil
+    }
+
+    /// Only for a swap: an input heard on no key just moves onto this one.
+    @ViewBuilder
+    private var swapArc: some View {
+        if let m = vm.mismatch, let other = m.heardAs, let held = vm.inputForKey[m.key] {
+            SwapArc(keys: (m.key, other), inputs: (held, m.input), count: vm.inputForKey.count)
+                .transition(.opacity)
+        } else {
+            Color.clear
+        }
+    }
+
     @ViewBuilder
     private var prompt: some View {
         if let m = vm.mismatch {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(m.heardAs.map { "Key \(m.key + 1) was heard as key \($0 + 1)" }
+                    Text(m.heardAs.map { "Key \(m.key + 1) was heard on key \($0 + 1)" }
                         ?? "Key \(m.key + 1) was heard on input \(m.input + 1)")
                         .font(.serif(28))
                         .foregroundStyle(Theme.wrong)
-                    Text("Remap if that's where its sensor is. Try again if you hit another bilah.")
+                    Text(m.heardAs == nil
+                        ? "Remap if that's where its sensor is. Try again if you hit another bilah."
+                        : "Their sensors are in each other's inputs — Remap swaps them. "
+                        + "Try again if you hit another bilah.")
                         .font(.sans(14))
                         .foregroundStyle(Theme.cream.opacity(0.65))
                 }
@@ -362,86 +405,5 @@ private struct ControllerSetupContent: View {
     private func level(for input: Int?) -> Double {
         guard let input, input < sensor.levels.count else { return 0 }
         return sensor.levels[input]
-    }
-}
-
-/// One bilah in the key check: which input is on it, whether it has been
-/// confirmed, and a flash whenever a stroke lands on it.
-private struct ControllerKeyTile: View {
-    let key: Int
-    let input: Int?
-    let level: Double
-    let isChecked: Bool
-    let isCurrent: Bool
-    let isMismatched: Bool
-    let litHit: UUID?
-    let onTap: () -> Void
-
-    @State private var glow = 0.0
-
-    var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 8) {
-                Text("\(key + 1)")
-                    .font(.serif(26))
-                    .foregroundStyle(Theme.cream)
-                ZStack(alignment: .bottom) {
-                    RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
-                        .fill(fill)
-                    // Raw vibration on this key's input — the sensor's own view,
-                    // whether or not the stroke matched.
-                    RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
-                        .fill(Theme.gold.opacity(0.35))
-                        .scaleEffect(x: 1, y: level, anchor: .bottom)
-                    RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
-                        .fill(Theme.cream.opacity(0.7 * glow))
-                    if isChecked {
-                        Image(systemName: "checkmark")
-                            .font(.symbol(22, weight: .bold))
-                            .foregroundStyle(Theme.ink)
-                            .padding(.bottom, 12)
-                    }
-                }
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.keyCornerRadius)
-                        .strokeBorder(border, lineWidth: isCurrent || isMismatched ? 3 : 1)
-                )
-                .frame(maxHeight: .infinity)
-                Text(input.map { "Input \($0 + 1)" } ?? "No sensor")
-                    .font(.sans(11, weight: .semibold))
-                    .foregroundStyle(Theme.cream.opacity(input == nil ? 0.4 : 0.7))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.appPlain)
-        .opacity(input == nil && !isCurrent ? 0.5 : 1)
-        .accessibilityLabel(accessibilityText)
-        .onChange(of: litHit) { _, id in
-            guard id != nil else { return }
-            glow = 1
-            withAnimation(.easeOut(duration: 0.45)) { glow = 0 }
-        }
-    }
-
-    private var fill: Color {
-        if isChecked { return Theme.hit }
-        return Theme.bronze.opacity(input == nil ? 0.08 : 0.2)
-    }
-
-    private var border: Color {
-        if isMismatched { return Theme.wrong }
-        if isCurrent { return Theme.cream }
-        return Theme.gold.opacity(0.35)
-    }
-
-    private var accessibilityText: String {
-        var parts = ["Key \(key + 1)"]
-        parts.append(input.map { "input \($0 + 1)" } ?? "no sensor, camera and microphone")
-        if isChecked { parts.append("checked") }
-        if isCurrent { parts.append("hit this key now") }
-        return parts.joined(separator: ", ")
     }
 }
