@@ -23,7 +23,10 @@ import Foundation
 
 /// The colotomic instruments a player can write into a figure in Create Kotek.
 /// Nothing is sounded under them that is not written.
-enum ColotomicInstrument: String, Codable, CaseIterable, Identifiable {
+///
+/// Nonisolated: a plain value, and the remote rows that read and write
+/// `hitType` are built off the main actor.
+nonisolated enum ColotomicInstrument: String, Codable, CaseIterable, Identifiable {
     case gong
     case kempur
     case klentong
