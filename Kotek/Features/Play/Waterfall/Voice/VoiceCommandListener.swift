@@ -146,13 +146,21 @@ final class VoiceCommandListener {
 
     // MARK: - Microphone
 
-    private func startMic(converting format: AVAudioFormat, into continuation: AsyncStream<AnalyzerInput>.Continuation) throws {
+    private func startMic(
+        converting format: AVAudioFormat,
+        into continuation: AsyncStream<AnalyzerInput>.Continuation
+    ) throws {
         let node = mic.inputNode
         let natural = node.outputFormat(forBus: 0)
         guard let converter = AVAudioConverter(from: natural, to: format) else {
             throw CocoaError(.featureUnsupported)
         }
-        node.installTap(onBus: 0, bufferSize: 4096, format: natural, block: Self.tap(converter: converter, to: format, into: continuation))
+        node.installTap(
+            onBus: 0,
+            bufferSize: 4096,
+            format: natural,
+            block: Self.tap(converter: converter, to: format, into: continuation)
+        )
         tapped = true
         mic.prepare()
         try mic.start()
