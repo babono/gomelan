@@ -670,6 +670,23 @@ final class PlayEngine {
         }
     }
 
+    /// Where each pass of the figure begins, for the waterfall's cycle rule.
+    /// From the same `introMs` / `patternMs` as `fallingNotes`, so the rule
+    /// reaches the bilah with the first stroke of its pass and `number` is
+    /// the "Cycle N" the counter shows once it lands.
+    func fallingCycles(aheadMs: Double, behindMs: Double) -> [FallingCycle] {
+        guard patternMs > 0 else { return [] }
+        let first = max(0, Int(((currentTimeMs - behindMs - introMs) / patternMs).rounded(.up)))
+        let last = Int(((currentTimeMs + aheadMs - introMs) / patternMs).rounded(.down))
+        guard last >= first else { return [] }
+        return (first ... last).map { loop in
+            FallingCycle(
+                number: loop + 1,
+                msAhead: introMs + Double(loop) * patternMs - currentTimeMs
+            )
+        }
+    }
+
     /// One beat, in ms at the current tempo — the waterfall's unit of height.
     var beatLengthMs: Double {
         beatMs
