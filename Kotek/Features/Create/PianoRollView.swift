@@ -4,17 +4,22 @@
 //
 //  The Create Kotek editor: a piano roll with bilah for rows, modelled on a
 //  DAW's editor (Signal, CapCut's timeline). Tap to write a stroke, tap it
-//  again to take it out. The grid scrolls sideways and pinches to zoom; the
+//  again to take it out. The grid scrolls both ways and pinches to zoom; the
 //  snap value sets the width of a new stroke and where it lands, and the grip
 //  on a stroke's end drags it longer or shorter from there.
 //
-//  Record turns the sensors on and makes the line a cursor: it waits for a
-//  hit, writes it there for the half being written, and steps on by the snap
-//  value. Rest steps on without writing; a tap on the ruler moves the line.
+//  Laid out like GarageBand: the gangsa is out at the bottom to play on, and
+//  the roll above it is a small overview. A tap on the overview puts the
+//  gangsa away and opens the roll to edit.
 //
-//  Under the rows runs a colotomic lane: gong, kempur, klentong and kajar are written
-//  there as circles sitting on the line they sound on, the way a gamelan score
-//  video marks them. Nothing sounds under them but what is written.
+//  Record runs the line as playback does, and a hit — from a sensor or the
+//  drawn gangsa — is written in the snap step the line is in for the half
+//  being written. The line has a flag on the ruler, as in GarageBand: drag along
+//  the numbers to move it.
+//
+//  Under the rows runs a colotomic lane: the gong cycle the draft lays under
+//  the figure (`KotekanDraft.colotomic`), drawn as circles on the line each
+//  sounds on, the way a gamelan score video marks them.
 //
 //  Rows are key INDICES from the active instrument, top row highest — never
 //  pitches, same as everywhere else (PRD §7).
@@ -29,34 +34,77 @@ struct PianoRollView: View {
         let draft = viewModel.draft
 
         VStack(spacing: 6) {
-            CreateTopBar(title: "New Kotek") {
-                AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
-            } trailing: {
-                RecordButton(recording: viewModel.recording) { viewModel.toggleRecording() }
-                AppButton(title: "Next", prominence: .primary) { viewModel.review() }
-                    .disabled(draft.isEmpty)
+            // The transport where the title was: the bottom of the screen is
+            // the gangsa's, and "New Kotek" said nothing the screen didn't.
+            ZStack {
+                PianoRollTransport(viewModel: viewModel)
+                HStack(spacing: 12) {
+                    AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
+                    Spacer()
+                    RecordButton(recording: viewModel.recording) { viewModel.toggleRecording() }
+                    AppButton(title: "Next", prominence: .primary) { viewModel.review() }
+                        .disabled(draft.isEmpty)
+                }
+            }
+            .frame(minHeight: 50)
+
+            HStack(spacing: 10) {
+                PianoRollControls(viewModel: viewModel)
+                AppMenuPicker<Double>.tempo($viewModel.tempoScale)
+                // Under Next, where it sat before the transport took it.
+                AppMenuPicker(
+                    options: Subdivision.denominators.map(Subdivision.init(denominator:)),
+                    selection: $viewModel.snap,
+                    title: \.label,
+                    label: "Snap",
+                    systemImage: "squareshape.split.3x3"
+                )
             }
 
-            PianoRollControls(viewModel: viewModel)
-
-            PianoRollGrid(viewModel: viewModel)
-
-            PianoRollTransport(viewModel: viewModel)
+            if viewModel.showsGangsa {
+                PianoRollGrid(viewModel: viewModel, compact: true)
+                // Inside the safe area, unlike the play screen's: there the
+                // gangsa is only watched, here it is played, and bars sunk to
+                // the glass sat under the home indicator, where a tap went
+                // to the system's swipe instead of the bilah.
+                TouchGangsa(viewModel: viewModel)
+                    .padding(.bottom, 4)
+                    // A swipe off a bar must not go home on the first try.
+                    .defersSystemGestures(on: .bottom)
+            } else {
+                PianoRollGrid(viewModel: viewModel, compact: false)
+                    .padding(.bottom, 4)
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: viewModel.showsGangsa)
+        // The count before a take, as the play screen counts back in from a
+        // pause. Not in the way of a finger: a hit on the four still counts.
+        .overlay {
+            if let n = viewModel.countIn {
+                Text("\(n)")
+                    .font(.serif(96))
+                    .foregroundStyle(Theme.cream)
+                    .shadow(color: .black.opacity(0.6), radius: 8)
+                    .id(n)
+                    .transition(.scale.combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
+        }
+        .animation(.easeOut(duration: 0.15), value: viewModel.countIn)
         // On top of the safe area, not instead of it: the landscape inset
         // already clears the notch and home indicator. Tight both ways: the
         // tools row needs the width, and fourteen bilah rows need the height.
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.top, 4)
     }
 }
 
 // MARK: - Controls row
 
-/// The halves, then the tools: the four colotomic instruments and the eraser,
-/// named. The snap menu lives in the transport, which is what leaves this row
-/// room for the names. A row too wide for a small phone scrolls rather than
-/// squeezing one chip over the next.
+/// The halves, the eraser, then the gangsa. Zoom is a pinch; it had buttons
+/// too, and they were two more glyphs for something the fingers already do. The colotomic
+/// instruments used to be tools here; the draft lays them now. A row too wide
+/// for a small phone scrolls rather than squeezing one chip over the next.
 private struct PianoRollControls: View {
     @Bindable var viewModel: CreateKotekViewModel
 
@@ -65,11 +113,14 @@ private struct PianoRollControls: View {
             HStack(spacing: 10) {
                 halves
                 divider
-                HStack(spacing: 8) {
-                    ForEach(ColotomicInstrument.allCases) { tool($0) }
-                }
-                divider
                 eraser
+                divider
+                AppIconButton(
+                    systemImage: "pianokeys",
+                    label: viewModel.showsGangsa ? "Hide gangsa" : "Show gangsa",
+                    prominence: viewModel.showsGangsa ? .primary : .secondary,
+                    size: .compact
+                ) { viewModel.showsGangsa.toggle() }
             }
         }
         .scrollIndicators(.hidden)
@@ -79,8 +130,7 @@ private struct PianoRollControls: View {
     private var halves: some View {
         AppSwitcher(
             options: [KotekanHalf.polos, .sangsih],
-            // Not drawn as selected while the roll is writing a colotomic
-            // instrument: the half stays remembered.
+            // Not drawn as selected while erasing: the half stays remembered.
             selection: viewModel.tool == .notes ? viewModel.writing : nil,
             title: \.title,
             dot: { $0 == .polos ? Theme.polosVoice : Theme.sangsihVoice },
@@ -89,26 +139,6 @@ private struct PianoRollControls: View {
             viewModel.writing = $0
             viewModel.tool = .notes
         }
-    }
-
-    /// Arms a colotomic instrument for the next taps. Tapping it again goes
-    /// back to writing the half. Drawn like the half pills, so a chosen tool
-    /// and a chosen half look the same.
-    private func tool(_ instrument: ColotomicInstrument) -> some View {
-        let selected = viewModel.tool == .colotomic(instrument)
-        return Button {
-            viewModel.tool = selected ? .notes : .colotomic(instrument)
-        } label: {
-            HStack(spacing: 6) {
-                ColotomicMark(instrument: instrument, scale: 0.7)
-                Text(instrument.title).appLabel(.compact)
-            }
-            .foregroundStyle(selected ? Theme.onGlassFill : Theme.cream)
-            .appControlSurface(size: .compact, shape: .capsule, prominence: selected ? .primary : .secondary)
-        }
-        .buttonStyle(AppButtonStyle())
-        .accessibilityLabel("Add \(instrument.title)")
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 
     /// The Delete tool: taps take out whatever is under the finger instead of
@@ -138,10 +168,10 @@ private struct PianoRollControls: View {
 
 private struct PianoRollGrid: View {
     let viewModel: CreateKotekViewModel
+    /// The overview over the gangsa: every row fits, nothing is edited, and a
+    /// tap opens the full roll.
+    let compact: Bool
 
-    /// Points per quarter note. nil until the player pinches: fit four bars, so
-    /// it is plain the figure can run on past one.
-    @State private var pointsPerQuarter: CGFloat?
     @State private var pinchStart: CGFloat?
     @State private var scroll = ScrollPosition(edge: .leading)
     /// Where the scroll view is, kept out of Observation: written on every
@@ -154,7 +184,14 @@ private struct PianoRollGrid: View {
     /// Room before tick 0, so a gong on the downbeat shows its whole ring
     /// instead of half of it.
     private let lead: CGFloat = 12
-    private static let maxPointsPerQuarter: CGFloat = 320
+
+    /// At zoom 1 a quarter cell and a row are each a comfortable tap (HIG's
+    /// 44pt). The roll used to open fitting four bars and every row on
+    /// screen, which left cells too small to hit on a phone.
+    private static let pointsPerQuarter: CGFloat = 48
+    private static let rowHeight: CGFloat = 44
+    static let minZoom: CGFloat = 0.3
+    static let maxZoom: CGFloat = 2
 
     var body: some View {
         let draft = viewModel.draft
@@ -167,107 +204,142 @@ private struct PianoRollGrid: View {
         let snap = viewModel.snap
         let writing = viewModel.writing
         let rows = viewModel.keyCount
+        let zoom = viewModel.zoom
 
         GeometryReader { geo in
             let visible = max(1, geo.size.width - labelWidth)
             let fitAll = visible / CGFloat(KotekanDraft.timelineBars * 4)
-            let ppq = (pointsPerQuarter ?? visible / 16).clamped(to: fitAll, Self.maxPointsPerQuarter)
+            let ppq = max(fitAll, Self.pointsPerQuarter * zoom)
             let pxPerTick = ppq / CGFloat(KotekanDraft.ticksPerQuarter)
             let width = CGFloat(timeline) * pxPerTick
-            let rowHeight = max(10, (geo.size.height - rulerHeight - laneHeight) / CGFloat(rows))
+            // Never shorter than fits: zoomed out, the rows fill the height
+            // rather than leave a gap under them.
+            let fitRows = max(1, (geo.size.height - rulerHeight - laneHeight) / CGFloat(rows))
+            // The overview shows every row however thin; the editor never
+            // goes below 10pt, and scrolls instead.
+            let rowHeight = compact ? fitRows : max(10, fitRows, Self.rowHeight * zoom)
 
-            HStack(spacing: 0) {
-                VStack(spacing: 0) {
-                    keyLabels(rows: rows, rowHeight: rowHeight)
-                    Image(systemName: "circle.circle")
-                        .font(.symbol(11, weight: .semibold))
-                        .foregroundStyle(Theme.stone)
-                        .frame(height: laneHeight)
-                        .accessibilityLabel("Gong, kempur, klentong and kajar")
-                }
-                .padding(.top, rulerHeight)
-                .frame(width: labelWidth)
-
-                ScrollView(.horizontal) {
+            // Vertical outside horizontal, so the key labels scroll up and
+            // down with their rows but stay put sideways.
+            // shortcut: the ruler scrolls off with the rows; pin it if that
+            // gets in the way.
+            ScrollView(.vertical) {
+                HStack(alignment: .top, spacing: 0) {
                     VStack(spacing: 0) {
-                        PianoRollRuler(bars: KotekanDraft.timelineBars, pxPerTick: pxPerTick)
-                            .frame(height: rulerHeight)
-                            .padding(.leading, lead)
+                        // Too thin to read in the overview.
+                        keyLabels(rows: rows, rowHeight: rowHeight).opacity(compact ? 0 : 1)
+                        Image(systemName: "circle.circle")
+                            .font(.symbol(11, weight: .semibold))
+                            .foregroundStyle(Theme.stone)
+                            .frame(height: laneHeight)
+                            .accessibilityLabel("Gong, kempur, klentong and kajar")
+                    }
+                    .padding(.top, rulerHeight)
+                    .frame(width: labelWidth)
+
+                    ScrollView(.horizontal) {
+                        VStack(spacing: 0) {
+                            PianoRollRuler(bars: KotekanDraft.timelineBars, pxPerTick: pxPerTick)
+                                .frame(height: rulerHeight)
+                                .padding(.leading, lead)
+                                .contentShape(Rectangle())
+                                // Scrubs from the first touch: a tap puts the
+                                // line there, a drag carries it. The roll
+                                // still scrolls from the grid below.
+                                .gesture(
+                                    DragGesture(minimumDistance: 0).onChanged { value in
+                                        viewModel.seek(toTick: Int((value.location.x - lead) / pxPerTick))
+                                    }
+                                )
+                                .accessibilityElement()
+                                .accessibilityLabel("Playhead")
+                                .accessibilityAdjustableAction { direction in
+                                    let step = direction == .increment ? snap.ticks : -snap.ticks
+                                    viewModel.seek(toTick: Int(viewModel.playhead) + step)
+                                }
+                            PianoRollCanvas(
+                                notes: notes,
+                                colotomic: colotomic,
+                                lengthTicks: timeline,
+                                patternTicks: length,
+                                snapTicks: snap.ticks,
+                                writing: writing,
+                                rows: rows,
+                                laneHeight: laneHeight,
+                                lead: lead,
+                                pxPerTick: pxPerTick
+                            )
+                            .frame(height: rowHeight * CGFloat(rows) + laneHeight)
+                            // Inside the tap below, so a tap on a grip still
+                            // reaches it and takes the stroke out.
+                            .overlay(alignment: .topLeading) {
+                                if viewModel.tool == .notes, !compact {
+                                    NoteLengthHandles(
+                                        draft: draft,
+                                        notes: notes.filter { $0.half == writing },
+                                        rows: rows,
+                                        rowHeight: rowHeight,
+                                        lead: lead,
+                                        pxPerTick: pxPerTick,
+                                        snapTicks: snap.ticks
+                                    )
+                                }
+                            }
                             .contentShape(Rectangle())
                             .onTapGesture { location in
-                                viewModel.seek(toTick: Int((location.x - lead) / pxPerTick))
-                            }
-                        PianoRollCanvas(
-                            notes: notes,
-                            colotomic: colotomic,
-                            lengthTicks: timeline,
-                            patternTicks: length,
-                            snapTicks: snap.ticks,
-                            writing: writing,
-                            rows: rows,
-                            laneHeight: laneHeight,
-                            lead: lead,
-                            pxPerTick: pxPerTick
-                        )
-                        .frame(height: rowHeight * CGFloat(rows) + laneHeight)
-                        // Inside the tap below, so a tap on a grip still
-                        // reaches it and takes the stroke out.
-                        .overlay(alignment: .topLeading) {
-                            if viewModel.tool == .notes {
-                                NoteLengthHandles(
-                                    draft: draft,
-                                    notes: notes.filter { $0.half == writing },
+                                guard !compact else { viewModel.showsGangsa = false
+                                    return
+                                }
+                                tap(
+                                    at: CGPoint(x: location.x - lead, y: location.y),
                                     rows: rows,
                                     rowHeight: rowHeight,
-                                    lead: lead,
-                                    pxPerTick: pxPerTick,
-                                    snapTicks: snap.ticks
+                                    pxPerTick: pxPerTick
                                 )
                             }
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture { location in
-                            tap(
-                                at: CGPoint(x: location.x - lead, y: location.y),
-                                rows: rows,
-                                rowHeight: rowHeight,
-                                pxPerTick: pxPerTick
-                            )
+                        .frame(width: width + lead)
+                        .overlay(alignment: .topLeading) {
+                            PreviewPlayhead(viewModel: viewModel, pxPerTick: pxPerTick)
+                                .padding(.leading, lead)
                         }
                     }
-                    .frame(width: width + lead)
-                    .overlay(alignment: .topLeading) {
-                        PreviewPlayhead(viewModel: viewModel, pxPerTick: pxPerTick)
-                            .padding(.leading, lead)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .scrollPosition($scroll)
+                    .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
+                        offset.x = x
+                    }
+                    // Keep the line on screen — playing, or stepping through a
+                    // recording. Page by bar, as a DAW does, not glued to the line.
+                    .onChange(of: viewModel.playheadBar) { _, bar in
+                        let barWidth = CGFloat(KotekanDraft.ticksPerBar) * pxPerTick
+                        let x = CGFloat(bar) * barWidth
+                        guard x < offset.x || x + min(barWidth, visible) > offset.x + visible + 1 else { return }
+                        withAnimation(.easeInOut(duration: 0.25)) { scroll.scrollTo(x: x) }
                     }
                 }
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollPosition($scroll)
-                .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
-                    offset.x = x
-                }
-                // Keep the line on screen — playing, or stepping through a
-                // recording. Page by bar, as a DAW does, not glued to the line.
-                .onChange(of: viewModel.playheadBar) { _, bar in
-                    let barWidth = CGFloat(KotekanDraft.ticksPerBar) * pxPerTick
-                    let x = CGFloat(bar) * barWidth
-                    guard x < offset.x || x + min(barWidth, visible) > offset.x + visible + 1 else { return }
-                    withAnimation(.easeInOut(duration: 0.25)) { scroll.scrollTo(x: x) }
-                }
-                .simultaneousGesture(
-                    MagnifyGesture()
-                        .onChanged { value in
-                            let start = pinchStart ?? ppq
-                            pinchStart = start
-                            pointsPerQuarter = (start * value.magnification)
-                                .clamped(to: fitAll, Self.maxPointsPerQuarter)
-                        }
-                        .onEnded { _ in pinchStart = nil }
-                )
             }
+            .scrollDisabled(compact)
+            .scrollBounceBehavior(.basedOnSize)
+            // On the outer scroll view, not the horizontal one: there the
+            // pinch lost to the scroll's own pan and the roll never zoomed.
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { value in
+                        let start = pinchStart ?? zoom
+                        pinchStart = start
+                        viewModel.zoom = (start * value.magnification).clamped(to: Self.minZoom, Self.maxZoom)
+                    }
+                    .onEnded { _ in pinchStart = nil }
+            )
         }
         .background(Theme.deep.opacity(0.75), in: RoundedRectangle(cornerRadius: Theme.radius))
         .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+        .accessibilityActions {
+            if compact {
+                Button("Edit piano roll") { viewModel.showsGangsa = false }
+            }
+        }
     }
 
     private func keyLabels(rows: Int, rowHeight: CGFloat) -> some View {
@@ -285,31 +357,15 @@ private struct PianoRollGrid: View {
         guard location.x >= 0 else { return }
         let position = Int(location.x / pxPerTick)
         let row = Int(location.y / rowHeight)
-        let key = (0 ..< rows).contains(row) ? rows - 1 - row : nil
+        guard (0 ..< rows).contains(row) else { return }
+        let key = rows - 1 - row
         let draft = viewModel.draft
 
         switch viewModel.tool {
-        case let .colotomic(instrument):
-            // An armed instrument writes wherever the finger lands — the lane
-            // is where it is drawn, not the only place to aim.
-            let before = draft.colotomic.count
-            draft.edit { draft.toggleColotomic(instrument, at: position, snap: viewModel.snap) }
-            if draft.colotomic.count > before { viewModel.audition(instrument) }
-
         case .erase:
-            // A circle is small; give the finger half a snap or 12pt, whichever
-            // is wider.
-            let tolerance = max(viewModel.snap.ticks / 2, Int(12 / pxPerTick))
-            draft.edit {
-                if let key {
-                    draft.eraseNote(key: key, at: position, preferring: viewModel.writing)
-                } else {
-                    draft.eraseColotomic(near: position, tolerance: tolerance)
-                }
-            }
+            draft.edit { draft.eraseNote(key: key, at: position, preferring: viewModel.writing) }
 
         case .notes:
-            guard let key else { return }
             let before = draft.notes.count
             draft.edit { draft.toggle(half: viewModel.writing, key: key, at: position, snap: viewModel.snap) }
             // Sound what was written, not what was taken out.
@@ -558,35 +614,60 @@ struct PianoRollRuler: View {
     }
 }
 
-/// The preview's position, as a line over the grid. Its own view so the
-/// per-frame move redraws only this. Shown paused too — that is where play
-/// picks up from.
 private final class ScrollOffset {
     var x: CGFloat = 0
 }
 
+/// The line, with GarageBand's flag on the ruler to grab it by. Its own view
+/// so the per-frame move redraws only this. Shown always — it is where play
+/// and record start from. Drawn only: the drag is the ruler's, so a finger
+/// near the flag gets it too.
 struct PreviewPlayhead: View {
     let viewModel: CreateKotekViewModel
     let pxPerTick: CGFloat
 
+    private static let flagWidth: CGFloat = 14
+
     var body: some View {
-        if !viewModel.draft.isSilent || viewModel.recording {
+        let color = viewModel.recording ? Theme.miss : Theme.cream
+        VStack(spacing: 0) {
+            PlayheadFlag()
+                .fill(color)
+                .frame(width: Self.flagWidth, height: 16)
+                .padding(.top, 3)
             Rectangle()
-                .fill(viewModel.recording ? Theme.miss : Theme.cream)
+                .fill(color)
                 .frame(width: 2)
                 .frame(maxHeight: .infinity)
-                .offset(x: CGFloat(viewModel.playhead) * pxPerTick - 1)
-                .allowsHitTesting(false)
         }
+        .frame(width: Self.flagWidth)
+        .offset(x: CGFloat(viewModel.playhead) * pxPerTick - Self.flagWidth / 2)
+        .allowsHitTesting(false)
+    }
+}
+
+/// A rectangle with a point at the bottom, the point on the line.
+private struct PlayheadFlag: Shape {
+    func path(in rect: CGRect) -> Path {
+        let shoulder = rect.maxY - rect.width / 2
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: shoulder))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: shoulder))
+        path.closeSubpath()
+        return path
     }
 }
 
 // MARK: - Transport
 
-/// Undo · redo, stop · play/pause, the tempo, and the clock — a DAW's transport
+/// Undo · redo, stop · play/pause, and the clock — a DAW's transport
 /// bar. Its own view because the clock reads the playhead, which moves every
-/// frame. While recording, play gives way to Rest and the clock to the sensor
-/// set-up: nothing is playing, and the line only moves on a hit.
+/// frame. While recording, play shows pause and stops the take. The record
+/// button alone says it is recording — a sensor status here (a glyph, then
+/// words) only read as noise.
 private struct PianoRollTransport: View {
     let viewModel: CreateKotekViewModel
 
@@ -608,89 +689,22 @@ private struct PianoRollTransport: View {
                 AppIconButton(systemImage: "stop.fill", label: "Back to start", size: .compact) {
                     viewModel.stopPreview()
                 }
-                if viewModel.recording {
-                    AppButton(title: "Rest", size: .compact) { viewModel.recordRest() }
-                        .accessibilityHint("Steps the line on without writing a note")
-                } else {
-                    AppIconButton(
-                        systemImage: viewModel.playing ? "pause.fill" : "play.fill",
-                        label: viewModel.playing ? "Pause" : "Play",
-                        prominence: .primary,
-                        size: .compact
-                    ) { viewModel.togglePlay() }
-                        .disabled(draft.isSilent)
-                }
+                let running = viewModel.playing || viewModel.recording
+                AppIconButton(
+                    systemImage: running ? "pause.fill" : "play.fill",
+                    label: running ? "Pause" : "Play",
+                    prominence: .primary,
+                    size: .compact
+                ) { viewModel.togglePlay() }
+                    .disabled(draft.isEmpty && !running)
             }
 
             divider
 
-            HStack(spacing: 10) {
-                NumberField(
-                    value: Binding(get: { draft.bpm }, set: { draft.bpm = $0 }),
-                    range: KotekanDraft.bpmRange,
-                    suffix: "BPM"
-                )
-                AppMenuPicker(
-                    options: Subdivision.denominators.map(Subdivision.init(denominator:)),
-                    selection: Bindable(viewModel).snap,
-                    title: \.label,
-                    label: "Snap",
-                    systemImage: "squareshape.split.3x3"
-                )
-            }
-
-            divider
-
-            if viewModel.recording { sensorSetup } else { PlayheadClock(viewModel: viewModel) }
+            PlayheadClock(viewModel: viewModel)
             Spacer(minLength: 0)
         }
         .frame(height: 44)
-    }
-
-    /// The sensors' state, and which bilah they are taped to.
-    private var sensorSetup: some View {
-        let (text, color): (String, Color) = switch viewModel.sensor.status {
-        case .off: ("Sensor off", Theme.stone)
-        case .scanning: ("Searching…", Theme.gold)
-        case .connecting: ("Connecting…", Theme.gold)
-        case .connected: ("Connected", Theme.hit)
-        case .locked: ("Needs its PIN", Theme.gold)
-        case let .unavailable(why): (why, Theme.miss)
-        }
-        func range(_ first: Int) -> String {
-            "\(first + 1)–\(first + viewModel.sensorCount)"
-        }
-
-        // The status is a coloured icon, its words only for VoiceOver: the bar
-        // has no room for "Bluetooth permission denied", and green / gold /
-        // red already says connected / still trying / not working.
-        return HStack(spacing: 10) {
-            Image(systemName: "dot.radiowaves.left.and.right")
-                .font(.symbol(15, weight: .semibold))
-                .foregroundStyle(color)
-                .symbolEffect(.pulse, isActive: viewModel.sensor.status != .connected)
-                .accessibilityLabel("Sensor: \(text)")
-
-            if let link = viewModel.app.profile.controller {
-                // Set up through the controller screen: every input already
-                // knows its bilah, so there is nothing to place here.
-                Text(link.name)
-                    .font(.sans(14, weight: .semibold))
-                    .foregroundStyle(Theme.cream)
-                    .lineLimit(1)
-                    .padding(.horizontal, 12)
-                    .frame(height: 32)
-                    .background(Theme.cream.opacity(0.08), in: Capsule())
-                    .accessibilityLabel("Recording from \(link.name)")
-            } else {
-                AppMenuPicker(
-                    options: viewModel.sensorPlacements,
-                    selection: Bindable(viewModel).firstSensorKey,
-                    title: { "Bilah \(range($0))" },
-                    label: "Sensors on"
-                )
-            }
-        }
     }
 
     private var divider: some View {
@@ -723,71 +737,6 @@ struct PlayheadClock: View {
     }
 }
 
-/// A typed number, e.g. the tempo. The − / + stepper it replaced gave its room
-/// to the snap menu; typing makes 88 → 160 one entry, not seventy-two taps.
-///
-/// It writes through while the number is in range, so typing "1" on the way to
-/// "120" does not set 1, and settles to the nearest allowed value when the
-/// field is left.
-struct NumberField: View {
-    @Binding var value: Int
-    let range: ClosedRange<Int>
-    var suffix: String?
-
-    @State private var text = ""
-    @FocusState private var focused: Bool
-
-    var body: some View {
-        HStack(spacing: 3) {
-            field
-            if let suffix {
-                Text(suffix).font(.sans(13)).foregroundStyle(Theme.stone)
-            }
-        }
-        .foregroundStyle(Theme.cream)
-        .fixedSize()
-    }
-
-    private var field: some View {
-        TextField("", text: $text)
-            .keyboardType(.numberPad)
-            .focused($focused)
-            .multilineTextAlignment(.center)
-            .font(.sans(15, weight: .semibold))
-            .frame(width: 52, height: 32)
-            .background(Theme.deep.opacity(0.75), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(focused ? Theme.buttonFill : Theme.cream.opacity(0.15), lineWidth: focused ? 2 : 1)
-            )
-            .onAppear { text = "\(value)" }
-            .onChange(of: text) { _, new in
-                let digits = String(new.filter(\.isNumber).prefix(3))
-                if digits != new { text = digits }
-                if let v = Int(digits), range.contains(v) { value = v }
-            }
-            .onChange(of: value) { _, v in
-                if !focused { text = "\(v)" }
-            }
-            .onChange(of: focused) { _, isFocused in
-                if !isFocused { commit() }
-            }
-            .onSubmit(commit)
-            // A number pad has no return key; this is the way out of it.
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Done") { focused = false }
-                }
-            }
-    }
-
-    private func commit() {
-        value = (Int(text) ?? value).clamped(to: range.lowerBound, range.upperBound)
-        text = "\(value)"
-    }
-}
-
 /// Arms the sensors. Red, and filled while recording, so it is never a
 /// question whether a hit on the gangsa is being written down.
 ///
@@ -812,6 +761,6 @@ private struct RecordButton: View {
                 )
         }
         .buttonStyle(AppButtonStyle())
-        .accessibilityLabel(recording ? "Stop recording" : "Record from the sensors")
+        .accessibilityLabel(recording ? "Stop recording" : "Record")
     }
 }

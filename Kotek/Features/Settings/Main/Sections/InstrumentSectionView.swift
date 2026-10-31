@@ -59,7 +59,7 @@ struct InstrumentSectionView: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("\(app.profile.keyCount) keys · \(recordedClips) of \(app.profile.keyCount) note clips")
+                Text("\(app.profile.keyCount) keys · \(recordedClips) of \(app.profile.keyCount) recorded")
                     .font(.sans(14))
                     .foregroundStyle(Theme.cream.opacity(0.62))
 
@@ -100,26 +100,26 @@ struct InstrumentSectionView: View {
     /// keep their own setup whatever happens here.
     private var controller: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionLabel("Strike controller")
+            SectionLabel("Sensor controller")
             if let link = app.profile.controller {
                 Text(controllerLine(link))
                     .font(.sans(14))
                     .foregroundStyle(Theme.cream.opacity(0.62))
                 ControllerStatusChip()
                 FlowLayout(spacing: 10) {
-                    AppButton(title: "Check keys", systemImage: "checklist", size: .compact) {
+                    AppButton(title: "Check sensors", systemImage: "checklist", size: .compact) {
                         app.openControllerSetup(recheck: true)
                     }
                     AppButton(title: "Change controller", systemImage: "arrow.left.arrow.right", size: .compact) {
                         app.openControllerSetup()
                     }
-                    AppButton(title: "Forget controller", systemImage: "xmark.circle", size: .compact) {
+                    AppButton(title: "Remove controller", systemImage: "xmark.circle", size: .compact) {
                         app.forgetController()
                     }
                 }
             } else {
                 Text(
-                    "Optional. Piezo sensors on the bilah feel exactly which key you hit and when — no camera or microphone needed."
+                    "Optional. Sensors on each bilah catch every hit exactly, without the camera or mic."
                 )
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
@@ -139,8 +139,8 @@ struct InstrumentSectionView: View {
     private var noteClips: some View {
         @Bindable var bindableApp = app
         return VStack(alignment: .leading, spacing: 10) {
-            SectionLabel("Note clips")
-            Text("Record each bilah so the guide and partner sound like your gangsa.")
+            SectionLabel("Key sounds")
+            Text("Record your bilah so the app plays with your gangsa's own sound.")
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
                 .frame(maxWidth: 520, alignment: .leading)
@@ -154,12 +154,12 @@ struct InstrumentSectionView: View {
                 .frame(maxWidth: 280)
                 .accessibilityLabel("Key sounds")
                 if app.playsRecordedSounds, recordedClips < app.profile.keyCount {
-                    Text("Keys you haven't recorded play the default sound.")
+                    Text("Unrecorded keys use the default sound.")
                         .font(.sans(13))
                         .foregroundStyle(Theme.cream.opacity(0.62))
                 }
             }
-            AppButton(title: "Capture note clips", systemImage: "waveform.badge.mic", size: .compact) {
+            AppButton(title: "Record key sounds", systemImage: "waveform.badge.mic", size: .compact) {
                 app.openNoteCapture()
             }
         }
@@ -176,7 +176,7 @@ struct InstrumentSectionView: View {
             .pickerStyle(.segmented)
             .frame(maxWidth: 360)
             Text(
-                "Where to damp each bilah as its note ends: a hand tile falling on the waterfall, and the thumb on the gangsa. Also on the pause screen."
+                "Shows when to damp each bilah: a falling hand marker and a thumb on the gangsa."
             )
             .font(.sans(14))
             .foregroundStyle(Theme.cream.opacity(0.62))
@@ -190,17 +190,18 @@ struct InstrumentSectionView: View {
 
     private func controllerLine(_ link: ControllerLink) -> String {
         let sensors = app.profile.keys.filter { $0.sensorInput != nil }.count
-        var line = "\(link.name) · sensors on \(sensors) of \(app.profile.keyCount) keys"
-        if sensors < app.profile.keyCount { line += " · the rest use camera + mic" }
+        var line = String(localized: "\(link.name) · \(sensors) of \(app.profile.keyCount) keys have sensors")
+        if sensors < app.profile.keyCount { line += String(localized: " · the rest use camera and mic") }
         return line
     }
 
     private var playedLine: String {
         let p = app.profile
-        guard p.hasBeenPlayed else { return "Unplayed" }
-        var line = "\(p.notesLanded.formatted()) notes landed in \(p.sessionsPlayed.formatted()) sessions"
+        guard p.hasBeenPlayed else { return String(localized: "Unplayed") }
+        var line =
+            String(localized: "\(p.notesLanded.formatted()) notes hit in \(p.sessionsPlayed.formatted()) sessions")
         if let played = p.lastPlayedDate {
-            line += " · played \(played.formatted(.relative(presentation: .named)))"
+            line += String(localized: " · played \(played.formatted(.relative(presentation: .named)))")
         }
         return line
     }

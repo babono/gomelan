@@ -19,8 +19,8 @@ enum GuideArt {
 struct GuideSlide: Identifiable {
     let id = UUID()
     var art: GuideArt = .none
-    var title: String
-    var text: String
+    var title: LocalizedStringResource
+    var text: LocalizedStringResource
     /// Somewhere to go next. Only ever the LAST slide.
     var link: URL?
 }
@@ -128,7 +128,7 @@ struct GuideSlides: View {
         Link(destination: link) {
             HStack(spacing: 5) {
                 Text(
-                    (link.host() ?? "Open").replacingOccurrences(
+                    (link.host() ?? String(localized: "Open")).replacingOccurrences(
                         of: "www.",
                         with: ""
                     )

@@ -101,11 +101,11 @@ struct SensorPlayView: View {
 
     private func statusPill(sensor: GangsaSensor) -> some View {
         let (text, color): (String, Color) = switch sensor.status {
-        case .off: ("Off", Theme.stone)
-        case .scanning: ("Searching for Gangsa-Sensor…", Theme.gold)
-        case .connecting: ("Connecting…", Theme.gold)
-        case .connected: ("Sensor connected", Theme.hit)
-        case .locked: ("Waiting for the PIN", Theme.gold)
+        case .off: (String(localized: "Off"), Theme.stone)
+        case .scanning: (String(localized: "Searching for Gangsa-Sensor…"), Theme.gold)
+        case .connecting: (String(localized: "Connecting…"), Theme.gold)
+        case .connected: (String(localized: "Sensor connected"), Theme.hit)
+        case .locked: (String(localized: "Waiting for the PIN"), Theme.gold)
         case let .unavailable(why): (why, Theme.miss)
         }
         return HStack(spacing: 8) {

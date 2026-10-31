@@ -22,9 +22,9 @@ final class ChooseKotekanViewModel {
     var position: Double = 0
     var dragOrigin: Double?
     var muted = false
-    /// Narrows the rail by name. Typing jumps back to the first match.
-    var query = "" {
-        didSet { if query != oldValue { position = 0 } }
+    /// Narrows the rail. Changing it jumps back to the first match.
+    var filter = KotekanFilter.all {
+        didSet { if filter != oldValue { position = 0 } }
     }
 
     /// Whether the preview is what is driving the shared cue player right now.
@@ -41,15 +41,13 @@ final class ChooseKotekanViewModel {
     }
 
     var kotekans: [Kotekan] {
-        let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return app.kotekans }
-        return app.kotekans.filter { $0.name.localizedStandardContains(q) }
+        app.kotekans.filter(filter.includes)
     }
 
-    /// The rail wraps round, except over search results: two matches looped
+    /// The rail wraps round, except when filtered: two matches looped
     /// would fill the screen with copies of themselves.
     var loops: Bool {
-        query.trimmingCharacters(in: .whitespaces).isEmpty
+        filter == .all
     }
 
     var focusedSlot: Int {
@@ -202,7 +200,7 @@ final class ChooseKotekanViewModel {
                 position = Double(max(0, min(focusedSlot, railCount - 1)))
                 startPreview()
             } catch {
-                deleteError = "Couldn't delete \(k.name). Check your connection and try again."
+                deleteError = String(localized: "Couldn't delete \(k.name). Check your connection and try again.")
             }
         }
     }

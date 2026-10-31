@@ -628,9 +628,9 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
         MainActor.assumeIsolated {
             switch central.state {
             case .poweredOn: search()
-            case .unauthorized: status = .unavailable("Bluetooth permission denied")
-            case .poweredOff: status = .unavailable("Bluetooth is off")
-            case .unsupported: status = .unavailable("No Bluetooth LE")
+            case .unauthorized: status = .unavailable(String(localized: "Bluetooth permission denied"))
+            case .poweredOff: status = .unavailable(String(localized: "Bluetooth is off"))
+            case .unsupported: status = .unavailable(String(localized: "No Bluetooth LE"))
             default: status = .off
             }
         }

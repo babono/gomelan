@@ -41,11 +41,11 @@ struct SessionCountersView: View {
             // Always drawn, even before a single pass has closed.
             if engine.judging {
                 HStack(spacing: 3) {
-                    Text(engine.bestSoFar.map(percent) ?? "—")
+                    Text(engine.bestSoFar.map(Theme.percentLabel) ?? "—")
                         .foregroundStyle(beatingRecord ? Theme.hit : Theme.cream)
                     if let record {
                         Text("/").foregroundStyle(Theme.inkStone.opacity(0.6))
-                        Text(percent(record)).foregroundStyle(Theme.gold)
+                        Text(Theme.percentLabel(record)).foregroundStyle(Theme.gold)
                     }
                 }
                 .coachTarget(.score)
@@ -58,18 +58,14 @@ struct SessionCountersView: View {
         .animation(.snappy(duration: 0.25), value: engine.bestSoFar)
     }
 
-    private func percent(_ value: Double) -> String {
-        "\(Int((value * 100).rounded()))%"
-    }
-
     private var accessibilityLabel: String {
         var parts: [String] = []
         parts.append(
-            engine.bestSoFar.map { "best so far \(percent($0))" }
-                ?? "no score yet"
+            engine.bestSoFar.map { String(localized: "best so far \(Theme.percentLabel($0))") }
+                ?? String(localized: "no score yet")
         )
-        if let record { parts.append("record \(percent(record))") }
-        if beatingRecord { parts.append("beating the record") }
+        if let record { parts.append(String(localized: "record \(Theme.percentLabel(record))")) }
+        if beatingRecord { parts.append(String(localized: "beating the record")) }
         return parts.joined(separator: ", ")
     }
 }

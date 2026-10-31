@@ -66,6 +66,8 @@ struct WaterfallCanvas: View {
                 )
             }
 
+            drawCycles(ctx, size: size, aheadMs: aheadMs, y: y)
+
             let notes = engine.fallingNotes(aheadMs: aheadMs, behindMs: beatMs)
             // Only your half falls. The other half used to come down beside
             // it as a muted slate block, and between the two the lanes were
@@ -100,6 +102,35 @@ struct WaterfallCanvas: View {
             ]),
             startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)
         ))
+    }
+
+    /// A gold rule across the lanes where the next pass begins, "Cycle N"
+    /// riding on it. Under the blocks, so the stroke that lands with it
+    /// stays on top. The label goes on whichever side the figure leaves
+    /// more empty lanes, so it rarely sits under a falling note.
+    private func drawCycles(
+        _ ctx: GraphicsContext,
+        size: CGSize,
+        aheadMs: Double,
+        y: (Double) -> CGFloat
+    ) {
+        let leftRoom = layout.laneCenter(voiced.lowerBound) - layout.lane / 2
+        let rightRoom = size.width - (layout.laneCenter(voiced.upperBound) + layout.lane / 2)
+        let onLeft = leftRoom >= rightRoom
+        for cycle in engine.fallingCycles(aheadMs: aheadMs, behindMs: 0) {
+            let yy = y(cycle.msAhead)
+            var rule = Path()
+            rule.move(to: CGPoint(x: 0, y: yy))
+            rule.addLine(to: CGPoint(x: size.width, y: yy))
+            ctx.stroke(rule, with: .color(Theme.gold.opacity(0.7)), lineWidth: 1.5)
+            ctx.draw(
+                Text("Cycle \(cycle.number)")
+                    .font(.sans(11, weight: .bold))
+                    .foregroundStyle(Theme.gold),
+                at: CGPoint(x: onLeft ? 6 : size.width - 6, y: yy - 3),
+                anchor: onLeft ? .bottomLeading : .bottomTrailing
+            )
+        }
     }
 
     private func block(

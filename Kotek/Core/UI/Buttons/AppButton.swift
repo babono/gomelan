@@ -27,7 +27,7 @@ struct AppButton: View {
         }
     }
 
-    let title: String
+    let title: LocalizedStringKey
     var systemImage: String?
     /// An icon AFTER the label. For the buttons that carry you forward through
     /// a flow — a leading icon labels what a button is, a trailing arrow says

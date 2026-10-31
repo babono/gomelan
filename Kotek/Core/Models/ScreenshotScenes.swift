@@ -57,6 +57,13 @@
                 screen = .chooseKotekan
             case "create":
                 screen = .createKotek
+            case "create-polos", "create-polos-roll":
+                // Ngecog's polos alone: four beats, so one whole gong cycle
+                // under one half. `-roll` opens the editor, not the gangsa.
+                var k = kotekans.first { $0.id == "ngecog" } ?? kotekans[0]
+                k.sangsih = k.sangsih.map { _ in nil }
+                editingKotekan = k
+                screen = .createKotek
             case "waterfall":
                 renderHalves()
                 screen = .waterfall

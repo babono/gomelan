@@ -15,8 +15,8 @@ struct OnboardingSlideLayout<Art: View, Action: View>: View {
     enum ArtSide { case leading, trailing }
 
     var artSide: ArtSide = .leading
-    let titleTop: String
-    let titleBottom: String
+    let titleTop: LocalizedStringKey
+    let titleBottom: LocalizedStringKey
     let lead: LocalizedStringKey
     @ViewBuilder var art: Art
     @ViewBuilder var action: Action

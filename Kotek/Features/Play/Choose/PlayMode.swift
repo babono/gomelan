@@ -8,14 +8,16 @@
 //  the corner and the card is always what you tap to go on.
 //
 
+import Foundation
+
 enum PlayMode: String, CaseIterable {
     case solo
     case coop
 
     var title: String {
         switch self {
-        case .solo: "Solo"
-        case .coop: "Co-op"
+        case .solo: String(localized: "Solo")
+        case .coop: String(localized: "Co-op")
         }
     }
 }

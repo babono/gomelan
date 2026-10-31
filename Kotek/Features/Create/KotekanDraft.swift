@@ -7,25 +7,31 @@
 //  corrects it, and Save turns it into a `Kotekan`.
 //
 //  Positions are TICKS, 96 to the quarter, not grid slots. Gamelan is played
-//  straight, so the piano roll snaps from a whole bar down to an 8th and
-//  nothing else: no triplets, no dots.
+//  straight, so the piano roll snaps from a whole bar down to a quarter and
+//  nothing else: no triplets, no dots. It went down to an 8th; at a
+//  touchable zoom an 8th cell was too thin to aim at.
 //
 //  A BEAT is the value labelled 1: one bar of the roll, which the snap menu
-//  divides into 2, 4 and 8. The engine counts a grid slot per stroke, so
-//  `kotekan(id:)` makes a slot an 8th of a beat, and BPM here is beats per
-//  minute — a slot's rate divided by eight.
+//  divides into 2 and 4. The engine counts a grid slot per stroke, so
+//  `kotekan(id:)` makes a slot a quarter of a beat, and BPM here is beats per
+//  minute — a slot's rate divided by four.
+//
+//  The gong, kempur, klentong and kajar are not written. They were — armed as
+//  tools and tapped onto the roll — and every figure ended up with the same
+//  line drawn by hand. Now `colotomic` lays the common cycle under whatever
+//  is written: gong, kempur, klentong, kempur, one per beat, a kajar on each.
 //
 
 import Foundation
 import Observation
 
-/// A note value the piano roll snaps to: 1 is a whole bar, 8 an eighth.
+/// A note value the piano roll snaps to: 1 is a whole bar, 4 a quarter.
 struct Subdivision: Hashable, Identifiable {
     var denominator: Int
 
-    static let denominators = [1, 2, 4, 8]
+    static let denominators = [1, 2, 4]
 
-    static let eighth = Subdivision(denominator: 8)
+    static let quarter = Subdivision(denominator: 4)
 
     var id: Int {
         denominator
@@ -72,15 +78,30 @@ final class KotekanDraft {
     /// "My kotekan" if they never do.
     var name = ""
     var source: KotekanSource = .manual
-    /// Beats per minute, a beat being the value labelled 1. Eight grid slots to
-    /// the beat, so the database's per-slot `bpm` is eight times this.
-    var bpm = 60
+    /// Beats per minute, a beat being the value labelled 1. Four grid slots to
+    /// the beat, so the database's per-slot `bpm` is four times this.
+    /// ponytail: no control for it — a new figure is 100, an opened one keeps
+    /// the tempo it was saved at.
+    var bpm = 100
     private(set) var notes: [DraftNote] = []
-    private(set) var colotomic: [DraftColotomic] = []
 
-    /// What the figure looked like before each edit, newest last. The tempo
-    /// and the name are not in it: they are fields the player can see and set
-    /// back, and an Undo that silently moved the tempo would be a surprise.
+    /// The colotomic cycle under the figure, one beat at a time: gong, kempur,
+    /// klentong, kempur, then gong again, and a kajar on every beat.
+    var colotomic: [DraftColotomic] {
+        (0 ..< bars).flatMap { beat in
+            Self.colotomic(atBeat: beat).map { DraftColotomic(instrument: $0, tick: beat * Self.ticksPerBeat) }
+        }
+    }
+
+    /// What sounds on `beat`. Also read straight by the recording, which runs
+    /// on past the end of the figure.
+    static func colotomic(atBeat beat: Int) -> [ColotomicInstrument] {
+        let cycle: [ColotomicInstrument] = [.gong, .kempur, .klentong, .kempur]
+        return [cycle[beat % cycle.count], .kajar]
+    }
+
+    /// What the figure looked like before each edit, newest last. The name is
+    /// not in it: it is a field the player can see and set back.
     private var undoStack: [Snapshot] = []
     private var redoStack: [Snapshot] = []
 
@@ -90,7 +111,7 @@ final class KotekanDraft {
     var bars: Int {
         // A note's end counts too, so one dragged across a bar line takes the
         // figure with it.
-        let last = (notes.map { $0.tick + $0.length - 1 } + colotomic.map(\.tick)).max() ?? 0
+        let last = notes.map { $0.tick + $0.length - 1 }.max() ?? 0
         return last / Self.ticksPerBar + 1
     }
 
@@ -102,14 +123,9 @@ final class KotekanDraft {
         timelineBars * ticksPerBar
     }
 
-    /// No strokes: nothing to save as a kotekan, though a gong line alone
-    /// still plays (`isSilent`).
+    /// No strokes: nothing to save, and nothing to play.
     var isEmpty: Bool {
         notes.isEmpty
-    }
-
-    var isSilent: Bool {
-        notes.isEmpty && colotomic.isEmpty
     }
 
     // MARK: - Editing
@@ -161,20 +177,6 @@ final class KotekanDraft {
         notes.first { $0.id == id }?.length
     }
 
-    /// Add or take out a colotomic stroke. It snaps to the NEAREST line rather
-    /// than the one before the finger, since the circle is drawn on the line.
-    func toggleColotomic(_ instrument: ColotomicInstrument, at position: Int, snap: Subdivision) {
-        if let hit = colotomic.firstIndex(where: {
-            $0.instrument == instrument && abs($0.tick - position) <= snap.ticks / 2
-        }) {
-            colotomic.remove(at: hit)
-            return
-        }
-        let tick = Int((Double(position) / Double(snap.ticks)).rounded()) * snap.ticks
-        guard tick < Self.timelineTicks else { return }
-        colotomic.append(DraftColotomic(instrument: instrument, tick: tick))
-    }
-
     /// Take out the stroke on `key` under the finger — the half being written
     /// first, then the other, since the Delete tool should remove whatever the
     /// player can see there.
@@ -189,38 +191,50 @@ final class KotekanDraft {
         }
     }
 
-    /// Take out the gong, kempur, klentong or kajar nearest the finger, if one is
-    /// within `tolerance` ticks.
-    func eraseColotomic(near position: Int, tolerance: Int) {
-        guard let nearest = colotomic.indices.min(by: {
-            abs(colotomic[$0].tick - position) < abs(colotomic[$1].tick - position)
-        }), abs(colotomic[nearest].tick - position) <= tolerance else { return }
-        colotomic.remove(at: nearest)
-    }
-
     // MARK: - Undo
 
     private struct Snapshot: Equatable {
         var notes: [DraftNote]
-        var colotomic: [DraftColotomic]
     }
 
     private var snapshot: Snapshot {
-        Snapshot(notes: notes, colotomic: colotomic)
+        Snapshot(notes: notes)
     }
 
+    /// The figure as it was when a group began; edits inside it are not
+    /// steps of their own.
+    private var groupStart: Snapshot?
+
+    /// Not mid-group: an undo then would step back past the group's start.
     var canUndo: Bool {
-        !undoStack.isEmpty
+        groupStart == nil && !undoStack.isEmpty
     }
 
     var canRedo: Bool {
-        !redoStack.isEmpty
+        groupStart == nil && !redoStack.isEmpty
     }
 
     /// Run `change` as one step of undo. A tap that changed nothing is none.
     func edit(_ change: () -> Void) {
         let before = snapshot
         change()
+        guard groupStart == nil else { return }
+        push(before)
+    }
+
+    /// Everything until `endGroup()` is one step of undo — a recording take,
+    /// which is one gesture however many strokes it writes.
+    func beginGroup() {
+        groupStart = snapshot
+    }
+
+    func endGroup() {
+        guard let start = groupStart else { return }
+        groupStart = nil
+        push(start)
+    }
+
+    private func push(_ before: Snapshot) {
         guard snapshot != before else { return }
         undoStack.append(before)
         // ponytail: a cap rather than anything cleverer. 200 taps back is
@@ -230,20 +244,19 @@ final class KotekanDraft {
     }
 
     func undo() {
-        guard let previous = undoStack.popLast() else { return }
+        guard groupStart == nil, let previous = undoStack.popLast() else { return }
         redoStack.append(snapshot)
         restore(previous)
     }
 
     func redo() {
-        guard let next = redoStack.popLast() else { return }
+        guard groupStart == nil, let next = redoStack.popLast() else { return }
         undoStack.append(snapshot)
         restore(next)
     }
 
     private func restore(_ s: Snapshot) {
         notes = s.notes
-        colotomic = s.colotomic
     }
 
     // MARK: - From a kotekan
@@ -251,11 +264,12 @@ final class KotekanDraft {
     /// Open a saved figure for editing: its grid back onto the piano roll.
     ///
     /// A saved figure keeps only slots and milliseconds per slot. A slot comes
-    /// back as an 8th of a beat.
+    /// back as a quarter of a beat. Its colotomic line is not read back: the
+    /// cycle is laid under it again from its length.
     func load(_ k: Kotekan) {
         name = k.name
         source = k.source
-        let slot = Subdivision.eighth.ticks
+        let slot = Subdivision.quarter.ticks
         bpm = Self.bpm(strokeMs: k.strokeMs, slotTicks: slot).clamped(
             to: Self.bpmRange.lowerBound,
             Self.bpmRange.upperBound
@@ -265,23 +279,21 @@ final class KotekanDraft {
                 key.map { DraftNote(half: half, key: $0, tick: i * slot, length: slot) }
             }
         }
-        colotomic = k.colotomic.map { DraftColotomic(instrument: $0.instrument, tick: $0.slot * slot) }
         undoStack = []
         redoStack = []
     }
 
     private static func bpm(strokeMs: Int, slotTicks: Int) -> Int {
-        guard strokeMs > 0 else { return 60 }
+        guard strokeMs > 0 else { return 100 }
         return Int((60000.0 * Double(slotTicks) / (Double(ticksPerBeat) * Double(strokeMs))).rounded())
     }
 
     // MARK: - As a kotekan
 
-    /// Ticks per engine slot: an 8th, unless a stroke was written off it (the
+    /// Ticks per engine slot: a quarter, unless a stroke was written off it (the
     /// sensors can) — then the coarsest step every one lands on.
     var slotTicks: Int {
-        let ticks = notes.map(\.tick) + colotomic.map(\.tick)
-        return ticks.reduce(Subdivision.eighth.ticks) { gcd($0, $1) }
+        notes.map(\.tick).reduce(Subdivision.quarter.ticks) { gcd($0, $1) }
     }
 
     var slotCount: Int {

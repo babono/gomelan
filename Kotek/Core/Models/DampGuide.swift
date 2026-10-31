@@ -11,6 +11,8 @@
 //  thumb, which only moves at the bar.
 //
 
+import Foundation
+
 enum DampGuide: String, CaseIterable {
     case all
     case handOnly
@@ -18,9 +20,12 @@ enum DampGuide: String, CaseIterable {
 
     var title: String {
         switch self {
-        case .all: "Blocks + hand"
-        case .handOnly: "Hand only"
-        case .off: "Off"
+        case .all: String(localized: "Blocks + hand")
+        case .handOnly: String(localized: "Hand only")
+        // Its own key: "Off" is shared with on/off switches elsewhere, and
+        // here it needs to say no guide is shown, not that something is
+        // switched off.
+        case .off: String(localized: "DampGuide.off", defaultValue: "Off")
         }
     }
 

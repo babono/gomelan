@@ -29,7 +29,7 @@ struct ResultsHeadlineView: View {
 
     private func row(size: CGFloat, spacing: CGFloat) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: spacing) {
-            stat("\(Int((result.onBeatFraction * 100).rounded()))%", label: "Overall", size: size)
+            stat(Theme.percentLabel(result.onBeatFraction), label: "Overall", size: size)
             stat("\(result.cycles.count)", label: result.cycles.count == 1 ? "Cycle" : "Cycles", size: size)
             stat(Self.clock(result.practiceSeconds), label: "Practice", size: size)
         }
@@ -42,7 +42,7 @@ struct ResultsHeadlineView: View {
         return d.formatted(.time(pattern: seconds >= 3600 ? .hourMinuteSecond : .minuteSecond))
     }
 
-    private func stat(_ value: String, label: String, size: CGFloat) -> some View {
+    private func stat(_ value: String, label: LocalizedStringKey, size: CGFloat) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: size * 0.2) {
             Text(value)
                 .font(.serif(size))

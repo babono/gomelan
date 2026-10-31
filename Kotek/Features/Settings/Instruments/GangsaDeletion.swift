@@ -6,12 +6,17 @@
 //  deleted: the gangsa picker's trash button and Settings → Gangsa.
 //
 
+import Foundation
+
 enum GangsaDeletion {
     /// The confirmation's message. Says what is actually removed —
     /// `AppState.deleteInstrument` drops the keys, the photo and the recorded
     /// note clips, here and on the server. The old wording ("its key alignment
     /// and learned voice") predated note clips and the controller.
     static func message(_ name: String?) -> String {
-        "\(name ?? "This gangsa") goes from every device, with its key setup, photo and recorded note clips. This cannot be undone."
+        let name = name ?? String(localized: "This gangsa")
+        return String(
+            localized: "\(name) and its setup, photo and sounds will be deleted from all devices. This can't be undone."
+        )
     }
 }

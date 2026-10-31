@@ -8,6 +8,7 @@
 import FactoryKit
 import Foundation
 import Observation
+import SwiftUI
 
 @Observable
 @MainActor
@@ -22,18 +23,22 @@ final class StrikeBaselineViewModel {
     var busyMessage: String?
 
     var statusText: String {
-        if capturing { return "Keep striking the keys a few times…" }
+        if capturing { return String(localized: "Keep striking the keys a few times…") }
         switch strikeCount {
         case .none:
-            return "Strike any keys a few times so the app learns what a real gangsa strike sounds like."
+            return String(
+                localized: "Strike any keys a few times so the app learns what a real gangsa strike sounds like."
+            )
         case .some(0):
-            return "No strikes heard — tap Start and hit a few keys."
+            return String(localized: "No strikes heard — tap Start and hit a few keys.")
         case let .some(n):
-            return "Learned from \(n) strike\(n == 1 ? "" : "s"). You can re-record or continue."
+            return n == 1
+                ? String(localized: "Learned from 1 strike. You can re-record or continue.")
+                : String(localized: "Learned from \(n) strikes. You can re-record or continue.")
         }
     }
 
-    var recordTitle: String {
+    var recordTitle: LocalizedStringKey {
         if capturing { return "Done" }
         return strikeCount == nil ? "Start listening" : "Re-record"
     }
@@ -60,7 +65,7 @@ final class StrikeBaselineViewModel {
 
     func toggleCapture() {
         if capturing {
-            busyMessage = "Learning the strike…"
+            busyMessage = String(localized: "Learning the strike…")
             audio.finishBaselineCapture { [weak self] count, _ in
                 guard let self else { return }
                 strikeCount = count
@@ -83,7 +88,7 @@ final class StrikeBaselineViewModel {
         }
         // The profile written here carries the baseline template, so it is no
         // longer a trivial file.
-        busyMessage = "Saving the gangsa…"
+        busyMessage = String(localized: "Saving the gangsa…")
         Task { [weak self] in
             guard let self else { return }
             await app.baselineFinishedAsync()

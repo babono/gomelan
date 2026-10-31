@@ -49,11 +49,11 @@ private struct CoopPlayContentView: View {
                     }
                 }
             CoopStage(lanes: vm.lanes, voicedKeys: vm.voicedKeys, damp: app.dampGuide)
-            .overlay {
-                if vm.paused {
-                    PauseStage(resumeCount: vm.resumeCount, onResume: vm.resume, onQuit: vm.leave)
+                .overlay {
+                    if vm.paused {
+                        PauseStage(resumeCount: vm.resumeCount, onResume: vm.resume, onQuit: vm.leave)
+                    }
                 }
-            }
         }
         .background(Theme.ground.ignoresSafeArea())
         .contentShape(Rectangle())

@@ -18,11 +18,20 @@
 //
 
 import SwiftUI
+import Translation
 
 struct ResultsFeedbackView: View {
     let model: SessionOverviewModel
 
     var body: some View {
+        content
+            .translationTask(model.translation) { session in
+                await model.translate(using: session)
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch model.phase {
         case .hidden, .failed:
             // R A failed overview is dropped, not apologised for: the counts

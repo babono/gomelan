@@ -74,13 +74,13 @@ enum FloaterLabel: Int, CaseIterable {
 
     var text: String {
         switch self {
-        case .perfect: "PERFECT"
-        case .goodEarly: "GOOD · early"
-        case .goodLate: "GOOD · late"
-        case .late: "LATE"
-        case .miss: "MISS"
-        case .wrongKey: "WRONG BAR"
-        case .unmatched: "NO NOTE DUE"
+        case .perfect: String(localized: "PERFECT")
+        case .goodEarly: String(localized: "GOOD · early")
+        case .goodLate: String(localized: "GOOD · late")
+        case .late: String(localized: "LATE")
+        case .miss: String(localized: "MISS")
+        case .wrongKey: String(localized: "WRONG BAR")
+        case .unmatched: String(localized: "NO NOTE DUE")
         }
     }
 
@@ -130,4 +130,10 @@ struct FallingBeat: Identifiable, Equatable {
     let id: Int
     let msAhead: Double
     let strong: Bool
+}
+
+/// The turn of the cycle on the waterfall: where pass `number` begins.
+struct FallingCycle: Equatable {
+    let number: Int
+    let msAhead: Double
 }

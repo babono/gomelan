@@ -23,10 +23,10 @@ struct GuideColumns<Left: View, Right: View>: View {
 
 /// A titled paragraph.
 struct GuideBlock: View {
-    let heading: String
-    let text: String
+    let heading: LocalizedStringKey
+    let text: LocalizedStringKey
 
-    init(_ heading: String, _ text: String) {
+    init(_ heading: LocalizedStringKey, _ text: LocalizedStringKey) {
         self.heading = heading
         self.text = text
     }
@@ -45,8 +45,8 @@ struct GuideBlock: View {
 
 /// The prose under a column heading.
 struct GuideLead: View {
-    let text: String
-    init(_ text: String) {
+    let text: LocalizedStringKey
+    init(_ text: LocalizedStringKey) {
         self.text = text
     }
 

@@ -3,9 +3,10 @@
 //  Kotek
 //
 //  The waterfall's ear for "slower", "pause", "polos". On-device dictation
-//  (`SpeechAnalyzer`), English whatever the phone's language — the commands
-//  are English words — fed from its own microphone engine, since this screen
-//  has no strike detection running to share one with.
+//  (`SpeechAnalyzer`) in the app's language — "pelan", "jeda" when it is in
+//  Indonesian — falling back to English where the device has no Indonesian
+//  dictation. Fed from its own microphone engine, since this screen has no
+//  strike detection running to share one with.
 //
 //  Results arrive as the whole utterance so far, again and again as it firms
 //  up, so the same "slower" turns up several times; `handle` acts on it once.
@@ -27,6 +28,12 @@ final class VoiceCommandListener {
     }
 
     private(set) var state = State.off
+    /// What the transcript is matched in; settled when listening starts, so
+    /// the hint can name the words that will actually work.
+    private(set) var language = VoiceCommand.Language.english
+    /// 0…1 while this device downloads the language's dictation model — the
+    /// first time Indonesian is used, ~25 s on a good connection. nil otherwise.
+    private(set) var downloadProgress: Double?
     var onCommand: ((VoiceCommand) -> Void)?
 
     private let mic = AVAudioEngine()
@@ -80,28 +87,38 @@ final class VoiceCommandListener {
 
     private func run() async {
         guard await AudioSessionManager.requestRecordPermission() else {
-            state = .unavailable("Microphone is off for Kotek in Settings")
+            state = .unavailable(String(localized: "Microphone is off for Kotek in Settings"))
             return
         }
-        guard let locale = await DictationTranscriber.supportedLocale(equivalentTo: Locale(identifier: "en-US")) else {
-            state = .unavailable("Voice commands aren't available on this device")
+        var language = VoiceCommand.Language.preferred
+        var locale = await DictationTranscriber.supportedLocale(equivalentTo: language.locale)
+        if locale == nil, language != .english {
+            language = .english
+            locale = await DictationTranscriber.supportedLocale(equivalentTo: language.locale)
+        }
+        guard var locale else {
+            state = .unavailable(String(localized: "Voice commands aren't available on this device"))
             return
         }
-        // Dictation rather than `SpeechTranscriber`: it takes the command list
-        // as contextual strings, and it runs on every device that has iOS 26.
-        let transcriber = DictationTranscriber(
-            locale: locale,
-            // The phone is on a stand an arm's length away, with a gangsa between.
-            contentHints: [.shortForm, .farField],
-            transcriptionOptions: [],
-            reportingOptions: [.volatileResults, .alternativeTranscriptions, .frequentFinalization],
-            attributeOptions: []
-        )
+        var transcriber = Self.transcriber(for: locale)
         do {
-            // The English model, once per device; it may already be there.
-            if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
-                try await request.downloadAndInstall()
+            do {
+                try await install(transcriber)
+            } catch where !(error is CancellationError) && language != .english {
+                // R The Indonesian model is a download the English one usually
+                // R isn't, and with no signal it sat on "Getting ready" for good.
+                // R English is better than nothing; Indonesian is tried again
+                // R the next time voice is turned on.
+                print("[Voice] \(language) model unavailable, using English: \(error)")
+                guard let english = await DictationTranscriber
+                    .supportedLocale(equivalentTo: VoiceCommand.Language.english.locale)
+                else { throw error }
+                language = .english
+                locale = english
+                transcriber = Self.transcriber(for: locale)
+                try await install(transcriber)
             }
+            self.language = language
             try Task.checkCancellation()
 
             await AudioSessionManager.configureForVoice()
@@ -109,10 +126,10 @@ final class VoiceCommandListener {
 
             let analyzer = SpeechAnalyzer(modules: [transcriber])
             let context = AnalysisContext()
-            context.contextualStrings[.general] = VoiceCommand.vocabulary
+            context.contextualStrings[.general] = VoiceCommand.vocabulary(language)
             try await analyzer.setContext(context)
             guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
-                state = .unavailable("Voice commands couldn't start")
+                state = .unavailable(String(localized: "Voice commands couldn't start"))
                 return
             }
             try await analyzer.prepareToAnalyze(in: format)
@@ -140,19 +157,72 @@ final class VoiceCommandListener {
         } catch {
             print("[Voice] could not start: \(error)")
             stopMic()
-            state = .unavailable("Voice commands couldn't start")
+            state = .unavailable(String(localized: "Voice commands couldn't start"))
+        }
+    }
+
+    /// Dictation rather than `SpeechTranscriber`: it takes the command list
+    /// as contextual strings, and it runs on every device that has iOS 26.
+    private static func transcriber(for locale: Locale) -> DictationTranscriber {
+        DictationTranscriber(
+            locale: locale,
+            // The phone is on a stand an arm's length away, with a gangsa between.
+            contentHints: [.shortForm, .farField],
+            transcriptionOptions: [],
+            reportingOptions: [.volatileResults, .alternativeTranscriptions, .frequentFinalization],
+            attributeOptions: []
+        )
+    }
+
+    private struct DownloadStalled: Error {}
+
+    /// The language's model, once per device; it may already be there. The
+    /// progress is shown, and a download that stops moving for `stallLimit`
+    /// seconds is given up on rather than waited out.
+    private func install(_ transcriber: DictationTranscriber) async throws {
+        guard let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) else { return }
+        let stallLimit = 45.0
+        downloadProgress = 0
+        defer { downloadProgress = nil }
+        let download = Task { try await request.downloadAndInstall() }
+        do {
+            var last = -1.0
+            var movedAt = CACurrentMediaTime()
+            while !request.progress.isFinished {
+                try await Task.sleep(for: .milliseconds(500))
+                let progress = request.progress.fractionCompleted
+                downloadProgress = progress
+                if progress != last {
+                    last = progress
+                    movedAt = CACurrentMediaTime()
+                } else if CACurrentMediaTime() - movedAt > stallLimit {
+                    throw DownloadStalled()
+                }
+            }
+            try await download.value
+        } catch {
+            download.cancel()
+            throw error
         }
     }
 
     // MARK: - Microphone
 
-    private func startMic(converting format: AVAudioFormat, into continuation: AsyncStream<AnalyzerInput>.Continuation) throws {
+    private func startMic(
+        converting format: AVAudioFormat,
+        into continuation: AsyncStream<AnalyzerInput>.Continuation
+    ) throws {
         let node = mic.inputNode
         let natural = node.outputFormat(forBus: 0)
         guard let converter = AVAudioConverter(from: natural, to: format) else {
             throw CocoaError(.featureUnsupported)
         }
-        node.installTap(onBus: 0, bufferSize: 4096, format: natural, block: Self.tap(converter: converter, to: format, into: continuation))
+        node.installTap(
+            onBus: 0,
+            bufferSize: 4096,
+            format: natural,
+            block: Self.tap(converter: converter, to: format, into: continuation)
+        )
         tapped = true
         mic.prepare()
         try mic.start()
@@ -214,7 +284,9 @@ final class VoiceCommandListener {
 
     private func handle(_ result: DictationTranscriber.Result) {
         let heard = [result.text] + result.alternatives
-        guard let command = heard.lazy.compactMap({ VoiceCommand(heard: String($0.characters)) }).first else { return }
+        let language = language
+        guard let command = heard.lazy.compactMap({ VoiceCommand(heard: String($0.characters), in: language) }).first
+        else { return }
         let now = CACurrentMediaTime()
         // The same command again in the same utterance is that utterance
         // firming up, not a second command. The time check covers the moment

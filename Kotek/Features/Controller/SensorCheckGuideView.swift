@@ -24,7 +24,7 @@ struct SensorCheckGuideView: View {
     /// Reduce Motion gets the frame that explains the most: the mix-up, arrow drawn.
     private static let still = 7.0
 
-    private static let steps = [
+    private static let steps: [LocalizedStringResource] = [
         "Hit each key when it's asked for. Its sensor answers and the key gets a tick.",
         "If another key answers instead, the two sensors are in each other's inputs. The arrow joins them.",
         "Remap swaps the two. Hit the wrong bilah by mistake? Choose Try again."
@@ -131,7 +131,7 @@ private struct Demo {
     var levels = [Double](repeating: 0, count: 6)
     var strike: (key: Int, age: Double)?
     var pressed = false
-    var prompt = "Hit key 3"
+    var prompt = String(localized: "Hit key 3")
     /// The step the list lights.
     var step = 0
 
@@ -159,7 +159,7 @@ private struct Demo {
         if t >= Self.mixUpAt, t < Self.remapAt {
             let drawn = min(1, (t - Self.mixUpAt) / 0.6)
             mixUp = (2, 4, drawn * drawn * (3 - 2 * drawn))
-            prompt = "Key 3 was heard on key 5"
+            prompt = String(localized: "Key 3 was heard on key 5")
             pressed = t > Self.pressAt && t < Self.pressAt + 0.3
             step = t < Self.explainAt ? 1 : 2
         }
@@ -175,7 +175,7 @@ private struct Demo {
             checked.insert(s.key)
             current = s.key + 1 < 6 ? s.key + 1 : nil
         }
-        prompt = current.map { "Hit key \($0 + 1)" } ?? "All keys check out"
+        prompt = current.map { String(localized: "Hit key \($0 + 1)") } ?? String(localized: "All keys check out")
     }
 }
 
@@ -183,7 +183,7 @@ private struct Demo {
 
 /// The three steps, the one the demo is on lit; nil lights them all.
 private struct StepList: View {
-    let steps: [String]
+    let steps: [LocalizedStringResource]
     let active: Int?
 
     var body: some View {

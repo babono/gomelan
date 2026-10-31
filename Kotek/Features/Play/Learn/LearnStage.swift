@@ -44,10 +44,10 @@ enum LearnStage: Hashable {
     /// What this step asks of you, under the strip.
     var title: String {
         switch self {
-        case .watch: "Watch both halves"
-        case .listen: "Listen"
-        case .step: "Note by note"
-        case .buildUp: "Build up speed"
+        case .watch: String(localized: "Watch both halves")
+        case .listen: String(localized: "Listen")
+        case .step: String(localized: "Note by note")
+        case .buildUp: String(localized: "Build up speed")
         }
     }
 

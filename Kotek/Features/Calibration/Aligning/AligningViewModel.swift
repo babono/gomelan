@@ -23,7 +23,7 @@ final class AligningViewModel {
     var overlaySize: CGSize = .zero
     var detecting = false
     var status =
-        "Drag a mask to move it · drag an edge handle to resize"
+        String(localized: "Drag a mask to move it · drag an edge handle to resize")
     var selectedIndex: Int?
     /// The corner currently being resized (overlay-normalised), for the magnifier.
     /// Only set while resizing — plain moves don't zoom.
@@ -58,12 +58,12 @@ final class AligningViewModel {
         let shouldAutoFit = fromFraming || keys.isEmpty
         if !shouldAutoFit {
             status =
-                "Your saved fit — drag to adjust, or Auto-detect to start over"
+                String(localized: "Your saved fit — drag to adjust, or Auto-detect to start over")
         }
 
         Task {
             busyMessage =
-                shouldAutoFit ? "Finding your keys…" : "Waking the camera…"
+                shouldAutoFit ? String(localized: "Finding your keys…") : String(localized: "Waking the camera…")
             let started = CACurrentMediaTime()
             if shouldAutoFit {
                 await autoDetect(requireAll: true)
@@ -80,7 +80,7 @@ final class AligningViewModel {
     /// Resets all keys back to an evenly spaced row.
     func resetFit() {
         keys = InstrumentProfile.layout(count: keys.count)
-        status = "Reset to an even row — drag to fit"
+        status = String(localized: "Reset to an even row — drag to fit")
     }
 
     // MARK: - Auto-detect (Vision rectangle detection, one-shot)
@@ -94,7 +94,7 @@ final class AligningViewModel {
     func autoDetect(requireAll: Bool = false) async {
         guard let frame = await waitForFrame() else {
             if !requireAll {
-                status = "No camera frame yet — try Auto-detect again"
+                status = String(localized: "No camera frame yet — try Auto-detect again")
             }
             return
         }
@@ -139,7 +139,7 @@ final class AligningViewModel {
         let n = min(keys.count, placed.count)
         guard placed.count >= need, !requireAll || n == keys.count else {
             if !requireAll {
-                status = "Use the controls below to fit your \(keys.count) keys"
+                status = String(localized: "Use the controls below to fit your \(keys.count) keys")
             }
             return
         }
@@ -149,8 +149,8 @@ final class AligningViewModel {
         }
         status =
             n == keys.count
-                ? "Snapped all \(keys.count) keys — nudge any that are off"
-                : "Snapped \(n) of \(keys.count) — fit the rest with the controls"
+                ? String(localized: "Snapped all \(keys.count) keys — nudge any that are off")
+                : String(localized: "Snapped \(n) of \(keys.count) — fit the rest with the controls")
     }
 
     /// The newest camera frame, waiting for one if the session has only just
@@ -248,7 +248,7 @@ final class AligningViewModel {
     /// while the camera was still settling. Now the wait is shown and awaited.
     func confirmAlignment() {
         guard busyMessage == nil else { return }
-        busyMessage = "Saving the fit…"
+        busyMessage = String(localized: "Saving the fit…")
 
         var profile = app.profile
         profile.keys = keys

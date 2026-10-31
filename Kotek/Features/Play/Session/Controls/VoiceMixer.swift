@@ -34,7 +34,7 @@ struct VoiceMixer: View {
             )
             chip(
                 color: colour(for: yourHalf.other),
-                label: yourHalf.other.title,
+                label: LocalizedStringKey(yourHalf.other.title),
                 isOn: $partnerAudible
             )
         }
@@ -44,7 +44,7 @@ struct VoiceMixer: View {
         half == .polos ? Theme.polosVoice : Theme.sangsihVoice
     }
 
-    private func chip(color: Color, label: String, isOn: Binding<Bool>) -> some View {
+    private func chip(color: Color, label: LocalizedStringKey, isOn: Binding<Bool>) -> some View {
         Button {
             isOn.wrappedValue.toggle()
         } label: {

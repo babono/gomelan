@@ -30,8 +30,8 @@ struct ReviewKotekView: View {
 
         VStack(spacing: 10) {
             CreateTopBar(
-                title: "Review",
-                subtitle: "\(draft.bpm) BPM · \(draft.bars) \(draft.bars == 1 ? "bar" : "bars") · \(draft.source == .automatic ? "Recorded" : "Tapped in")"
+                title: String(localized: "Review"),
+                subtitle: "\(draft.bpm) BPM · \(String(localized: "\(draft.bars) bars")) · \(draft.source == .automatic ? String(localized: "Recorded") : String(localized: "Tapped in"))"
             ) {
                 AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
             } trailing: {
@@ -191,7 +191,7 @@ private struct PatternOverview: View {
                         colotomic: colotomic,
                         lengthTicks: length,
                         patternTicks: length,
-                        snapTicks: Subdivision.eighth.ticks,
+                        snapTicks: Subdivision.quarter.ticks,
                         writing: nil,
                         rows: rows,
                         laneHeight: laneHeight,

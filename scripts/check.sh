@@ -8,3 +8,4 @@ xcodebuild build \
   -configuration Debug \
   -destination generic/platform=iOS \
   CODE_SIGNING_ALLOWED=NO
+scripts/check-strings.sh

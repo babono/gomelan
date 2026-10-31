@@ -6,7 +6,7 @@
 //  strike baselines across app launches and builds.
 //
 //  Laid out like Choose your kotekan: a centred carousel of the same card
-//  size, search and + under it. The card in the middle is the selected one —
+//  size, + under it. The card in the middle is the selected one —
 //  swiping or tapping a card brings it there; a tap on the centred card goes
 //  on, and a long press lifts it for Edit (its section in Settings) / Delete.
 //
@@ -17,22 +17,19 @@
 //  search row and a footer ran off a landscape phone; they are the kotekan
 //  card's 210 now the footer is gone, and still capped by the rail's height.
 //
+//  The search field that sat beside + is gone, as it is on the kotekan
+//  picker: a player has a few gangsa, and swiping finds one sooner than
+//  typing its name.
+//
 
 import SwiftUI
 
 struct ChooseInstrumentView: View {
     @Environment(AppState.self) private var app
-    @State private var query = ""
     /// The card in the middle of the carousel — the selected gangsa.
     @State private var centred: String?
     /// The gangsa waiting on the delete confirmation.
     @State private var pendingDelete: InstrumentProfile?
-
-    private var profiles: [InstrumentProfile] {
-        let q = query.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return app.savedProfiles }
-        return app.savedProfiles.filter { $0.name.localizedCaseInsensitiveContains(q) }
-    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,22 +47,20 @@ struct ChooseInstrumentView: View {
                 EmptyInstrumentsView(onAdd: { app.addNewInstrument() })
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                Group {
-                    if profiles.isEmpty { noMatches } else { rail }
+                rail
+                    .frame(maxHeight: .infinity)
+                // Bottom right, flush to the safe-area edge, as on the kotekan picker.
+                HStack {
+                    Spacer()
+                    AppIconButton(systemImage: "plus", label: "Add gangsa") { app.addNewInstrument() }
                 }
-                .frame(maxHeight: .infinity)
-                SearchAndCreateBar(
-                    query: $query,
-                    prompt: "Search",
-                    createTitle: "Add gangsa",
-                    onCreate: { app.addNewInstrument() }
-                )
+                .padding(.bottom, Theme.footerBottom)
             }
         }
         .confirm(
             Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             title: "Delete this gangsa?",
-            message: GangsaDeletion.message(pendingDelete?.name),
+            message: LocalizedStringKey(GangsaDeletion.message(pendingDelete?.name)),
             confirmTitle: "Delete"
         ) {
             guard let p = pendingDelete else { return }
@@ -104,7 +99,7 @@ struct ChooseInstrumentView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: gap) {
-                    ForEach(profiles) { profile in
+                    ForEach(app.savedProfiles) { profile in
                         InstrumentCardView(
                             profile: profile,
                             isCurrent: app.profile.id == profile.id,
@@ -154,23 +149,5 @@ struct ChooseInstrumentView: View {
             .safeAreaPadding(.horizontal, max(0, (geo.size.width - InstrumentCardView.width) / 2))
         }
         .onAppear { centred = app.profile.id }
-        // A search that hides the centred card centres the first match.
-        .onChange(of: query) { _, _ in
-            if !profiles.contains(where: { $0.id == centred }) { centred = profiles.first?.id }
-        }
-    }
-
-    private var noMatches: some View {
-        VStack(spacing: 8) {
-            Text("No gangsa called “\(query)”")
-                .font(.serif(26))
-                .foregroundStyle(Theme.cream)
-            Text("Try another name, or add it.")
-                .font(.sans(14))
-                .foregroundStyle(Theme.stone)
-        }
-        .multilineTextAlignment(.center)
-        .padding(.horizontal, 40)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

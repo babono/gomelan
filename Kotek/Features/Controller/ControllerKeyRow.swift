@@ -97,9 +97,9 @@ struct ControllerKeyTile: View {
     /// are on the arrow.
     private var caption: String {
         switch mixUp {
-        case .hit: "You hit"
-        case .heard: "Heard here"
-        case nil: input.map { "Input \($0 + 1)" } ?? "No sensor"
+        case .hit: String(localized: "You hit")
+        case .heard: String(localized: "Heard here")
+        case nil: input.map { String(localized: "Input \($0 + 1)") } ?? String(localized: "No sensor")
         }
     }
 
@@ -109,12 +109,14 @@ struct ControllerKeyTile: View {
     }
 
     private var accessibilityText: String {
-        var parts = ["Key \(key + 1)"]
-        parts.append(input.map { "input \($0 + 1)" } ?? "no sensor, camera and microphone")
-        if isChecked { parts.append("checked") }
-        if isCurrent { parts.append("hit this key now") }
-        if mixUp == .hit { parts.append("you hit this key") }
-        if mixUp == .heard { parts.append("its sensor answered instead") }
+        var parts = [String(localized: "Key \(key + 1)")]
+        parts
+            .append(input
+                .map { String(localized: "input \($0 + 1)") } ?? String(localized: "no sensor, camera and microphone"))
+        if isChecked { parts.append(String(localized: "checked")) }
+        if isCurrent { parts.append(String(localized: "hit this key now")) }
+        if mixUp == .hit { parts.append(String(localized: "you hit this key")) }
+        if mixUp == .heard { parts.append(String(localized: "its sensor answered instead")) }
         return parts.joined(separator: ", ")
     }
 }
