@@ -74,7 +74,7 @@ final class SettingsViewModel {
                 guard let code = try await reauthorization.authorizationCode() else { return }
                 await app.deleteAccount(appleAuthorizationCode: code)
             } catch {
-                app.accountError = "Couldn't confirm with Apple. Try again."
+                app.accountError = String(localized: "Couldn't confirm with Apple. Try again.")
             }
         }
     }

@@ -48,6 +48,39 @@ at the *end* of the upload.
 - Comments here explain *why*, and usually name the approach that was tried and failed.
   That history is the real documentation — preserve it when editing, and match the density.
 
+### Localization
+
+English is the source language; Indonesian (`id`) ships alongside it. UI text lives in
+`Kotek/Localizable.xcstrings`, permission prompts in `Kotek/App/InfoPlist.xcstrings`.
+Build in **Xcode** to sync new strings into the catalog — `xcodebuild` on the command line
+extracts them but does not write the catalog. `scripts/check-strings.sh` (run by
+`scripts/check.sh`) fails on any string that is missing from the catalog or has no `id`.
+
+- **A literal is only translated if it lands in a localizable type.** A `String`
+  parameter, an untyped array (`["Watch", "Polos"]` is `[String]`) or a `String` property
+  all skip the catalog silently, at extraction and at runtime.
+- **In a view parameter, take `LocalizedStringKey`** (`AppButton`, `TopBar`,
+  `SectionLabel`…). Callers pass literals; data (a gangsa or song name) is wrapped as
+  `LocalizedStringKey(name)` so it shows as typed.
+- **Outside a view** — models, services, enums, ViewModels — keep `String` and write
+  `String(localized: "…")` where the text is made. Use `LocalizedStringResource` when the
+  value must stay unresolved until shown but can't import SwiftUI.
+- **Never interpolate a `LocalizedStringKey` into a string.** It compiles and shows
+  `LocalizedStringKey(key: "…", …)` — once into a VoiceOver label. Resolve to `String` first.
+- **One sentence, one literal.** Never build a sentence with `+`; put the moving parts in
+  with `\(…)` so a translator can reorder them.
+- **Plurals** go in the catalog (Vary by Plural) when the number is in the string. When it
+  is drawn apart from its label, use two keys ("Cycle" / "Cycles").
+- **Numbers** go through `.formatted()` — `Theme.percentLabel`, `Theme.tempoLabel` — never
+  `"\(n)%"` or `String(format:)`, so the decimal mark follows the language.
+- **One word, two meanings** gets its own key with a default value:
+  `String(localized: "DampGuide.off", defaultValue: "Off")`.
+- **Content is not UI.** Kotekan names and descriptions, gangsa names and anything stored
+  in Supabase stay `String` and never pass through the catalog.
+- Translate the meaning in context, not word for word. The `id` voice is a warm,
+  encouraging teaching assistant who calls the player *kamu*; gamelan terms (gangsa, bilah,
+  polos, sangsih, kajar, panggul) stay as they are.
+
 ### Architectural Principles
 
 - **MVVM Pattern**: Clean separation of concerns with SwiftUI + Observation (`@Observable`):

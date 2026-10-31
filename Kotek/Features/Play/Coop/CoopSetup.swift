@@ -29,8 +29,8 @@ struct CoopSetup: Equatable {
     /// Player 1 on the active gangsa, polos; player 2 beside them, sangsih —
     /// the default the PRD sets, one tap from either swap.
     init(playerName: String?, instrumentID: String) {
-        left = CoopPlayer(name: playerName ?? "Player 1", instrumentID: instrumentID, half: .polos)
-        right = CoopPlayer(name: "Player 2", instrumentID: instrumentID, half: .sangsih)
+        left = CoopPlayer(name: playerName ?? String(localized: "Player 1"), instrumentID: instrumentID, half: .polos)
+        right = CoopPlayer(name: String(localized: "Player 2"), instrumentID: instrumentID, half: .sangsih)
     }
 
     var players: [CoopPlayer] {

@@ -328,11 +328,25 @@ private struct WaterfallContentView: View {
         if let caption = vm.voiceCaption { return caption }
         guard vm.voiceOn, vm.paused, vm.resumeCount == nil else { return nil }
         switch vm.voice.state {
-        case .preparing: return "Getting voice commands ready…"
+        case .preparing:
+            if let progress = vm.voice.downloadProgress {
+                return String(localized: "Downloading voice commands… \(Theme.percentLabel(progress))")
+            }
+            return String(localized: "Getting voice commands ready…")
         case let .unavailable(reason): return reason
-        case .listening: return vm.lesson == nil
-            ? "Say “slower”, “faster”, “polos”, “sangsih”, “pause”, “restart” or “end”"
-            : "Say “next”, “pause”, “resume”, “restart” or “end”"
+        // The words of the language actually listening — English when the
+        // Indonesian model could not be fetched, whatever the screen is in.
+        case .listening:
+            switch (vm.voice.language, vm.lesson == nil) {
+            case (.english, true):
+                return String(localized: "Say “slower”, “faster”, “polos”, “sangsih”, “pause”, “restart” or “end”")
+            case (.english, false):
+                return String(localized: "Say “next”, “pause”, “resume”, “restart” or “end”")
+            case (.indonesian, true):
+                return String(localized: "Say “pelan”, “cepat”, “polos”, “sangsih”, “jeda”, “ulangi” or “selesai”")
+            case (.indonesian, false):
+                return String(localized: "Say “berikutnya”, “jeda”, “lanjut”, “ulangi” or “selesai”")
+            }
         case .off: return nil
         }
     }
@@ -427,9 +441,9 @@ private struct SensorDot: View {
 
     var body: some View {
         let (colour, label): (Color, String) = switch status {
-        case .connected: (Theme.hit, "Sensors connected")
-        case .scanning, .connecting: (Theme.gold, "Looking for sensors")
-        case .off, .unavailable: (Theme.miss, "Sensors unavailable")
+        case .connected: (Theme.hit, String(localized: "Sensors connected"))
+        case .scanning, .connecting: (Theme.gold, String(localized: "Looking for sensors"))
+        case .off, .unavailable: (Theme.miss, String(localized: "Sensors unavailable"))
         }
         HStack(spacing: 6) {
             Circle().fill(colour).frame(width: 8, height: 8)
@@ -451,10 +465,15 @@ struct SessionTitle: View {
     let showsScore: Bool
 
     private var text: String {
-        var parts = [name, engine.phase == .countIn ? "Count-in" : "Cycle \(engine.loopIndex + 1)"]
+        var parts = [
+            name,
+            engine.phase == .countIn
+                ? String(localized: "Count-in")
+                : String(localized: "Cycle \(engine.loopIndex + 1)")
+        ]
         // Nothing until a pass has scored, rather than a 0% that reads as a verdict.
         if showsScore, engine.judging, let best = engine.bestSoFar {
-            parts.append("\(Int((best * 100).rounded()))%")
+            parts.append(Theme.percentLabel(best))
         }
         return parts.joined(separator: " - ")
     }
@@ -518,11 +537,11 @@ struct PauseStage: View {
 }
 
 struct PauseAction: Identifiable {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let action: () -> Void
 
     var id: String {
-        title
+        systemImage
     }
 }

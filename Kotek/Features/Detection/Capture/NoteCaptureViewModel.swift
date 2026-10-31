@@ -71,12 +71,14 @@ final class NoteCaptureViewModel {
     var statusText: String {
         switch phase {
         case .idle:
-            keysWithClips.contains(keyIndex)
-                ? "Key \(Self.number(for: keyIndex)) recorded"
-                : "Key \(Self.number(for: keyIndex)) not recorded"
-        case .quiet: "Quiet…"
-        case .strike: "Strike now"
-        case .processing: "Processing…"
+            if keysWithClips.contains(keyIndex) {
+                String(localized: "Key \(Self.number(for: keyIndex)) recorded")
+            } else {
+                String(localized: "Key \(Self.number(for: keyIndex)) not recorded")
+            }
+        case .quiet: String(localized: "Quiet…")
+        case .strike: String(localized: "Strike now")
+        case .processing: String(localized: "Processing…")
         }
     }
 
@@ -123,7 +125,7 @@ final class NoteCaptureViewModel {
         app.setSound(nil, forKey: keyIndex)
         keysWithClips.remove(keyIndex)
         waveform = []
-        message = "Recording deleted."
+        message = String(localized: "Recording deleted.")
     }
 
     func next() {
@@ -137,7 +139,7 @@ final class NoteCaptureViewModel {
             return
         }
         guard let clip = NoteClipCapture.latestClip(instrumentID: app.profile.id, keyIndex: keyIndex) else {
-            message = "Couldn't play the clip."
+            message = String(localized: "Couldn't play the clip.")
             return
         }
         // Shows "Stop" at once; stopPlayback() cancels the task below.
@@ -151,7 +153,7 @@ final class NoteCaptureViewModel {
             guard !Task.isCancelled else { return }
             guard let player = try? await Self.makePlayer(url: clip), !Task.isCancelled else {
                 isPlaying = false
-                if !Task.isCancelled { message = "Couldn't play the clip." }
+                if !Task.isCancelled { message = String(localized: "Couldn't play the clip.") }
                 return
             }
             self.player = player
@@ -196,11 +198,11 @@ final class NoteCaptureViewModel {
         guard phase == .idle else { return }
         stopPlayback()
         guard AudioSessionManager.recordAuthorized else {
-            message = "Microphone access is off. Enable it in Settings."
+            message = String(localized: "Microphone access is off. Turn it on in Settings.")
             return
         }
         guard audio.isRunning else {
-            message = "Audio engine isn't running."
+            message = String(localized: "Audio isn't ready. Try again.")
             return
         }
         message = nil
@@ -232,7 +234,9 @@ final class NoteCaptureViewModel {
         case let .success(saved):
             app.setSound(saved.url.lastPathComponent, forKey: key)
             keysWithClips.insert(key)
-            message = saved.endsRinging ? "Saved, but still ringing at the cut. Raise clipSeconds." : "Saved."
+            message = saved.endsRinging
+                ? String(localized: "Saved. The note was still ringing when the recording stopped.")
+                : String(localized: "Saved.")
             refreshWaveform()
         case let .failure(error):
             message = error.localizedDescription

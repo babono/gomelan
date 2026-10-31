@@ -57,6 +57,6 @@ struct AvatarView: View {
             }
         }
         .frame(width: size, height: size)
-        .accessibilityLabel(avatar?.title ?? "No avatar")
+        .accessibilityLabel(avatar?.title ?? String(localized: "No avatar"))
     }
 }

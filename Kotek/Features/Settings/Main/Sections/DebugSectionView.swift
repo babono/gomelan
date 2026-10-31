@@ -12,10 +12,6 @@ struct DebugSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(KotekFonts.summary)
-                .font(.sans(11).monospacedDigit())
-                .foregroundStyle(KotekFonts.displayRegular == nil ? Theme.miss : Theme.cream.opacity(0.75))
-
             FlowLayout(spacing: 10) {
                 AppButton(title: "Test Mallet", systemImage: "scope", size: .compact) {
                     app.openMalletTest()

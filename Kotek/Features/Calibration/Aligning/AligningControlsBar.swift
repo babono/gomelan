@@ -112,7 +112,7 @@ struct AligningAdjustBar: View {
     }
 
     private func adjustGroup(
-        _ label: String,
+        _ label: LocalizedStringKey,
         _ minus: @escaping () -> Void,
         _ plus: @escaping () -> Void
     ) -> some View {

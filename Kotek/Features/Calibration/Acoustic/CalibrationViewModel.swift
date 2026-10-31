@@ -39,8 +39,8 @@ final class CalibrationViewModel {
     }
 
     var busyMessage: String? {
-        if preparing { return "Getting ready to listen…" }
-        return committing ? "Learning the strike…" : nil
+        if preparing { return String(localized: "Getting ready to listen…") }
+        return committing ? String(localized: "Learning the strike…") : nil
     }
 
     init(

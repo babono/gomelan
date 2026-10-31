@@ -23,11 +23,11 @@ enum SensorIndicator {
     /// no slashed version of it).
     static func summary(for app: AppState) -> (text: String, icon: Image) {
         let live = Image(systemName: "sensor.radiowaves.left.and.right")
-        if app.controllerNeedsCheck { return ("Sensors changed, check keys in Settings", live) }
-        if app.controllerConnected { return ("Sensor connected, scoring on", live) }
+        if app.controllerNeedsCheck { return (String(localized: "Sensors changed · check in Settings"), live) }
+        if app.controllerConnected { return (String(localized: "Sensor connected · scoring"), live) }
         return looking(app)
-            ? ("Looking for sensor", live)
-            : ("No sensor, guidance only", Image("sensor-disabled").renderingMode(.template))
+            ? (String(localized: "Looking for sensor"), live)
+            : (String(localized: "No sensor · not scoring"), Image("sensor-disabled").renderingMode(.template))
     }
 
     /// A controller is set up and Bluetooth is hunting for it.

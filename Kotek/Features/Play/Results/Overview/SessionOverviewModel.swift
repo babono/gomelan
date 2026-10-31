@@ -16,6 +16,7 @@ import Foundation
 import FoundationModels
 import Observation
 import os
+import Translation
 
 @Generable
 nonisolated struct SessionOverview {
@@ -82,6 +83,11 @@ final class SessionOverviewModel {
     /// The books the advice drew on and the pages it was given from them,
     /// best match first. Empty when no book is bundled.
     private(set) var citations: [BookCitation] = []
+    /// Set once an English overview is ready and the player reads another
+    /// language the model cannot write (Indonesian, for now). The view runs
+    /// it through `translate(using:)` — a `translationTask` is what lets the
+    /// system offer the language download the first time.
+    private(set) var translation: TranslationSession.Configuration?
 
     @ObservationIgnored private let log = Logger(subsystem: "Kotek", category: "overview")
 
@@ -89,11 +95,34 @@ final class SessionOverviewModel {
     You are a patient Balinese gamelan teacher. A student has just practised \
     one half of a kotekan, an interlocking pattern, on a gangsa, and you are \
     given the measured results of the session.
-    Write in plain, encouraging English, speaking to the student as "you".
+    Write in plain, encouraging language, speaking to the student as "you".
     Use only the numbers you are given and never change them.
     Base your advice on the teaching notes when they are relevant; otherwise \
     give general practice advice. Never mention the notes, a book or passages.
     """
+
+    /// The app's language when the model cannot write it, so the English
+    /// overview is translated on-device instead. nil when there is nothing to
+    /// do: the app is in English, or the model writes the language itself.
+    private static var translationTarget: Locale.Language? {
+        guard let code = Bundle.main.preferredLocalizations.first, code != "en",
+              !SystemLanguageModel.default.supportsLocale(Locale(identifier: code))
+        else { return nil }
+        return Locale.Language(identifier: code)
+    }
+
+    /// The app's own language when the model can write it, else English.
+    ///
+    /// The instructions, facts and teaching notes stay English — that is what
+    /// the model reads best — and only the reply is asked for in the player's
+    /// language. Named in English ("Indonesian") inside the English prompt.
+    private static var replyLanguage: String {
+        guard let code = Bundle.main.preferredLocalizations.first, code != "en",
+              SystemLanguageModel.default.supportsLocale(Locale(identifier: code)),
+              let name = Locale(identifier: "en").localizedString(forLanguageCode: code)
+        else { return "English" }
+        return name
+    }
 
     /// A finished overview with nothing behind it, for the mock results
     /// screen. Without it the feedback was blank on every device that cannot
@@ -129,15 +158,40 @@ final class SessionOverviewModel {
         phase = .done
     }
 
+    /// The English overview into the player's language. If it can't be —
+    /// the download was declined, or there is no signal to fetch it — the
+    /// English stands: advice in the wrong language beats no advice.
+    func translate(using session: TranslationSession) async {
+        defer { phase = .done }
+        do {
+            let responses = try await session.translations(from: [
+                .init(sourceText: summary, clientIdentifier: "summary"),
+                .init(sourceText: suggestion, clientIdentifier: "suggestion")
+            ])
+            for r in responses {
+                if r.clientIdentifier == "summary" { summary = r.targetText }
+                if r.clientIdentifier == "suggestion" { suggestion = r.targetText }
+            }
+        } catch {
+            log.error("overview translation failed: \(String(describing: error))")
+        }
+    }
+
     func run(facts: SessionFacts) async {
         switch SystemLanguageModel.default.availability {
         case .available:
             break
         case .unavailable(.appleIntelligenceNotEnabled):
-            phase = .notice("Turn on Apple Intelligence in Settings to get an overview of each session.")
+            phase =
+                .notice(String(localized: "Turn on Apple Intelligence in Settings to get an overview of each session."))
             return
         case .unavailable(.modelNotReady):
-            phase = .notice("The overview is still getting ready on this iPhone. Try again after your next session.")
+            phase =
+                .notice(
+                    String(
+                        localized: "The overview is still getting ready on this iPhone. Try again after your next session."
+                    )
+                )
             return
         case let .unavailable(reason):
             log.info("no overview: model unavailable (\(String(describing: reason)))")
@@ -159,14 +213,25 @@ final class SessionOverviewModel {
         }
         prompt += "\nWrite the overview for the student."
 
-        let session = LanguageModelSession(instructions: Self.instructions)
+        let session = LanguageModelSession(
+            instructions: Self.instructions + "\nWrite the overview in \(Self.replyLanguage)."
+        )
         do {
+            let target = Self.translationTarget
             for try await snapshot in session.streamResponse(to: prompt, generating: SessionOverview.self) {
                 summary = snapshot.content.summary ?? ""
                 suggestion = snapshot.content.suggestion ?? ""
-                if !summary.isEmpty { phase = .writing }
+                // Not streamed when it is going to be translated: English
+                // words flowing in, then swapped for Indonesian, reads as a glitch.
+                if !summary.isEmpty, target == nil { phase = .writing }
             }
-            phase = summary.isEmpty ? .failed : .done
+            if summary.isEmpty {
+                phase = .failed
+            } else if let target {
+                translation = .init(source: Locale.Language(identifier: "en"), target: target)
+            } else {
+                phase = .done
+            }
         } catch is CancellationError {
             // Left the results screen; nothing to show anyone.
         } catch {

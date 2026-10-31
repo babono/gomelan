@@ -22,10 +22,10 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     /// gangsa's name, which only the view can supply.
     var title: String {
         switch self {
-        case .account: "Account"
+        case .account: String(localized: "Account")
         case .instrument: ""
-        case .deprecated: "Deprecated"
-        case .debug: "Debug"
+        case .deprecated: String(localized: "Deprecated")
+        case .debug: String(localized: "Debug")
         }
     }
 

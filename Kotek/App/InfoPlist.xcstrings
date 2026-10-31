@@ -1,0 +1,104 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "NSBluetoothAlwaysUsageDescription" : {
+      "comment" : "Privacy - Bluetooth Always Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek connects to the gangsa's strike sensors, so it can feel exactly which bar you hit and when."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kotek tersambung ke sensor di gangsamu, supaya tahu persis bilah mana yang kamu pukul dan kapan."
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "comment" : "Privacy - Camera Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek watches your gangsa to see which keys you strike, so it can show you where you are in the kotekan."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kotek melihat gangsamu untuk tahu bilah mana yang kamu pukul, supaya bisa menunjukkan posisimu di kotekan."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "comment" : "Privacy - Microphone Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing, and for voice commands like “slower” or “pause” while your hands are busy."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kotek mendengarkan bunyi tiap pukulan, supaya bisa membedakan pukulan sungguhan dan menilai ketepatan waktumu, juga untuk perintah suara seperti “pelan” atau “jeda” saat tanganmu sibuk."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "comment" : "Privacy - Speech Recognition Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek recognises voice commands like “slower” or “pause” on this device while your hands are busy playing."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kotek mengenali perintah suara seperti “pelan” atau “jeda” langsung di perangkat ini, saat tanganmu sibuk bermain."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

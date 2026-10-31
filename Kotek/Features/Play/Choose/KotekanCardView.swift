@@ -91,8 +91,8 @@ struct KotekanCardView: View {
         } else {
             // Nothing is scored without the sensor, so the record is only
             // shown when the caller has one to beat.
-            Text(bestRecord.map { "\(kotekan.bpm) BPM · best \(String(format: "%.0f%%", $0.accuracy * 100))" }
-                ?? "\(kotekan.bpm) BPM")
+            Text(bestRecord.map { String(localized: "\(kotekan.bpm) BPM · best \(Theme.percentLabel($0.accuracy))") }
+                ?? String(localized: "\(kotekan.bpm) BPM"))
                 .font(.sans(13, weight: .semibold).monospacedDigit())
                 .foregroundStyle(Theme.terracotta)
                 .lineLimit(1)

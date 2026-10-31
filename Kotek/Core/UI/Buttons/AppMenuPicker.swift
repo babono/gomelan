@@ -12,7 +12,7 @@ struct AppMenuPicker<Option: Hashable>: View {
     @Binding var selection: Option
     let title: (Option) -> String
     /// What VoiceOver says before the value: "Tempo, 100%".
-    let label: String
+    let label: LocalizedStringResource
     var systemImage: String?
     var size = AppButtonSize.compact
 
@@ -49,6 +49,6 @@ struct AppMenuPicker<Option: Hashable>: View {
         .buttonStyle(.plain)
         .menuOrder(.fixed)
         .kajarOnChange(of: selection)
-        .accessibilityLabel("\(label), \(title(selection))")
+        .accessibilityLabel("\(String(localized: label)), \(title(selection))")
     }
 }

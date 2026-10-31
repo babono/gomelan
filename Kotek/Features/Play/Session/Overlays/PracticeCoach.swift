@@ -40,29 +40,41 @@ enum CoachStep: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .session: "Where you are"
-        case .score: "How it is going"
-        case .panelToggle: "The panel"
-        case .half: "Which half"
-        case .tempo: "Speed"
-        case .voices: "The voices"
+        case .session: String(localized: "Where you are")
+        case .score: String(localized: "How it is going")
+        case .panelToggle: String(localized: "The panel")
+        case .half: String(localized: "Which half")
+        case .tempo: String(localized: "Speed")
+        case .voices: String(localized: "The voices")
         }
     }
 
     var detail: String {
         switch self {
         case .session:
-            "The pattern you are playing, and how many times it has come round. There is no total to reach — it loops until you end it from the pause button."
+            String(
+                localized: "The pattern you are playing, and how many times it has come round. There is no total to reach — it loops until you end it from the pause button."
+            )
         case .score:
-            "Notes that landed, then your best eight cycles in a row against the record for this pattern. Both only ever climb, so a bad pass costs you nothing."
+            String(
+                localized: "Notes that landed, then your best eight cycles in a row against the record for this pattern. Both only ever climb, so a bad pass costs you nothing."
+            )
         case .panelToggle:
-            "Brings up the score and the controls. Down by default, so the gangsa has the whole screen."
+            String(
+                localized: "Brings up the score and the controls. Down by default, so the gangsa has the whole screen."
+            )
         case .half:
-            "Polos lands on the beat, sangsih answers between. Swap whenever you like — the gong keeps going, and each side keeps its own score."
+            String(
+                localized: "Polos lands on the beat, sangsih answers between. Swap whenever you like — the gong keeps going, and each side keeps its own score."
+            )
         case .tempo:
-            "Half speed up to one and a half. It changes without stopping the music, so you can slow a pattern down the moment it gets away from you."
+            String(
+                localized: "Half speed up to one and a half. It changes without stopping the music, so you can slow a pattern down the moment it gets away from you."
+            )
         case .voices:
-            "Your half plays so you can copy it; mute it once the pattern is in your hands. Turn the other one on and you are playing a kotekan."
+            String(
+                localized: "Your half plays so you can copy it; mute it once the pattern is in your hands. Turn the other one on and you are playing a kotekan."
+            )
         }
     }
 }
