@@ -328,11 +328,25 @@ private struct WaterfallContentView: View {
         if let caption = vm.voiceCaption { return caption }
         guard vm.voiceOn, vm.paused, vm.resumeCount == nil else { return nil }
         switch vm.voice.state {
-        case .preparing: return "Getting voice commands ready…"
+        case .preparing:
+            if let progress = vm.voice.downloadProgress {
+                return String(localized: "Downloading voice commands… \(Theme.percentLabel(progress))")
+            }
+            return String(localized: "Getting voice commands ready…")
         case let .unavailable(reason): return reason
-        case .listening: return vm.lesson == nil
-            ? "Say “slower”, “faster”, “polos”, “sangsih”, “pause”, “restart” or “end”"
-            : "Say “next”, “pause”, “resume”, “restart” or “end”"
+        // The words of the language actually listening — English when the
+        // Indonesian model could not be fetched, whatever the screen is in.
+        case .listening:
+            switch (vm.voice.language, vm.lesson == nil) {
+            case (.english, true):
+                return String(localized: "Say “slower”, “faster”, “polos”, “sangsih”, “pause”, “restart” or “end”")
+            case (.english, false):
+                return String(localized: "Say “next”, “pause”, “resume”, “restart” or “end”")
+            case (.indonesian, true):
+                return String(localized: "Say “pelan”, “cepat”, “polos”, “sangsih”, “jeda”, “ulangi” or “selesai”")
+            case (.indonesian, false):
+                return String(localized: "Say “berikutnya”, “jeda”, “lanjut”, “ulangi” or “selesai”")
+            }
         case .off: return nil
         }
     }

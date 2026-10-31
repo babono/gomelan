@@ -393,7 +393,7 @@ final class WaterfallPlayViewModel {
         switch command {
         case .slower, .faster, .normalSpeed:
             // A Learn step sets its own speed; Build up's climb is the point.
-            guard lesson == nil else { return say(command, "the step sets the speed") }
+            guard lesson == nil else { return say(command, String(localized: "the step sets the speed")) }
             let scales = Theme.tempoScales
             let i = scales.firstIndex(of: app.tempoScale) ?? scales.firstIndex(of: 1) ?? 0
             let next = switch command {
@@ -404,13 +404,13 @@ final class WaterfallPlayViewModel {
             app.tempoScale = next
             say(command, Theme.tempoLabel(next))
         case let .half(half):
-            guard lesson == nil else { return say(command, "the step sets your half") }
+            guard lesson == nil else { return say(command, String(localized: "the step sets your half")) }
             app.setHalf(half)
-            say(command, "you play \(half.title.lowercased())")
+            say(command, String(localized: "you play \(half.title.lowercased())"))
         case .switchHalf:
-            guard lesson == nil else { return say(command, "the step sets your half") }
+            guard lesson == nil else { return say(command, String(localized: "the step sets your half")) }
             app.setHalf(app.chosenHalf.other)
-            say(command, "you play \(app.chosenHalf.title.lowercased())")
+            say(command, String(localized: "you play \(app.chosenHalf.title.lowercased())"))
         case .pause:
             // Not over the opening count-in, for the same reason a tap does not.
             guard !paused, engine.msUntilFirstNote == nil else { return }
