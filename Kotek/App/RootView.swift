@@ -58,6 +58,16 @@ struct RootView: View {
                 }
             }
         }
+        // A controller with a PIN this phone doesn't have. Here rather than on
+        // each screen: RootView follows the active gangsa's controller from
+        // every one of them, so any of them can be the one that meets it.
+        .overlay {
+            if app.sensor.status == .locked, let info = app.sensor.info {
+                ControllerPINDialog(mode: .unlock, controllerName: info.name, sensor: app.sensor) {
+                    app.sensor.skipPIN()
+                }
+            }
+        }
         // ABOVE the guides: this one is the whole screen, and a panel showing
         // through it would be a panel nobody asked for.
         .overlay {

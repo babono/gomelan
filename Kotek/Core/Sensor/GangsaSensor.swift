@@ -12,10 +12,16 @@
 //    [2–3] peak strength 0…4095 LE          [4–7] ESP32 millis() LE
 //  LEVEL (…0003…) · N bytes, one 0…255 vibration level per input, 50 Hz.
 //  INFO (…0004…) · read: [0–5] hardware ID · [6] input count · [7] flags
-//    (bit 0 = plug detect) · [8–11] plugged-in bitmask LE · [12] protocol
-//    version · [13…] firmware version, UTF-8.
+//    (bit 0 = plug detect, bit 1 = PIN set) · [8–11] plugged-in bitmask LE ·
+//    [12] protocol version · [13…] firmware version, UTF-8.
 //  INPUTS (…0005…) · notify: 4-byte plugged-in bitmask LE, on every plug /
 //    unplug. Only the plug-detect board sends it.
+//  AUTH (…0006…) · protocol 2: the PIN lock. The firmware's header has the
+//    layout. A controller with a PIN sends nothing else until this phone
+//    answers its challenge with the owner key or the PIN — owner key first,
+//    then the saved PIN, and only then the player (`Status.locked`). Whoever
+//    sets the first PIN owns it; only the owner key may change it. Both live
+//    in `ControllerKeychain`.
 //
 //  One controller is shared between gangsa, so this knows nothing about keys:
 //  it reports INPUTS. Which bilah an input's sensor sits on is per gangsa and
@@ -28,13 +34,36 @@
 //
 
 import CoreBluetooth
+import CryptoKit
 import QuartzCore
 
 @Observable
 final class GangsaSensor: NSObject {
     enum Status: Equatable {
         case off, scanning, connecting, connected
+        /// Connected, but the controller has a PIN this phone doesn't know
+        /// (or that changed): `unlock(pin:)` or `skipPIN()`.
+        case locked
         case unavailable(String)
+    }
+
+    /// Who this connection is to the controller, from AUTH.
+    enum Access: UInt8 {
+        /// No PIN set: anyone may use it, and the first to set one owns it.
+        case open
+        case locked
+        /// Unlocked with the PIN.
+        case user
+        /// Unlocked with the owner key: may change the PIN.
+        case owner
+    }
+
+    /// What was last written to AUTH, so its answer is read the right way.
+    private enum Attempt {
+        case owner, savedPIN
+        case typed(String)
+        case claim(pin: String, ownerKey: Data)
+        case change(String)
     }
 
     /// What the screen on top wants from Bluetooth.
@@ -59,6 +88,9 @@ final class GangsaSensor: NSObject {
         /// Inputs with a sensor in them. Empty without plug detect.
         var plugged: Set<Int>
         var firmware: String?
+        /// Protocol 2 firmware: a PIN can be set at all.
+        var supportsPIN: Bool
+        var hasPIN: Bool
 
         /// The inputs a sensor can be on: the plugged-in ones when the
         /// controller can tell, otherwise all of them.
@@ -91,6 +123,7 @@ final class GangsaSensor: NSObject {
     static let levelChar = CBUUID(string: "7A1F0003-5C3E-4B8E-9D2A-6E0B1C2D3E4F")
     static let infoChar = CBUUID(string: "7A1F0004-5C3E-4B8E-9D2A-6E0B1C2D3E4F")
     static let inputsChar = CBUUID(string: "7A1F0005-5C3E-4B8E-9D2A-6E0B1C2D3E4F")
+    static let authChar = CBUUID(string: "7A1F0006-5C3E-4B8E-9D2A-6E0B1C2D3E4F")
     /// What the prototype firmware, which has no INFO, was first wired with.
     /// Only a default now: its real count is the length of its LEVEL packet.
     static let legacyInputCount = 3
@@ -119,6 +152,9 @@ final class GangsaSensor: NSObject {
     private(set) var seenDevices: [String] = []
     /// Main-actor callback for every hit, before it is appended to `hits`.
     var onHit: ((Hit) -> Void)?
+    private(set) var access: Access = .open
+    /// Why the last PIN didn't take, for the prompt. Nil once one does.
+    private(set) var pinError: String?
 
     private var central: CBCentralManager?
     private var peripheral: CBPeripheral?
@@ -129,6 +165,12 @@ final class GangsaSensor: NSObject {
     /// Controllers that answered INFO with the wrong hardware ID during this
     /// search, so the scan stops offering them.
     private var rejected: Set<UUID> = []
+    private var auth: CBCharacteristic?
+    private var challenge = Data()
+    private var attempt: Attempt?
+    /// Each stored key is tried once per connection, so a stale one can't loop.
+    private var triedOwnerKey = false
+    private var triedSavedPIN = false
 
     /// Sensor clock → host clock. Each packet's arrival bounds the offset from
     /// above (it cannot arrive before it was sent), so the SMALLEST
@@ -148,6 +190,11 @@ final class GangsaSensor: NSObject {
     /// Ready, and the controller this gangsa was set up with.
     func isConnected(to hardwareID: String) -> Bool {
         isReady && info?.hardwareID == hardwareID
+    }
+
+    /// A PIN write is waiting for the controller's answer.
+    var isSendingPIN: Bool {
+        attempt != nil
     }
 
     // MARK: - Control
@@ -188,6 +235,76 @@ final class GangsaSensor: NSObject {
         use(.picked(found.id))
     }
 
+    // MARK: - PIN
+
+    /// The PIN the player typed into the prompt. Saved once it works.
+    func unlock(pin: String) {
+        guard status == .locked else { return }
+        send(.typed(pin), [0x02] + mac(Data(pin.utf8)))
+    }
+
+    /// Set the first PIN on an open controller. This phone becomes the owner:
+    /// the controller keeps a random owner key that only this Apple ID's
+    /// Keychain has.
+    func protect(pin: String) {
+        guard access == .open, info?.supportsPIN == true else { return }
+        let key = SymmetricKey(size: .bits256).withUnsafeBytes { Data($0) }
+        send(.claim(pin: pin, ownerKey: key), [0x01] + Array(pin.utf8) + Array(key))
+    }
+
+    /// Owner only; every other phone is asked for the new one next time.
+    func changePIN(to pin: String) {
+        guard access == .owner else { return }
+        send(.change(pin), [0x04] + Array(pin.utf8))
+    }
+
+    /// "Not now" on the prompt. Lets the controller go — the ESP32 takes one
+    /// phone at a time, so a locked connection keeps its owner out — and stops
+    /// finding it until the screen asks for something else. On the setup
+    /// screen that is the list again, where tapping it asks once more.
+    func skipPIN() {
+        guard status == .locked, let peripheral else { return }
+        if case .picked = target {
+            use(.browse)
+            return
+        }
+        rejected.insert(peripheral.identifier)
+        disconnect()
+        search()
+    }
+
+    private func send(_ next: Attempt, _ bytes: [UInt8]) {
+        guard let peripheral, let auth else { return }
+        attempt = next
+        peripheral.writeValue(Data(bytes), for: auth, type: .withResponse)
+    }
+
+    private func mac(_ key: Data) -> [UInt8] {
+        Array(HMAC<SHA256>.authenticationCode(for: challenge, using: SymmetricKey(data: key)))
+    }
+
+    /// Owner key, then the saved PIN, then the player.
+    private func tryStoredKeys() {
+        guard let hw = info?.hardwareID else { return }
+        if !triedOwnerKey, let key = ControllerKeychain.read(.ownerKey, for: hw) {
+            triedOwnerKey = true
+            send(.owner, [0x03] + mac(key))
+        } else if !triedSavedPIN, let pin = ControllerKeychain.read(.pin, for: hw) {
+            triedSavedPIN = true
+            send(.savedPIN, [0x02] + mac(pin))
+        } else {
+            status = .locked
+        }
+    }
+
+    private func resetAuth() {
+        access = .open
+        attempt = nil
+        challenge = Data()
+        triedOwnerKey = false
+        triedSavedPIN = false
+    }
+
     func clearHits() {
         hits = []
         hitCounts = Array(repeating: 0, count: hitCounts.count)
@@ -208,6 +325,8 @@ final class GangsaSensor: NSObject {
         info = nil
         levels = []
         awaitingLegacyLevels = false
+        auth = nil
+        resetAuth()
     }
 
     private func satisfies(_ p: CBPeripheral) -> Bool {
@@ -235,7 +354,7 @@ final class GangsaSensor: NSObject {
             // The fast path, on a phone that has met this controller: a pending
             // connect never times out, so it lands the moment the controller is
             // powered on or back in range.
-            if let id = Self.cachedPeripheral(for: hw),
+            if let id = Self.cachedPeripheral(for: hw), !rejected.contains(id),
                let p = central.retrievePeripherals(withIdentifiers: [id]).first
             {
                 connect(p)
@@ -293,6 +412,8 @@ final class GangsaSensor: NSObject {
         p.delegate = self
         info = nil
         awaitingLegacyLevels = false
+        resetAuth()
+        pinError = nil
         status = .connecting
         central?.connect(p)
     }
@@ -353,7 +474,9 @@ final class GangsaSensor: NSObject {
             inputCount: Int(b[6]),
             hasPlugDetect: plugDetect,
             plugged: plugDetect ? Self.inputs(in: mask) : [],
-            firmware: firmware
+            firmware: firmware,
+            supportsPIN: b[12] >= 2,
+            hasPIN: b[7] & 2 != 0
         ), from: p)
     }
 
@@ -373,7 +496,9 @@ final class GangsaSensor: NSObject {
             inputCount: inputCount,
             hasPlugDetect: false,
             plugged: [],
-            firmware: nil
+            firmware: nil,
+            supportsPIN: false,
+            hasPIN: false
         ), from: p)
     }
 
@@ -389,8 +514,60 @@ final class GangsaSensor: NSObject {
         info = next
         levels = Array(repeating: 0, count: next.inputCount)
         if hitCounts.count != next.inputCount { hitCounts = Array(repeating: 0, count: next.inputCount) }
-        status = .connected
+        if next.hasPIN, let auth {
+            // Not connected until AUTH says so; its challenge comes with it.
+            status = .connecting
+            p.readValue(for: auth)
+        } else {
+            status = .connected
+        }
         if target == .browse { listConnected() }
+    }
+
+    /// AUTH, read once after INFO and then notified after every write.
+    private func ingestAuth(_ data: Data) {
+        let b = [UInt8](data)
+        guard b.count >= 19, let now = Access(rawValue: b[0]), let hw = info?.hardwareID else {
+            rejectedPackets += 1
+            return
+        }
+        challenge = Data(b[2 ..< 18])
+        let result = b[1]
+        let sent = attempt
+        attempt = nil
+        access = now
+        switch (sent, result) {
+        case let (.claim(pin, key), 0):
+            ControllerKeychain.save(key, .ownerKey, for: hw)
+            ControllerKeychain.save(Data(pin.utf8), .pin, for: hw)
+            info?.hasPIN = true
+        case let (.change(pin), 0), let (.typed(pin), 0):
+            ControllerKeychain.save(Data(pin.utf8), .pin, for: hw)
+        case (.owner, 1):
+            // Reset with BOOT and claimed again since — by someone else, or
+            // this owner key would still work.
+            ControllerKeychain.delete(.ownerKey, for: hw)
+        case (.savedPIN, 1):
+            ControllerKeychain.delete(.pin, for: hw)
+            pinError = "The PIN for this controller has changed."
+        case (.typed, 1):
+            pinError = "Wrong PIN."
+        case (_, 2):
+            pinError = "Too many wrong PINs. Try again in \(b[18]) s."
+        case (.claim, 3):
+            pinError = "Another phone set a PIN first."
+        case (_, 3):
+            pinError = "The controller refused that."
+        default:
+            break
+        }
+        if result == 0, sent != nil { pinError = nil }
+        guard now == .locked else {
+            status = .connected
+            return
+        }
+        // Locked out: the stored keys would only add to the count.
+        if result == 2 { status = .locked } else { tryStoredKeys() }
     }
 
     private static func inputs(in mask: UInt32) -> Set<Int> {
@@ -528,6 +705,8 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
             self.peripheral = nil
             info = nil
             levels = []
+            auth = nil
+            resetAuth()
             found.removeAll { $0.id == peripheral.identifier }
             // The ESP32 re-advertises on its own; for a known controller a
             // pending connect is the cheaper wait.
@@ -539,7 +718,7 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
         MainActor.assumeIsolated {
             guard let service = peripheral.services?.first(where: { $0.uuid == Self.service }) else { return }
             peripheral.discoverCharacteristics(
-                [Self.eventChar, Self.levelChar, Self.infoChar, Self.inputsChar], for: service
+                [Self.eventChar, Self.levelChar, Self.infoChar, Self.inputsChar, Self.authChar], for: service
             )
         }
     }
@@ -551,6 +730,7 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
     ) {
         MainActor.assumeIsolated {
             let chars = service.characteristics ?? []
+            auth = chars.first { $0.uuid == Self.authChar }
             for c in chars where c.uuid != Self.infoChar {
                 peripheral.setNotifyValue(true, for: c)
             }
@@ -575,6 +755,7 @@ extension GangsaSensor: CBCentralManagerDelegate, CBPeripheralDelegate {
             case Self.levelChar: ingestLevels(data)
             case Self.infoChar: ingestInfo(data, from: peripheral)
             case Self.inputsChar: ingestInputs(data)
+            case Self.authChar: ingestAuth(data)
             default: break
             }
         }

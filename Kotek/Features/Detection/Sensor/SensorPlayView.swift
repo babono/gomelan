@@ -105,6 +105,7 @@ struct SensorPlayView: View {
         case .scanning: ("Searching for Gangsa-Sensor…", Theme.gold)
         case .connecting: ("Connecting…", Theme.gold)
         case .connected: ("Sensor connected", Theme.hit)
+        case .locked: ("Waiting for the PIN", Theme.gold)
         case let .unavailable(why): (why, Theme.miss)
         }
         return HStack(spacing: 8) {

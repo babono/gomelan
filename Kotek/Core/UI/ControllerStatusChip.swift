@@ -61,6 +61,7 @@ struct ControllerStatusChip: View {
     private func longText(_ link: ControllerLink) -> String {
         if app.controllerConnected { return "\(link.name) connected" }
         if case let .unavailable(why) = app.sensor.status { return why }
+        if app.sensor.status == .locked { return "\(link.name) needs its PIN" }
         return "Looking for \(link.name)… guidance only until then"
     }
 }

@@ -429,6 +429,7 @@ private struct SensorDot: View {
         let (colour, label): (Color, String) = switch status {
         case .connected: (Theme.hit, "Sensors connected")
         case .scanning, .connecting: (Theme.gold, "Looking for sensors")
+        case .locked: (Theme.gold, "The controller needs its PIN")
         case .off, .unavailable: (Theme.miss, "Sensors unavailable")
         }
         HStack(spacing: 6) {

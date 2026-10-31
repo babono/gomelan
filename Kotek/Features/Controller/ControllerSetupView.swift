@@ -25,6 +25,7 @@ struct ControllerSetupView: View {
 private struct ControllerSetupContent: View {
     @State private var vm: ControllerSetupViewModel
     @State private var quietTooLong = false
+    @State private var pinMode: ControllerPINDialog.Mode?
 
     init(app: AppState, sensor: GangsaSensor = Container.shared.sensorService()) {
         _vm = State(wrappedValue: ControllerSetupViewModel(app: app, sensor: sensor))
@@ -68,6 +69,17 @@ private struct ControllerSetupContent: View {
         }
         .onDisappear { vm.onDisappear() }
         .onChange(of: sensor.info) { _, _ in vm.infoChanged() }
+        // "Not now" on a locked controller's PIN hands back to the list.
+        .onChange(of: sensor.target) { _, target in
+            if target == .browse, vm.step == .summary { vm.step = .scanning }
+        }
+        .overlay {
+            if let pinMode, let info = sensor.info {
+                ControllerPINDialog(mode: pinMode, controllerName: info.name, sensor: sensor) {
+                    self.pinMode = nil
+                }
+            }
+        }
     }
 
     /// The help button explains the step you are on.
@@ -242,6 +254,7 @@ private struct ControllerSetupContent: View {
                         .font(.sans(15, weight: .medium))
                         .foregroundStyle(Theme.wrong)
                 }
+                pinRow(info)
                 Spacer()
                 HStack {
                     Spacer()
@@ -257,6 +270,38 @@ private struct ControllerSetupContent: View {
             }
         }
         .padding(.top, 8)
+    }
+
+    /// Protocol 2 firmware only. Open: whoever sets the first PIN owns it.
+    @ViewBuilder
+    private func pinRow(_ info: GangsaSensor.Info) -> some View {
+        if info.supportsPIN {
+            HStack(spacing: 14) {
+                Image(systemName: sensor.access == .open ? "lock.open" : "lock.fill")
+                    .font(.symbol(16))
+                    .foregroundStyle(Theme.gold)
+                Text(pinText)
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.65))
+                    .fixedSize(horizontal: false, vertical: true)
+                switch sensor.access {
+                case .open:
+                    AppButton(title: "Set a PIN", systemImage: "lock", size: .compact) { pinMode = .protect }
+                case .owner:
+                    AppButton(title: "Change PIN", systemImage: "key", size: .compact) { pinMode = .change }
+                case .locked, .user:
+                    EmptyView()
+                }
+            }
+        }
+    }
+
+    private var pinText: String {
+        switch sensor.access {
+        case .open: "Any phone nearby can use this controller."
+        case .owner: "Protected with a PIN. You own it, so only you can change it."
+        case .locked, .user: "Protected with a PIN. Only its owner can change it."
+        }
     }
 
     private func stat(_ title: String, _ value: String, detail: String? = nil) -> some View {

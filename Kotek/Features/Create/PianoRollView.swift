@@ -654,6 +654,7 @@ private struct PianoRollTransport: View {
         case .scanning: ("Searching…", Theme.gold)
         case .connecting: ("Connecting…", Theme.gold)
         case .connected: ("Connected", Theme.hit)
+        case .locked: ("Needs its PIN", Theme.gold)
         case let .unavailable(why): (why, Theme.miss)
         }
         func range(_ first: Int) -> String {
