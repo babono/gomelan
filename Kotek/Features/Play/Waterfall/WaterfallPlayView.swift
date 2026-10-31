@@ -137,6 +137,10 @@ private struct WaterfallContentView: View {
                     )
                 }
             }
+            .overlay(alignment: .top) {
+                VoiceCaption(text: voiceCaptionText)
+                    .padding(.top, 8)
+            }
         }
         .background(Theme.ground.ignoresSafeArea())
         // A tap anywhere pauses. The pause button it replaces was a 40pt target
@@ -216,6 +220,7 @@ private struct WaterfallContentView: View {
                     systemImage: "hand.raised"
                 )
                 .fixedSize()
+                voiceButton
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -225,6 +230,7 @@ private struct WaterfallContentView: View {
             HStack(spacing: 10) {
                 SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: false)
                 sensorDot
+                voiceMark
             }
             .frame(minHeight: 34)
             .transition(.opacity)
@@ -253,6 +259,7 @@ private struct WaterfallContentView: View {
                     systemImage: "hand.raised"
                 )
                 .fixedSize()
+                voiceButton
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -271,6 +278,7 @@ private struct WaterfallContentView: View {
                 }
                 Spacer(minLength: 0)
                 sensorDot
+                voiceMark
                 // Step's taps let notes go, so pausing needs a button there.
                 if case .step = lesson {
                     AppIconButton(systemImage: "pause.fill", label: "Pause", size: .compact, action: vm.pause)
@@ -289,6 +297,43 @@ private struct WaterfallContentView: View {
     private var sensorDot: some View {
         if app.profile.controller != nil {
             SensorDot(status: vm.sensor.status)
+        }
+    }
+
+    /// On the pause screen with the other settings: turning it on is when the
+    /// microphone is asked for.
+    private var voiceButton: some View {
+        AppIconButton(
+            systemImage: vm.voiceOn ? "mic.fill" : "mic.slash",
+            label: vm.voiceOn ? "Voice commands on" : "Voice commands off",
+            prominence: vm.voiceOn ? .primary : .secondary,
+            size: .compact
+        ) { vm.voiceOn.toggle() }
+    }
+
+    /// While playing: that it is listening, and nothing more.
+    @ViewBuilder
+    private var voiceMark: some View {
+        if vm.voiceOn, vm.voice.state == .listening {
+            Image(systemName: "mic.fill")
+                .font(.symbol(12))
+                .foregroundStyle(Theme.gold.opacity(0.8))
+                .accessibilityLabel("Listening for voice commands")
+        }
+    }
+
+    /// The last command, or why there is no listening — the latter only while
+    /// paused, where the switch that would fix it is.
+    private var voiceCaptionText: String? {
+        if let caption = vm.voiceCaption { return caption }
+        guard vm.voiceOn, vm.paused, vm.resumeCount == nil else { return nil }
+        switch vm.voice.state {
+        case .preparing: return "Getting voice commands ready…"
+        case let .unavailable(reason): return reason
+        case .listening: return vm.lesson == nil
+            ? "Say “slower”, “faster”, “polos”, “sangsih”, “pause”, “restart” or “end”"
+            : "Say “next”, “pause”, “resume”, “restart” or “end”"
+        case .off: return nil
         }
     }
 
@@ -327,6 +372,28 @@ struct StartCaption: View {
         .foregroundStyle(Theme.cream)
         .shadow(color: .black.opacity(0.6), radius: 8)
         .animation(.snappy(duration: 0.25), value: engine.countdownNumber)
+        .allowsHitTesting(false)
+    }
+}
+
+/// What a voice command was heard as and did, in a pill over the waterfall.
+private struct VoiceCaption: View {
+    let text: String?
+
+    var body: some View {
+        Group {
+            if let text {
+                Label(text, systemImage: "mic.fill")
+                    .font(.sans(13, weight: .medium))
+                    .foregroundStyle(Theme.cream)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Theme.deep.opacity(0.92), in: Capsule())
+                    .id(text)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: text)
         .allowsHitTesting(false)
     }
 }

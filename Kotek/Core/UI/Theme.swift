@@ -185,14 +185,15 @@ enum Theme {
     /// "0.75×". Trailing zeroes trimmed — "1.0×" beside "0.75×" reads as a
     /// precision the setting does not have. Formatted, not `%g`, so the
     /// decimal mark follows the language: "0,75×" in Indonesian.
-    static func tempoLabel(_ scale: Double) -> String {
+    /// Nonisolated so a menu can take it as its (nonisolated) title function.
+    nonisolated static func tempoLabel(_ scale: Double) -> String {
         "\(scale.formatted(.number.precision(.fractionLength(0 ... 2))))×"
     }
 
     /// "77%" from 0.77, in the reader's own number style. A percent built by
     /// hand as `"\(n)%"` is right in English and wrong in languages that
     /// space or place the sign differently.
-    static func percentLabel(_ fraction: Double) -> String {
+    nonisolated static func percentLabel(_ fraction: Double) -> String {
         fraction.formatted(.percent.precision(.fractionLength(0)))
     }
 

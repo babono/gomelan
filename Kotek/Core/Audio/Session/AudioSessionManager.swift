@@ -50,12 +50,40 @@ nonisolated enum AudioSessionManager {
                 mode: .measurement,
                 options: [.defaultToSpeaker, .allowBluetoothA2DP]
             )
+            // Left on by the waterfall's voice commands, it would be filtering
+            // the very strikes detection listens for.
+            if session.prefersEchoCancelledInput {
+                try session.setPrefersEchoCancelledInput(false)
+            }
             try session.setPreferredSampleRate(44100)
             try session.setPreferredIOBufferDuration(0.005)
             try session.setActive(true)
         } catch {
             // Surfaced to the console; the app still runs but detection degrades.
             print("[AudioSession] configuration failed: \(error)")
+        }
+    }
+
+    /// The waterfall's voice commands: a microphone for speech, not for
+    /// strikes. `.default` rather than `.measurement` — nothing here measures
+    /// onsets, and the cues keep their full level — and echo cancellation where
+    /// the phone has it, so the kajar and the falling notes' own samples are
+    /// not what the recogniser hears.
+    @concurrent
+    static func configureForVoice() async {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playAndRecord,
+                mode: .default,
+                options: [.defaultToSpeaker, .allowBluetoothA2DP]
+            )
+            if session.isEchoCancelledInputAvailable {
+                try session.setPrefersEchoCancelledInput(true)
+            }
+            try session.setActive(true)
+        } catch {
+            print("[AudioSession] voice configuration failed: \(error)")
         }
     }
 

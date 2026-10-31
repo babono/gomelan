@@ -5,6 +5,10 @@ options:
   deploymentTarget:
     iOS: "26.5"
   developmentLanguage: en
+  # The Xcode the project was last checked against. Without it XcodeGen writes
+  # 14.3, and every Xcode since asks to "Update to recommended settings" —
+  # which the base settings below already are (Xcode 27.1's own template).
+  xcodeVersion: "27.1"
 
 configs:
   Debug: debug

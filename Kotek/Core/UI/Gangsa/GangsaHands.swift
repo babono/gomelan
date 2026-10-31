@@ -149,7 +149,8 @@ enum GangsaHands {
     /// it: a couple of quick bounces, always away from the bar — a mallet
     /// cannot go through bronze — dying away in about a tenth of a second,
     /// alongside the bar's own ring.
-    private static func rebound(age: Double) -> Double {
+    /// Pure maths, called from the `Canvas` renderer, which is nonisolated.
+    private nonisolated static func rebound(age: Double) -> Double {
         guard age >= 0 else { return 0 }
         return 5 * abs(sin(2 * .pi * 12 * age)) * exp(-age / 0.045)
     }

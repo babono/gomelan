@@ -362,6 +362,8 @@ final class AppState {
         case app
         case kotekan
         case mekarBhuana
+        case sensor
+        case sensorCheck
 
         var id: String {
             rawValue

@@ -53,13 +53,30 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing."
+            "value" : "Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing, and for voice commands like “slower” or “pause” while your hands are busy."
           }
         },
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kotek mendengarkan bunyi tiap pukulan, supaya bisa membedakan pukulan sungguhan dan menilai ketepatan waktumu."
+            "value" : "Kotek mendengarkan bunyi tiap pukulan, supaya bisa membedakan pukulan sungguhan dan menilai ketepatan waktumu, juga untuk perintah suara seperti “slower” atau “pause” saat tanganmu sibuk."
+          }
+        }
+      }
+    },
+    "NSSpeechRecognitionUsageDescription" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek recognises voice commands like “slower” or “pause” on this device while your hands are busy playing."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kotek mengenali perintah suara seperti “slower” atau “pause” langsung di perangkat ini, saat tanganmu sibuk bermain."
           }
         }
       }
