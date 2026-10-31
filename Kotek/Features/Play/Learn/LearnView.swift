@@ -89,7 +89,7 @@ private struct LearnWatchView: View {
 struct LearnStrip: View {
     let stage: LearnStage
 
-    private static let parts = ["Watch", "Polos", "Sangsih", "Free play"]
+    private static let parts: [LocalizedStringResource] = ["Watch", "Polos", "Sangsih", "Free play"]
 
     private var current: Int {
         switch stage.half {
@@ -122,6 +122,6 @@ struct LearnStrip: View {
         .lineLimit(1)
         .fixedSize()
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Learn, \(Self.parts[current]), \(stage.title)")
+        .accessibilityLabel("Learn, \(String(localized: Self.parts[current])), \(stage.title)")
     }
 }

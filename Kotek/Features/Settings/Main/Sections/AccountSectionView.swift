@@ -21,7 +21,7 @@ struct AccountSectionView: View {
                 HStack(spacing: 14) {
                     AvatarView(avatar: app.playerAvatar, size: 56)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(app.playerName ?? "No name yet")
+                        Text(app.playerName ?? String(localized: "No name yet"))
                             .font(.serif(22))
                             .foregroundStyle(Theme.cream)
                         Label("Signed in with Apple", systemImage: "apple.logo")
@@ -60,7 +60,7 @@ struct AccountSectionView: View {
                     .foregroundStyle(Theme.gold)
 
                 Text(
-                    "Saved on this device only. Link an Apple ID to keep your gangsa and records."
+                    "Only saved on this iPhone. Sign in with Apple to keep your data safe."
                 )
                 .font(.sans(13))
                 .foregroundStyle(Theme.cream.opacity(0.75))
@@ -69,7 +69,7 @@ struct AccountSectionView: View {
                 AppleSignInButton { token, nonce, name in
                     Task { await app.linkApple(idToken: token, nonce: nonce, fullName: name, from: .settings) }
                 } onError: { _ in
-                    app.accountError = "Couldn't link your Apple ID. Try again."
+                    app.accountError = String(localized: "Couldn't link your Apple ID. Try again.")
                 }
             }
 

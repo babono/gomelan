@@ -61,7 +61,7 @@ enum KotekanHalf: String, Equatable, Identifiable {
     }
 
     var title: String {
-        self == .polos ? "Polos" : "Sangsih"
+        self == .polos ? String(localized: "Polos") : String(localized: "Sangsih")
     }
 
     /// The half your partner plays — the one the app takes over when you play alone.
@@ -70,13 +70,13 @@ enum KotekanHalf: String, Equatable, Identifiable {
     }
 
     var eyebrow: String {
-        self == .polos ? "On the beat" : "Off the beat"
+        self == .polos ? String(localized: "On the beat") : String(localized: "Off the beat")
     }
 
     var blurb: String {
         self == .polos
-            ? "The straight half. You land on the pulse and hold the frame steady."
-            : "The answering half. You fill the gaps polos leaves — harder, more fun."
+            ? String(localized: "The straight half. You land on the pulse and hold the frame steady.")
+            : String(localized: "The answering half. You fill the gaps polos leaves — harder, more fun.")
     }
 }
 

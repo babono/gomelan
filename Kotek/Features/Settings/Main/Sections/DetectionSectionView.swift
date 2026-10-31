@@ -13,7 +13,7 @@ struct DetectionSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker(
-                "Detection",
+                "Hit detection",
                 selection: Binding(
                     get: { app.detectionMode },
                     set: { app.detectionMode = $0 }
@@ -35,8 +35,8 @@ struct DetectionSectionView: View {
             if app.profile.controller != nil {
                 Text(
                     app.controllerConnected
-                        ? "Keys with a sensor use the controller; this covers the rest."
-                        : "Covers every key until the strike controller connects."
+                        ? "Keys with sensors use the controller. This is for the rest."
+                        : "Used for all keys until the controller connects."
                 )
                 .font(.sans(13))
                 .foregroundStyle(Theme.cream.opacity(0.75))
@@ -45,7 +45,7 @@ struct DetectionSectionView: View {
 
             if app.detectionMode == .heardOnly, app.yourVoiceAudible {
                 Text(
-                    "The guide voice makes strokes harder to hear. Turn Guide off if strikes go missing."
+                    "The guide sound can hide your hits. Turn Guide off if hits are missed."
                 )
                 .font(.sans(13))
                 .foregroundStyle(Theme.miss)

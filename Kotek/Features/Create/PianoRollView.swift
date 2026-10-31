@@ -29,7 +29,7 @@ struct PianoRollView: View {
         let draft = viewModel.draft
 
         VStack(spacing: 6) {
-            CreateTopBar(title: "New Kotek") {
+            CreateTopBar(title: String(localized: "New Kotek")) {
                 AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
             } trailing: {
                 RecordButton(recording: viewModel.recording) { viewModel.toggleRecording() }
@@ -650,10 +650,10 @@ private struct PianoRollTransport: View {
     /// The sensors' state, and which bilah they are taped to.
     private var sensorSetup: some View {
         let (text, color): (String, Color) = switch viewModel.sensor.status {
-        case .off: ("Sensor off", Theme.stone)
-        case .scanning: ("Searching…", Theme.gold)
-        case .connecting: ("Connecting…", Theme.gold)
-        case .connected: ("Connected", Theme.hit)
+        case .off: (String(localized: "Sensor off"), Theme.stone)
+        case .scanning: (String(localized: "Searching…"), Theme.gold)
+        case .connecting: (String(localized: "Connecting…"), Theme.gold)
+        case .connected: (String(localized: "Connected"), Theme.hit)
         case let .unavailable(why): (why, Theme.miss)
         }
         func range(_ first: Int) -> String {
@@ -685,7 +685,7 @@ private struct PianoRollTransport: View {
                 AppMenuPicker(
                     options: viewModel.sensorPlacements,
                     selection: Bindable(viewModel).firstSensorKey,
-                    title: { "Bilah \(range($0))" },
+                    title: { String(localized: "Bilah \(range($0))") },
                     label: "Sensors on"
                 )
             }

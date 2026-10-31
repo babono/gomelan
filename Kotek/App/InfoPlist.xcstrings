@@ -1,0 +1,69 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
+    "NSBluetoothAlwaysUsageDescription" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek connects to the gangsa's strike sensors, so it can feel exactly which bar you hit and when."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kotek tersambung ke sensor di gangsamu, supaya tahu persis bilah mana yang kamu pukul dan kapan."
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek watches your gangsa to see which keys you strike, so it can show you where you are in the kotekan."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kotek melihat gangsamu untuk tahu bilah mana yang kamu pukul, supaya bisa menunjukkan posisimu di kotekan."
+          }
+        }
+      }
+    },
+    "NSMicrophoneUsageDescription" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kotek mendengarkan bunyi tiap pukulan, supaya bisa membedakan pukulan sungguhan dan menilai ketepatan waktumu."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

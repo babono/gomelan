@@ -79,7 +79,7 @@ struct KotekanGuideLegend: View {
         case line
     }
 
-    private func row(swatch: Swatch, _ title: String, _ gloss: String) -> some View {
+    private func row(swatch: Swatch, _ title: LocalizedStringKey, _ gloss: LocalizedStringKey) -> some View {
         HStack(spacing: 10) {
             Group {
                 switch swatch {

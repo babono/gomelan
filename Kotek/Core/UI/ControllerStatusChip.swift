@@ -25,7 +25,10 @@ struct ControllerStatusChip: View {
                 Button {
                     app.openControllerSetup(recheck: true, returnTo: app.screen)
                 } label: {
-                    chip(color: Theme.wrong, text: "Sensors changed since \(app.profile.name) was set up · Check keys")
+                    chip(
+                        color: Theme.wrong,
+                        text: String(localized: "Sensors changed on \(app.profile.name) · Check them")
+                    )
                 }
                 .buttonStyle(.appPlain)
             } else {
@@ -55,12 +58,12 @@ struct ControllerStatusChip: View {
     }
 
     private var shortText: String {
-        app.controllerConnected ? "Sensors" : "Guidance"
+        app.controllerConnected ? String(localized: "Sensors") : String(localized: "Not scoring")
     }
 
     private func longText(_ link: ControllerLink) -> String {
-        if app.controllerConnected { return "\(link.name) connected" }
+        if app.controllerConnected { return String(localized: "\(link.name) connected") }
         if case let .unavailable(why) = app.sensor.status { return why }
-        return "Looking for \(link.name)… guidance only until then"
+        return String(localized: "Looking for \(link.name)… not scoring yet")
     }
 }

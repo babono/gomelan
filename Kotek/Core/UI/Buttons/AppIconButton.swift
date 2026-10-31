@@ -11,7 +11,7 @@ struct AppIconButton: View {
     let systemImage: String
     /// What VoiceOver hears. A bare symbol's default label never says what the
     /// button does: "Delete Pemade 1", not "trash".
-    let label: String
+    let label: LocalizedStringKey
     var prominence = AppButton.Prominence.secondary
     var size = AppButtonSize.regular
     var tint: Color?

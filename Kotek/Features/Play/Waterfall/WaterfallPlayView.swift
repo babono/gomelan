@@ -360,9 +360,9 @@ private struct SensorDot: View {
 
     var body: some View {
         let (colour, label): (Color, String) = switch status {
-        case .connected: (Theme.hit, "Sensors connected")
-        case .scanning, .connecting: (Theme.gold, "Looking for sensors")
-        case .off, .unavailable: (Theme.miss, "Sensors unavailable")
+        case .connected: (Theme.hit, String(localized: "Sensors connected"))
+        case .scanning, .connecting: (Theme.gold, String(localized: "Looking for sensors"))
+        case .off, .unavailable: (Theme.miss, String(localized: "Sensors unavailable"))
         }
         HStack(spacing: 6) {
             Circle().fill(colour).frame(width: 8, height: 8)
@@ -384,10 +384,15 @@ struct SessionTitle: View {
     let showsScore: Bool
 
     private var text: String {
-        var parts = [name, engine.phase == .countIn ? "Count-in" : "Cycle \(engine.loopIndex + 1)"]
+        var parts = [
+            name,
+            engine.phase == .countIn
+                ? String(localized: "Count-in")
+                : String(localized: "Cycle \(engine.loopIndex + 1)")
+        ]
         // Nothing until a pass has scored, rather than a 0% that reads as a verdict.
         if showsScore, engine.judging, let best = engine.bestSoFar {
-            parts.append("\(Int((best * 100).rounded()))%")
+            parts.append(Theme.percentLabel(best))
         }
         return parts.joined(separator: " - ")
     }
@@ -451,11 +456,11 @@ struct PauseStage: View {
 }
 
 struct PauseAction: Identifiable {
-    let title: String
+    let title: LocalizedStringKey
     let systemImage: String
     let action: () -> Void
 
     var id: String {
-        title
+        systemImage
     }
 }

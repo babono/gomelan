@@ -180,16 +180,19 @@ extension View {
 /// layout already made — and putting a hard horizontal edge across a screen
 /// whose whole character is soft.
 struct TopBar: View {
-    var title: String
+    var title: LocalizedStringKey
+    /// A line under the title saying what the screen is about — the kotekan
+    /// picker's "On Pemade 1".
+    var subtitle: LocalizedStringKey?
     /// nil is plain Back: a chevron in a glass circle. A title is for a leading
     /// action that is not simply "back" — Done, Cancel, Skip, Rescan — and
     /// shows as words in a glass capsule.
-    var backTitle: String?
+    var backTitle: LocalizedStringKey?
     var onBack: (() -> Void)?
-    var trailingText: String?
+    var trailingText: LocalizedStringKey?
     /// A trailing action in words — a setup step's Skip / Done, in the corner
     /// so the leading slot stays Back. Secondary glass, as Settings' Done.
-    var trailingTitle: String?
+    var trailingTitle: LocalizedStringKey?
     var onTrailing: (() -> Void)?
     /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
     var settingsAction: (() -> Void)?
@@ -215,89 +218,100 @@ struct TopBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                Text(title)
-                    .font(.serif(compact ? 22 : 30))
-                    .textCase(.uppercase)
-                    .tracking(1.5)
-                    .foregroundStyle(tint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    // Never let the title grow under the controls either side.
-                    // Symmetric, so it stays centred on the screen: 96 clears
-                    // two circles, but Duet + ⋯ was ~170 wide, and the title
-                    // ran on under Duet, which read as off-centre.
-                    .padding(.horizontal, accessory == nil ? 96 : 180)
-                    // Katibeh sets its capitals high in the line box (a deep
-                    // descender under them), so a centred frame left the
-                    // uppercase title ~7pt above the buttons' middle. Measured
-                    // off a screenshot; scales with the size.
-                    .offset(y: (compact ? 22 : 30) * 0.23)
-
-                // One container for the bar's glass, as Apple recommends
-                // wherever glass controls sit together: they render as one
-                // pass and blend as glass should when they move.
-                GlassEffectContainer(spacing: 14) {
-                    HStack(spacing: 14) {
-                        // R Was "‹ Back" as bare text, then a chevron in a flat
-                        // R wash. Glass now: back, help and settings are the
-                        // R navigation layer, which is what Liquid Glass is for —
-                        // R and how iOS itself draws them.
-                        if let onBack {
-                            if let backTitle {
-                                AppButton(title: backTitle, action: onBack)
-                            } else {
-                                AppIconButton(
-                                    systemImage: "chevron.left",
-                                    label: "Back",
-                                    action: onBack
-                                )
-                            }
-                        }
-                        Spacer()
-                        if let trailingText {
-                            Text(trailingText)
-                                .font(.sans(13, weight: .medium))
-                                .foregroundStyle(accent)
-                        }
-                        if let trailingTitle, let onTrailing {
-                            AppButton(title: trailingTitle, action: onTrailing)
-                        }
-                        if let accessory {
-                            accessory
-                        }
-                        // 44pt circles: a bare glyph in a corner is a 19pt
-                        // target, and the HIG minimum is 44.
-                        if let infoAction {
+            // One container for the bar's glass, as Apple recommends
+            // wherever glass controls sit together: they render as one
+            // pass and blend as glass should when they move.
+            GlassEffectContainer(spacing: 14) {
+                HStack(spacing: 14) {
+                    // R Was "‹ Back" as bare text, then a chevron in a flat
+                    // R wash. Glass now: back, help and settings are the
+                    // R navigation layer, which is what Liquid Glass is for —
+                    // R and how iOS itself draws them.
+                    if let onBack {
+                        if let backTitle {
+                            AppButton(title: backTitle, action: onBack)
+                        } else {
                             AppIconButton(
-                                systemImage: "questionmark",
-                                label: "How Kotek works",
-                                action: infoAction
+                                systemImage: "chevron.left",
+                                label: "Back",
+                                action: onBack
                             )
                         }
-                        if showsMenu {
-                            MoreMenu(settingsAction: settingsAction)
-                        } else if let settingsAction {
-                            AppIconButton(
-                                systemImage: "gearshape",
-                                label: "Settings",
-                                action: settingsAction
-                            )
-                        }
-                        if let status {
-                            Circle()
-                                .fill(status.color)
-                                .frame(width: 10, height: 10)
-                                .accessibilityElement()
-                                .accessibilityLabel(status.label)
-                        }
+                    }
+                    titleBlock
+                    Spacer(minLength: 14)
+                    if let trailingText {
+                        Text(trailingText)
+                            .font(.sans(13, weight: .medium))
+                            .foregroundStyle(accent)
+                    }
+                    if let trailingTitle, let onTrailing {
+                        AppButton(title: trailingTitle, action: onTrailing)
+                    }
+                    if let accessory {
+                        accessory
+                    }
+                    // 44pt circles: a bare glyph in a corner is a 19pt
+                    // target, and the HIG minimum is 44.
+                    if let infoAction {
+                        AppIconButton(
+                            systemImage: "questionmark",
+                            label: "How Kotek works",
+                            action: infoAction
+                        )
+                    }
+                    if showsMenu {
+                        MoreMenu(settingsAction: settingsAction)
+                    } else if let settingsAction {
+                        AppIconButton(
+                            systemImage: "gearshape",
+                            label: "Settings",
+                            action: settingsAction
+                        )
+                    }
+                    if let status {
+                        Circle()
+                            .fill(status.color)
+                            .frame(width: 10, height: 10)
+                            .accessibilityElement()
+                            .accessibilityLabel(status.label)
                     }
                 }
             }
             .padding(.horizontal, edgeInset)
             .padding(.top, compact ? 10 : 18)
-            .padding(.bottom, compact ? 8 : 12)
+            // Room for the subtitle, which hangs below the row.
+            .padding(.bottom, (compact ? 8 : 12) + (subtitle == nil ? 0 : 16))
         }
+    }
+
+    /// Top left, beside Back. It sat centred in uppercase until the pickers
+    /// grew Mode and ⋯ on the right: a centred title had to be padded clear of
+    /// the widest side, and still read off-centre. Leading, in sentence case,
+    /// it only has to stop where the controls start.
+    private var titleBlock: some View {
+        let size: CGFloat = compact ? 22 : 28
+        return Text(title)
+            .font(.serif(size))
+            .foregroundStyle(tint)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            // Katibeh sits high in its line box (a deep descender), so the
+            // title is nudged down to the buttons' middle.
+            .offset(y: size * 0.15)
+            // An overlay, so the subtitle never moves the title off the
+            // buttons' line.
+            .overlay(alignment: .topLeading) {
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.sans(13))
+                        .foregroundStyle(Theme.stone)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .offset(y: size * 1.3)
+                }
+            }
+            .layoutPriority(-1)
     }
 }
 
@@ -335,9 +349,9 @@ private struct MoreMenu: View {
 
 /// Uppercase tracked eyebrow/section label.
 struct SectionLabel: View {
-    let text: String
+    let text: LocalizedStringKey
     var color: Color = Theme.gold
-    init(_ text: String, color: Color = Theme.gold) {
+    init(_ text: LocalizedStringKey, color: Color = Theme.gold) {
         self.text = text
         self.color = color
     }
@@ -440,9 +454,9 @@ struct BusyOverlay: View {
 /// Same panel as `BusyOverlay` and `GuidePanel`, because it is the same object:
 /// something floating over the screen with the app's ground under it.
 struct ConfirmDialog: View {
-    let title: String
-    let message: String
-    let confirmTitle: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
+    let confirmTitle: LocalizedStringKey
     /// The confirming button's colour. `Theme.miss` — the app's red — for
     /// anything that destroys something, which so far is all of them.
     var confirmTint: Color = Theme.miss
@@ -510,9 +524,9 @@ extension View {
     /// to change screen without the dialog animating out over the next one.
     func confirm(
         _ isPresented: Binding<Bool>,
-        title: String,
-        message: String,
-        confirmTitle: String,
+        title: LocalizedStringKey,
+        message: LocalizedStringKey,
+        confirmTitle: LocalizedStringKey,
         confirmTint: Color = Theme.miss,
         action: @escaping () -> Void
     ) -> some View {

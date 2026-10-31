@@ -118,7 +118,7 @@ struct InstrumentCardView: View {
 
     /// A tick or an empty circle as well as the colour, so the state never
     /// rests on colour alone.
-    private func setupMark(_ title: String, done: Bool) -> some View {
+    private func setupMark(_ title: LocalizedStringKey, done: Bool) -> some View {
         Label {
             Text(title).font(.sans(12, weight: .medium))
         } icon: {
@@ -131,15 +131,18 @@ struct InstrumentCardView: View {
     }
 
     private var lastPlayedText: String {
-        guard let date = profile.lastPlayedDate else { return "new" }
+        guard let date = profile.lastPlayedDate else { return String(localized: "new") }
         return date.formatted(.relative(presentation: .named))
     }
 
     private var accessibilityLabel: String {
-        var parts = ["\(profile.name), \(profile.keyCount) keys"]
-        parts.append(profile.hasBeenPlayed ? "last played \(lastPlayedText)" : "not played yet")
-        parts.append(hasSoundClips ? "has sound clips" : "no sound clips")
-        parts.append(hasSensors ? "sensors set up" : "no sensors")
+        var parts = [String(localized: "\(profile.name), \(profile.keyCount) keys")]
+        parts
+            .append(profile
+                .hasBeenPlayed ? String(localized: "last played \(lastPlayedText)") :
+                String(localized: "not played yet"))
+        parts.append(hasSoundClips ? String(localized: "has sound clips") : String(localized: "no sound clips"))
+        parts.append(hasSensors ? String(localized: "sensors set up") : String(localized: "no sensors"))
         return parts.joined(separator: ", ")
     }
 }

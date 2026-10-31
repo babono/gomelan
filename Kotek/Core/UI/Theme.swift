@@ -183,9 +183,17 @@ enum Theme {
     static let tempoScales: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
 
     /// "0.75×". Trailing zeroes trimmed — "1.0×" beside "0.75×" reads as a
-    /// precision the setting does not have.
+    /// precision the setting does not have. Formatted, not `%g`, so the
+    /// decimal mark follows the language: "0,75×" in Indonesian.
     static func tempoLabel(_ scale: Double) -> String {
-        String(format: "%g×", scale)
+        "\(scale.formatted(.number.precision(.fractionLength(0 ... 2))))×"
+    }
+
+    /// "77%" from 0.77, in the reader's own number style. A percent built by
+    /// hand as `"\(n)%"` is right in English and wrong in languages that
+    /// space or place the sign differently.
+    static func percentLabel(_ fraction: Double) -> String {
+        fraction.formatted(.percent.precision(.fractionLength(0)))
     }
 
     // R The approach-track geometry lived here — strike line at 0.15, three
@@ -208,13 +216,6 @@ enum KotekFonts {
     static let displayRegular: String? = [
         "Katibeh-Regular", "Katibeh"
     ].first { UIFont(name: $0, size: 12) != nil }
-
-    /// What the app actually resolved, for the diagnostics screen — so "is the
-    /// font loaded?" is answerable rather than eyeballed. Only the display face
-    /// can fail now; the body face is San Francisco, which ships with the OS.
-    static var summary: String {
-        "display=\(displayRegular ?? "SYSTEM")  body=SF Pro"
-    }
 }
 
 extension Font {

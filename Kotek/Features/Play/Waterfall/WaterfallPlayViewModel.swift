@@ -261,16 +261,22 @@ final class WaterfallPlayViewModel {
     }
 
     /// The line under the strip: what to do, and in Build up how far up.
-    var lessonCaption: String? {
+    /// Each Build up line is one whole literal rather than the tempo `+` a
+    /// tail: a translator has to see the sentence to reorder it.
+    var lessonCaption: LocalizedStringKey? {
         switch lesson {
         case .listen: "Hear your part once, or tap Next"
         case .step: sensing ? "Strike the lit bar, or tap for the next note" : "Tap for the next note"
         case .buildUp:
-            "\(Theme.tempoLabel(LearnStage.buildUpTempos[tempoStep])) · " + (engine.judging
-                ? "a pass at \(Int(LearnStage.accuracyToSpeedUp * 100))% to go faster"
-                : "pass \(passesAtTempo + 1) of \(LearnStage.passesPerTempoUnsensed)")
+            engine.judging
+                ? "\(buildUpTempoLabel) · a pass at \(Int(LearnStage.accuracyToSpeedUp * 100))% to go faster"
+                : "\(buildUpTempoLabel) · pass \(passesAtTempo + 1) of \(LearnStage.passesPerTempoUnsensed)"
         case .watch, nil: nil
         }
+    }
+
+    private var buildUpTempoLabel: String {
+        Theme.tempoLabel(LearnStage.buildUpTempos[tempoStep])
     }
 
     /// The figure came round. Listen is one pass; Build up decides here

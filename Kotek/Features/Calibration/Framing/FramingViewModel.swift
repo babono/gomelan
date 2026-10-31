@@ -48,8 +48,8 @@ final class FramingViewModel {
     }
 
     var busyMessage: String? {
-        if handingOver { return "Finding your keys…" }
-        return cameraReady ? nil : "Starting the camera…"
+        if handingOver { return String(localized: "Finding your keys…") }
+        return cameraReady ? nil : String(localized: "Starting the camera…")
     }
 
     func setup() {

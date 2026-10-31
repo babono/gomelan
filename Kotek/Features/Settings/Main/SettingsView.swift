@@ -32,8 +32,10 @@ private struct SettingsContentView: View {
         VStack(spacing: 0) {
             TopBar(
                 title: "Settings",
-                backTitle: "Done",
-                onBack: { app.closeSettings() }
+                // Top right, where iOS puts Done on a sheet — Settings is
+                // dismissed, not navigated back from.
+                trailingTitle: "Done",
+                onTrailing: { app.closeSettings() }
             )
 
             ScrollViewReader { scroll in
@@ -78,7 +80,7 @@ private struct SettingsContentView: View {
         .confirm(
             $vm.showDeleteConfirm,
             title: "Delete this gangsa?",
-            message: GangsaDeletion.message(app.profile.name),
+            message: LocalizedStringKey(GangsaDeletion.message(app.profile.name)),
             confirmTitle: "Delete \(app.profile.name)"
         ) {
             vm.deleteInstrument()
@@ -86,7 +88,7 @@ private struct SettingsContentView: View {
         .confirm(
             $vm.showDeleteAccountConfirm,
             title: "Delete your account?",
-            message: "Your gangsa, records and practice history are deleted from every device, and Gomelan stops using your Apple ID. This cannot be undone. Apple will ask you to confirm next.",
+            message: "Your gangsa, records and history will be deleted from all devices. This can't be undone. Apple will ask you to confirm.",
             confirmTitle: "Delete account"
         ) {
             vm.deleteAccount()
@@ -106,7 +108,7 @@ private struct SettingsContentView: View {
         @ViewBuilder content: () -> some View
     ) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            SectionLabel(viewModel.heading(for: id))
+            SectionLabel(LocalizedStringKey(viewModel.heading(for: id)))
             content()
         }
         .frame(maxWidth: .infinity, alignment: .leading)

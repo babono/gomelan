@@ -38,15 +38,16 @@ private struct ChooseKotekanContentView: View {
     var body: some View {
         @Bindable var vm = viewModel
 
-        // The field is at the bottom now, so the page has to make room for the
-        // keyboard (it used to ignore it, with the field up top).
         VStack(spacing: 0) {
             TopBar(
                 title: "Choose your kotekan",
+                subtitle: "On \(app.profile.name)",
                 onBack: { app.openChooseInstrument() },
                 settingsAction: { app.openSettings() },
                 showsMenu: true,
-                accessory: AnyView(modeMenu),
+                accessory: AnyView(HStack(spacing: 14) { SensorChip()
+                    modeMenu
+                }),
                 edgeInset: 0
             )
 
@@ -59,12 +60,7 @@ private struct ChooseKotekanContentView: View {
             }
             .frame(maxHeight: .infinity)
 
-            SearchAndCreateBar(
-                query: $vm.query,
-                prompt: "Search",
-                createTitle: "Create kotek",
-                onCreate: { vm.create() }
-            )
+            filterBar
         }
         .confirm(
             Binding(get: { vm.pendingDelete != nil }, set: { if !$0 { vm.pendingDelete = nil } }),
@@ -88,7 +84,7 @@ private struct ChooseKotekanContentView: View {
         }
         .onAppear { vm.onAppear() }
         .onDisappear { vm.onDisappear() }
-        // The figure, not the slot: a search can change what sits in the
+        // The figure, not the slot: a filter can change what sits in the
         // focused slot without the slot moving.
         .onChange(of: vm.current?.id) { _, _ in vm.onSlotChanged() }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
@@ -108,18 +104,53 @@ private struct ChooseKotekanContentView: View {
         .fixedSize()
     }
 
+    /// The pills bottom left, + bottom right, flush to the safe-area edge
+    /// where the top bar's buttons and the rail's outer cards end.
+    private var filterBar: some View {
+        @Bindable var vm = viewModel
+        return HStack(spacing: 10) {
+            AppSwitcher(
+                options: KotekanFilter.allCases,
+                selection: vm.filter,
+                title: \.title,
+                size: .regular,
+                style: .pills
+            ) { vm.filter = $0 }
+            Spacer(minLength: 0)
+            AppIconButton(systemImage: "plus", label: "Create kotek") { vm.create() }
+        }
+        .padding(.bottom, Theme.footerBottom)
+    }
+
     private var noMatches: some View {
         VStack(spacing: 8) {
-            Text("No kotekan called “\(viewModel.query)”")
+            Text(noMatchesTitle)
                 .font(.serif(26))
                 .foregroundStyle(Theme.cream)
-            Text("Try another name, or create it yourself.")
+            Text(noMatchesDetail)
                 .font(.sans(14))
                 .foregroundStyle(Theme.stone)
         }
         .multilineTextAlignment(.center)
         .padding(.horizontal, 40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var noMatchesTitle: LocalizedStringKey {
+        switch viewModel.filter {
+        case .all: "No kotekan yet"
+        case .new: "You've learned them all"
+        case .learned: "Nothing learned yet"
+        case .mine: "No kotek of your own yet"
+        }
+    }
+
+    private var noMatchesDetail: LocalizedStringKey {
+        switch viewModel.filter {
+        case .all, .mine: "Tap + to make one."
+        case .new: "Find them under Learned."
+        case .learned: "Finish Learn on a pattern and it shows up here."
+        }
     }
 
     // MARK: - The carousel

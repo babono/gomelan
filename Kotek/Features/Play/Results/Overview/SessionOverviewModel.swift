@@ -134,10 +134,16 @@ final class SessionOverviewModel {
         case .available:
             break
         case .unavailable(.appleIntelligenceNotEnabled):
-            phase = .notice("Turn on Apple Intelligence in Settings to get an overview of each session.")
+            phase =
+                .notice(String(localized: "Turn on Apple Intelligence in Settings to get an overview of each session."))
             return
         case .unavailable(.modelNotReady):
-            phase = .notice("The overview is still getting ready on this iPhone. Try again after your next session.")
+            phase =
+                .notice(
+                    String(
+                        localized: "The overview is still getting ready on this iPhone. Try again after your next session."
+                    )
+                )
             return
         case let .unavailable(reason):
             log.info("no overview: model unavailable (\(String(describing: reason)))")

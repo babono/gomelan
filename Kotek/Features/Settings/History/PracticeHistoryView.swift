@@ -26,7 +26,7 @@ struct PracticeHistoryView: View {
             TopBar(
                 title: "History",
                 onBack: { app.closeHistory() },
-                trailingText: app.profile.name
+                trailingText: LocalizedStringKey(app.profile.name)
             )
 
             switch load {
@@ -64,11 +64,11 @@ struct PracticeHistoryView: View {
     }
 
     private func kotekanName(_ id: String?) -> String {
-        guard let id else { return "Unknown kotekan" }
-        return app.kotekans.first { $0.id == id }?.name ?? "Unknown kotekan"
+        guard let id else { return String(localized: "Unknown kotekan") }
+        return app.kotekans.first { $0.id == id }?.name ?? String(localized: "Unknown kotekan")
     }
 
-    private func message(_ text: String) -> some View {
+    private func message(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(.sans(16))
             .foregroundStyle(Theme.cream.opacity(0.72))
@@ -94,7 +94,7 @@ private struct HistoryRowView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            stat(row.accuracy.map { "\(Int(($0 * 100).rounded()))%" } ?? "—", "accuracy")
+            stat(row.accuracy.map { Theme.percentLabel($0) } ?? "—", "accuracy")
             stat(row.landedNotes.formatted(), "notes")
             stat(row.bestStreak.formatted(), "streak")
         }
@@ -110,7 +110,7 @@ private struct HistoryRowView: View {
     /// "Polos · 75% tempo · 2 hours ago"
     private var subtitle: String {
         var parts = [KotekanHalf(rawValue: row.half)?.title ?? row.half.capitalized]
-        if row.tempoScale != 1 { parts.append("\(Int((row.tempoScale * 100).rounded()))% tempo") }
+        if row.tempoScale != 1 { parts.append(String(localized: "\(Int((row.tempoScale * 100).rounded()))% tempo")) }
         if let date = InstrumentProfile.date(from: row.createdAt) {
             parts.append(date.formatted(.relative(presentation: .named)))
         }

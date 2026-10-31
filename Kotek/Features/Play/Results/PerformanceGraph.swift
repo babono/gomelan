@@ -266,7 +266,7 @@ struct PerformanceGraph: View {
             // backing chip.
             if column >= Self.minColumn {
                 ctx.draw(
-                    Text("\(Int((rate * 100).rounded()))%")
+                    Text(Theme.percentLabel(rate))
                         .font(.sans(8, weight: .semibold))
                         .foregroundStyle(Theme.cream),
                     at: CGPoint(x: rect.midX, y: rect.minY >= 12 ? rect.minY - 7 : rect.maxY + 7)

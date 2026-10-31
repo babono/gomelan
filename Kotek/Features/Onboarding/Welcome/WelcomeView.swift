@@ -86,7 +86,7 @@ struct WelcomeView: View {
                     music.stop()
                     Task { await app.signInWithApple(idToken: token, nonce: nonce, fullName: name) }
                 } onError: { _ in
-                    app.accountError = "Couldn't sign in with Apple. Try again."
+                    app.accountError = String(localized: "Couldn't sign in with Apple. Try again.")
                 }
 
                 AppButton(title: "Continue as guest", size: .large) {
@@ -96,7 +96,7 @@ struct WelcomeView: View {
                 .fixedSize()
             }
 
-            Text(app.accountError ?? "As a guest, your progress stays on this iPhone only.")
+            Text(app.accountError ?? String(localized: "As a guest, your progress stays on this iPhone only."))
                 .font(.sans(12))
                 .foregroundStyle(app.accountError == nil ? Theme.cream.opacity(0.62) : Theme.miss)
         }
@@ -105,8 +105,8 @@ struct WelcomeView: View {
     // MARK: - Corner Affordances
 
     private func cornerButton(
-        _ label: String,
-        hint: String,
+        _ label: LocalizedStringKey,
+        hint: LocalizedStringKey,
         action: @escaping () -> Void,
         @ViewBuilder content: () -> some View
     ) -> some View {

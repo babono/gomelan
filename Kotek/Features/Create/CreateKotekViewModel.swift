@@ -314,7 +314,7 @@ final class CreateKotekViewModel {
                 try await app.saveKotekan(k)
             } catch {
                 app.log.error("kotekan save failed: \(String(describing: error), privacy: .public)")
-                saveError = "Couldn't save — check your connection and try again."
+                saveError = String(localized: "Couldn't save — check your connection and try again.")
             }
         }
     }

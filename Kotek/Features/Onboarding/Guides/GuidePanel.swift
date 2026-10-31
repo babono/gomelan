@@ -13,7 +13,7 @@ import SwiftUI
 /// arrives as a card with its own grabber, its own chrome and its own idea of
 /// what a background is. This is a dimmed backdrop and a panel.
 struct GuidePanel<Content: View>: View {
-    let title: String
+    let title: LocalizedStringKey
     /// An asset to draw in place of the title.
     var titleImage: String?
     var onClose: () -> Void

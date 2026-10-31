@@ -50,7 +50,7 @@ struct SaveProgressPrompt: View {
                             await app.linkApple(idToken: token, nonce: nonce, fullName: name, from: .results)
                         }
                     } onError: { _ in
-                        app.accountError = "Couldn't link your Apple ID. Try again from Settings."
+                        app.accountError = String(localized: "Couldn't link your Apple ID. Try again from Settings.")
                         app.dismissSavePrompt()
                     }
                 }

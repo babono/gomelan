@@ -37,9 +37,9 @@ private struct ControllerSetupContent: View {
     var body: some View {
         VStack(spacing: 0) {
             TopBar(
-                title: "Strike controller",
+                title: "Sensor controller",
                 onBack: back,
-                trailingText: vm.app.profile.name,
+                trailingText: LocalizedStringKey(vm.app.profile.name),
                 trailingTitle: skipTitle,
                 onTrailing: vm.close
             )
@@ -60,7 +60,7 @@ private struct ControllerSetupContent: View {
     }
 
     /// Skip sits in the trailing corner, so Back keeps the leading one.
-    private var skipTitle: String? {
+    private var skipTitle: LocalizedStringKey? {
         vm.step != .summary && vm.app.controllerSetupIsOffer ? "Skip" : nil
     }
 
@@ -107,16 +107,16 @@ private struct ControllerSetupContent: View {
     private var scanning: some View {
         HStack(alignment: .top, spacing: 40) {
             VStack(alignment: .leading, spacing: 16) {
-                Text(vm.app.controllerSetupIsOffer ? "Got a strike controller?" : "Connect a controller")
+                Text(vm.app.controllerSetupIsOffer ? "Have a sensor controller?" : "Connect your controller")
                     .font(.serif(34))
                     .foregroundStyle(Theme.cream)
                 Text(
-                    "Switch the controller on, clip a sensor onto each bilah, and plug them in. It talks to this iPhone over Bluetooth — no Wi‑Fi, no pairing in Settings."
+                    "Turn the controller on, clip a sensor to each bilah, and plug them in. It connects over Bluetooth by itself."
                 )
                 .font(.sans(15))
                 .foregroundStyle(Theme.cream.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
-                Text("You do this once for each gangsa. One controller can be set up on as many gangsa as you like.")
+                Text("You only do this once per gangsa. One controller works with all your gangsa.")
                     .font(.sans(13))
                     .foregroundStyle(Theme.cream.opacity(0.5))
                     .fixedSize(horizontal: false, vertical: true)
@@ -129,7 +129,7 @@ private struct ControllerSetupContent: View {
                 if sensor.found.isEmpty {
                     if quietTooLong {
                         Text(
-                            "Nothing yet. Is it switched on? Is another phone connected to it? A controller stops showing up while it is connected to something else."
+                            "Nothing found yet. Make sure it's on and not connected to another phone."
                         )
                         .font(.sans(14))
                         .foregroundStyle(Theme.cream.opacity(0.65))
@@ -170,8 +170,8 @@ private struct ControllerSetupContent: View {
                         .foregroundStyle(Theme.cream)
                     if vm.isThisGangsas(found) || !others.isEmpty {
                         Text(vm.isThisGangsas(found)
-                            ? "Set up on this gangsa"
-                            : "Also on \(others.joined(separator: ", "))")
+                            ? String(localized: "Used on this gangsa")
+                            : String(localized: "Also used on \(others.joined(separator: ", "))"))
                             .font(.sans(13))
                             .foregroundStyle(Theme.cream.opacity(0.55))
                     }
@@ -210,27 +210,29 @@ private struct ControllerSetupContent: View {
                     .font(.serif(34))
                     .foregroundStyle(Theme.cream)
                 HStack(alignment: .top, spacing: 36) {
-                    stat("Controller inputs", "\(info.inputCount)")
+                    stat("Sensor ports", "\(info.inputCount)")
                     if info.hasPlugDetect {
                         stat("Sensors plugged in", "\(info.plugged.count)", detail: inputsText(info.plugged.sorted()))
                     } else {
                         stat(
                             "Sensors plugged in",
                             "—",
-                            detail: "This controller can't tell. You'll mark any key without a sensor."
+                            detail: String(
+                                localized: "This controller can't detect them. You'll mark keys without a sensor next."
+                            )
                         )
                     }
-                    stat("Instrument keys", "\(vm.keyCount)", detail: vm.app.profile.name)
+                    stat("Keys on this gangsa", "\(vm.keyCount)", detail: vm.app.profile.name)
                 }
                 if info.hasPlugDetect, info.plugged.isEmpty {
-                    Text("No sensors plugged in yet.")
+                    Text("No sensors plugged in.")
                         .font(.sans(15, weight: .medium))
                         .foregroundStyle(Theme.wrong)
                 }
                 Spacer()
                 HStack {
                     Spacer()
-                    AppButton(title: "Test key hits", prominence: .primary, size: .large) {
+                    AppButton(title: "Test each key", prominence: .primary, size: .large) {
                         vm.startTest()
                     }
                     .disabled(info.hasPlugDetect && info.plugged.isEmpty)
@@ -244,7 +246,7 @@ private struct ControllerSetupContent: View {
         .padding(.top, 8)
     }
 
-    private func stat(_ title: String, _ value: String, detail: String? = nil) -> some View {
+    private func stat(_ title: LocalizedStringKey, _ value: String, detail: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             SectionLabel(title)
             Text(value)
@@ -261,7 +263,9 @@ private struct ControllerSetupContent: View {
     }
 
     private func inputsText(_ inputs: [Int]) -> String {
-        inputs.isEmpty ? "none" : "Inputs " + inputs.map { "\($0 + 1)" }.joined(separator: ", ")
+        inputs.isEmpty
+            ? String(localized: "none")
+            : String(localized: "Ports \(inputs.map { "\($0 + 1)" }.joined(separator: ", "))")
     }
 
     // MARK: - 5–6 · Test & remap, finish
@@ -288,7 +292,7 @@ private struct ControllerSetupContent: View {
                 }
                 .frame(maxHeight: .infinity)
                 HStack {
-                    Text("\(vm.checked.count) of \(vm.sensorCount) checked · tap a key to check it again")
+                    Text("\(vm.checked.count) of \(vm.sensorCount) checked · tap a key to recheck")
                         .font(.sans(13))
                         .foregroundStyle(Theme.cream.opacity(0.55))
                     Spacer()
@@ -312,17 +316,22 @@ private struct ControllerSetupContent: View {
         if let m = vm.mismatch {
             HStack(spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(m.heardAs.map { "Key \(m.key + 1) was heard as key \($0 + 1)" }
-                        ?? "Key \(m.key + 1) was heard on input \(m.input + 1)")
+                    Text(m.heardAs.map { "You hit key \(m.key + 1), but key \($0 + 1)'s sensor answered" }
+                        ?? "Key \(m.key + 1) answered on port \(m.input + 1)")
                         .font(.serif(28))
                         .foregroundStyle(Theme.wrong)
-                    Text("Remap if that's where its sensor is. Try again if you hit another bilah.")
+                    Text("If its sensor really is there, tap Move here. If you hit the wrong bilah, try again.")
                         .font(.sans(14))
                         .foregroundStyle(Theme.cream.opacity(0.65))
                 }
                 Spacer()
                 AppButton(title: "Try again", systemImage: "arrow.counterclockwise", size: .compact) { vm.tryAgain() }
-                AppButton(title: "Remap", systemImage: "arrow.left.arrow.right", prominence: .primary, size: .compact) {
+                AppButton(
+                    title: "Move here",
+                    systemImage: "arrow.left.arrow.right",
+                    prominence: .primary,
+                    size: .compact
+                ) {
                     vm.remap()
                 }
             }
@@ -333,26 +342,26 @@ private struct ControllerSetupContent: View {
                         .font(.serif(34))
                         .foregroundStyle(Theme.cream)
                     Text(vm.inputForKey[k] == nil
-                        ? "No sensor on this key yet — hit it and the sensor that answers is put here."
-                        : "\(vm.sensorCount) sensors detected. Hit each key in turn.")
+                        ? "This key has no sensor yet. Hit it to assign one."
+                        : "\(vm.sensorCount) sensors found. Hit each key in order.")
                         .font(.sans(14))
                         .foregroundStyle(Theme.cream.opacity(0.65))
                 }
                 Spacer()
                 if vm.inputForKey[k] != nil {
-                    AppButton(title: "No sensor on key \(k + 1)", systemImage: "camera", size: .compact) {
+                    AppButton(title: "Key \(k + 1) has no sensor", systemImage: "camera", size: .compact) {
                         vm.markNoSensor()
                     }
                 }
             }
         } else {
             VStack(alignment: .leading, spacing: 4) {
-                Text("All keys check out")
+                Text("All keys work")
                     .font(.serif(34))
                     .foregroundStyle(Theme.hit)
                 Text(vm.sensorCount < vm.keyCount
-                    ? "Keys without a sensor use the camera and microphone."
-                    : "Every key has its own sensor.")
+                    ? "Keys without a sensor use the camera and mic."
+                    : "Every key has a sensor.")
                     .font(.sans(14))
                     .foregroundStyle(Theme.cream.opacity(0.65))
             }
@@ -407,7 +416,7 @@ private struct ControllerKeyTile: View {
                         .strokeBorder(border, lineWidth: isCurrent || isMismatched ? 3 : 1)
                 )
                 .frame(maxHeight: .infinity)
-                Text(input.map { "Input \($0 + 1)" } ?? "No sensor")
+                Text(input.map { "Port \($0 + 1)" } ?? "No sensor")
                     .font(.sans(11, weight: .semibold))
                     .foregroundStyle(Theme.cream.opacity(input == nil ? 0.4 : 0.7))
                     .lineLimit(1)
@@ -438,10 +447,12 @@ private struct ControllerKeyTile: View {
     }
 
     private var accessibilityText: String {
-        var parts = ["Key \(key + 1)"]
-        parts.append(input.map { "input \($0 + 1)" } ?? "no sensor, camera and microphone")
-        if isChecked { parts.append("checked") }
-        if isCurrent { parts.append("hit this key now") }
+        var parts = [String(localized: "Key \(key + 1)")]
+        parts
+            .append(input
+                .map { String(localized: "port \($0 + 1)") } ?? String(localized: "no sensor, uses camera and mic"))
+        if isChecked { parts.append(String(localized: "checked")) }
+        if isCurrent { parts.append(String(localized: "hit this key now")) }
         return parts.joined(separator: ", ")
     }
 }

@@ -67,7 +67,7 @@ extension AppState {
     /// guest to link and nothing to warn about.
     func signInWithApple(idToken: String, nonce: String, fullName: String?) async {
         accountError = nil
-        accountBusy = "Signing in…"
+        accountBusy = String(localized: "Signing in…")
         defer { accountBusy = nil }
         do {
             try await auth.signInWithApple(idToken: idToken, nonce: nonce, linkingGuest: false)
@@ -75,7 +75,7 @@ extension AppState {
             startSync()
             await didSignInWithApple(fullName: fullName, returnTo: nil)
         } catch {
-            accountError = "Couldn't sign in with Apple. Check your connection and try again."
+            accountError = String(localized: "Couldn't sign in with Apple. Check your connection and try again.")
             log.error("apple sign-in failed: \(error.localizedDescription)")
         }
     }
@@ -85,7 +85,7 @@ extension AppState {
     /// and where the player lands again afterwards.
     func linkApple(idToken: String, nonce: String, fullName: String?, from origin: Route) async {
         accountError = nil
-        accountBusy = "Linking…"
+        accountBusy = String(localized: "Linking…")
         defer { accountBusy = nil }
         linkOrigin = origin
         do {
@@ -95,7 +95,7 @@ extension AppState {
         } catch let existing as AuthRepository.AccountExists {
             pendingSwitch = existing
         } catch {
-            accountError = "Couldn't link your Apple ID. Check your connection and try again."
+            accountError = String(localized: "Couldn't link your Apple ID. Check your connection and try again.")
             log.error("apple link failed: \(error.localizedDescription)")
         }
     }
@@ -106,7 +106,7 @@ extension AppState {
     func confirmSwitch(_ existing: AuthRepository.AccountExists) async {
         pendingSwitch = nil
         accountError = nil
-        accountBusy = "Switching…"
+        accountBusy = String(localized: "Switching…")
         defer { accountBusy = nil }
         do {
             try await auth.switchToApple(existing)
@@ -123,7 +123,7 @@ extension AppState {
             // The guest was signed out first, so a failure here leaves no one
             // signed in. The local data is still here and syncs as a fresh
             // guest the next time anything is saved.
-            accountError = "Couldn't switch accounts. Check your connection and try again."
+            accountError = String(localized: "Couldn't switch accounts. Check your connection and try again.")
             log.error("account switch failed: \(error.localizedDescription)")
         }
     }
@@ -142,7 +142,7 @@ extension AppState {
     /// way signing out wipes it.
     func deleteAccount(appleAuthorizationCode code: String) async {
         accountError = nil
-        accountBusy = "Deleting account…"
+        accountBusy = String(localized: "Deleting account…")
         defer { accountBusy = nil }
         do {
             try await auth.deleteAccount(appleAuthorizationCode: code)
@@ -150,7 +150,7 @@ extension AppState {
             setAccount(nil)
             screen = .welcome
         } catch {
-            accountError = "Couldn't delete your account. Check your connection and try again."
+            accountError = String(localized: "Couldn't delete your account. Check your connection and try again.")
             log.error("account delete failed: \(error.localizedDescription)")
         }
     }
@@ -228,7 +228,7 @@ extension AppState {
             playerAvatar = avatar
             return true
         } catch {
-            accountError = "Couldn't save your profile. Check your connection and try again."
+            accountError = String(localized: "Couldn't save your profile. Check your connection and try again.")
             log.error("profile save failed: \(error.localizedDescription)")
             return false
         }

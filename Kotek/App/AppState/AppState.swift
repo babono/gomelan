@@ -145,7 +145,7 @@ final class AppState {
     /// A sighting the microphone did not hear is discarded. See `DetectionMode`.
     ///
     /// PERSISTED, and it did not used to be — which made the detection mode
-    /// silently reset to "Heard only" on any calibrated instrument. It was a
+    /// silently reset to "Camera and mic" on any calibrated instrument. It was a
     /// plain stored property re-derived from `hasLearnedBaseline` in three
     /// places, so a learned baseline (permanent, once captured) re-imposed the
     /// microphone veto on every launch and every instrument switch, and nothing
@@ -232,20 +232,20 @@ final class AppState {
 
         var title: String {
             switch self {
-            case .cameraOnly: "Camera"
-            case .cameraAndMic: "Camera + mic"
-            case .heardOnly: "Heard only"
+            case .cameraOnly: String(localized: "Camera")
+            case .cameraAndMic: String(localized: "Camera or mic")
+            case .heardOnly: String(localized: "Camera and mic")
             }
         }
 
         var detail: String {
             switch self {
             case .cameraOnly:
-                "Camera only. Best in a loud room."
+                String(localized: "Only the camera counts hits. Best in noisy rooms.")
             case .cameraAndMic:
-                "Either can register a stroke. Catches repeated strokes best."
+                String(localized: "Either one can count a hit. Best for fast repeated hits.")
             case .heardOnly:
-                "Both must agree. Use this if strokes register that you didn't play."
+                String(localized: "Both must catch the hit. Use this if hits appear that you didn't play.")
             }
         }
     }
