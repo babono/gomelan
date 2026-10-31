@@ -549,15 +549,15 @@ final class GangsaSensor: NSObject {
             ControllerKeychain.delete(.ownerKey, for: hw)
         case (.savedPIN, 1):
             ControllerKeychain.delete(.pin, for: hw)
-            pinError = "The PIN for this controller has changed."
+            pinError = String(localized: "The PIN for this controller has changed.")
         case (.typed, 1):
-            pinError = "Wrong PIN."
+            pinError = String(localized: "Wrong PIN.")
         case (_, 2):
-            pinError = "Too many wrong PINs. Try again in \(b[18]) s."
+            pinError = String(localized: "Too many wrong PINs. Try again in \(Int(b[18])) s.")
         case (.claim, 3):
-            pinError = "Another phone set a PIN first."
+            pinError = String(localized: "Another phone set a PIN first.")
         case (_, 3):
-            pinError = "The controller refused that."
+            pinError = String(localized: "The controller refused that.")
         default:
             break
         }

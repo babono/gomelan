@@ -108,7 +108,7 @@ struct ControllerPINDialog: View {
         }
     }
 
-    private var title: String {
+    private var title: LocalizedStringKey {
         switch mode {
         case .unlock: "Enter PIN"
         case .protect: "Set a PIN"
@@ -116,17 +116,18 @@ struct ControllerPINDialog: View {
         }
     }
 
-    private var confirmTitle: String {
+    private var confirmTitle: LocalizedStringKey {
         mode == .unlock ? "Unlock" : "Save PIN"
     }
 
-    private var message: String {
+    private var message: LocalizedStringKey {
         switch mode {
         case .unlock:
             "\(controllerName) is protected. Ask its owner for the 4-digit PIN."
         case .protect:
-            "Phones without it can't use \(controllerName). You become its owner, and only your Apple ID can change the PIN. "
-                + "Forgot it? Open the enclosure and hold BOOT for 10 seconds."
+            // One literal, not two joined with `+`: a sum of strings is a
+            // `String`, and a `String` never reaches the catalog.
+            "Phones without it can't use \(controllerName). You become its owner, and only your Apple ID can change the PIN. Forgot it? Open the enclosure and hold BOOT for 10 seconds."
         case .change:
             "Other phones will be asked for the new PIN."
         }
