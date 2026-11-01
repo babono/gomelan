@@ -44,6 +44,9 @@ private struct ChooseKotekanContentView: View {
                 subtitle: "On \(app.profile.name)",
                 onBack: { app.openChooseInstrument() },
                 settingsAction: { app.openSettings() },
+                infoAction: { app.openGuide(.kotekan) },
+                infoLabel: "How kotekan works",
+                infoSubtitle: "Polos, sangsih and how they fit",
                 showsMenu: true,
                 accessory: AnyView(HStack(spacing: 14) { SensorChip()
                     modeMenu
@@ -82,6 +85,26 @@ private struct ChooseKotekanContentView: View {
                     .onTapGesture { vm.deleteError = nil }
             }
         }
+        // Over everything, top bar and pills included, so the whole screen dims.
+        .overlayPreferenceValue(CardAnchorKey.self) { anchors in
+            if let k = vm.menuFor, let anchor = anchors[k.id] {
+                CardMenuOverlay(anchor: anchor, items: menuItems(for: k)) { size in
+                    KotekanCardView(
+                        kotekan: k,
+                        isPlaying: true,
+                        canPlay: vm.isPlayable(k),
+                        engine: vm.engine,
+                        bestRecord: app.controllerConnected ? vm.bestRecord(k) : nil,
+                        muted: $vm.muted,
+                        offset: 0,
+                        sideScale: 1,
+                        height: size.height
+                    )
+                } onDismiss: {
+                    vm.menuFor = nil
+                }
+            }
+        }
         .onAppear { vm.onAppear() }
         .onDisappear { vm.onDisappear() }
         // The figure, not the slot: a filter can change what sits in the
@@ -89,6 +112,30 @@ private struct ChooseKotekanContentView: View {
         .onChange(of: vm.current?.id) { _, _ in vm.onSlotChanged() }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
         .onChange(of: vm.muted) { _, isMuted in vm.handleMutedChanged(isMuted) }
+    }
+
+    /// What a held card offers. Learn again: a learned pattern's tap goes
+    /// straight into free play, so this is the way back to the steps.
+    ///
+    /// R Edit and Delete were greyed out on the built-ins with a reason
+    /// R header; a menu half of which can't be used read as broken. They are
+    /// R only there now on the player's own figures.
+    private func menuItems(for k: Kotekan) -> [CardMenuItem] {
+        let vm = viewModel
+        var items: [CardMenuItem] = []
+        if vm.isPlayable(k) {
+            items.append(LearnProgress.isDone(k.id)
+                ? CardMenuItem(title: "Learn again", systemImage: "arrow.clockwise") { vm.learn(k) }
+                : CardMenuItem(title: "Learn step by step", systemImage: "graduationcap") { vm.learn(k) })
+        }
+        items.append(CardMenuItem(title: "Hear polos only", systemImage: "speaker.wave.2") { vm.hear(.polos) })
+        items.append(CardMenuItem(title: "Hear sangsih only", systemImage: "speaker.wave.2") { vm.hear(.sangsih) })
+        if k.source != .builtin {
+            items.append(CardMenuItem(title: "Edit", systemImage: "pencil") { vm.edit(k) })
+            items
+                .append(CardMenuItem(title: "Delete", systemImage: "trash", destructive: true) { vm.pendingDelete = k })
+        }
+        return items
     }
 
     private var modeMenu: some View {
@@ -192,7 +239,12 @@ private struct ChooseKotekanContentView: View {
     private func swipe(width: CGFloat, step: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
-                viewModel.onDragChanged(translationWidth: value.translation.width, step: step)
+                viewModel.onDragChanged(
+                    translationWidth: value.translation.width,
+                    startLocationX: value.startLocation.x,
+                    width: width,
+                    step: step
+                )
             }
             .onEnded { value in
                 viewModel.onDragEnded(
@@ -221,24 +273,8 @@ private struct ChooseKotekanContentView: View {
             sideScale: side,
             height: height
         )
-        .contextMenu {
-            // The built-ins are the app's: shown, but greyed with the reason,
-            // so a long press never looks like it did nothing.
-            let builtin = k.source == .builtin
-            // Learn again, or skip ahead to it: the tap opens a learned
-            // pattern straight into free play.
-            if vm.isPlayable(k) {
-                Button("Learn step by step", systemImage: "graduationcap") { vm.learn(k) }
-            }
-            Section {
-                Button("Edit", systemImage: "pencil") { vm.edit(k) }
-                    .disabled(builtin)
-                Button("Delete", systemImage: "trash", role: .destructive) { vm.pendingDelete = k }
-                    .disabled(builtin)
-            } header: {
-                if builtin { Text("Built-in kotekan can't be edited or deleted") }
-            }
-        }
+        .cardAnchor(k.id)
+        .cardMenuAccessibility(menuItems(for: k))
         .allowsHitTesting(focused)
     }
 }

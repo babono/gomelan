@@ -2,7 +2,8 @@
 //  SettingsViewModel.swift
 //  Kotek
 //
-//  ViewModel coordinating the scroll-spy rail, draft naming, and instrument actions.
+//  ViewModel for Settings: which page the sidebar has open, the gangsa name
+//  being typed, and the account and gangsa actions.
 //
 
 import CoreGraphics
@@ -21,27 +22,25 @@ final class SettingsViewModel {
     var showDeleteAccountConfirm = false
     @ObservationIgnored private let reauthorization = AppleReauthorization()
 
-    var metrics = SectionMetrics()
-    var active: SettingsSection = .account
-    var tailInset: CGFloat = 22
-    var viewport: CGFloat = 0
-    var jumpTarget: SettingsSection?
-    private var jumpToken = 0
-
-    nonisolated static let scrollSpace = "settingsScroll"
-    static func chipID(_ id: SettingsSection) -> String {
-        "chip-" + id.rawValue
-    }
-
-    static let activeThreshold: CGFloat = 40
+    /// Opens on the gangsa being played, the thing most often changed.
+    var page: SettingsPage
 
     init(app: AppState) {
         self.app = app
         draftName = app.profile.name
+        page = .gangsa(app.profile.id)
     }
 
-    var activeSection: SettingsSection {
-        jumpTarget ?? active
+    /// A gangsa's page shows the active one (the gangsa card reads
+    /// `app.profile`), so picking it makes it active — as centring it in the
+    /// picker does.
+    func open(_ page: SettingsPage) {
+        if case let .gangsa(id) = page, id != app.profile.id,
+           let p = app.savedProfiles.first(where: { $0.id == id })
+        {
+            app.activateInstrument(p)
+        }
+        self.page = page
     }
 
     func updateActiveProfileId() {
@@ -77,39 +76,5 @@ final class SettingsViewModel {
                 app.accountError = String(localized: "Couldn't confirm with Apple. Try again.")
             }
         }
-    }
-
-    func spy() {
-        let passed = SettingsSection.allCases.filter {
-            (metrics.frames[$0]?.minY ?? .greatestFiniteMagnitude) <= Self.activeThreshold
-        }
-        let next = passed.last ?? .account
-        if next != active { active = next }
-
-        if let last = SettingsSection.allCases.last,
-           let frame = metrics.frames[last], viewport > 0
-        {
-            let wanted = max(22, viewport - frame.height - 22)
-            if abs(wanted - tailInset) > 0.5 { tailInset = wanted }
-        }
-    }
-
-    func jump(to id: SettingsSection, using scroll: ScrollViewProxy) {
-        jumpTarget = id
-        jumpToken += 1
-        let token = jumpToken
-        withAnimation(.snappy(duration: 0.35)) { scroll.scrollTo(id, anchor: .top) }
-        Task {
-            try? await Task.sleep(for: .milliseconds(450))
-            if self.jumpToken == token { self.jumpTarget = nil }
-        }
-    }
-
-    func heading(for id: SettingsSection) -> String {
-        id == .instrument ? app.profile.name : id.title
-    }
-
-    func chipLabel(for id: SettingsSection) -> String {
-        id == .instrument ? app.profile.name : id.chip
     }
 }

@@ -30,16 +30,22 @@ struct ChooseInstrumentView: View {
     @State private var centred: String?
     /// The gangsa waiting on the delete confirmation.
     @State private var pendingDelete: InstrumentProfile?
+    /// The gangsa being renamed, and the name being typed for it.
+    @State private var renaming: InstrumentProfile?
+    @State private var newName = ""
+    /// The gangsa whose menu is open, from a long press on its card.
+    @State private var menuFor: InstrumentProfile?
+    /// Set as the hold opens the menu, so the release is not also taken as
+    /// the card's tap. Cleared by that tap or by closing the menu.
+    @State private var heldOpen = false
 
     var body: some View {
         VStack(spacing: 0) {
             TopBar(
                 title: "Choose your gangsa",
+                subtitle: app.savedProfiles.isEmpty ? nil : "Which one are you playing today?",
                 onBack: { app.screen = .welcome },
-                trailingText: app.savedProfiles.isEmpty
-                    ? nil : "\(app.savedProfiles.count) saved",
                 settingsAction: { app.openSettings() },
-                showsMenu: true,
                 edgeInset: 0
             )
 
@@ -69,6 +75,21 @@ struct ChooseInstrumentView: View {
             // list shows the set-up screen by itself.
             withAnimation(.snappy(duration: 0.32)) { centred = app.profile.id }
         }
+        .overlayPreferenceValue(CardAnchorKey.self) { anchors in
+            if let profile = menuFor, let anchor = anchors[profile.id] {
+                CardMenuOverlay(anchor: anchor, items: menuItems(for: profile)) { size in
+                    InstrumentCardView(profile: profile, isCurrent: true, height: size.height, onSelect: {})
+                } onDismiss: {
+                    menuFor = nil
+                    heldOpen = false
+                }
+            }
+        }
+        .alert("Rename gangsa", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("Gangsa name", text: $newName)
+            Button("Cancel", role: .cancel) {}
+            Button("Save") { rename() }
+        }
         .onAppear {
             app.showGuideIfFirstRun(.app)
 
@@ -80,6 +101,65 @@ struct ChooseInstrumentView: View {
         .onChange(of: centred) { _, id in
             if let p = app.savedProfiles.first(where: { $0.id == id }) { app.activateInstrument(p) }
         }
+    }
+
+    private func card(_ profile: InstrumentProfile, height: CGFloat) -> some View {
+        InstrumentCardView(
+            profile: profile,
+            isCurrent: app.profile.id == profile.id,
+            height: height,
+            onSelect: {
+                if heldOpen {
+                    heldOpen = false
+                    return
+                }
+                if centred == profile.id {
+                    app.selectInstrument(profile)
+                } else {
+                    withAnimation(.snappy(duration: 0.32)) { centred = profile.id }
+                }
+            }
+        )
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+                heldOpen = true
+                menuFor = profile
+            }
+        )
+        .cardAnchor(profile.id)
+        .cardMenuAccessibility(menuItems(for: profile))
+    }
+
+    /// What a gangsa needs doing, each straight to its screen; "Edit" used to
+    /// drop the player into all of Settings.
+    private func menuItems(for profile: InstrumentProfile) -> [CardMenuItem] {
+        [
+            CardMenuItem(title: "Rename", systemImage: "pencil") {
+                newName = profile.name
+                renaming = profile
+            },
+            CardMenuItem(title: "Re-record sounds", systemImage: "waveform") {
+                app.activateInstrument(profile)
+                app.openNoteCapture(returnTo: .chooseInstrument)
+            },
+            CardMenuItem(title: "Set up sensors", systemImage: "dot.radiowaves.left.and.right") {
+                app.activateInstrument(profile)
+                app.openControllerSetup(returnTo: .chooseInstrument)
+            },
+            CardMenuItem(title: "Remove", systemImage: "trash", destructive: true) {
+                pendingDelete = profile
+            }
+        ]
+    }
+
+    /// An empty name keeps the old one, as the Settings field does.
+    private func rename() {
+        guard var p = renaming else { return }
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != p.name else { return }
+        p.name = trimmed
+        if app.profile.id == p.id { app.profile = p }
+        app.saveInstrument(p)
     }
 
     // MARK: - The rail
@@ -100,44 +180,24 @@ struct ChooseInstrumentView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: gap) {
                     ForEach(app.savedProfiles) { profile in
-                        InstrumentCardView(
-                            profile: profile,
-                            isCurrent: app.profile.id == profile.id,
-                            height: min(InstrumentCardView.maxHeight, geo.size.height - 16),
-                            onSelect: {
-                                if centred == profile.id {
-                                    app.selectInstrument(profile)
-                                } else {
-                                    withAnimation(.snappy(duration: 0.32)) { centred = profile.id }
-                                }
-                            }
-                        )
-                        .contextMenu {
-                            Button("Edit", systemImage: "pencil") {
-                                app.activateInstrument(profile)
-                                app.openSettings()
-                            }
-                            Button("Delete", systemImage: "trash", role: .destructive) {
-                                pendingDelete = profile
-                            }
-                        }
-                        // Shrink and dim off-centre, as the kotekan carousel does,
-                        // pinned at the edge facing the middle so the gap to the
-                        // selected card stays `gap` and the outer edge is what moves.
-                        .visualEffect { card, proxy in
-                            // Against the scroll view's own bounds: it runs under the safe
-                            // area, so its midpoint is not the rail's.
-                            let centre = proxy.bounds(of: .scrollView)?.midX ?? 0
-                            let dx = proxy.frame(in: .scrollView).midX - centre
-                            let t = min(abs(dx) / step, 1)
+                        card(profile, height: min(InstrumentCardView.maxHeight, geo.size.height - 16))
+                            // Shrink and dim off-centre, as the kotekan carousel does,
+                            // pinned at the edge facing the middle so the gap to the
+                            // selected card stays `gap` and the outer edge is what moves.
+                            .visualEffect { card, proxy in
+                                // Against the scroll view's own bounds: it runs under the safe
+                                // area, so its midpoint is not the rail's.
+                                let centre = proxy.bounds(of: .scrollView)?.midX ?? 0
+                                let dx = proxy.frame(in: .scrollView).midX - centre
+                                let t = min(abs(dx) / step, 1)
 
-                            let slide = (1 - side) * cardWidth * max(abs(dx) / (2 * step) - 1, 0)
-                            return card
-                                .scaleEffect(1 - (1 - side) * t, anchor: dx < 0 ? .trailing : .leading)
-                                .offset(x: dx < 0 ? slide : -slide)
-                                .opacity(1 - 0.55 * t)
-                        }
-                        .id(profile.id)
+                                let slide = (1 - side) * cardWidth * max(abs(dx) / (2 * step) - 1, 0)
+                                return card
+                                    .scaleEffect(1 - (1 - side) * t, anchor: dx < 0 ? .trailing : .leading)
+                                    .offset(x: dx < 0 ? slide : -slide)
+                                    .opacity(1 - 0.55 * t)
+                            }
+                            .id(profile.id)
                     }
                 }
                 .scrollTargetLayout()
