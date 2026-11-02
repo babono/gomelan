@@ -174,8 +174,12 @@ struct GangsaView: View {
 
     // MARK: - Frame
 
-    private static let wood = Color(hex: 0x7E4127)
-    private static let woodShade = Color(hex: 0x5A2E1B)
+    /// The redesign's frame: the landing gangsa's orange (`gangsa-table`),
+    /// shaded a step darker. It was carved teak, 0x7E4127 / 0x5A2E1B. Its own
+    /// value, not `Theme.primary`: the artwork kept its orange when the
+    /// primary became Merah, and the drawn gangsa has to match the artwork.
+    private static let wood = Color(hex: 0xDF6D2F)
+    private static let woodShade = Color(hex: 0xB9541F)
 
     /// End posts and the rail. Views, not Canvas, because the posts stand
     /// above the view's top edge, which a drawing group would clip.
@@ -218,7 +222,7 @@ struct GangsaView: View {
         line.addLine(to: CGPoint(x: layout.framePad + layout.laneCenter(layout.keyCount - 1), y: y))
         ctx.stroke(
             line,
-            with: .color(Color(hex: 0x8D3021)),
+            with: .color(Color(hex: 0x96561A)),
             style: StrokeStyle(lineWidth: u * 12.5, lineCap: .round)
         )
     }
@@ -231,7 +235,9 @@ struct GangsaView: View {
     }
 
     /// The three looks of a bar from the drawings: at rest, pinched (dimmed),
-    /// and struck, which also carries a rim and a glow around the bar.
+    /// and struck, which also carries a rim and a glow around the bar. In the
+    /// redesign's gold (`Theme.secondary`, the landing gangsa's bilah), where
+    /// they were bronze on a brown ground.
     private struct Skin {
         var top: Color
         var bottom: Color
@@ -243,30 +249,30 @@ struct GangsaView: View {
         var glow: Color = .clear
 
         static let rest = Skin(
-            top: Color(hex: 0xC09354),
-            bottom: Color(hex: 0x8E682F),
-            ridge: Color(hex: 0xC2975A),
+            top: Color(hex: 0xE7B142),
+            bottom: Color(hex: 0xC9932E),
+            ridge: Color(hex: 0xEFC468),
             ridgeWidth: 42.3,
-            pegs: Color(hex: 0x2B211C),
-            number: Color(hex: 0x72572D)
+            pegs: Color(hex: 0x2F2F2F),
+            number: Color(hex: 0x6B4A12)
         )
         static let dimmed = Skin(
-            top: Color(hex: 0x59482E),
-            bottom: Color(hex: 0x59482E),
-            ridge: Color(hex: 0x7B5F39),
+            top: Color(hex: 0x9C7A3C),
+            bottom: Color(hex: 0x9C7A3C),
+            ridge: Color(hex: 0xB28E4E),
             ridgeWidth: 42.3,
-            pegs: Color(hex: 0x2B211C),
-            number: Color(hex: 0x2B211C)
+            pegs: Color(hex: 0x2F2F2F),
+            number: Color(hex: 0x2F2F2F)
         )
         static let struck = Skin(
-            top: Color(hex: 0xEBB164),
-            bottom: Color(hex: 0xEBB164),
-            ridge: Color(hex: 0xC2975A),
+            top: Color(hex: 0xF3D29C),
+            bottom: Color(hex: 0xF3D29C),
+            ridge: Color(hex: 0xEFC468),
             ridgeWidth: 56.3,
-            pegs: Color(hex: 0x2B211C),
-            number: Color(hex: 0x72572D),
-            rim: Color(hex: 0xFFE2B6),
-            glow: Color(hex: 0xFFE2B6, alpha: 0.3)
+            pegs: Color(hex: 0x2F2F2F),
+            number: Color(hex: 0x6B4A12),
+            rim: Color(hex: 0xFFFFFF),
+            glow: Color(hex: 0xFFFFFF, alpha: 0.4)
         )
     }
 

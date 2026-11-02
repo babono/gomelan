@@ -9,27 +9,15 @@ import Foundation
 
 enum Route: String, Hashable {
     case welcome
-    case checkingPermissions
-    case permissionsBlocked
     case profileSetup
     case chooseInstrument // Multi-instrument selection
-    case choosingKeyCount // setup 1/2
-    case framing // realign only — no longer part of adding a gangsa
-    case aligning // realign only — no longer part of adding a gangsa
-    case calibrating // setup 2/2 · baseline · learn the voice
-    case baseline
+    case choosingKeyCount // setup 1/3
     case chooseKotekan
     case createKotek
-    case countdown
-    case playing
     case results
     case settings
     case history
-    case malletTest
-    case detectionTest
-    case audioTest
-    case captureTraining
-    case noteCapture
+    case noteCapture // setup 2/3
     case sensorTest
     case controllerSetup // strike controller · Flow D
     case waterfall // play without the camera: notes fall onto a drawn gangsa
@@ -37,15 +25,10 @@ enum Route: String, Hashable {
     case coopPlay // one-screen coop: both halves, side by side
     case learn // a pattern taught in steps, before free play (`LearnStage`)
 
-    /// Screens whose ground is the live camera feed rather than the pattern.
-    var isCameraScreen: Bool {
-        switch self {
-        case .framing, .aligning, .calibrating, .baseline,
-             .countdown, .playing, .malletTest, .detectionTest, .audioTest,
-             .captureTraining:
-            true
-        default:
-            false
-        }
-    }
+    // R The camera play mode went in November 2026, and with it ten routes:
+    // R framing, aligning, calibrating and baseline (fitting the top-view
+    // R camera and learning the gangsa's voice), countdown and playing (the
+    // R overlay on the live feed), and the mallet, detection, audio and
+    // R capture-training test screens — plus the permission gate that only
+    // R the camera needed. `isCameraScreen` went with them.
 }

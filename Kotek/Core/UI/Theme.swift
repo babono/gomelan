@@ -4,77 +4,149 @@
 //
 //  The Kotek design system.
 //
-//  One surface, not two. The app used to run a "paper" world (cream, light) for
-//  selection screens and a "stage" world (ink, dark) behind the camera, and each
-//  component had to read on both. The design collapses that: everything sits on
-//  the same warm brown ground with the pattern behind it, and the camera screens
-//  are simply the ones where the ground happens to be a live image. Fewer
-//  decisions, and the app stops flashing between light and dark mid-flow.
+//  One surface, not two — that much has held since the October 2026 revamp,
+//  which collapsed a cream "paper" world and an ink "stage" world into one
+//  ground for every screen, with the camera screens simply the ones where a
+//  live image covers it. What the November 2026 redesign changed is the
+//  ground: it went from warm brown to paper, and the app from dark to light.
 //
-//  Palette (the October 2026 revamp) lives in the asset catalog, so the
-//  designers can change a colour without a code edit:
-//    Background #2A211C · PatternBackground #312721 · Card #3D322C
-//    TitleText #C29A59  · DescriptionText #7A5E4E   · LoadingBar #8D3021
-//  The revamp is one family — gold on brown. There is no cream any more: text
-//  that was cream is the title gold, and supporting text is the description
-//  brown. Cards are a step LIGHTER than the ground now, not darker.
+//  The palette is Nawa Sanga, the Balinese directions of the gods — the
+//  colours students already know from canang sari offerings (the designer's
+//  design system, November 2026). Every one is in the asset catalog under its
+//  Balinese name, so the designers can change a colour without a code edit:
 //
-//  Type: Katibeh for titles and headings — bundled, see UIAppFonts in
+//    Merah      #E14B2F  courage — the one thing to tap next; polos
+//    Kuning     #F5B331  reward — focus, a hit, what is selected
+//    Ireng      #1E2435  calm focus — text; damp
+//    Putih      #FBF6EE  a fresh start — the canvas
+//    SangsihBlue #2F4B82 sangsih, never confused with polos
+//    Pandan     #2E9A68  leaf green — sensor on, switches, "all good"
+//    Kayu       #F2DDB4  warm wood — the bilah
+//    MerahTua   #A93321  the tactile edge under the primary button
+//    Krem       #F5EDE0  secondary surfaces — chips, quiet buttons
+//    Garis      #CDBBA3  outlines, and the edge under a secondary button
+//
+//  Plus Surface (white: cards, outlined buttons, fields, Kipli's bubble),
+//  PatternBackground (the gate silhouettes), DescriptionText (supporting
+//  text) and BrandRed (the wordmark's own red, kept apart from Merah).
+//
+//  The rules that come with it: one red button per screen; gold means you did
+//  well or this is selected; Kipli speaks in the outlined bubble; an 8pt grid
+//  and 44pt touch targets.
+//
+//  The November redesign's first palette — orange #DF6D2F, gold #E7B142,
+//  charcoal #2F2F2F — lasted one pass. Orange was the main action AND every
+//  heading, so nothing stood out; Nawa Sanga moves headings to Ireng and
+//  keeps the red for the way on.
+//
+//  Every control is SOLID — no Liquid Glass. Glass is iOS-only, and the app is
+//  going to Android; a fill and an edge are the same on both. They are
+//  TACTILE: each sits on a darker base a few points below it, and sinks onto
+//  it while pressed. See `AppControlSurface`.
+//
+//  Type: Katibeh for titles and headings (the design system names Fraunces
+//  Black; Katibeh stays for now) — bundled, see UIAppFonts in
 //  Info.plist, and falling back to the nearest system serif if a build ever
-//  ships without it. It comes in one weight. Everything else is San
-//  Francisco at the system weights, which is what the Human Interface
-//  Guidelines ask for and what every iOS reader's eye is already calibrated
-//  to.
-//
-//  Geometry: radius 14, primary buttons 56pt tall.
+//  ships without it. It comes in one weight. Everything else is SF Pro
+//  Rounded, as the design system asks — San Francisco's own rounded cut, so
+//  the optical sizes and every weight still come with it.
 //
 //  The old token NAMES are kept (`ink`, `cream`, `copper`, `terracotta` …)
 //  because ~250 call sites use them and renaming would be a mechanical change
-//  with no design value. What changed is what they point at.
+//  with no design value. What changed, three times now, is what they point at
+//  — `cream` is body text, and body text is Ireng; `gold` is gold again.
 //
 
 import SwiftUI
 
 enum Theme {
-    // MARK: - Palette
+    // MARK: - Nawa Sanga
+
+    static let merah = Color("Merah")
+    static let kuning = Color("Kuning")
+    static let ireng = Color("Ireng")
+    static let putih = Color("Putih")
+    static let sangsihBlue = Color("SangsihBlue")
+    static let pandan = Color("Pandan")
+    static let kayu = Color("Kayu")
+    static let merahTua = Color("MerahTua")
+    static let krem = Color("Krem")
+    static let garis = Color("Garis")
+
+    // MARK: - The three roles
+
+    /// Merah. The screen's one way on, and polos.
+    static let primary = merah
+    /// Kuning. Reward and focus: a hit, a done step, what is selected.
+    static let secondary = kuning
+    /// Ireng. Text, the dark chip that is selected, and damp.
+    static let tertiary = ireng
+
+    // MARK: - Neutrals
 
     /// The ground. Every screen sits on this.
-    static let ground = Color("Background")
-    /// The motif drawn over the ground — see `PatternBackground`.
+    static let ground = putih
+    /// The gate silhouettes at the screen's sides — see `PatternBackground`.
     static let pattern = Color("PatternBackground")
-    /// Cards, panels and wells. The name is older than the revamp, which made
-    /// cards a step lighter than the ground rather than a step darker.
-    static let deep = Color("Card")
-    /// Primary text. Named for the colour it used to be; it is the title gold
-    /// now — the revamp has no light text, only gold on brown.
-    static let cream = Color("TitleText")
-    /// Outlines, eyebrows, accents, the tracked uppercase labels — and titles.
-    static let gold = Color("TitleText")
-    /// Supporting text: descriptions, metadata, captions.
+    /// White: what is raised off the ground — a card, an outlined button, a
+    /// field, Kipli's bubble.
+    static let surface = Color("Surface")
+    /// Quiet surfaces: chips, the stepper's buttons, a switcher's track.
+    static let deep = krem
+    /// Body text. Named for the colour it used to be.
+    static let cream = ireng
+    /// Selected, focused, done: gold. (The brown design's name, and its
+    /// meaning again after a pass as the orange.)
+    static let gold = kuning
+    /// Gold as TYPE. Kuning itself is about 1.8:1 on Putih — a fill, a beam,
+    /// a ring, never words — so a gold label is Kuning deepened with Ireng
+    /// until it reads.
+    static let goldText = kuning.mix(with: ireng, by: 0.45)
+    /// Headings in Katibeh: Ireng, as the design system sets every title.
+    static let heading = ireng
+    /// The one heading that shouts — "Perfect!" on Results.
+    static let feedback = merah
+    /// Supporting text: descriptions, metadata, captions, eyebrows.
     static let description = Color("DescriptionText")
-    /// Progress — the splash's loading bar.
-    static let progress = Color("LoadingBar")
-    /// A bilah as it is struck, on the splash's gangsa. Read off the
-    /// mockup — not on the palette sheet yet.
+    /// Outlines: a control's edge, a divider, an idle key's outline.
+    static let hairline = garis
+    /// The wordmark's red. Not Merah: the logo is artwork, and keeps its own.
+    static let brandRed = Color("BrandRed")
+    /// A bilah as it is struck, on the landing screen's gangsa.
     static let keyHighlight = Color("KeyHighlight")
     /// A bilah the player's hand has just stopped ringing — see
-    /// `GangsaTable`. Read off the mockup, like `keyHighlight`.
+    /// `GangsaTable`.
     static let keyDampened = Color("KeyDampened")
-    /// Carved teak, for the pelawah and anything standing in for wood.
-    static let wood = Color(hex: 0x8B5A32)
+
+    // MARK: - Status
+
+    /// Connected, checked, all good: pandan.
+    static let ok = pandan
+    /// Still on its way — looking for sensors, connecting: gold.
+    static let pending = kuning
+    /// Something the player has to do something about.
+    static let destructive = merahTua
+
+    /// The launch screens' names for the same neutrals, from when the
+    /// redesign covered launch alone.
+    static let paper = ground
+    static let paperPattern = pattern
+    static let paperText = description
+    /// The bilah on the drawn gangsa: gold, as the designer's gangsa draws
+    /// them. (`kayu` is the bilah as a TILE — note capture.)
+    static let bilah = kuning
+
     /// Struck bronze — the bilah themselves.
     static let bronze = Color(hex: 0xC9A876)
 
     // MARK: - Legacy names, repointed
 
     //
-    // `charcoal` and `stone` used to be dark-on-light text. Since every surface
-    // is now dark, they resolve to the light end instead: the same call sites
-    // still mean "strong body text" and "supporting text", which is the part
-    // worth preserving.
+    // Kept so the call sites keep meaning what they meant: "the ground",
+    // "a surface", "strong body text", "supporting text", "an accent".
 
     static let ink = ground
-    static let inkRaised = deep
+    static let inkRaised = surface
     static let background = ground
     static let creamSunken = deep
     static let terracotta = gold
@@ -86,26 +158,26 @@ enum Theme {
     static let stone = description
     static let inkStone = description
 
-    /// Dark text for use ON a gold fill — anything sitting on `cream`. Named
-    /// for the job rather than the colour.
-    static let onCream = ground
+    /// Text for use ON a primary fill. Named for the job rather than the
+    /// colour.
+    static let onCream = onButtonFill
 
     // MARK: - Button colours
 
     //
-    // These two come from the asset catalog rather than a hex literal here, so
-    // the designer can change them without a code edit. Named for the JOB, like
-    // `onCream` above: `onButtonFill` is only correct on top of `buttonFill`,
-    // and the pair has to move together or the label stops being legible.
+    // Named for the JOB: `onButtonFill` is only correct on top of
+    // `buttonFill`, and the pair has to move together or the label stops being
+    // legible.
 
-    /// The filled button's slab.
-    static let buttonFill = Color("Tertiary")
-    /// Type sitting on that slab.
-    static let onButtonFill = Color("LaunchBackground")
-    /// The tint of every secondary glass control: the ground itself, so a button
-    /// reads as a raised piece of the background rather than a bright pane.
-    static let glassTint = ground
-    /// Type on the main action, gold glass (`AppButtonStyle.prominent`).
+    /// The main action's fill: Merah.
+    static let buttonFill = primary
+    /// The main action's tactile edge: Merah tua.
+    static let buttonBase = merahTua
+    /// Type sitting on any filled action — white.
+    static let onButtonFill = surface
+    /// Every secondary control's fill: white, outlined in Garis.
+    static let glassTint = surface
+    /// Type on the main action.
     static let onGlassFill = onButtonFill
 
     // MARK: - Geometry
@@ -121,42 +193,37 @@ enum Theme {
     /// ours — Sign in with Apple — sits at the same height beside it.
     static let buttonHeight: CGFloat = 52
 
-    /// Weight and letter-spacing shared by every button label.
-    ///
-    /// Held here rather than at each call site so the buttons cannot drift
-    /// apart — they are the most repeated element in the app and the one place
-    /// an inconsistency is most obvious. Black is the heaviest SF Pro cut, which
-    /// only became available when the body face stopped being a single-weight
-    /// Futura; the tracking is what keeps a short, very heavy, uppercase word
-    /// from setting solid.
-    static let buttonWeight: Font.Weight = .black
-    static let buttonTracking: CGFloat = 1.5
-    /// Opacity the background pattern is laid in at. 1: the motif is drawn in
-    /// `pattern`, a colour already chosen to sit just off the ground, so there
-    /// is nothing left to fade. Below 1 still scales it, for the camera
-    /// screens' overlay.
-    static let patternOpacity: Double = 1.0
+    /// The main action's label weight, shared so the buttons cannot drift
+    /// apart. Bold, in sentence case: "Next", as the redesign draws it. It was
+    /// Black, uppercase and tracked ("NEXT") on the brown design.
+    static let buttonWeight: Font.Weight = .bold
 
     // MARK: - Overlay play colours (§13.5)
 
-    static let upcoming = gold
-    /// Correct hit. Warmed towards the palette rather than a stock green, but
-    /// kept clearly green — it has to read as right/wrong at a glance while
-    /// someone is playing.
-    static let hit = Color(hex: 0x7FB069)
-    static let miss = Color(hex: 0xA85A44)
-    static let wrong = Color(hex: 0xD9A441)
+    //
+    // Nawa Sanga, as the design system assigns them: a hit is gold (reward),
+    // a miss or a wrong key the deep red. Both used to be stock-ish — a hit
+    // green, a miss the wordmark red — and with polos now Merah, a red miss
+    // on a polos note would have read as the note itself.
+
+    /// Almost: early or late enough to say so. Kayu — gold with the light
+    /// gone out of it.
+    static let upcoming = kayu
+    static let hit = kuning
+    static let miss = merahTua
+    static let wrong = merahTua
 
     // MARK: - Colotomic layer (gong / kempur / kajar)
 
-    /// One warm family — cream, amber, stone. The colotomic layer frames the
+    /// One warm family — bronze, amber, stone. The colotomic layer frames the
     /// cycle rather than carrying a part, so it belongs to the ground rather
     /// than to the voices, and reads as the quiet thing underneath them.
     ///
     /// Kajar was purple. That was fine while the voices were teal and indigo and
     /// stopped being fine the moment sangsih became purple too: a pulse dot and
     /// a stroke you are meant to play should never be one colour.
-    static let gong = Color(hex: 0xF0DDA8)
+    /// Dark bronze, not the brown design's cream: on paper the cream vanished.
+    static let gong = Color(hex: 0x7B5F39)
     static let kempur = Color(hex: 0xD9A441)
     static let kajar = Color(hex: 0xA89478)
 
@@ -165,13 +232,11 @@ enum Theme {
     /// Polos and sangsih keep their own colour wherever they appear, so the
     /// weave reads at a glance — the score, the picker cards, the mixer chips.
     ///
-    /// Blue for polos, the steady half on the beat; purple for sangsih, which
-    /// answers between. They were borrowed from the old rank ladder's colours
-    /// to keep the number of separate accents down, and kept their values when
-    /// the ranks went. Swapping the two is a one-line change if it reads better
-    /// the other way round.
-    static let polosVoice = Color(hex: 0x5FA8D3)
-    static let sangsihVoice = Color(hex: 0xA97CD1)
+    /// Merah for polos, the steady half on the beat; Sangsih blue for the half
+    /// that answers between — the design system's pair. They were sky blue and
+    /// purple, borrowed from the old rank ladder's colours.
+    static let polosVoice = merah
+    static let sangsihVoice = sangsihBlue
 
     static let keyOutlineWidth: CGFloat = 3
     static let keyCornerRadius: CGFloat = 6
@@ -253,8 +318,12 @@ extension Font {
     ///
     /// Never below 11pt — the smallest size the Human Interface Guidelines
     /// allow (Caption 2). A handful of labels were drawn at 9 and 10.
+    ///
+    /// Rounded since the Nawa Sanga design system ("SF Pro Rounded for
+    /// everything you read and tap"): the same family, so all of the above
+    /// still holds.
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: max(11, size), weight: weight, design: .default)
+        .system(size: max(11, size), weight: weight, design: .rounded)
     }
 
     /// A system font for SF Symbols, so glyphs take the symbol metrics rather

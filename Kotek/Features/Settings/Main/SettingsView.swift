@@ -3,9 +3,8 @@
 //  Kotek
 //
 //  Settings (PRD §8): a sidebar of the player's gangsa, then the app's own
-//  pages — Practice, Account, and last the old camera mode and the dev test
-//  screens. Tempo is not here: it is on the practice screen, where it changes
-//  without stopping.
+//  pages — Practice, Account, and last the dev test screens. Tempo is not
+//  here: it is on the practice screen, where it changes without stopping.
 //
 
 import SwiftUI
@@ -65,7 +64,8 @@ private struct SettingsContentView: View {
             $vm.showDeleteConfirm,
             title: "Delete this gangsa?",
             message: LocalizedStringKey(GangsaDeletion.message(app.profile.name)),
-            confirmTitle: "Delete \(app.profile.name)"
+            confirmTitle: "Delete \(app.profile.name)",
+            kipli: .sad
         ) {
             vm.deleteInstrument()
         }
@@ -73,7 +73,8 @@ private struct SettingsContentView: View {
             $vm.showDeleteAccountConfirm,
             title: "Delete your account?",
             message: "Your gangsa, records and history will be deleted from all devices. This can't be undone. Apple will ask you to confirm.",
-            confirmTitle: "Delete account"
+            confirmTitle: "Delete account",
+            kipli: .sad
         ) {
             vm.deleteAccount()
         }
@@ -81,7 +82,8 @@ private struct SettingsContentView: View {
             $vm.showSignOutConfirm,
             title: "Sign out?",
             message: "Your gangsa and records will be removed from this iPhone.",
-            confirmTitle: "Sign out"
+            confirmTitle: "Sign out",
+            kipli: .sad
         ) {
             app.signOut()
         }
@@ -109,11 +111,11 @@ private struct SettingsContentView: View {
                 sidebarRow(.practice) { Text(String(localized: "Settings.practice", defaultValue: "Practice")) }
                 sidebarRow(.account) { Text("Account") }
 
-                // Kept reachable, last and quiet: the camera mode and the
-                // test screens are not for most players.
+                // Kept reachable, last and quiet: the test screens are not
+                // for most players. (The camera mode's Deprecated page sat
+                // here too, until the mode went.)
                 // Its own key: "More" is also the stepper's "+", "Tambah".
                 groupHeader(LocalizedStringKey("Settings.more"))
-                sidebarRow(.deprecated) { Text("Deprecated") }
                 sidebarRow(.debug) { Text("Debug") }
             }
             .padding(10)
@@ -153,7 +155,6 @@ private struct SettingsContentView: View {
         case .gangsa: InstrumentSectionView(viewModel: viewModel)
         case .practice: PracticeSectionView(app: app)
         case .account: AccountSectionView(viewModel: viewModel)
-        case .deprecated: DeprecatedSectionView(app: app)
         case .debug: DebugSectionView(app: app)
         }
     }

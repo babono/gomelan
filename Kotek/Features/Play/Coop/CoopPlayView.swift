@@ -237,7 +237,7 @@ private struct LaneHeader: View {
             if !player.name.isEmpty {
                 Text(player.name)
                     .font(.serif(22))
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.heading)
                     .lineLimit(1)
                     // Neither box nor capitals centre it on the pill: Katibeh's
                     // line box has a deep descent, so box-centred it sat ~5pt
@@ -292,8 +292,9 @@ private struct UnisonBands: View {
                 // Same clock, same tempo: a unison is the same instant to well
                 // under a millisecond. The tolerance is only for float error.
                 guard let b = right.first(where: { abs($0.msAhead - a.msAhead) < 1 }) else { continue }
-                // Level with the key number near the foot of each block.
-                let y = CoopStageLayout.header + height - a.msAhead * pxPerMs - 11
+                // Through the middle of the two stroke pills.
+                let pill = WaterfallCanvas.strikeHeight(barWidth: leftLayout.barWidth)
+                let y = CoopStageLayout.header + height - a.msAhead * pxPerMs - pill / 2
                 guard y > CoopStageLayout.header else { continue }
                 let from = stage.canvasX(0) + leftLayout.laneCenter(a.keyIndex) + leftLayout.barWidth / 2
                 let to = stage.canvasX(1) + rightLayout.laneCenter(b.keyIndex) - rightLayout.barWidth / 2

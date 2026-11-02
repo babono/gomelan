@@ -2,7 +2,7 @@
 //  KeyCountView.swift
 //  Kotek
 //
-//  Setup step 1/2, and the only screen a new gangsa is created from. Two facts
+//  Setup step 1/3, and the only screen a new gangsa is created from. Two facts
 //  the app cannot work out for itself: what to call it, and how many keys it
 //  has. The count decides how many bilah the default key layout holds and the
 //  later steps draw.
@@ -24,22 +24,28 @@ struct KeyCountView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TopBar(
-                title: "Set up your gangsa",
-                onBack: { app.cancelInstrumentSetup() },
-                // Slim: at full size the header alone took a fifth of a
-                // landscape phone and pushed Next off the bottom.
-                compact: true
-            )
+            // Adding a gangsa is three steps, and says so; editing one is not.
+            if app.isAddingNewInstrument {
+                SetupHeader(step: 1, leadingTitle: "Cancel", onLeading: { app.cancelInstrumentSetup() })
+                    .padding(.horizontal, 40)
+            } else {
+                TopBar(
+                    title: "Set up your gangsa",
+                    onBack: { app.cancelInstrumentSetup() },
+                    // Slim: at full size the header alone took a fifth of a
+                    // landscape phone and pushed Next off the bottom.
+                    compact: true
+                )
+            }
 
             HStack(alignment: .center, spacing: 0) {
-                // Question + name. The photo sits beside the name rather than
-                // under it: stacked, the column ran past the bottom of a
-                // landscape phone.
+                // Kipli's question + name. The photo sits beside the name
+                // rather than under it: stacked, the column ran past the
+                // bottom of a landscape phone.
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("How many keys does your gangsa have?")
-                        .font(.serif(28))
-                        .foregroundStyle(Theme.charcoal)
+                    Text("Tell me about your gangsa")
+                        .font(.serif(26))
+                        .foregroundStyle(Theme.heading)
                         .fixedSize(horizontal: false, vertical: true)
 
                     HStack(alignment: .bottom, spacing: 14) {
@@ -47,7 +53,7 @@ struct KeyCountView: View {
                         GangsaPhotoPicker(
                             image: photo.flatMap(UIImage.init) ?? InstrumentPhotoStore.image(for: app.profile),
                             onPick: { photo = $0 },
-                            width: 104,
+                            width: 96,
                             height: 66
                         )
                     }
@@ -56,37 +62,41 @@ struct KeyCountView: View {
                 .padding(.trailing, 32)
 
                 Rectangle()
-                    .fill(Theme.charcoal.opacity(0.15))
+                    .fill(Theme.description.opacity(0.5))
                     .frame(width: 1, height: 170)
 
-                // Stepper + bilah preview + next
-                VStack(spacing: 14) {
-                    AppStepper(value: $count, range: range, numberSize: 52)
-
-                    BilahBarsView(count: count, height: 44)
-                        .frame(height: 44)
+                // How many, as a number and as a row of bilah.
+                VStack(spacing: 12) {
+                    SectionLabel("How many bilah?")
+                    AppStepper(value: $count, range: range, numberSize: 44)
+                    BilahBarsView(count: count, height: 34)
+                        .frame(height: 34)
                         .frame(maxWidth: 260)
-
-                    AppButton(
-                        title: "Next",
-                        prominence: .primary,
-                        size: .regular
-                    ) {
-                        // Landscape keyboards cover most of the screen, so this
-                        // button can be tapped while the field still holds an
-                        // uncommitted edit. Drop focus first and read the draft
-                        // directly rather than trusting an onSubmit that never
-                        // fired.
-                        nameFocused = false
-                        app.keyCountChosen(count, name: name, photo: photo)
-                    }
+                    Text("Up to \(range.upperBound) bilah")
+                        .font(.sans(13))
+                        .foregroundStyle(Theme.description)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.leading, 32)
             }
             .padding(.horizontal, 40)
-            .padding(.bottom, Theme.footerBottom)
             .frame(maxHeight: .infinity)
+
+            HStack(alignment: .bottom) {
+                KipliGuide(message: "Count the bilah from one end to the other.")
+                Spacer()
+                AppButton(title: "Next", prominence: .primary, size: .large) {
+                    // Landscape keyboards cover most of the screen, so this
+                    // button can be tapped while the field still holds an
+                    // uncommitted edit. Drop focus first and read the draft
+                    // directly rather than trusting an onSubmit that never
+                    // fired.
+                    nameFocused = false
+                    app.keyCountChosen(count, name: name, photo: photo)
+                }
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, Theme.footerBottom)
         }
         // The keyboard eats half a landscape phone and has no Done key of its
         // own on a plain text field. Tapping the screen is the escape.

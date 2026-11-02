@@ -2,10 +2,11 @@
 //  AppState.swift
 //  Kotek
 //
-//  The app-level state machine (PRD §13.4). Setup runs in four numbered steps —
-//  count the keys, frame the instrument, fit the mask, learn the instrument's
-//  voice (baseline) — and lands on the kotekan picker. Any state can
-//  return to .aligning via the persistent "realign" affordance.
+//  The app-level state machine (PRD §13.4). Adding a gangsa runs in three
+//  steps — count the keys, record each bilah, set up the strike controller —
+//  and lands on the kotekan picker. (It was four camera steps — count, frame,
+//  fit the mask, learn the voice — with a "realign" back to the mask from
+//  anywhere; the camera play mode went in November 2026.)
 //
 
 import AppIntents
@@ -142,226 +143,17 @@ final class AppState {
     // R session counts the beat in and the kajar keeps it, and nobody tuned
     // R them. Their defaults are now fixed on `PlayEngine`.
 
-    /// A sighting the microphone did not hear is discarded. See `DetectionMode`.
-    ///
-    /// PERSISTED, and it did not used to be — which made the detection mode
-    /// silently reset to "Camera and mic" on any calibrated instrument. It was a
-    /// plain stored property re-derived from `hasLearnedBaseline` in three
-    /// places, so a learned baseline (permanent, once captured) re-imposed the
-    /// microphone veto on every launch and every instrument switch, and nothing
-    /// chosen on the detection screen survived either.
-    ///
-    /// The distinction that was missing: a baseline makes the veto POSSIBLE, so
-    /// it is a sensible default the first time. It is not a decision, and it
-    /// must not overwrite one. Below, `hasLearnedBaseline` may still clamp this
-    /// OFF — an instrument with no baseline cannot veto on sound at all — but it
-    /// may never turn it back on.
-    ///
-    /// This mattered more than a stale toggle: both the marker path and the
-    /// vision self-trigger honour this flag, so every session spent testing
-    /// camera-only detection was quietly running with the microphone holding a
-    /// veto over it.
-    var requireStrikeSound: Bool = Defaults.bool("requireStrikeSound", false) {
-        didSet { Defaults.set("requireStrikeSound", requireStrikeSound) }
-    }
-
-    // MARK: - Detection tuning
-
-    //
-    // Owned here rather than by the test screen, because they ARE the detector's
-    // behaviour, not a debug view's local state. Tuning them somewhere the
-    // numbers are visible and then playing with different values would make the
-    // test screen actively misleading.
-    //
-    // Persisted, unlike the practice settings above: these are calibrated once
-    // against a particular model and instrument, and losing them on relaunch —
-    // the morning of an exhibition, say — would be silent and expensive.
-
-    /// Confidence vision must reach to name a bar. See DetectionTestView.
-    var visionThreshold: Double = Defaults.double("visionThreshold", 0.5) {
-        didSet { Defaults.set("visionThreshold", visionThreshold) }
-    }
-
-    /// How far the vision score must fall from its own peak before the same
-    /// bilah can register again.
-    ///
-    /// The double-note control, and the reason repeated strokes go missing in
-    /// camera-only mode. The classifier is a PRESENCE detector: it reports that
-    /// the mallet is over the bar, which stays true through the small bounce
-    /// between two strokes on one bilah. The score dips a little and the
-    /// Schmitt trigger never re-arms, so the second stroke is never seen.
-    ///
-    /// Lowering this is the only lever the classifier path has. It trades
-    /// against double-firing on a single stroke, so it cannot go far — which is
-    /// why the mode that pairs the camera with the microphone exists at all, and
-    /// why the marker path (which times an impact rather than a presence) does
-    /// not need this number.
-    var visionRelativeDip: Double = Defaults.double("visionRelativeDip", 0.12) {
-        didSet { Defaults.set("visionRelativeDip", visionRelativeDip) }
-    }
-
-    /// Whether the ear fires the trigger and vision only says WHICH bar.
-    ///
-    /// Correct for a presence model, which reports that the mallet is over a bar
-    /// and stays true while it lingers — so a rising edge in the vision score
-    /// fires once and then latches, losing every repeated note. An onset is
-    /// impulsive and has no such problem.
-    var audioTriggersStrikes: Bool = Defaults.bool("audioTriggers", true) {
-        didSet { Defaults.set("audioTriggers", audioTriggersStrikes) }
-    }
-
-    /// Whether a chosen kotekan plays in the top view — the camera looking down
-    /// on the real bilah — instead of the waterfall. Off by default: adding a
-    /// gangsa no longer frames or aligns the keys, so the camera overlay would
-    /// sit on the default layout rather than the instrument. Kept behind the
-    /// Settings "Deprecated" card for anyone who still realigns by hand.
-    var topView: Bool = Defaults.bool("topView", false) {
-        didSet { Defaults.set("topView", topView) }
-    }
-
-    /// The three ways the two sensors can be arranged, as one choice instead of
-    /// two booleans whose interaction nobody could predict from their names.
-    enum DetectionMode: String, CaseIterable, Identifiable {
-        case cameraOnly
-        case cameraAndMic
-        case heardOnly
-
-        var id: String {
-            rawValue
-        }
-
-        var title: String {
-            switch self {
-            case .cameraOnly: String(localized: "Camera")
-            case .cameraAndMic: String(localized: "Camera or mic")
-            case .heardOnly: String(localized: "Camera and mic")
-            }
-        }
-
-        var detail: String {
-            switch self {
-            case .cameraOnly:
-                String(localized: "Only the camera counts hits. Best in noisy rooms.")
-            case .cameraAndMic:
-                String(localized: "Either one can count a hit. Best for fast repeated hits.")
-            case .heardOnly:
-                String(localized: "Both must catch the hit. Use this if hits appear that you didn't play.")
-            }
-        }
-    }
-
-    var detectionMode: DetectionMode {
-        get {
-            if !audioTriggersStrikes { return .cameraOnly }
-            return requireStrikeSound ? .heardOnly : .cameraAndMic
-        }
-        set {
-            audioTriggersStrikes = newValue != .cameraOnly
-            requireStrikeSound = newValue == .heardOnly
-        }
-    }
-
-    /// Detect the mallet by its retroreflective marker instead of by the CNN.
-    var markerVision: Bool = Defaults.bool("markerVision", false) {
-        didSet { Defaults.set("markerVision", markerVision) }
-    }
-
-    /// Where the phone is looking from. Index into `MarkerPOV`.
-    var markerPOV: Int = Defaults.int("markerPOV", MarkerPOV.top.rawValue) {
-        didSet { Defaults.set("markerPOV", markerPOV) }
-    }
-
-    /// Front-view band geometry — the x extent the bilah span, a bulge term for
-    /// a phone set down off-axis, and which end key 0 is at.
-    var markerBandLeft: Double = Defaults.double("markerBandLeft", 0.05) {
-        didSet { Defaults.set("markerBandLeft", markerBandLeft) }
-    }
-
-    var markerBandRight: Double = Defaults.double("markerBandRight", 0.95) {
-        didSet { Defaults.set("markerBandRight", markerBandRight) }
-    }
-
-    var markerBandSkew: Double = Defaults.double("markerBandSkew", 0) {
-        didSet { Defaults.set("markerBandSkew", markerBandSkew) }
-    }
-
-    var markerBandFlip: Bool = Defaults.bool("markerBandFlip", false) {
-        didSet { Defaults.set("markerBandFlip", markerBandFlip) }
-    }
-
-    /// Ignore everything above this fraction of the frame.
-    var markerROITop: Double = Defaults.double("markerROITop", 0) {
-        didSet { Defaults.set("markerROITop", markerROITop) }
-    }
-
-    /// The marker vouches for the CLASSIFIER's sighting instead of replacing it.
-    var requireMarker: Bool = Defaults.bool("requireMarker", false) {
-        didSet { Defaults.set("requireMarker", requireMarker) }
-    }
-
-    /// How far outside a bilah the marker may sit and still vouch for it.
-    var markerGateMargin: Double = Defaults.double("markerGateMargin", 0.06) {
-        didSet { Defaults.set("markerGateMargin", markerGateMargin) }
-    }
-
-    /// Which colour tape is on the mallet. Index into `MarkerColour`.
-    var markerColour: Int = Defaults.int(
-        "markerColour",
-        MarkerColour.red.rawValue
-    ) {
-        didSet { Defaults.set("markerColour", markerColour) }
-    }
-
-    /// Brightness, 0–255, that a pixel's BRIGHTEST CHANNEL must reach to be marker.
-    var markerBrightness: Double = Defaults.double("markerBrightness", 235) {
-        didSet { Defaults.set("markerBrightness", markerBrightness) }
-    }
-
-    /// How far a coloured marker's channel must lead the other two.
-    var markerSaturationFloor: Double = Defaults.double(
-        "markerSaturationFloor",
-        60
-    ) {
-        didSet { Defaults.set("markerSaturationFloor", markerSaturationFloor) }
-    }
-
-    /// Stops below metered exposure while marker vision is on. Negative.
-    var markerExposureBias: Double = Defaults.double("markerExposureBias", -2.5) {
-        didSet { Defaults.set("markerExposureBias", markerExposureBias) }
-    }
-
-    /// Colour spread, 0–255, a bright pixel may have and still be marker.
-    var markerSaturation: Double = Defaults.double("markerSaturation", 70) {
-        didSet { Defaults.set("markerSaturation", markerSaturation) }
-    }
-
-    /// How far past the head marker the striking point sits.
-    var markerTipExtension: Double = Defaults.double("markerTipExtension", 0.35) {
-        didSet { Defaults.set("markerTipExtension", markerTipExtension) }
-    }
-
-    /// How fast the tip must be travelling before its turnaround counts as a strike.
-    var markerMinSpeed: Double = Defaults.double("markerMinSpeed", 0.004) {
-        didSet { Defaults.set("markerMinSpeed", markerMinSpeed) }
-    }
-
-    /// Index into the fill/centre/fit options.
-    var cropScaleMode: Int = Defaults.int("cropScaleMode", 1) {
-        didSet { Defaults.set("cropScaleMode", cropScaleMode) }
-    }
-
-    /// The phone is on a stand or arm rather than in someone's hand.
-    var fixedMount: Bool = false
-
-    /// Whether the gangsa's strike-sound baseline has been learned this session.
-    var baselineLearned: Bool = false
+    // R The detector's settings lived here — the strike-sound veto, vision
+    // R thresholds, the marker tracker's two dozen knobs, the camera mount, the
+    // R learned-baseline flag, and `topView`, which sent a chosen kotekan to
+    // R the camera overlay instead of the waterfall. All of it tuned the
+    // R camera play mode, which went in November 2026.
 
     // MARK: - Contextual Guides & Onboarding
 
     enum Guide: String, CaseIterable, Identifiable {
         case app
         case kotekan
-        case mekarBhuana
         case sensor
         case sensorCheck
 
@@ -383,19 +175,10 @@ final class AppState {
     var showingOnboarding = false
     var hasSeenOnboarding = Defaults.bool("hasSeenOnboarding", false)
 
-    var hasSeenPracticeCoach = Defaults.bool(
-        "hasSeenPracticeCoach",
-        false
-    )
-
-    // MARK: - Setup & Calibration Geometry
+    // MARK: - Adding a gangsa
 
     var isAddingNewInstrument = false
     var previousProfile: InstrumentProfile?
-
-    /// The area the player framed the instrument into (step 2/4), normalised.
-    var framedRegion = NormalizedRect(x: 0, y: 0.17, w: 1, h: 0.68)
-    var seedMasksFromFraming = false
 
     // MARK: - Strike controller (§3.6)
 
@@ -408,9 +191,6 @@ final class AppState {
     /// Opened straight onto the key check (Settings → "Check keys", or the
     /// re-check banner) instead of the scan.
     var controllerSetupRecheck = false
-    /// Set when a new gangsa's alignment is confirmed, spent when its setup
-    /// lands — see `finishSetup`.
-    var offerControllerAfterSetup = false
     /// Note capture opened as the step before the controller offer: "Skip"
     /// rather than "Back", and closing it moves on instead of to Settings.
     var noteCaptureIsSetup = false
@@ -457,10 +237,22 @@ final class AppState {
     var playMode: PlayMode = .solo
     /// Where Learn is, while it runs; nil otherwise.
     var learnStage: LearnStage?
-    /// The splash is up and drawing its own gangsa over the landing screen's.
-    /// The landing screen holds its copy still meanwhile — two animated
-    /// gangsa, one hidden, on the busiest seconds of launch.
+    /// Learn was just finished, into free play: Kipli says so as it opens.
+    /// Taken (set back) by the free play screen that reads it.
+    var justLearned = false
+    /// The splash is up and its gate has not started to open. Meanwhile the
+    /// landing screen holds its gangsa still — an animated gangsa nobody can
+    /// see, on the busiest seconds of launch — and draws itself as if from a
+    /// little way off (`WelcomeView.zoom`). Lifted inside the gate's opening
+    /// animation, so both start with it.
     var splashCovering = true
+    /// The splash's gate has finished opening, and the landing screen may
+    /// draw its own. Not before: while the camera walks up to the gate, the
+    /// landing screen's copy, inside a scaling view, was drawn stale — small,
+    /// stood still, inside the splash's opening — until the splash went.
+    /// Drawn from here on, it is drawn once, at rest, exactly under the
+    /// splash's final frame.
+    var splashGateOpen = false
 
     @ObservationIgnored let instrumentRemote = Container.shared
         .instrumentRemoteRepository()
@@ -477,18 +269,9 @@ final class AppState {
         Self.resetLocalDataIfStale()
         if let cached = KotekanStore.load(), !cached.isEmpty { kotekans = cached }
         let all = ProfileStore.loadAll()
-        MalletHitClassifier.applyCropScale(
-            mode: Defaults.int("cropScaleMode", 1)
-        )
         savedProfiles = all
         if let current = ProfileStore.loadSelected() {
             profile = current
-            baselineLearned = current.hasLearnedBaseline
-            if !Defaults.has("requireStrikeSound") {
-                requireStrikeSound = current.hasLearnedBaseline
-            } else if !current.hasLearnedBaseline {
-                requireStrikeSound = false
-            }
         } else {
             profile = ResourceLoader.defaultProfile()
         }
@@ -507,10 +290,10 @@ final class AppState {
 
     // MARK: - Screen Navigation
 
-    /// Same figure again, on whichever play screen `topView` picks — the
-    /// waterfall counts itself in, so it has no countdown route.
+    /// Same figure again. The waterfall counts itself in, so it has no
+    /// countdown route.
     func retry() {
-        screen = topView ? .countdown : .waterfall
+        screen = .waterfall
     }
 
     func backToKotekan() {
@@ -550,42 +333,6 @@ final class AppState {
         screen = .settings
     }
 
-    func openCalibration() {
-        screen = .calibrating
-    }
-
-    func calibrationFinished() {
-        screen = .chooseKotekan
-    }
-
-    func openBaseline() {
-        screen = .baseline
-    }
-
-    func openMalletTest() {
-        screen = .malletTest
-    }
-
-    func closeMalletTest() {
-        screen = .settings
-    }
-
-    func openDetectionTest() {
-        screen = .detectionTest
-    }
-
-    func openCaptureTraining() {
-        screen = .captureTraining
-    }
-
-    func closeCaptureTraining() {
-        screen = .settings
-    }
-
-    func closeDetectionTest() {
-        screen = .settings
-    }
-
     func openNoteCapture(setup: Bool = false, returnTo: Route = .settings) {
         noteCaptureIsSetup = setup
         noteCaptureReturn = returnTo
@@ -608,24 +355,11 @@ final class AppState {
         screen = .choosingKeyCount
     }
 
-    func openAudioTest() {
-        screen = .audioTest
-    }
-
-    func closeAudioTest() {
-        screen = .settings
-    }
-
     func openSensorTest() {
         screen = .sensorTest
     }
 
     func closeSensorTest() {
         screen = .settings
-    }
-
-    /// The persistent re-alignment affordance (§13.4).
-    func realign() {
-        screen = .aligning
     }
 }

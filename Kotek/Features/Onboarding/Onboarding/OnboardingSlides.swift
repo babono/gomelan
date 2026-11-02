@@ -63,7 +63,7 @@ struct TrackingSlide: View {
             artSide: .trailing,
             titleTop: "Precision",
             titleBottom: "Tracking",
-            lead: "Use your **camera** to get real-time feedback on your technique and timing."
+            lead: "Fit **sensors** under your bilah to get real-time feedback on your timing."
         ) {
             Image("precision-tracking")
                 .resizable()

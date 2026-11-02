@@ -33,30 +33,24 @@ struct KotekanCardView: View {
     var body: some View {
         let nearness: CGFloat = max(0, 1 - min(abs(CGFloat(offset)), 1.6) / 1.6)
 
+        // The centred card is the selected one: gold, edged, tumpal — see
+        // `pickerCard`. The rest fade with their distance from it, as the
+        // design system draws them pale; the face stays white.
         return content
+            .opacity(0.4 + 0.6 * nearness)
             .padding(16)
             .frame(width: Self.cardWidth, height: height, alignment: .topLeading)
-            .background(
-                Theme.deep.opacity(0.55 + 0.3 * nearness),
-                in: RoundedRectangle(cornerRadius: 20)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(
-                        Theme.buttonFill.opacity(nearness),
-                        lineWidth: 1 + nearness
-                    )
-            )
-            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 20))
+            .pickerCard(selected: abs(offset) < 0.5)
             .scaleEffect(1 - (1 - sideScale) * min(abs(CGFloat(offset)), 1))
-            .opacity(0.35 + 0.65 * nearness)
     }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(kotekan.name)
                 .font(.serif(26))
-                .foregroundStyle(Theme.cream)
+                // Clear of the tumpal.
+                .padding(.top, 6)
+                .foregroundStyle(Theme.heading)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
 
@@ -70,6 +64,7 @@ struct KotekanCardView: View {
                     AppIconButton(
                         systemImage: muted ? "speaker.slash.fill" : "speaker.wave.2.fill",
                         label: muted ? "Unmute the preview" : "Mute the preview",
+                        prominence: .quiet,
                         size: .compact
                     ) {
                         muted.toggle()
@@ -93,8 +88,8 @@ struct KotekanCardView: View {
             // shown when the caller has one to beat.
             Text(bestRecord.map { String(localized: "\(kotekan.bpm) BPM · best \(Theme.percentLabel($0.accuracy))") }
                 ?? String(localized: "\(kotekan.bpm) BPM"))
-                .font(.sans(13, weight: .semibold).monospacedDigit())
-                .foregroundStyle(Theme.terracotta)
+                .font(.sans(13, weight: .medium).monospacedDigit())
+                .foregroundStyle(Theme.description)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }

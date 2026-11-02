@@ -121,6 +121,21 @@ private struct WaterfallContentView: View {
                         .padding(.trailing, 24)
                         .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
                 }
+                // Kipli, guiding Learn and cheering free play: beside the
+                // gangsa's left end, in the margin the instrument leaves — or,
+                // where a long gangsa leaves none, standing on it. His bubble
+                // opens above him.
+                .overlay(alignment: .bottomLeading) {
+                    if let kipli = vm.kipli {
+                        let margin = (geo.size.width - layout.frameWidth) / 2
+                        // Inside the safe area: on a phone that is about
+                        // 67pt, for his 46.
+                        let beside = margin >= 40 * KipliFace.aspect + 20
+                        KipliGuide(message: kipli.line, style: .aside, mood: kipli.mood)
+                            .padding(.leading, 16)
+                            .padding(.bottom, beside ? 20 : gangsaHeight - sunk + layout.postRise + 10)
+                    }
+                }
             }
             // Down to the physical edge of the screen, so "sunk" is measured
             // from the glass and not from the home indicator's inset.
@@ -160,6 +175,8 @@ private struct WaterfallContentView: View {
         .onChange(of: vm.sensing) { _, on in vm.sensingChanged(on) }
         .onChange(of: vm.engine.loopIndex) { _, _ in vm.loopChanged() }
         .onChange(of: vm.engine.stepsDone) { _, _ in vm.stepsDone() }
+        .onChange(of: vm.engine.heldKey) { _, _ in vm.heldChanged() }
+        .onChange(of: vm.engine.floaters.last?.id) { _, _ in vm.floated() }
     }
 
     /// Listen plays the bars for you; Step lights them as you strike or tap
@@ -199,7 +216,8 @@ private struct WaterfallContentView: View {
                 AppSwitcher(
                     options: [KotekanHalf.polos, .sangsih],
                     selection: app.chosenHalf,
-                    title: \.title
+                    title: \.title,
+                    tint: { $0 == .polos ? Theme.polosVoice : Theme.sangsihVoice }
                 ) { app.setHalf($0) }
                     .fixedSize()
                 SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: vm.sensing)
@@ -317,7 +335,7 @@ private struct WaterfallContentView: View {
         if vm.voiceOn, vm.voice.state == .listening {
             Image(systemName: "mic.fill")
                 .font(.symbol(12))
-                .foregroundStyle(Theme.gold.opacity(0.8))
+                .foregroundStyle(Theme.goldText)
                 .accessibilityLabel("Listening for voice commands")
         }
     }
@@ -441,10 +459,10 @@ private struct SensorDot: View {
 
     var body: some View {
         let (colour, label): (Color, String) = switch status {
-        case .connected: (Theme.hit, String(localized: "Sensors connected"))
-        case .scanning, .connecting: (Theme.gold, String(localized: "Looking for sensors"))
-        case .locked: (Theme.gold, String(localized: "The controller needs its PIN"))
-        case .off, .unavailable: (Theme.miss, String(localized: "Sensors unavailable"))
+        case .connected: (Theme.ok, String(localized: "Sensors connected"))
+        case .scanning, .connecting: (Theme.pending, String(localized: "Looking for sensors"))
+        case .locked: (Theme.pending, String(localized: "The controller needs its PIN"))
+        case .off, .unavailable: (Theme.description, String(localized: "Sensors unavailable"))
         }
         HStack(spacing: 6) {
             Circle().fill(colour).frame(width: 8, height: 8)
@@ -482,7 +500,7 @@ struct SessionTitle: View {
     var body: some View {
         Text(text)
             .font(.sans(15, weight: .medium))
-            .foregroundStyle(Theme.copper)
+            .foregroundStyle(Theme.cream)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .contentTransition(.numericText())
@@ -490,7 +508,7 @@ struct SessionTitle: View {
     }
 }
 
-/// Over the stage while paused: Resume and Quit in glass, or the 3, 2, 1
+/// Over the stage while paused: Resume and Quit as buttons, or the 3, 2, 1
 /// after Resume. The waterfall stays visible behind, dimmed, so you can see
 /// where in the figure you will pick up. Coop pauses the same way.
 struct PauseStage: View {

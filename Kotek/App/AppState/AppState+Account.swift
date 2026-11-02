@@ -261,8 +261,6 @@ extension AppState {
         savedProfiles = []
         profile = ResourceLoader.defaultProfile()
         previousProfile = nil
-        baselineLearned = false
-        requireStrikeSound = false
         kotekans = Kotekan.bundled
         selectedKotekan = nil
         coop = nil

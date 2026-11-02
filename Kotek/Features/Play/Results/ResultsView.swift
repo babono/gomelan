@@ -13,6 +13,18 @@ struct ResultsView: View {
     @Environment(AppState.self) private var app
     @State private var overview = SessionOverviewModel()
 
+    /// Kipli's reaction to the session, from how much of it landed. The
+    /// overview below says what to work on; this is just how he feels.
+    /// Happy down to a good start; sad below it — with you, not at you.
+    private static func kipliSays(_ accuracy: Double) -> (LocalizedStringResource, KipliGuide.Mood) {
+        switch accuracy {
+        case 0.9...: ("Beautiful! That interlock is really holding.", .happy)
+        case 0.7...: ("Nice. One more run and it'll settle.", .happy)
+        case 0.4...: ("Good start. Try it a little slower.", .happy)
+        default: ("That one's tricky. Let's slow it down together.", .sad)
+        }
+    }
+
     var body: some View {
         if let result = app.lastResult {
             VStack(spacing: 0) {
@@ -40,6 +52,8 @@ struct ResultsView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         if result.best != nil {
                             ResultsHeadlineView(result: result)
+                            let says = Self.kipliSays(result.accuracy)
+                            KipliGuide(message: says.0, mood: says.1)
                         }
                         // The only part that can outgrow the column,
                         // expanded, so the only part that scrolls. Not after
@@ -87,7 +101,7 @@ struct ResultsView: View {
                 Spacer()
                 Text(result.subtitle)
                     .font(.sans(14, weight: .medium))
-                    .foregroundStyle(Theme.terracotta)
+                    .foregroundStyle(Theme.description)
             }
             .padding(.horizontal, 40)
             .padding(.vertical, 10)
@@ -119,7 +133,7 @@ struct ResultsView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Not enough to score")
                 .font(.serif(34))
-                .foregroundStyle(Theme.charcoal)
+                .foregroundStyle(Theme.heading)
             Text(
                 "The pattern has to come round at least once. Give it a full pass of the gong cycle and the score has something to measure."
             )

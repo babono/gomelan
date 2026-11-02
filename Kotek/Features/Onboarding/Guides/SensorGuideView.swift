@@ -30,13 +30,14 @@ struct SensorGuideView: View {
     /// Room under the gangsa for the sample sensor and the caption.
     private static let captionHeight: CGFloat = 96
 
-    // The mockup's own colours. Bronze lighter at the top, as lit from above.
-    private static let keyLight = Color(hex: 0xC09354)
-    private static let keyShade = Color(hex: 0x8E682F)
-    private static let outline = Color(hex: 0x2B211C)
-    private static let post = Color(hex: 0x5A2E1B)
-    private static let rail = Color(hex: 0x7E4127)
-    private static let cord = Color(hex: 0x8D3021)
+    // The redesign's gangsa: gold bilah, lighter at the top as lit from
+    // above, on an orange frame. They were the brown mockup's bronze on teak.
+    private static let keyLight = Color(hex: 0xE7B142)
+    private static let keyShade = Color(hex: 0xC9932E)
+    private static let outline = Color(hex: 0x2F2F2F)
+    private static let post = Color(hex: 0xB9541F)
+    private static let rail = Color(hex: 0xDF6D2F)
+    private static let cord = Color(hex: 0x96561A)
     private static let sensorRing = Color(hex: 0xBE8B1C)
     private static let sensorFace = Color(hex: 0xCCCCCC)
 

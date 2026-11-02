@@ -41,15 +41,12 @@ struct ProfileSetupView: View {
                     AvatarView(avatar: avatar, size: 120)
 
                     VStack(alignment: .leading, spacing: 7) {
-                        Text("Your name")
-                            .font(.sans(13, weight: .medium))
-                            .textCase(.uppercase)
-                            .tracking(1.5)
-                            .foregroundStyle(Theme.stone)
+                        SectionLabel("Your name")
 
                         TextField("Name", text: $name)
                             .textFieldStyle(.plain)
-                            .font(.serif(24))
+                            // Body type, as the redesign draws a field.
+                            .font(.sans(17))
                             .foregroundStyle(Theme.cream)
                             .focused($nameFocused)
                             .submitLabel(.done)
@@ -58,11 +55,11 @@ struct ProfileSetupView: View {
                             .padding(.horizontal, 14)
                             .padding(.vertical, 11)
                             .frame(maxWidth: 300, alignment: .leading)
-                            .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.radius))
+                            .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
                             .overlay(
                                 RoundedRectangle(cornerRadius: Theme.radius)
                                     .strokeBorder(
-                                        nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
+                                        nameFocused ? Theme.gold : Theme.hairline,
                                         lineWidth: nameFocused ? 2 : 1
                                     )
                             )
@@ -137,7 +134,7 @@ struct ProfileSetupView: View {
         } label: {
             AvatarView(avatar: option, size: 64)
                 .overlay(
-                    Circle().strokeBorder(Theme.buttonFill, lineWidth: option == avatar ? 3 : 0)
+                    Circle().strokeBorder(Theme.gold, lineWidth: option == avatar ? 3 : 0)
                         .padding(-4)
                 )
                 .opacity(option == avatar ? 1 : 0.8)

@@ -21,6 +21,7 @@ extension AppState {
         guard let stage = learnStage, let id = selectedKotekan?.id else { return }
         guard let next = stage.next else {
             LearnProgress.finished(id)
+            justLearned = true
             leaveLearn(to: .waterfall)
             return
         }

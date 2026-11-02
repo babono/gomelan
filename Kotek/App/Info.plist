@@ -9,8 +9,6 @@
 	     terminates the process at the permission prompt rather than denying
 	     it, and App Store review rejects the build. Worded for the person
 	     being asked, not for us. -->
-	<key>NSCameraUsageDescription</key>
-	<string>Kotek watches your gangsa to see which keys you strike, so it can show you where you are in the kotekan.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing, and for voice commands like “slower” or “pause” while your hands are busy.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
@@ -40,7 +38,7 @@
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
-		<string>LaunchBackground</string>
+		<string>Putih</string>
 	</dict>
 
 	<key>UIAppFonts</key>

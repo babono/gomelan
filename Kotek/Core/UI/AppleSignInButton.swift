@@ -52,11 +52,13 @@ struct AppleSignInButton: View {
                 onError(error)
             }
         }
-        .signInWithAppleButtonStyle(.white)
+        // Black, in a capsule, as the design system draws it. It was white,
+        // which vanished on the white cards the redesign put it on.
+        .signInWithAppleButtonStyle(.black)
         // Apple's label scales with the button's height, so the width
         // follows it to keep the proportions.
         .frame(width: size.height * (signIn ? 4.6 : 5.4), height: size.height)
-        .clipShape(RoundedRectangle(cornerRadius: size == .large ? Theme.radius : size.height / 2))
+        .clipShape(Capsule())
     }
 
     private static func randomNonce() -> String {

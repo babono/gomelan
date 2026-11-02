@@ -23,7 +23,7 @@ struct AccountSectionView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(app.playerName ?? String(localized: "No name yet"))
                             .font(.serif(22))
-                            .foregroundStyle(Theme.cream)
+                            .foregroundStyle(Theme.heading)
                         Label("Signed in with Apple", systemImage: "apple.logo")
                             .font(.sans(13))
                             .foregroundStyle(Theme.cream.opacity(0.62))

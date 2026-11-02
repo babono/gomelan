@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// Shared custom page indicator dots styled to the Kotek theme.
-/// Used by OnboardingView and GuideSlides.
+/// Used by OnboardingView.
 struct AppPageDots: View {
     let count: Int
     @Binding var index: Int

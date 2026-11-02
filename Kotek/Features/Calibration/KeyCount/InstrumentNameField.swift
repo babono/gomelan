@@ -14,30 +14,25 @@ struct InstrumentNameField: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            Text("Name")
-                .font(.sans(13, weight: .medium))
-                .textCase(.uppercase)
-                .tracking(1.5)
-                .foregroundStyle(Theme.stone)
+            SectionLabel("Name")
 
             TextField("Gangsa", text: $name)
                 .textFieldStyle(.plain)
-                .font(.serif(24))
-                .foregroundStyle(Theme.charcoal)
+                // Body type, as the redesign draws a field; it was the
+                // display face, which made the field read as a heading.
+                .font(.sans(17))
+                .foregroundStyle(Theme.cream)
                 .focused(isFocused)
                 .submitLabel(.done)
                 .autocorrectionDisabled()
                 .padding(.horizontal, 14)
                 .padding(.vertical, 11)
                 .frame(maxWidth: 340, alignment: .leading)
-                .background(
-                    Theme.deep.opacity(0.6),
-                    in: RoundedRectangle(cornerRadius: Theme.radius)
-                )
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.radius)
                         .strokeBorder(
-                            isFocused.wrappedValue ? Theme.buttonFill : Theme.charcoal.opacity(0.15),
+                            isFocused.wrappedValue ? Theme.gold : Theme.hairline,
                             lineWidth: isFocused.wrappedValue ? 2 : 1
                         )
                 )

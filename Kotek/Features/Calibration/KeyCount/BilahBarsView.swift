@@ -18,13 +18,10 @@ struct BilahBarsView: View {
         HStack(alignment: .bottom, spacing: 5) {
             ForEach(0 ..< count, id: \.self) { i in
                 let t = count > 1 ? Double(i) / Double(count - 1) : 0
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Theme.charcoal.opacity(0.18))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 2)
-                            .strokeBorder(Theme.charcoal.opacity(0.3), lineWidth: 1)
-                    )
-                    .frame(width: 14, height: height * (1.0 - 0.55 * t))
+                // Gold, the redesign's colour for the bilah themselves.
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Theme.secondary)
+                    .frame(width: 18, height: height * (1.0 - 0.3 * t))
             }
         }
         .animation(.snappy(duration: 0.2), value: count)

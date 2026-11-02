@@ -95,8 +95,24 @@
                 previousRecord = 0.74
                 lastSetRecord = true
                 screen = .results
+            case "setup-1":
+                // Adding a gangsa, from its first step.
+                addNewInstrument()
+            case "setup-2":
+                addNewInstrument()
+                openNoteCapture(setup: true)
+            case "setup-3":
+                addNewInstrument()
+                openControllerSetup(returnTo: .chooseKotekan, offer: true)
+            case "instruments-empty":
+                // The first-run picker: no gangsa yet.
+                savedProfiles = []
+                screen = .chooseInstrument
             default:
-                break
+                // Any other screen by its route name (`-screenshot settings`),
+                // with the sample gangsa above behind it — for checking a
+                // screen's look without tapping through to it.
+                if let route = Route(rawValue: scene) { screen = route }
             }
         }
 

@@ -46,11 +46,11 @@ struct InstrumentCardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(profile.name)
                         .font(.serif(22))
-                        .foregroundStyle(Theme.cream)
+                        .foregroundStyle(Theme.heading)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
 
-                    Text("\(profile.keyCount) keys · \(lastPlayedText)")
+                    Text("\(profile.keyCount) bilah · \(lastPlayedText)")
                         .font(.sans(13, weight: .medium))
                         .foregroundStyle(Theme.description)
                         .lineLimit(1)
@@ -69,18 +69,18 @@ struct InstrumentCardView: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .frame(width: Self.width, height: height, alignment: .topLeading)
-            .background(Theme.deep)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 20))
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(
-                        isCurrent ? Theme.buttonFill : Theme.cream.opacity(0.10),
-                        lineWidth: isCurrent ? 2 : 1
-                    )
-            )
+            // The design system's card: the gangsa on a wash of gold above
+            // (Krem on a card that is not yours), the name on white below.
+            // It was a charcoal band under a beige photo for one pass.
+            .background(alignment: .top) {
+                (isCurrent ? Theme.gold.mix(with: .white, by: 0.72) : Theme.deep)
+                    .frame(height: photoHeight)
+            }
+            .opacity(isCurrent ? 1 : 0.55)
+            .pickerCard(selected: isCurrent, tumpal: .large)
         }
         .buttonStyle(.appPlain)
         .accessibilityLabel(accessibilityLabel)
@@ -96,13 +96,17 @@ struct InstrumentCardView: View {
                 .resizable()
                 .scaledToFill()
         } else {
-            ZStack {
-                Theme.cream.opacity(0.06)
-                Image(systemName: "photo")
-                    .font(.symbol(26, weight: .regular))
-                    .foregroundStyle(Theme.cream.opacity(0.3))
-            }
-            .accessibilityHidden(true)
+            // No photo: the gangsa itself, still, whole down to its feet,
+            // with this one's bilah. As wide as the card allows, unless the
+            // photo's band is too short for that — then as tall as it allows.
+            let width = min(
+                Self.width * 0.7,
+                (photoHeight - 24) * Self.width / GangsaTable.height(for: Self.width, full: true)
+            )
+            GangsaTable(keyCount: profile.keyCount, animated: false, full: true)
+                .frame(width: width, height: GangsaTable.height(for: width, full: true))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityHidden(true)
         }
     }
 
@@ -126,7 +130,7 @@ struct InstrumentCardView: View {
                 .font(.symbol(12, weight: .semibold))
         }
         .labelStyle(.titleAndIcon)
-        .foregroundStyle(done ? Theme.buttonFill : Theme.cream.opacity(0.4))
+        .foregroundStyle(done ? Theme.cream : Theme.description.opacity(0.7))
         .lineLimit(1)
     }
 

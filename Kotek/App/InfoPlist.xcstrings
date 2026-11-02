@@ -45,24 +45,6 @@
         }
       }
     },
-    "NSCameraUsageDescription" : {
-      "comment" : "Privacy - Camera Usage Description",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Kotek watches your gangsa to see which keys you strike, so it can show you where you are in the kotekan."
-          }
-        },
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kotek melihat gangsamu untuk tahu bilah mana yang kamu pukul, supaya bisa menunjukkan posisimu di kotekan."
-          }
-        }
-      }
-    },
     "NSMicrophoneUsageDescription" : {
       "comment" : "Privacy - Microphone Usage Description",
       "extractionState" : "extracted_with_value",

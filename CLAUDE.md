@@ -1,8 +1,13 @@
 # Gomelan
 
-An iPhone app that turns a real Balinese *gangsa* into a guided practice surface. The phone
-sits on a stand above the instrument looking down: the camera sees which bilah you strike,
-the microphone hears when, and an overlay on the live feed says what to play next.
+An iPhone app that turns a real Balinese *gangsa* into a guided practice surface. Notes fall
+onto a drawn gangsa (the waterfall) and say what to play next; a strike controller — a sensor
+under each bilah — reports which bilah you struck and when, and that is what is scored.
+
+It started as a camera app: the phone on a stand above the instrument, vision naming the
+bilah and the microphone timing it, an overlay on the live feed. That camera play mode — its
+setup screens, its tests, the vision pipeline and its Core ML models — was taken out in
+November 2026. Comments that mention it are history; there is no camera in the app.
 
 Product name is **Gomelan**; the Xcode target, folder and bundle name are **`Kotek`**.
 (Some older references in the repo use `gomelan` as the target name — that rename is done.)
@@ -86,21 +91,21 @@ extracts them but does not write the catalog. `scripts/check-strings.sh` (run by
 - **MVVM Pattern**: Clean separation of concerns with SwiftUI + Observation (`@Observable`):
   - **Model (`Kotek/Core/Models/`)**: Pure domain models (`Song`, `Kotekan`, `InstrumentProfile`, `Judgement`), global state machine (`AppState`), and persistence (`ProfileStore`). Independent of any UI framework.
   - **View (`Kotek/Features/*/`, `Kotek/App/RootView.swift`)**: Declarative SwiftUI views responsible solely for presentation, layout, visual feedback, and user interactions. Views stay thin and bind directly to observable models (`@Environment(AppState.self)`) or feature ViewModels.
-  - **ViewModel (`Kotek/Features/*/`)**: Feature-scoped presentation state coordinators (e.g. `PlayEngine.swift` acting as the ViewModel/engine for `PlayView`). Co-located with their features—never in `Core/`. Per Ponytail, trivial views bind directly to `@Observable` models; ViewModels are created only when complex presentation state, high-frequency frame drivers (CADisplayLink), or multi-service orchestration requires one.
-  - **Services (`Kotek/Core/Audio/`, `Kotek/Core/Vision/`)**: Headless hardware, audio, and vision infrastructure services (`CameraController`, `AudioEngineController`, `AudioSessionManager`, `CuePlayer`, `StrikeFusion`). Manage capture sessions, mic taps, FFT/DSP pipelines, CoreML inference, and multi-modal fusion off the UI thread; injected from `RootView`.
+  - **ViewModel (`Kotek/Features/*/`)**: Feature-scoped presentation state coordinators (e.g. `PlayEngine.swift` acting as the engine for `WaterfallPlayView`). Co-located with their features—never in `Core/`. Per Ponytail, trivial views bind directly to `@Observable` models; ViewModels are created only when complex presentation state, high-frequency frame drivers (CADisplayLink), or multi-service orchestration requires one.
+  - **Services (`Kotek/Core/Audio/`, `Kotek/Core/Sensor/`)**: Headless hardware and audio infrastructure services (`AudioEngineController`, `AudioSessionManager`, `CuePlayer`, `GangsaSensor`). Manage the strike controller's Bluetooth link, mic taps and FFT/DSP pipelines off the UI thread; injected from `RootView`.
 - **Scope & Placement (Core vs. Features)**:
   - **`Core/` is strictly for shared types**: Classes, structs, enums, domain models, headless services, and UI styling in `Kotek/Core/` must be genuinely shared across multiple screens or features.
-  - **Single-view types belong in `Features/`**: If a class, struct, enum, ViewModel, or helper is used by only one view or feature (e.g. `KeyRenderState`, `CycleNote`, `Floater`, `CoachStep` in `Features/Play/`), keep it strictly within that feature module. Never pollute `Core/` with single-use types or premature abstractions.
+  - **Single-view types belong in `Features/`**: If a class, struct, enum, ViewModel, or helper is used by only one view or feature (e.g. `KeyRenderState`, `CycleNote`, `Floater` in `Features/Play/`), keep it strictly within that feature module. Never pollute `Core/` with single-use types or premature abstractions.
 - **DRY Principle (Don't Repeat Yourself)**:
-  - Single source of truth for app state (`AppState`), camera session lifecycle (`RootView` / `CameraController`), and audio routing (`AudioSessionManager`).
+  - Single source of truth for app state (`AppState`), the strike controller's connection (`RootView` / `GangsaSensor`), and audio routing (`AudioSessionManager`).
   - Shared design tokens, styles, and controls live in `Kotek/Core/UI/` (`Theme.swift`, `Components.swift`, `PatternBackground.swift`) to eliminate visual and behavioral redundancy.
-  - Core DSP algorithms (`Kotek/Core/Audio/DSP/`) and vision models/heuristics (`Kotek/Core/Vision/`) are shared, centralized services — never re-implemented inside feature screens.
+  - Core DSP algorithms (`Kotek/Core/Audio/DSP/`) are shared, centralized services — never re-implemented inside feature screens.
 - **SOLID Principles**:
-  - **Single Responsibility**: Each class, actor, and view has a single well-defined job. E.g., `FFTProcessor` only computes FFT magnitudes; `OnsetDetector` identifies spectral flux peaks; `StrikeFusion` actor reconciles multi-modal detection off the UI thread; Views only describe UI.
-  - **Open/Closed**: Open for extension without modifying core logic. Instrument tuning is profile-driven (`InstrumentProfile`), kotekan figures are data-driven, and new feature views can be added without altering audio/vision engines.
+  - **Single Responsibility**: Each class, actor, and view has a single well-defined job. E.g., `FFTProcessor` only computes FFT magnitudes; `OnsetDetector` identifies spectral flux peaks; `NoteClipCapture` records one bilah's sound; Views only describe UI.
+  - **Open/Closed**: Open for extension without modifying core logic. Instrument tuning is profile-driven (`InstrumentProfile`), kotekan figures are data-driven, and new feature views can be added without altering the audio engine.
   - **Liskov Substitution**: Protocols and polymorphic types remain strictly substitutable and honor their contracts across asynchronous and actor boundaries.
-  - **Interface Segregation**: Lean, cohesive interfaces (e.g. separate playback vs. capture session vs. DSP analysis; no bloated "god" objects).
-  - **Dependency Inversion**: Feature views depend on injected controllers and services (`camera`, `audio`, `cue`, `@Environment(AppState.self)`) passed down from `RootView`, rather than hardcoded global singletons.
+  - **Interface Segregation**: Lean, cohesive interfaces (e.g. separate playback vs. sensor link vs. DSP analysis; no bloated "god" objects).
+  - **Dependency Inversion**: Feature views depend on injected controllers and services (`audio`, `cue`, `sensor`, `@Environment(AppState.self)`) passed down from `RootView`, rather than hardcoded global singletons.
 - **Ponytail Philosophy (Pragmatic Senior Dev / YAGNI)**:
   - Build the minimum that works cleanly. Before adding code: does it need to exist at all? Does the standard library or SwiftUI native feature do it? Can it be one line?
   - No unrequested abstractions, no ceremonial protocols with only one implementation, no boilerplate ViewModels for trivial views.
@@ -109,18 +114,21 @@ extracts them but does not write the catalog. `scripts/check-strings.sh` (run by
 
 ## Architecture
 
-The central split: **vision answers *which key*, audio answers *when*.** The camera knows
-where each bilah is, so it identifies keys by location and never has to tell two pitches
-apart. Sound supplies timing and confirms a strike was real. `KeyDecomposer` is the one
-place audio identifies a key — as a second opinion where vision is occluded, and it never
-overrides vision.
+The strike controller answers both questions — **which key, and when**: each sensor sits under
+one bilah (`InstrumentKey.sensorInput`), so a strike arrives already named and timed, and
+`PlayEngine` judges it against the pattern. A key without a sensor is never heard, so its notes
+count as missed. (The camera
+era's split — vision for *which key*, audio for *when*, `StrikeFusion` reconciling them — went
+with the camera. The audio key-identification it leaned on, `KeyDecomposer` and the
+strike-sound baseline in `AudioEngineController`, has no caller left.) The microphone's job
+now is recording each bilah's own sound (`NoteClipCapture`) and voice commands.
 
 The codebase is organized into four main directories:
 
 ```
 Kotek/
 ├── App/          # Application entry point, window management, and root container
-├── Core/         # Shared domain models, audio DSP/playback, vision pipeline, and UI styling (strictly shared types)
+├── Core/         # Shared domain models, audio DSP/playback, the strike controller, and UI styling (strictly shared types)
 ├── Features/     # Feature-oriented UI modules (Views, feature logic, local engines, and single-view types)
 └── Resources/    # Static assets: images, audio samples, fonts, and lottie animations
 ```
@@ -128,7 +136,7 @@ Kotek/
 ### `Kotek/App/` — application lifecycle and root container
 
 - `KotekApp.swift` — `@main` application struct, initializes audio session for playback at launch, and configures landscape-locked `AppDelegate`.
-- `RootView.swift` — hosts the `AppState` state machine, owns shared services (`camera`, `audio`, `cue`, `preloader`), renders the persistent continuous `PatternBackground`, manages overlays (`GuideView`, `OnboardingView`, `SplashView`), and tears down the camera when leaving camera screens.
+- `RootView.swift` — hosts the `AppState` state machine, owns shared services (`audio`, `cue`, `preloader`), renders the persistent `PatternBackground`, manages overlays (`GuideView`, `OnboardingView`, `SplashView`), and points the strike controller at the active gangsa.
 - `Info.plist`, `Kotek.entitlements`, `PrivacyInfo.xcprivacy`.
 
 ### `Kotek/Core/Models/` — domain models, state, and persistence
@@ -137,12 +145,12 @@ Kotek/
 |---|---|
 | `AppState.swift` | The app state machine (`AppState.Screen`), profile selection, kotekan session configuration, practice parameters, and result tracking. |
 | `Kotekan.swift` | The domain core. Two 16-slot grids (*polos* on the beat, *sangsih* off it) over one gong cycle; `makeSong` renders the chosen half over N cycles. |
-| `InstrumentProfile.swift` | Per-instrument key rects, pitches, strike baseline, and geometry. |
+| `InstrumentProfile.swift` | Per-instrument keys: sensor inputs, recorded sounds, pitches. (Key rects and the strike baseline are still stored — old profiles round-trip — but nothing reads them since the camera went.) |
 | `Song.swift`, `Judgement.swift` | Note sequence; timing windows and strike evaluation logic. |
 | `ProfileStore.swift` | snake_case JSON persistence in Documents, round-tripping with the bundled profile format. |
 | `ResourceLoader.swift` | Bundled profile and songs loader with embedded fallback strings. |
-| `Preloader.swift` | Launch-time warming behind the splash: camera graph, 13 WAV decodes, CoreML compile. What is *not* preloaded (audio engine, `startRunning()`) is deliberate. |
-| `Defaults.swift` | UserDefaults storage for detection tuning. |
+| `Preloader.swift` | Launch-time warming behind the splash: 13 WAV decodes. What is *not* preloaded (the audio engine) is deliberate. |
+| `Defaults.swift` | UserDefaults storage for settings. |
 
 ### `Kotek/Core/Audio/` — DSP, playback, and session
 
@@ -156,7 +164,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
   - `FFTProcessor.swift` — vDSP FFT matching numpy `rfft` bin-for-bin for validation against the Python reference.
   - `Fingerprinter.swift` — 120-element spectral shape vector, L2-normalised so hit dynamics don't skew identification. Bronze is inharmonic (partials ≈ 1, 2.76, 5.42, 8.91×).
   - `KeyClassifier.swift` — cosine match, 1-of-N.
-  - `KeyDecomposer.swift` + `NNLS.swift` — polyphonic counterpart solving ringing bronze superposition; self-calibrating from confident vision strikes.
+  - `KeyDecomposer.swift` + `NNLS.swift` — polyphonic counterpart solving ringing bronze superposition; it calibrated itself from confident vision strikes, and has had no caller since the camera went.
   - `SpectralFlux.swift` — half-wave rectified spectral flux (energy increases only) preventing sustained notes from re-triggering.
   - `OnsetDetector.swift` — dynamic threshold peak detector with noise-floor tracking.
   - `SampleRing.swift` — lock-free ring buffer holding audio history.
@@ -169,62 +177,48 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
 - **`Session/`**:
   - `AudioSessionManager.swift` — hardware session configuration (`.measurement` mode disables AGC and echo cancellation).
 
-### `Kotek/Core/Vision/` — camera capture, detection, and fusion
-
-- `CameraController.swift` / `CameraPreview.swift` — **one** shared capture session and preview layer re-parented across screens (avoids main-thread stalls).
-- `FrameBuffer.swift` — rolling frame history keyed by host time for 105 ms lookback.
-- `BilahFinder.swift` — fits a periodic comb of N teeth (pitch + phase) instead of detecting N independent bars; robust against lighting and key color.
-- `KeyDetector.swift`, `ProjectionAligner.swift` — alternative localisers.
-- `MalletHitClassifier.swift` — runs `MalletDetector.mlmodel` on cropped key regions.
-- `VisionStrikeDetector.swift` — per-key Schmitt trigger; primary trigger immune to acoustic noise.
-- `StrikeFusion.swift` — an `actor` reconciling vision scores with audio timing off the display link.
-- `MarkerTracker.swift`, `MarkerFusion.swift` — marker-based tracking alternatives.
-- CoreML models: `MalletDetector.mlmodel` (and V1/V3/V4), `BilahDetector.mlmodel`.
-
 ### `Kotek/Core/UI/` — design system and shared visual components
 
-- `Theme.swift` — unified warm-brown palette (`Theme.ground`), corner radiuses, typography, and button metrics.
-- `Buttons/` — every control, one type per file: `AppButton` (labelled), `AppIconButton` (one symbol), `AppSwitcher`, `AppMenuPicker`, `AppStepper`, plus `AppButtonSize` (the one size/type scale) and `AppControlSurface` (the glass, drawn with `glassEffect` — the system `.glass` style ignores `.tint` and sizes circles from the glyph — ground-tinted, gold for the primary) and `AppButtonStyle` (just the kajar tick). One `AppButtonSize` per bar (footers/headers `.regular`, strips over the camera `.compact`, `.large` only for a lone hero button). `AppSwitcher` has two looks: `.toggle` (one pill, a sliding thumb) on the play screens and `.pills` on Create; selecting never changes the font. The Create tool rail uses the same `AppThumb`. Use `.appPlain` for what you tap that is not a control (cards, grid cells).
+- `Theme.swift` — the palette is **Nawa Sanga** (the designer's design system, Nov 2026), each colour an asset named in Balinese: `Merah` #E14B2F (`primary`: the one way on per screen, and polos), `Kuning` #F5B331 (`secondary`/`gold`: reward, a hit, what is selected — a fill, never type; gold words use `goldText`), `Ireng` #1E2435 (`tertiary`: text, headings, the selected chip, damp), `Putih` #FBF6EE (the canvas), `SangsihBlue`, `Pandan` (`ok`: sensor on, switches), `Kayu` (bilah tiles), `MerahTua` (the primary's tactile edge, `destructive`, misses), `Krem` (`deep`: quiet surfaces), `Garis` (`hairline`: outlines, the secondary's edge), plus `Surface` white for raised things. Old token names (`cream` = body text, `copper` = gold, …) are kept and repointed. Also corner radiuses, typography (Katibeh headings, SF Pro Rounded body), button metrics.
+- `Buttons/` — every control, one type per file: `AppButton` (labelled), `AppIconButton` (one symbol), `AppSwitcher`, `AppMenuPicker`, `AppStepper`, plus `AppButtonSize` (the one size/type scale) and `AppControlSurface` (the surface: SOLID and TACTILE, no Liquid Glass, so the design builds on Android too). Four prominences: `.primary` Merah on a Merah tua edge (one per screen), `.secondary` white outlined and edged in Garis, `.quiet` flat Krem (stepper ±, a tool that is off), `.selected` flat Ireng (the chip/tool that is on). An edged control sinks onto its base while pressed — `AppButtonStyle` passes the press down as `controlPressed`; `.tactile(...)` is the same face-on-a-base look for anything else. A circle is `size.height` square whatever glyph it holds. One `AppButtonSize` per bar (footers/headers `.regular`, strips over the camera `.compact`, `.large` only for a lone hero button). `AppSwitcher` has two looks: `.toggle` (a white thumb on a Krem track) and `.pills` (chips, the chosen one `.selected`). Switches are drawn by `AppToggleStyle` (Pandan on, Garis off). Use `.appPlain` for what you tap that is not a control (cards, grid cells).
 - `Components.swift` — toggle style, top bar, dialogs, and typography helpers.
-- `PatternBackground.swift` — single animated canvas providing continuous background drift across view transitions.
+- `KipliGuide.swift` — Kipli the mascot as the app's guide: face + the outlined speech bubble (white, ringed in Ireng, on a Garis edge), `.hint` (bottom-left, the default), `.intro` (empty states), `.quiet` (a small face; the bubble opens at his right, over the layout, and closes itself — the kotekan picker, under its header), `.aside` (the same, bubble above — the waterfall's corner, beside the gangsa, in Learn and free play), `.drop` (bubble below — Learn's Watch header). Moods happy / sad / angry (`KipliFace`), his mouth working while the words type out; sad in the delete, sign-out and switch-account dialogs (`confirm(kipli:)`) and on a low score. What he says on the waterfall, and when, is `WaterfallPlayViewModel.kipli` (see its MARK: Kipli). The words type themselves out (`Typewriter`, a `TextRenderer` drawing a glyph at a time, so the bubble never resizes). Screens explain through him, in his voice. The face is the one place an animated Kipli will plug in.
+- `SetupHeader.swift` — "Step N of 3" header for adding a gangsa (key count → note capture → sensors); bars fill Merah up to the current step.
+- `PickerCard.swift` — `.pickerCard(selected:)`, the gangsa and kotekan rails' card: white; selected is ringed in gold on a deeper gold edge with tumpal triangles along the top, clipped by its corners (only the selected card wears them; a big red tooth inside each on a gangsa card, a fleck on a kotekan card).
+- `LaunchLayout.swift` — the redesign's unit: mockups are 1x on 874 x 402, scaled by height.
+- `PatternBackground.swift` — the ground: cream, with the launch gate's silhouette (`pura-gate` in beige) reaching in from each side. Still — the redesign has no ambient motion.
 
 ### `Kotek/Features/` — feature-oriented UI modules
 
 - **`Calibration/`**:
-  - `KeyCountView.swift` — step 1/4: select instrument key count.
-  - `FramingView.swift` — step 2/4: live preview framing guide.
-  - `AligningView.swift` — step 3/4: drag and resize key rectangles over real bilah.
-  - `CalibrationView.swift` — step 4/4: acoustic baseline learning (voice profile).
-- **`Detection/`** (Diagnostics & Training):
-  - `AudioTestView.swift` — onset gate and acoustic noise floor test.
-  - `MalletTestView.swift` — raw per-frame vision hit probabilities.
-  - `DetectionTestView.swift` — real-time fused vision + audio pipeline test.
-  - `CaptureTrainingView.swift` / `TrainingCapture.swift` — harvest labelled crops through the inference path.
+  - `KeyCountView.swift` — adding a gangsa, step 1/3: name, photo, bilah count.
+- **`Detection/`**:
+  - `Capture/NoteCaptureView.swift` — adding a gangsa, step 2/3: record each bilah's own sound.
+  - `Sensor/SensorPlayView.swift` — Debug: the strike controller's raw strikes against a pattern.
+- **`Controller/`**: `ControllerSetupView` — adding a gangsa, step 3/3: pair the strike controller and check each key's sensor.
 - **`Create/`**: the piano-roll composer. Its tools (colotomic instruments, eraser) are named chips in the top row beside the Polos / Sangsih pills; snap and the typed BPM sit in the bottom transport.
 - **`Onboarding/`**:
-  - `WelcomeView.swift` — landing screen and flow entry.
-  - `PermissionsView.swift` — camera and microphone authorization.
-  - `SplashView.swift` — launch animation masking preloader warm-up.
+  - `WelcomeView.swift` — landing screen and flow entry. `Penjor.swift` — the bamboo pole arching in from each gate post (`janur-pole`) with its sampian (`janur-hang`) swinging from the tip; laid out at the landing's camera, so the gate reveals it. Easter egg: `HangTilt` (Core Motion gravity, no permission) keeps each sampian hanging towards the real ground as the device tilts, and a sideways jolt swings it.
+  - `SplashView.swift` — launch animation masking preloader warm-up: Kipli chomping (`KipliMascot`) before the turning nawa sanga rose (`nawasanga`; Core Animation while loading, SwiftUI from the pan, on one clock), a camera pan past it over a strip of bare paper down to a distant split gate (`PuraGate`), and a walk up to it as it opens on the landing screen.
   - `OnboardingView.swift` — introduction carousel with Lottie animations.
   - `GuideView.swift` — contextual help cards.
 - **`Play/`** (The Core Practice Loop):
   - `ChooseKotekanView.swift` — select kotekan figure.
-  - `PlayView.swift` — live camera feed + overlay, scoring, tempo controls, and voice muting.
+  - `Waterfall/WaterfallPlayView.swift` — notes falling onto the drawn gangsa; scored from the strike controller. `WaterfallCanvas` draws each note as the designer's pills: a short stroke pill in the voice colour, a cream stem as long as the note, and a grey damp pill where it ends; all land on the gangsa's rail, the one hit line, and a hit glows gold up its lane.
+  - `Learn/LearnView.swift`, `Coop/` — a pattern taught in steps; two players, one screen.
   - `PlayEngine.swift` — display-link-driven timing loop, judgement windows, and cue firing.
-  - `OverlayView.swift` — primary guidance drawn on the bilah via single `Canvas`.
-  - `NotesRiver.swift` — secondary piano-roll strip showing both halves against the cycle.
-  - `PracticeCoach.swift` — in-session interactive feature tour.
+  - `Components/NotesRiver.swift` — piano-roll strip of both halves against the cycle (the sensor test's).
   - `ResultsView.swift` — post-session accuracy score, streak, and landed notes.
   - `DisplayLink.swift` — `CADisplayLink` frame driver.
 - **`Settings/`**:
-  - `SettingsView.swift` — options, calibration triggers, diagnostic screen navigation.
+  - `SettingsView.swift` — account, the active gangsa (sounds, controller), Debug.
   - `ChooseInstrumentView.swift` — multi-instrument profile picker.
 
 ### `Kotek/Resources/` — static assets
 
 - `Assets.xcassets` — colors, ornaments, photos, wordmark, and logo.
 - Audio: `gong.wav`, `kajar.wav`, `kempur.wav`, `key0.wav`–`key9.wav`, `bgm.m4a`.
-- Fonts: `Katibeh` (headers/titles, one weight; body uses SF). Colours are in the asset catalog (`Background`, `PatternBackground`, `Card`, `TitleText`, `DescriptionText`, `LoadingBar`), read by `Theme`.
+- Fonts: `Katibeh` (headers/titles, one weight; body uses SF). Colours are in the asset catalog under their Nawa Sanga names (`Merah`, `Kuning`, `Ireng`, `Putih`, `SangsihBlue`, `Pandan`, `Kayu`, `MerahTua`, `Krem`, `Garis`) plus `Surface`, `PatternBackground`, `DescriptionText`, `BrandRed` (the wordmark's own red) and the landing gangsa's `KeyHighlight`/`KeyDampened`, read by `Theme`. Mascot: `kipli-head` + `kipli-mouth` (splash); the guide's moods, each shut and open (`kipli-happy`, `kipli-sad`, `kipli-angry`, plus `-open`).
 - Lottie: `polos.lottie`, `sangsih.lottie` (interlocking figure visualizers).
 - App Icon: `logo-kotek.icon`.
 

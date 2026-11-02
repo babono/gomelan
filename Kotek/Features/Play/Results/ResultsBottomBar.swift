@@ -12,7 +12,7 @@ struct ResultsBottomBar: View {
     let onRetry: () -> Void
 
     var body: some View {
-        GlassEffectContainer {
+        Group {
             HStack(spacing: 14) {
                 // Compact: the bar shares a half-width column with the feedback
                 // now, and at full size "Choose another kotekan" pushed Retry off

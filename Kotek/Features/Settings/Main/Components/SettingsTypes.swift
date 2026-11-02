@@ -17,6 +17,5 @@ enum SettingsPage: Hashable {
     case gangsa(String)
     case practice
     case account
-    case deprecated
     case debug
 }

@@ -69,7 +69,7 @@ struct SensorChip: View {
     private var noSensor: some View {
         SensorTip(
             title: "No sensor found",
-            message: "You can still play. The camera and mic listen instead, but your hits won't be scored.",
+            message: "You can still play along, but your hits won't be scored.",
             onConnect: { app.openControllerSetup(returnTo: .chooseKotekan) },
             onDismiss: { explaining = false }
         )

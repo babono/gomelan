@@ -45,14 +45,13 @@ private struct LearnWatchView: View {
                     vm.teardown()
                     app.exitLearn()
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    LearnStrip(stage: .watch)
-                    Text("Polos on the left, sangsih on the right. Next when you have the shape of it.")
-                        .font(.sans(12))
-                        .foregroundStyle(Theme.cream.opacity(0.6))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
+                // Kipli says what the caption under the strip used to; his
+                // bubble drops over the stage, the one place free here.
+                KipliGuide(
+                    message: "Polos on the left, sangsih on the right. Next when you have the shape of it.",
+                    style: .drop
+                )
+                LearnStrip(stage: .watch)
                 Spacer(minLength: 0)
                 if LearnProgress.learnedAny {
                     AppButton(title: "Free play", size: .compact) {
@@ -70,6 +69,8 @@ private struct LearnWatchView: View {
             .frame(height: 50)
             .padding(.horizontal, 24)
             .padding(.vertical, 6)
+            // Over the stage, drawn after it, so Kipli's bubble is on top.
+            .zIndex(1)
 
             CoopStage(lanes: vm.lanes, voicedKeys: vm.voicedKeys, damp: app.dampGuide)
         }
@@ -109,7 +110,7 @@ struct LearnStrip: View {
                 }
                 Text(Self.parts[i])
                     .font(.sans(13, weight: i == current ? .semibold : .regular))
-                    .foregroundStyle(i == current ? Theme.gold : Theme.cream.opacity(i < current ? 0.6 : 0.35))
+                    .foregroundStyle(i == current ? Theme.goldText : Theme.cream.opacity(i < current ? 0.6 : 0.35))
                 // Beside its half: at the end of the strip it read as a step
                 // of free play.
                 if i == current, stage.half != nil {

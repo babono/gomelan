@@ -8,21 +8,22 @@
 import SwiftUI
 
 struct AppButton: View {
-    /// `primary` is the screen's way on, in gold-tinted glass and the loud
-    /// label; `secondary` is every other button, in glass tinted with the
-    /// ground and the plain one.
+    /// The design system's four looks:
+    /// - `primary`: the screen's way on — Merah (or its `tint`) on a Merah tua
+    ///   edge, white type. One per screen.
+    /// - `secondary`: every other button — white, outlined and edged in Garis
+    ///   ("Retry", back).
+    /// - `quiet`: Krem, flat — a stepper's −/+, a tool not in use.
+    /// - `selected`: Ireng, flat, white type — the chip or tool that is on.
     enum Prominence {
-        case primary, secondary
+        case primary, secondary, quiet, selected
 
-        /// Dark type on the gold: cream was tried at a lighter tint and
-        /// disappeared into the background showing through. A disabled control
-        /// fades its type rather than the whole button going to 40% opacity,
-        /// which left a muddy glass with its label at 2:1.
+        /// A disabled control fades its type, not the whole button.
         func labelColor(tint: Color?, enabled: Bool) -> Color {
-            guard enabled else { return Theme.cream.opacity(self == .primary ? 0.6 : 0.4) }
             switch self {
-            case .primary: return tint == nil ? Theme.onGlassFill : Theme.cream
-            case .secondary: return tint ?? Theme.cream
+            // White on any fill: Merah, Ireng, a tint.
+            case .primary, .selected: Theme.onButtonFill.opacity(enabled ? 1 : 0.75)
+            case .secondary, .quiet: (tint ?? Theme.cream).opacity(enabled ? 1 : 0.4)
             }
         }
     }
@@ -35,7 +36,7 @@ struct AppButton: View {
     var trailingSystemImage: String?
     var prominence = Prominence.secondary
     var size = AppButtonSize.regular
-    /// Secondary: the label's colour (Delete in red). Primary: the glass's own
+    /// Secondary: the label's colour (Delete in red). Primary: the fill's own
     /// colour (Record in red).
     var tint: Color?
     /// `.destructive` so VoiceOver says so; the look is the caller's `tint`.
@@ -62,7 +63,7 @@ struct AppButton: View {
                 }
             }
             .foregroundStyle(prominence.labelColor(tint: tint, enabled: isEnabled))
-            // On the label, inside the button: outside it the glass would hug
+            // On the label, inside the button: outside it the surface would hug
             // the content instead of stretching.
             .frame(maxWidth: fullWidth ? .infinity : nil)
             .appControlSurface(
