@@ -64,6 +64,7 @@ struct ControllerStatusChip: View {
     private func longText(_ link: ControllerLink) -> String {
         if app.controllerConnected { return String(localized: "\(link.name) connected") }
         if case let .unavailable(why) = app.sensor.status { return why }
+        if app.sensor.status == .locked { return String(localized: "\(link.name) needs its PIN") }
         return String(localized: "Looking for \(link.name)… not scoring yet")
     }
 }

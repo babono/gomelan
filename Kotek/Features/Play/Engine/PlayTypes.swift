@@ -131,3 +131,9 @@ struct FallingBeat: Identifiable, Equatable {
     let msAhead: Double
     let strong: Bool
 }
+
+/// The turn of the cycle on the waterfall: where pass `number` begins.
+struct FallingCycle: Equatable {
+    let number: Int
+    let msAhead: Double
+}

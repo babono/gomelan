@@ -18,6 +18,12 @@
 //   - Up to 16 inputs through two CD74HC4067 multiplexers (USE_MUX = 1), or a
 //     few inputs wired straight to GPIOs (USE_MUX = 0, the default — the
 //     current 3-sensor breadboard plus 3 detect wires).
+//   - A 4-digit PIN (protocol 2). With none set the controller is open, as
+//     before. The first phone to set one becomes its OWNER: it also hands the
+//     controller a random 32-byte owner key, kept in that phone's iCloud
+//     Keychain. After that a connection gets no hits, levels or plug changes
+//     until it proves it knows the PIN (or the owner key), and only an owner
+//     connection may change the PIN. Hold BOOT for 10 s to forget both.
 //
 // BLE layout (custom service 7a1f0001-…):
 //   EVENT  (…0002, notify) - 8 bytes per hit:
@@ -35,6 +41,27 @@
 //                            [13..]  firmware version, UTF-8
 //   INPUTS (…0005, notify) - 4 bytes, plugged-in bitmask LE, sent on every
 //                            plug / unplug (and readable any time).
+//   AUTH   (…0006, read/write/notify) - the lock. Read or notified:
+//                            [0]     access 0 = open (no PIN), 1 = locked,
+//                                    2 = unlocked with the PIN, 3 = owner
+//                            [1]     result of the last write: 0 = ok,
+//                                    1 = wrong, 2 = too many tries, 3 = not
+//                                    allowed
+//                            [2..17] challenge, fresh per connection and after
+//                                    every wrong answer
+//                            [18]    seconds left of a lockout
+//                          Written:
+//                            01 PIN[4] OWNERKEY[32]  claim, only while open
+//                            02 HMAC[32]             unlock with the PIN
+//                            03 HMAC[32]             unlock as the owner
+//                            04 PIN[4]               change the PIN, owner only
+//                          HMAC = HMAC-SHA256(key = the 4 ASCII PIN digits or
+//                          the owner key, message = the challenge), so neither
+//                          secret crosses the air after it is set. Setting one
+//                          does send it in the clear, once — acceptable for
+//                          keeping other students off a controller, not for
+//                          anything worth sniffing for.
+//   INFO [7] bit 1 = a PIN is set, so the app knows to ask before it waits.
 //
 // ---------------------------------------------------------------------------
 // Plug-detect wiring
@@ -60,20 +87,24 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <Preferences.h>
+#include <mbedtls/md.h>
 #if __has_include(<esp_mac.h>)
 #include <esp_mac.h>      // arduino-esp32 3.x
+#include <esp_random.h>
 #else
 #include <esp_system.h>   // arduino-esp32 2.x
 #endif
 
-#define FIRMWARE_VERSION "2.0.0"
-#define PROTOCOL_VERSION 1
+#define FIRMWARE_VERSION "2.1.0"
+#define PROTOCOL_VERSION 2
 #define DEVICE_PREFIX    "Gangsa-Sensor-"
 #define SERVICE_UUID "7a1f0001-5c3e-4b8e-9d2a-6e0b1c2d3e4f"
 #define EVENT_UUID   "7a1f0002-5c3e-4b8e-9d2a-6e0b1c2d3e4f"
 #define LEVEL_UUID   "7a1f0003-5c3e-4b8e-9d2a-6e0b1c2d3e4f"
 #define INFO_UUID    "7a1f0004-5c3e-4b8e-9d2a-6e0b1c2d3e4f"
 #define INPUTS_UUID  "7a1f0005-5c3e-4b8e-9d2a-6e0b1c2d3e4f"
+#define AUTH_UUID    "7a1f0006-5c3e-4b8e-9d2a-6e0b1c2d3e4f"
 
 // ---------- Board wiring ----------
 
@@ -103,6 +134,7 @@ const int DETECT_PINS[NUM_CH] = {25, 26, 27};  // detect switch per jack (pull-u
 #endif
 
 const int LED_PIN = 2;                  // built-in LED
+const int RESET_PIN = 0;                // the BOOT button, LOW while pressed
 const unsigned long LED_MS = 80;
 const unsigned long LEVEL_EVERY_MS = 20;   // 50 level updates per second
 
@@ -120,6 +152,18 @@ const int PLUG_STABLE_SCANS = 5;           // a change must hold this many scans
 // Pushing a jack in makes a big spike on the piezo line. Ignore the input for
 // this long after it is plugged in, so the plug itself is never a "hit".
 const unsigned long PLUG_SETTLE_MS = 300;
+
+// ---------- PIN settings ----------
+// A locked connection is dropped after this long. The ESP32 stops advertising
+// while anything is connected, so a phone that never unlocks would otherwise
+// keep the owner out. Long enough to type four digits.
+const unsigned long AUTH_TIMEOUT_MS = 60000;
+// 10 000 PINs: without a limit a script tries them all in minutes.
+const int MAX_TRIES = 5;
+const unsigned long LOCKOUT_MS = 30000;
+// Held this long, BOOT forgets the PIN and the owner. Long, because the
+// button is also how the board is flashed and it is easy to brush.
+const unsigned long RESET_HOLD_MS = 10000;
 
 struct Channel {
   float env = 0;            // envelope of recent vibration on this input
@@ -142,12 +186,146 @@ BLECharacteristic *eventChar = nullptr;
 BLECharacteristic *levelChar = nullptr;
 BLECharacteristic *infoChar = nullptr;
 BLECharacteristic *inputsChar = nullptr;
+BLECharacteristic *authChar = nullptr;
+BLEServer *bleServer = nullptr;
 volatile bool bleConnected = false;
 unsigned long lastLevelSent = 0, ledOnAt = 0;
 bool ledOn = false;
 
 void onHit(int input, int strength, unsigned long timeMs);   // defined below
 void publishInputs();                                         // defined below
+void updateInfo();                                            // defined below
+
+// ---------- PIN ----------
+
+enum Access : uint8_t { ACCESS_OPEN = 0, ACCESS_LOCKED = 1, ACCESS_USER = 2, ACCESS_OWNER = 3 };
+enum Result : uint8_t { RESULT_OK = 0, RESULT_WRONG = 1, RESULT_LOCKED_OUT = 2, RESULT_NOT_ALLOWED = 3 };
+
+Preferences prefs;
+bool hasPin = false;
+uint8_t pin[4];
+uint8_t ownerKey[32];
+// Per connection. Written from the BLE task, read by loop(): single bytes,
+// and the worst a torn read can do is send one packet late or early.
+volatile uint8_t sessionAccess = ACCESS_OPEN;
+uint8_t lastResult = RESULT_OK;
+uint8_t challenge[16];
+int wrongTries = 0;
+// Survives reconnecting, so dropping the link does not reset the count.
+// A power cycle does — but whoever can do that can also hold BOOT.
+unsigned long lockedUntil = 0;
+unsigned long connectedAt = 0;
+unsigned long resetPressedAt = 0;
+
+void loadPin() {
+  prefs.begin("auth", false);
+  hasPin = prefs.getBytes("pin", pin, 4) == 4 && prefs.getBytes("owner", ownerKey, 32) == 32;
+}
+
+void forgetPin() {
+  prefs.clear();
+  hasPin = false;
+}
+
+// Hits, levels and plug changes go out only to an unlocked connection.
+bool streaming() {
+  return sessionAccess != ACCESS_LOCKED;
+}
+
+bool validPin(const uint8_t *p) {
+  for (int i = 0; i < 4; i++) if (p[i] < '0' || p[i] > '9') return false;
+  return true;
+}
+
+void publishAuth() {
+  unsigned long now = millis();
+  uint8_t v[19];
+  v[0] = sessionAccess;
+  v[1] = lastResult;
+  memcpy(v + 2, challenge, 16);
+  v[18] = lockedUntil > now ? (uint8_t)min((lockedUntil - now + 999) / 1000, 255UL) : 0;
+  authChar->setValue(v, sizeof(v));
+  if (bleConnected) authChar->notify();
+}
+
+// Compared in constant time: an early exit would say how many bytes were right.
+bool proves(const uint8_t *key, size_t keyLen, const uint8_t *mac) {
+  uint8_t expect[32];
+  mbedtls_md_hmac(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), key, keyLen,
+                  challenge, sizeof(challenge), expect);
+  uint8_t diff = 0;
+  for (int i = 0; i < 32; i++) diff |= expect[i] ^ mac[i];
+  return diff == 0;
+}
+
+void unlock(uint8_t role, const uint8_t *key, size_t keyLen, const uint8_t *mac) {
+  unsigned long now = millis();
+  if (lockedUntil > now) { lastResult = RESULT_LOCKED_OUT; return; }
+  if (proves(key, keyLen, mac)) {
+    sessionAccess = role; lastResult = RESULT_OK; wrongTries = 0;
+    Serial.println(role == ACCESS_OWNER ? "Unlocked as owner" : "Unlocked with PIN");
+    return;
+  }
+  // A new challenge, so a wrong answer cannot simply be replayed with tweaks.
+  esp_fill_random(challenge, sizeof(challenge));
+  lastResult = RESULT_WRONG;
+  if (++wrongTries >= MAX_TRIES) {
+    wrongTries = 0;
+    lockedUntil = now + LOCKOUT_MS;
+    lastResult = RESULT_LOCKED_OUT;
+  }
+  Serial.println("Wrong PIN");
+}
+
+class AuthCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *c) override {
+    const uint8_t *d = c->getData();
+    size_t n = c->getLength();
+    lastResult = RESULT_NOT_ALLOWED;
+    if (n == 37 && d[0] == 0x01 && !hasPin && validPin(d + 1)) {
+      memcpy(pin, d + 1, 4);
+      memcpy(ownerKey, d + 5, 32);
+      prefs.putBytes("pin", pin, 4);
+      prefs.putBytes("owner", ownerKey, 32);
+      hasPin = true;
+      sessionAccess = ACCESS_OWNER;
+      lastResult = RESULT_OK;
+      updateInfo();
+      Serial.println("PIN set, this phone is the owner");
+    } else if (n == 33 && d[0] == 0x02 && hasPin) {
+      unlock(ACCESS_USER, pin, 4, d + 1);
+    } else if (n == 33 && d[0] == 0x03 && hasPin) {
+      unlock(ACCESS_OWNER, ownerKey, 32, d + 1);
+    } else if (n == 5 && d[0] == 0x04 && sessionAccess == ACCESS_OWNER && validPin(d + 1)) {
+      memcpy(pin, d + 1, 4);
+      prefs.putBytes("pin", pin, 4);
+      lastResult = RESULT_OK;
+      Serial.println("PIN changed");
+    }
+    publishAuth();
+  }
+};
+
+// Hold BOOT for RESET_HOLD_MS: the PIN and the owner are forgotten and the
+// controller restarts open, for a lost owner phone or a forgotten PIN. The
+// LED stays on while it is held, so you can tell it is counting.
+void checkResetButton(unsigned long now) {
+  if (digitalRead(RESET_PIN) != LOW) {
+    if (resetPressedAt) digitalWrite(LED_PIN, LOW);
+    resetPressedAt = 0;
+    return;
+  }
+  if (!resetPressedAt) { resetPressedAt = now; return; }
+  if (now - resetPressedAt > 1000) digitalWrite(LED_PIN, HIGH);
+  if (now - resetPressedAt < RESET_HOLD_MS) return;
+  forgetPin();
+  Serial.println("PIN and owner forgotten, restarting");
+  for (int i = 0; i < 10; i++) {
+    digitalWrite(LED_PIN, HIGH); delay(50);
+    digitalWrite(LED_PIN, LOW);  delay(50);
+  }
+  ESP.restart();
+}
 
 // ---------- Reading the hardware ----------
 
@@ -285,11 +463,17 @@ void processChannels(unsigned long now) {
 
 class ServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *server) override {
+    sessionAccess = hasPin ? ACCESS_LOCKED : ACCESS_OPEN;
+    lastResult = RESULT_OK;
+    esp_fill_random(challenge, sizeof(challenge));
+    connectedAt = millis();
     bleConnected = true;
-    Serial.println("Phone connected");
+    publishAuth();
+    Serial.println(hasPin ? "Phone connected, waiting for the PIN" : "Phone connected");
   }
   void onDisconnect(BLEServer *server) override {
     bleConnected = false;
+    sessionAccess = hasPin ? ACCESS_LOCKED : ACCESS_OPEN;
     Serial.println("Phone disconnected, advertising again");
     BLEDevice::startAdvertising();
   }
@@ -304,7 +488,7 @@ void updateInfo() {
   uint32_t mask = pluggedMask();
   memcpy(info, hardwareId, 6);
   info[6] = NUM_CH;
-  info[7] = HAS_PLUG_DETECT ? 0x01 : 0x00;
+  info[7] = (HAS_PLUG_DETECT ? 0x01 : 0x00) | (hasPin ? 0x02 : 0x00);
   info[8] = (uint8_t)mask; info[9] = (uint8_t)(mask >> 8);
   info[10] = (uint8_t)(mask >> 16); info[11] = (uint8_t)(mask >> 24);
   info[12] = PROTOCOL_VERSION;
@@ -318,7 +502,7 @@ void publishInputs() {
   uint32_t mask = pluggedMask();
   uint8_t p[4] = {(uint8_t)mask, (uint8_t)(mask >> 8), (uint8_t)(mask >> 16), (uint8_t)(mask >> 24)};
   inputsChar->setValue(p, sizeof(p));
-  if (bleConnected) inputsChar->notify();
+  if (bleConnected && streaming()) inputsChar->notify();
 }
 
 void setupBLE() {
@@ -326,11 +510,11 @@ void setupBLE() {
   char name[32];
   snprintf(name, sizeof(name), DEVICE_PREFIX "%02X%02X", hardwareId[4], hardwareId[5]);
   BLEDevice::init(name);
-  BLEServer *server = BLEDevice::createServer();
-  server->setCallbacks(new ServerCallbacks());
+  bleServer = BLEDevice::createServer();
+  bleServer->setCallbacks(new ServerCallbacks());
 
-  // 4 characteristics with descriptors need more handles than the default 15.
-  BLEService *service = server->createService(BLEUUID(SERVICE_UUID), 20);
+  // 5 characteristics with descriptors need more handles than the default 15.
+  BLEService *service = bleServer->createService(BLEUUID(SERVICE_UUID), 24);
 
   eventChar = service->createCharacteristic(
       EVENT_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
@@ -346,6 +530,13 @@ void setupBLE() {
       INPUTS_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
   inputsChar->addDescriptor(new BLE2902());
 
+  authChar = service->createCharacteristic(
+      AUTH_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY);
+  authChar->addDescriptor(new BLE2902());
+  authChar->setCallbacks(new AuthCallbacks());
+  publishAuth();
+
   publishInputs();   // fills INFO and INPUTS before anyone can read them
   service->start();
 
@@ -359,7 +550,7 @@ void setupBLE() {
 void onHit(int input, int strength, unsigned long timeMs) {
   digitalWrite(LED_PIN, HIGH); ledOn = true; ledOnAt = millis();
   Serial.printf("HIT input=%d strength=%d t=%lu\n", input + 1, strength, timeMs);
-  if (!bleConnected) return;
+  if (!bleConnected || !streaming()) return;
   uint32_t t = (uint32_t)timeMs;
   uint16_t s = (uint16_t)strength;
   uint8_t p[8] = {
@@ -386,6 +577,8 @@ void setup() {
   Serial.begin(115200);
   analogReadResolution(12);
   pinMode(LED_PIN, OUTPUT);
+  pinMode(RESET_PIN, INPUT_PULLUP);
+  loadPin();
 
 #if USE_MUX
   for (int b = 0; b < 4; b++) pinMode(MUX_SELECT[b], OUTPUT);
@@ -399,6 +592,7 @@ void setup() {
                 hardwareId[0], hardwareId[1], hardwareId[2],
                 hardwareId[3], hardwareId[4], hardwareId[5],
                 NUM_CH, HAS_PLUG_DETECT ? "on" : "off");
+  Serial.println(hasPin ? "PIN set: locked until a phone unlocks it" : "No PIN: open to any phone");
 
   for (int i = 0; i < 3; i++) {
     digitalWrite(LED_PIN, HIGH); delay(150);
@@ -410,13 +604,20 @@ void setup() {
 
 void loop() {
   unsigned long now = millis();
+  checkResetButton(now);
   scanPlugs(now);
+
+  if (bleConnected && sessionAccess == ACCESS_LOCKED && now - connectedAt > AUTH_TIMEOUT_MS) {
+    Serial.println("No PIN in time, dropping the phone");
+    bleServer->disconnect(bleServer->getConnId());
+    connectedAt = now;   // once: onDisconnect follows
+  }
   processChannels(now);
 
   if (ledOn && now - ledOnAt >= LED_MS) { digitalWrite(LED_PIN, LOW); ledOn = false; }
 
   if (now - lastLevelSent >= LEVEL_EVERY_MS) {
-    if (bleConnected) sendLevels();
+    if (bleConnected && streaming()) sendLevels();
     for (int i = 0; i < NUM_CH; i++) ch[i].windowMax = 0;
     lastLevelSent = now;
   }
