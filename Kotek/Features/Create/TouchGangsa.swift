@@ -5,7 +5,8 @@
 //  The drawn gangsa under the piano roll, played with a finger like
 //  GarageBand's keyboard: a bilah sounds on touch-down — not on lift, which
 //  is a tap's whole length late — and while recording it is written the way
-//  a sensor hit is.
+//  a sensor hit is. With no sensor to record from, each tap is written where
+//  the line is and moves it on a step (`CreateKotekViewModel.step`).
 //
 //  Sized as on the play screen (`WaterfallPlayView`), 150pt, with the near
 //  third of it sunk below the bottom of the view — it carries nothing, and

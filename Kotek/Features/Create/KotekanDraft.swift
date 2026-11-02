@@ -18,8 +18,9 @@
 //
 //  The gong, kempur, klentong and kajar are not written. They were — armed as
 //  tools and tapped onto the roll — and every figure ended up with the same
-//  line drawn by hand. Now `colotomic` lays the common cycle under whatever
-//  is written: gong, kempur, klentong, kempur, one per beat, a kajar on each.
+//  line drawn by hand. Now `colotomic` lays a cycle under whatever is
+//  written, from one of two templates (`ColotomicTemplate`), and the figure
+//  runs to whole cycles of it so each pass ends where the cycle does.
 //
 
 import Foundation
@@ -57,6 +58,32 @@ struct DraftNote: Hashable, Identifiable {
     var length: Int
 }
 
+/// The colotomic cycle the player picks in Studio, one instrument per beat.
+enum ColotomicTemplate: String, CaseIterable, Identifiable {
+    /// Four beats: kempur, kajar, klentong, kajar.
+    case four
+    /// Eight beats: four kajar, then gong, kempur, kajar, kempur.
+    case eight
+
+    var id: String {
+        rawValue
+    }
+
+    var cycle: [ColotomicInstrument] {
+        switch self {
+        case .four: [.kempur, .kajar, .klentong, .kajar]
+        case .eight: [.kajar, .kajar, .kajar, .kajar, .gong, .kempur, .kajar, .kempur]
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .four: String(localized: "4 beats")
+        case .eight: String(localized: "8 beats")
+        }
+    }
+}
+
 /// A gong, kempur, klentong or kajar stroke, drawn as a circle on the line it sits on.
 struct DraftColotomic: Hashable {
     var instrument: ColotomicInstrument
@@ -85,19 +112,22 @@ final class KotekanDraft {
     var bpm = 100
     private(set) var notes: [DraftNote] = []
 
-    /// The colotomic cycle under the figure, one beat at a time: gong, kempur,
-    /// klentong, kempur, then gong again, and a kajar on every beat.
+    /// Which cycle runs under the figure. A saved figure's hits are not read
+    /// back into it (see `load`), so an opened one starts on the 4-beat one.
+    var template = ColotomicTemplate.four
+
+    /// The colotomic cycle under the figure, one beat at a time.
     var colotomic: [DraftColotomic] {
         (0 ..< bars).flatMap { beat in
-            Self.colotomic(atBeat: beat).map { DraftColotomic(instrument: $0, tick: beat * Self.ticksPerBeat) }
+            colotomic(atBeat: beat).map { DraftColotomic(instrument: $0, tick: beat * Self.ticksPerBeat) }
         }
     }
 
     /// What sounds on `beat`. Also read straight by the recording, which runs
     /// on past the end of the figure.
-    static func colotomic(atBeat beat: Int) -> [ColotomicInstrument] {
-        let cycle: [ColotomicInstrument] = [.gong, .kempur, .klentong, .kempur]
-        return [cycle[beat % cycle.count], .kajar]
+    func colotomic(atBeat beat: Int) -> [ColotomicInstrument] {
+        let cycle = template.cycle
+        return [cycle[beat % cycle.count]]
     }
 
     /// What the figure looked like before each edit, newest last. The name is
@@ -112,7 +142,11 @@ final class KotekanDraft {
         // A note's end counts too, so one dragged across a bar line takes the
         // figure with it.
         let last = notes.map { $0.tick + $0.length - 1 }.max() ?? 0
-        return last / Self.ticksPerBar + 1
+        let written = last / Self.ticksPerBar + 1
+        // Up to whole cycles: a 2-beat figure over the 8-beat template looped
+        // back to its start before the gong ever came round.
+        let cycle = template.cycle.count
+        return (written + cycle - 1) / cycle * cycle
     }
 
     var lengthTicks: Int {

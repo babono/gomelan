@@ -22,6 +22,16 @@ final class ChooseKotekanViewModel {
     var position: Double = 0
     var dragOrigin: Double?
     var muted = false
+    /// The one half the preview plays, from the card's menu; nil is both.
+    /// Cleared when the rail moves on, so the next card is heard whole.
+    var soloHalf: KotekanHalf?
+    /// The figure whose menu is open, from holding the centred card.
+    var menuFor: Kotekan?
+    /// Holding still on the centred card opens its menu. Timed here, inside
+    /// the rail's one drag, so the release is not then read as a tap that
+    /// starts the session.
+    @ObservationIgnored private var holdTask: Task<Void, Never>?
+    @ObservationIgnored private var heldOpen = false
     /// Narrows the rail. Changing it jumps back to the first match.
     var filter = KotekanFilter.all {
         didSet { if filter != oldValue { position = 0 } }
@@ -112,12 +122,22 @@ final class ChooseKotekanViewModel {
     /// colotomic frame on in a session because judging is measured against it;
     /// the preview never judges, so here it is just more sound under a "Muted" label.
     private func applyMuted() {
-        engine.partnerAudible = !muted
-        engine.yourVoiceAudible = !muted
+        // The preview's own voice is polos, its partner sangsih.
+        engine.yourVoiceAudible = !muted && soloHalf != .sangsih
+        engine.partnerAudible = !muted && soloHalf != .polos
         engine.colotomicAudible = !muted
     }
 
     func onSlotChanged() {
+        soloHalf = nil
+        startPreview()
+    }
+
+    /// One half on its own, from the top — unmuting, since asking to hear it
+    /// is the point.
+    func hear(_ half: KotekanHalf) {
+        soloHalf = half
+        muted = false
         startPreview()
     }
 
@@ -207,7 +227,12 @@ final class ChooseKotekanViewModel {
 
     /// `step` is the distance between card centres, which the view works out
     /// from its width (`CarouselFit`) — it is not a constant.
-    func onDragChanged(translationWidth: CGFloat, step: CGFloat) {
+    func onDragChanged(translationWidth: CGFloat, startLocationX: CGFloat, width: CGFloat, step: CGFloat) {
+        if dragOrigin == nil {
+            startHold(slot: slotUnder(x: startLocationX, width: width, step: step, origin: position))
+        }
+        if abs(translationWidth) >= 10 { holdTask?.cancel() }
+        guard !heldOpen else { return }
         let origin = dragOrigin ?? position
         dragOrigin = origin
         position = clampToRail(origin - translationWidth / step)
@@ -226,6 +251,12 @@ final class ChooseKotekanViewModel {
     ) {
         let origin = dragOrigin ?? position
         dragOrigin = nil
+        holdTask?.cancel()
+        if heldOpen {
+            heldOpen = false
+            position = origin
+            return
+        }
 
         guard abs(translationWidth) >= 10 else {
             position = origin
@@ -236,6 +267,18 @@ final class ChooseKotekanViewModel {
         let landing = origin - predictedEndTranslationWidth / step
         withAnimation(.snappy(duration: 0.32)) {
             position = clampToRail((landing.rounded()).clamped(to: origin - 1, origin + 1))
+        }
+    }
+
+    private func startHold(slot: Int) {
+        heldOpen = false
+        holdTask?.cancel()
+        guard slot == focusedSlot, let k = current else { return }
+        holdTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard !Task.isCancelled, let self else { return }
+            heldOpen = true
+            menuFor = k
         }
     }
 

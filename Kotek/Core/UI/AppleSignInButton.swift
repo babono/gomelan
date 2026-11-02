@@ -17,11 +17,17 @@ struct AppleSignInButton: View {
     /// every later sign-in, on any device, gets nil.
     let onToken: (_ idToken: String, _ nonce: String, _ fullName: String?) -> Void
     var onError: (Error) -> Void = { _ in }
+    /// `.large` beside the welcome screen's hero buttons; inside a Settings
+    /// page, among compact controls, a large one dwarfed everything near it.
+    var size = AppButtonSize.large
+    /// "Continue" where it starts the app; "Sign in" in Settings, where the
+    /// player is already in and the shorter label leaves room beside it.
+    var signIn = false
 
     @State private var nonce = ""
 
     var body: some View {
-        SignInWithAppleButton(.continue) { request in
+        SignInWithAppleButton(signIn ? .signIn : .continue) { request in
             nonce = Self.randomNonce()
             // The name prefills the profile step. No email: the account is
             // only somewhere to keep a gangsa's progress, and an address is
@@ -47,8 +53,10 @@ struct AppleSignInButton: View {
             }
         }
         .signInWithAppleButtonStyle(.white)
-        .frame(width: 280, height: Theme.buttonHeight)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.radius))
+        // Apple's label scales with the button's height, so the width
+        // follows it to keep the proportions.
+        .frame(width: size.height * (signIn ? 4.6 : 5.4), height: size.height)
+        .clipShape(RoundedRectangle(cornerRadius: size == .large ? Theme.radius : size.height / 2))
     }
 
     private static func randomNonce() -> String {

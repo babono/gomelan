@@ -72,15 +72,9 @@ struct InstrumentSectionView: View {
 
             noteClips
 
-            damping
-
-            FlowLayout(spacing: 10) {
-                AppButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath", size: .compact) {
-                    app.openChooseInstrument()
-                }
-                AppButton(title: "History", systemImage: "clock.arrow.circlepath", size: .compact) {
-                    app.openHistory()
-                }
+            // No "Switch gangsa": every gangsa is in the sidebar now.
+            AppButton(title: "History", systemImage: "clock.arrow.circlepath", size: .compact) {
+                app.openHistory()
             }
 
             AppButton(
@@ -162,25 +156,6 @@ struct InstrumentSectionView: View {
             AppButton(title: "Record key sounds", systemImage: "waveform.badge.mic", size: .compact) {
                 app.openNoteCapture()
             }
-        }
-    }
-
-    /// Read live, like the same menu on the pause screen.
-    private var damping: some View {
-        @Bindable var bindableApp = app
-        return VStack(alignment: .leading, spacing: 10) {
-            SectionLabel("Damping")
-            Picker("Damping guide", selection: $bindableApp.dampGuide) {
-                ForEach(DampGuide.allCases, id: \.self) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 360)
-            Text(
-                "Shows when to damp each bilah: a falling hand marker and a thumb on the gangsa."
-            )
-            .font(.sans(14))
-            .foregroundStyle(Theme.cream.opacity(0.62))
-            .frame(maxWidth: 520, alignment: .leading)
         }
     }
 

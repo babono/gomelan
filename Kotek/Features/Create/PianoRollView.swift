@@ -41,7 +41,7 @@ struct PianoRollView: View {
                 HStack(spacing: 12) {
                     AppIconButton(systemImage: "chevron.left", label: "Back") { viewModel.back() }
                     Spacer()
-                    RecordButton(recording: viewModel.recording) { viewModel.toggleRecording() }
+                    RecordControl(viewModel: viewModel)
                     AppButton(title: "Next", prominence: .primary) { viewModel.review() }
                         .disabled(draft.isEmpty)
                 }
@@ -51,6 +51,15 @@ struct PianoRollView: View {
             HStack(spacing: 10) {
                 PianoRollControls(viewModel: viewModel)
                 AppMenuPicker<Double>.tempo($viewModel.tempoScale)
+                // The gong cycle under the figure. Its own control, not a
+                // tool: the colotomic line is laid, never drawn by hand.
+                AppMenuPicker(
+                    options: ColotomicTemplate.allCases,
+                    selection: Bindable(draft).template,
+                    title: \.title,
+                    label: "Gong cycle",
+                    systemImage: "circle.circle"
+                )
                 // Under Next, where it sat before the transport took it.
                 AppMenuPicker(
                     options: Subdivision.denominators.map(Subdivision.init(denominator:)),
@@ -363,11 +372,11 @@ private struct PianoRollGrid: View {
 
         switch viewModel.tool {
         case .erase:
-            draft.edit { draft.eraseNote(key: key, at: position, preferring: viewModel.writing) }
+            viewModel.editRoll { draft.eraseNote(key: key, at: position, preferring: viewModel.writing) }
 
         case .notes:
             let before = draft.notes.count
-            draft.edit { draft.toggle(half: viewModel.writing, key: key, at: position, snap: viewModel.snap) }
+            viewModel.editRoll { draft.toggle(half: viewModel.writing, key: key, at: position, snap: viewModel.snap) }
             // Sound what was written, not what was taken out.
             if draft.notes.count >= before { viewModel.audition(key) }
         }
@@ -677,9 +686,9 @@ private struct PianoRollTransport: View {
         HStack(spacing: 14) {
             Spacer(minLength: 0)
             HStack(spacing: 10) {
-                AppIconButton(systemImage: "arrow.uturn.backward", label: "Undo", size: .compact) { draft.undo() }
+                AppIconButton(systemImage: "arrow.uturn.backward", label: "Undo", size: .compact) { viewModel.undo() }
                     .disabled(!draft.canUndo)
-                AppIconButton(systemImage: "arrow.uturn.forward", label: "Redo", size: .compact) { draft.redo() }
+                AppIconButton(systemImage: "arrow.uturn.forward", label: "Redo", size: .compact) { viewModel.redo() }
                     .disabled(!draft.canRedo)
             }
 
@@ -697,6 +706,10 @@ private struct PianoRollTransport: View {
                     size: .compact
                 ) { viewModel.togglePlay() }
                     .disabled(draft.isEmpty && !running)
+                AppIconButton(systemImage: "forward.end", label: "Skip a step", size: .compact) {
+                    viewModel.skip()
+                }
+                .disabled(viewModel.recording)
             }
 
             divider
@@ -745,6 +758,8 @@ struct PlayheadClock: View {
 /// the glass changes. Now icon-only (the label is dropped), so it's a circle.
 private struct RecordButton: View {
     let recording: Bool
+    /// Looks off, but still takes the tap — to say why it is off.
+    var looksEnabled = true
     let action: () -> Void
 
     var body: some View {
@@ -752,7 +767,7 @@ private struct RecordButton: View {
         Button(action: action) {
             Image(systemName: recording ? "stop.fill" : "circle.fill")
                 .font(.symbol(AppButtonSize.regular.symbolPoints, weight: .semibold))
-                .foregroundStyle(prominence.labelColor(tint: Theme.miss, enabled: true))
+                .foregroundStyle(prominence.labelColor(tint: Theme.miss, enabled: looksEnabled))
                 .appControlSurface(
                     size: .regular,
                     shape: .circle,
@@ -762,5 +777,41 @@ private struct RecordButton: View {
         }
         .buttonStyle(AppButtonStyle())
         .accessibilityLabel(recording ? "Stop recording" : "Record")
+    }
+}
+
+/// Record, off without a sensor: recording listens to the controller, and
+/// without one there is nothing to listen to. Not `.disabled`: a disabled
+/// button takes no tap, and the tap is where it says why and how to connect
+/// — the kotekan picker's sensor chip says it the same way.
+private struct RecordControl: View {
+    let viewModel: CreateKotekViewModel
+    @Environment(AppState.self) private var app
+    @State private var explaining = false
+
+    var body: some View {
+        let available = viewModel.hasSensor || viewModel.recording
+        RecordButton(recording: viewModel.recording, looksEnabled: available) {
+            if available { viewModel.toggleRecording() } else { explaining = true }
+        }
+        .popover(isPresented: $explaining) {
+            // Connecting leaves this screen, and the draft with it, so it is
+            // only offered before anything has been written.
+            if viewModel.draft.isEmpty {
+                SensorTip(
+                    title: "Recording needs a sensor",
+                    message: "Connect your sensor controller to record as you play. Or tap the gangsa below to write notes one by one.",
+                    onConnect: { app.openControllerSetup(returnTo: .createKotek) },
+                    onDismiss: { explaining = false }
+                )
+            } else {
+                SensorTip(
+                    title: "Recording needs a sensor",
+                    message: "Tap the gangsa below to write notes one by one. To record from a sensor, save this kotek first, then connect one.",
+                    onConnect: nil,
+                    onDismiss: { explaining = false }
+                )
+            }
+        }
     }
 }
