@@ -16,7 +16,7 @@ struct NoteCapturePanel: View {
     var body: some View {
         VStack(spacing: 14) {
             HStack {
-                SectionLabel("Key \(NoteCaptureViewModel.number(for: viewModel.keyIndex))", color: Theme.copper)
+                SectionLabel("Key \(NoteCaptureViewModel.number(for: viewModel.keyIndex))")
                 Spacer()
                 AppIconButton(systemImage: "trash", label: "Delete recording", size: .compact, tint: Theme.miss) {
                     confirmingDelete = true
@@ -68,7 +68,7 @@ struct NoteCapturePanel: View {
         .padding(14)
         .frame(width: 232)
         .frame(maxHeight: .infinity)
-        .background(Theme.inkRaised.opacity(0.9))
+        .background(Theme.inkRaised)
         .confirmationDialog(
             "Delete the recording for key \(NoteCaptureViewModel.number(for: viewModel.keyIndex))?",
             isPresented: $confirmingDelete,

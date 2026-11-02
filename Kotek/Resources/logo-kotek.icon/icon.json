@@ -1,22 +1,31 @@
 {
   "fill" : {
-    "automatic-gradient" : "srgb:0.27059,0.21176,0.18824,1.00000"
+    "solid" : "display-p3:0.98824,0.94118,0.83922,1.00000"
   },
   "groups" : [
     {
+      "hidden" : false,
       "layers" : [
         {
-          "glass" : false,
-          "image-name" : "11.png",
-          "name" : "11"
+          "image-name" : "33 2.png",
+          "name" : "33 2"
         },
         {
-          "image-name" : "33.png",
-          "name" : "33"
+          "image-name" : "22 2.png",
+          "name" : "22 2"
         },
         {
-          "image-name" : "22.png",
-          "name" : "22"
+          "glass-specializations" : [
+            {
+              "value" : true
+            },
+            {
+              "appearance" : "dark",
+              "value" : false
+            }
+          ],
+          "image-name" : "11 2.png",
+          "name" : "11 2"
         }
       ],
       "shadow" : {

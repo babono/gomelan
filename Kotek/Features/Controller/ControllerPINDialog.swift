@@ -33,7 +33,7 @@ struct ControllerPINDialog: View {
                     .font(.serif(24))
                     .textCase(.uppercase)
                     .tracking(1.5)
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.heading)
 
                 Text(message)
                     .font(.sans(14))
@@ -60,7 +60,7 @@ struct ControllerPINDialog: View {
                     }
                 }
 
-                GlassEffectContainer(spacing: 12) {
+                Group {
                     HStack(spacing: 12) {
                         Spacer(minLength: 0)
                         AppButton(title: mode == .unlock ? "Not now" : "Cancel", size: .compact, action: onClose)
@@ -72,7 +72,7 @@ struct ControllerPINDialog: View {
             }
             .padding(24)
             .frame(maxWidth: 520)
-            .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)

@@ -44,10 +44,6 @@ extension Container {
 
     // MARK: Services / Controller Init
 
-    nonisolated var cameraService: Factory<CameraController> {
-        self { CameraController() }.singleton
-    }
-
     nonisolated var audioService: Factory<AudioEngineController> {
         self { MainActor.assumeIsolated { AudioEngineController() } }.singleton
     }

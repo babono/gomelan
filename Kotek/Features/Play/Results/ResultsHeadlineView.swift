@@ -46,7 +46,7 @@ struct ResultsHeadlineView: View {
         HStack(alignment: .firstTextBaseline, spacing: size * 0.2) {
             Text(value)
                 .font(.serif(size))
-                .foregroundStyle(Theme.gold)
+                .foregroundStyle(Theme.heading)
             SectionLabel(label, color: Theme.stone)
         }
         .accessibilityElement(children: .combine)

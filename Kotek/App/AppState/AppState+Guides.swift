@@ -2,22 +2,18 @@
 //  AppState+Guides.swift
 //  Kotek
 //
-//  Onboarding walkthrough, permissions, and contextual explainers.
+//  Onboarding walkthrough and contextual explainers.
 //
 
 import Foundation
 
 extension AppState {
-    // MARK: - Onboarding & Permissions
+    // MARK: - Onboarding
 
     /// Always the instrument list, even when it is empty.
     func begin() {
         savedProfiles = ProfileStore.loadAll()
         screen = .chooseInstrument
-    }
-
-    func permissionsResolved(granted: Bool) {
-        screen = granted ? .chooseInstrument : .permissionsBlocked
     }
 
     /// Asked for — from the help button on the instrument picker.
@@ -36,14 +32,6 @@ extension AppState {
         guard !hasSeenOnboarding else { return }
         hasSeenOnboarding = true
         Defaults.set("hasSeenOnboarding", true)
-    }
-
-    // MARK: - Practice Coach
-
-    func markPracticeCoachSeen() {
-        guard !hasSeenPracticeCoach else { return }
-        hasSeenPracticeCoach = true
-        Defaults.set("hasSeenPracticeCoach", true)
     }
 
     // MARK: - Contextual Guides

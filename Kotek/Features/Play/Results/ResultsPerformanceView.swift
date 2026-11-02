@@ -49,7 +49,8 @@ struct ResultsPerformanceView: View {
                 AppSwitcher(
                     options: [KotekanHalf.polos, .sangsih],
                     selection: shown,
-                    title: \.title
+                    title: \.title,
+                    tint: { $0 == .polos ? Theme.polosVoice : Theme.sangsihVoice }
                 ) { shown = $0 }
                     .fixedSize()
             }

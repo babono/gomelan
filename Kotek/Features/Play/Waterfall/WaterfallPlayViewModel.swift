@@ -31,6 +31,21 @@ final class WaterfallPlayViewModel {
     /// passes at it (counted only without sensors).
     private(set) var tempoStep = 0
     private var passesAtTempo = 0
+    /// Scored passes at this speed that fell short of the next (sensors only).
+    private var shortAtTempo = 0
+    /// Strokes on the wrong bar in a row, in Step.
+    private var wrongInARow = 0
+    /// Waits for Step's held note to be struck, to say so if it is long.
+    private var stuckTask: Task<Void, Never>?
+    /// Scored play: the best pass so far this session, how many passes in a
+    /// row went badly, and wrong-bar verdicts in a row.
+    private var sessionBest = 0.0
+    private var roughInARow = 0
+    private var wrongVerdicts = 0
+
+    /// What Kipli is saying over Learn's waterfall, and how he feels about
+    /// it. Each step opens with what it asks; then he answers how it goes.
+    private(set) var kipli: (line: LocalizedStringResource, mood: KipliGuide.Mood)?
     /// Between `setup` and `teardown`. Teardown runs twice on the way to the
     /// next step — called before moving on, then from `onDisappear` — and the
     /// second `cue.stop()` would land after the next step had started the
@@ -151,9 +166,12 @@ final class WaterfallPlayViewModel {
         }
         configureEngine()
         everSensed = sensing
+        kipli = opening(lesson)
+        app.justLearned = false
 
         sensor.onHit = { [weak self] hit in
             guard let self, !self.paused, let key = key(forInput: hit.input) else { return }
+            if isStep, let held = engine.heldKey { stepStruck(right: key == held) }
             engine.registerStrike(keyIndex: key, hostTime: hit.hostTime, confidence: 1)
         }
         // RootView follows this gangsa's controller, if it has one
@@ -187,6 +205,7 @@ final class WaterfallPlayViewModel {
     }
 
     func teardown() {
+        stuckTask?.cancel()
         guard live else { return }
         live = false
         resumeTask?.cancel()
@@ -325,12 +344,16 @@ final class WaterfallPlayViewModel {
     func loopChanged() {
         guard engine.phase == .userTurn, engine.loopIndex > 0 else { return }
         switch lesson {
+        case nil:
+            if engine.judging, let last = engine.lastClosedCycle, last.index == engine.loopIndex - 1 {
+                judged(last.accuracy)
+            }
         case .listen:
             nextStep()
         case .buildUp:
             if engine.judging {
-                guard let last = engine.lastClosedCycle, last.index == engine.loopIndex - 1,
-                      last.accuracy >= LearnStage.accuracyToSpeedUp else { return }
+                guard let last = engine.lastClosedCycle, last.index == engine.loopIndex - 1 else { return }
+                guard last.accuracy >= LearnStage.accuracyToSpeedUp else { return fellShort(last.accuracy) }
             } else {
                 passesAtTempo += 1
                 guard passesAtTempo >= LearnStage.passesPerTempoUnsensed else { return }
@@ -343,11 +366,111 @@ final class WaterfallPlayViewModel {
 
     private func speedUp() {
         passesAtTempo = 0
+        shortAtTempo = 0
         guard tempoStep + 1 < LearnStage.buildUpTempos.count else { return nextStep() }
         tempoStep += 1
+        kipli = ("Nice! A little faster now.", .happy)
         // On the turn of the cycle, so the pass just begun is all at the new
         // speed and counts.
         engine.setTempoScale(LearnStage.buildUpTempos[tempoStep], voidsPass: false)
+    }
+
+    // MARK: - Kipli
+
+    /// What a step asks, in his words, as it opens — or, in free play, a
+    /// cheer, or that Learn has just been finished.
+    private func opening(_ lesson: LearnStage?) -> (line: LocalizedStringResource, mood: KipliGuide.Mood)? {
+        switch lesson {
+        case nil:
+            app.justLearned
+                ? ("You learned it! Now play it your way.", .happy)
+                : ("Play along. I'll cheer you on.", .happy)
+        case .listen(.polos): ("First just listen to polos. Watch where each note lands.", .happy)
+        case .listen(.sangsih): ("Now sangsih. Hear how it fills the gaps polos leaves.", .happy)
+        case .step:
+            sensing
+                ? ("Strike the lit bar. I'll wait for you.", .happy)
+                : ("Tap for each note. I'll wait for you.", .happy)
+        case .buildUp: ("Let's bring it up to speed, a little at a time.", .happy)
+        case .watch: nil
+        }
+    }
+
+    /// A scored Build up pass short of the next speed: close, he cheers you
+    /// on; well off, or stuck at this speed, he is sad with you. A new line
+    /// each time, so the bubble opens again for it.
+    private func fellShort(_ accuracy: Double) {
+        shortAtTempo += 1
+        kipli = switch shortAtTempo {
+        case 1 where accuracy >= 0.5: ("So close! One more clean pass.", .happy)
+        case 1: ("Not quite yet. Again at this speed.", .sad)
+        case 2: ("Hmm, still not there. Watch the lit bars.", .sad)
+        default: ("Take a breath. Slow hands make fast hands.", .sad)
+        }
+    }
+
+    /// Step: three strokes on the wrong bar in a row and he is cross; the
+    /// right one after that and he is pleased again.
+    private func stepStruck(right: Bool) {
+        if right {
+            if wrongInARow >= 3 { kipli = ("That's the one!", .happy) }
+            wrongInARow = 0
+        } else {
+            wrongInARow += 1
+            if wrongInARow == 3 { kipli = ("Hey, that's not the lit bar! Look for the glow.", .angry) }
+        }
+    }
+
+    /// Step held a note: if it is still held a while later, he says to take
+    /// your time — not cross, sad with you that it is hard.
+    func heldChanged() {
+        stuckTask?.cancel()
+        guard isStep, let held = engine.heldKey else { return }
+        stuckTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard let self, !Task.isCancelled, !paused, engine.heldKey == held else { return }
+            kipli = sensing
+                ? ("Take your time. Find the lit bar.", .sad)
+                : ("Take your time. Tap when you're ready.", .sad)
+        }
+    }
+
+    /// Free play, a scored pass just closed: a best of the session he cheers
+    /// (from the second pass — the first is always a best); three bad ones
+    /// in a row and he is sad with you.
+    private func judged(_ accuracy: Double) {
+        let first = engine.loopIndex <= 1
+        if accuracy < 0.5 {
+            roughInARow += 1
+            if roughInARow == 3 {
+                kipli = ("That's a rough patch. Try it slower from the pause menu.", .sad)
+            }
+        } else {
+            if roughInARow >= 3 { kipli = ("There it is. Back on track!", .happy) }
+            roughInARow = 0
+        }
+        if accuracy > sessionBest {
+            if !first, accuracy >= 0.6 {
+                kipli = ("New best this session: \(Theme.percentLabel(accuracy))!", .happy)
+            }
+            sessionBest = accuracy
+        }
+    }
+
+    /// A verdict floated up (scored play, not Step): three wrong bars in a
+    /// row and he is cross; a hit after that and he is pleased again.
+    func floated() {
+        guard !isStep, let label = engine.floaters.last?.label else { return }
+        switch label {
+        case .wrongKey:
+            wrongVerdicts += 1
+            if wrongVerdicts == 3 { kipli = ("Whoa, wrong bars! Eyes on the lanes.", .angry) }
+        case .perfect, .goodEarly, .goodLate:
+            if wrongVerdicts >= 3 { kipli = ("That's more like it!", .happy) }
+            wrongVerdicts = 0
+        case .late, .miss, .unmatched:
+            break
+        }
     }
 
     /// A tap during Step lets the held note go; anywhere else it pauses —

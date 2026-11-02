@@ -23,7 +23,7 @@ struct AccountSectionView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(app.playerName ?? String(localized: "No name yet"))
                             .font(.serif(22))
-                            .foregroundStyle(Theme.cream)
+                            .foregroundStyle(Theme.heading)
                         Label("Signed in with Apple", systemImage: "apple.logo")
                             .font(.sans(13))
                             .foregroundStyle(Theme.cream.opacity(0.62))
@@ -57,7 +57,7 @@ struct AccountSectionView: View {
                 // they delete the app.
                 Label("Guest · not backed up", systemImage: "exclamationmark.icloud")
                     .font(.sans(16, weight: .medium))
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.destructive)
 
                 Text(
                     "Only saved on this iPhone. Sign in with Apple to keep your data safe."

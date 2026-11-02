@@ -55,10 +55,6 @@ private struct SettingsContentView: View {
                             InstrumentSectionView(viewModel: vm)
                         }
 
-                        section(.deprecated) {
-                            DeprecatedSectionView(app: app)
-                        }
-
                         section(.debug) {
                             DebugSectionView(app: app)
                         }
@@ -81,7 +77,8 @@ private struct SettingsContentView: View {
             $vm.showDeleteConfirm,
             title: "Delete this gangsa?",
             message: LocalizedStringKey(GangsaDeletion.message(app.profile.name)),
-            confirmTitle: "Delete \(app.profile.name)"
+            confirmTitle: "Delete \(app.profile.name)",
+            kipli: .sad
         ) {
             vm.deleteInstrument()
         }
@@ -89,7 +86,8 @@ private struct SettingsContentView: View {
             $vm.showDeleteAccountConfirm,
             title: "Delete your account?",
             message: "Your gangsa, records and history will be deleted from all devices. This can't be undone. Apple will ask you to confirm.",
-            confirmTitle: "Delete account"
+            confirmTitle: "Delete account",
+            kipli: .sad
         ) {
             vm.deleteAccount()
         }
@@ -97,7 +95,8 @@ private struct SettingsContentView: View {
             $vm.showSignOutConfirm,
             title: "Sign out?",
             message: "Your gangsa and records will be removed from this iPhone.",
-            confirmTitle: "Sign out"
+            confirmTitle: "Sign out",
+            kipli: .sad
         ) {
             app.signOut()
         }
@@ -114,7 +113,7 @@ private struct SettingsContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 22)
         .padding(.vertical, 20)
-        .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
         .overlay(
             RoundedRectangle(cornerRadius: 22)
                 .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)

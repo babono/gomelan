@@ -26,7 +26,7 @@ struct ControllerStatusChip: View {
                     app.openControllerSetup(recheck: true, returnTo: app.screen)
                 } label: {
                     chip(
-                        color: Theme.wrong,
+                        color: Theme.destructive,
                         text: String(localized: "Sensors changed on \(app.profile.name) · Check them")
                     )
                 }
@@ -43,18 +43,20 @@ struct ControllerStatusChip: View {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(text)
                 .font(.sans(12, weight: .semibold))
-                .foregroundStyle(Theme.cream.opacity(0.85))
+                .foregroundStyle(Theme.cream)
                 .lineLimit(1)
         }
         .padding(.horizontal, 12)
         .frame(minHeight: compact ? 34 : 30)
-        .background(.black.opacity(0.3), in: Capsule())
+        // The design system's status chip: white, outlined.
+        .background(Theme.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.hairline.opacity(0.6), lineWidth: 1))
     }
 
     private var color: Color {
-        if app.controllerConnected { return Theme.hit }
-        if case .unavailable = app.sensor.status { return Theme.miss }
-        return Theme.gold
+        if app.controllerConnected { return Theme.ok }
+        if case .unavailable = app.sensor.status { return Theme.description }
+        return Theme.pending
     }
 
     private var shortText: String {

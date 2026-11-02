@@ -2,7 +2,7 @@
 //  AppState+Calibration.swift
 //  Kotek
 //
-//  Setup steps: key counting, framing, alignment, and acoustic baseline learning.
+//  Adding a gangsa, step 1: the key count.
 //
 
 import Foundation
@@ -12,12 +12,9 @@ extension AppState {
 
     /// Step 1: how many keys does this gangsa have, and what is it called?
     ///
-    /// Goes straight on to recording the keys. Framing and aligning the
-    /// camera mask were dropped from adding a gangsa: the keys start on the
-    /// default `layout(count:)` from `resize(to:)`, and `realign()` /
-    /// `realignInstrument(_:)` still reach `.aligning` for anyone who wants
-    /// the camera fit. The framing/aligning screens are kept, just unrouted
-    /// from here.
+    /// Goes straight on to recording the keys. The keys sit on the default
+    /// `layout(count:)` from `resize(to:)`: nothing reads their rects since
+    /// the camera play mode went, so nothing needs them fitted.
     /// `photo` is already prepared (`InstrumentPhotoStore.prepare`); nil leaves
     /// whatever photo the gangsa had.
     func keyCountChosen(_ count: Int, name: String, photo: Data?) {
@@ -32,75 +29,20 @@ extension AppState {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { updated.name = trimmed }
         profile = updated
-        if !isAddingNewInstrument {
-            saveProfile()
-        }
-        // ponytail: was `screen = .framing`; the camera fit is skipped, so this
-        // is now the same hand-off the aligning step makes when it is done.
-        alignmentConfirmed()
-    }
-
-    /// Framing → aligning. No longer reached when adding a gangsa.
-    func framingConfirmed() {
-        seedMasksFromFraming = true
-        screen = .aligning
-    }
-
-    /// Aligning done (or skipped by `keyCountChosen`). A new gangsa goes
-    /// straight on to recording its keys and then the controller; a realign
-    /// of an existing one continues to the baseline as before.
-    ///
-    /// The baseline step was dropped from adding a gangsa: it is a camera
-    /// screen (key outlines over the top-view feed), and the camera mount is
-    /// no longer part of setting one up. It is still reachable from Settings
-    /// (`openCalibration()`), and until it is learned strikes are not
-    /// sound-confirmed — the same as skipping it used to leave them.
-    func alignmentConfirmed() {
         guard isAddingNewInstrument else {
-            if baselineLearned { finishSetup() } else { screen = .calibrating }
-            return
-        }
-        // `baselineLearned` still describes the previous gangsa.
-        baselineLearned = profile.hasLearnedBaseline
-        if !baselineLearned { requireStrikeSound = false }
-        // Not saved here: the gangsa is added when the whole setup is done
-        // (`closeControllerSetup`), so backing out of a later step adds nothing.
-        offerControllerAfterSetup = true
-        finishSetup()
-    }
-
-    /// Baseline captured: strikes will now be confirmed by sound.
-    func baselineFinished() {
-        baselineLearned = true
-        requireStrikeSound = true
-        saveProfile()
-        finishSetup()
-    }
-
-    /// As above, but awaits the write so the caller can hold a "saving" state over it.
-    func baselineFinishedAsync() async {
-        baselineLearned = true
-        requireStrikeSound = true
-        await saveProfileAsync()
-        finishSetup()
-    }
-
-    /// Left the baseline step without capturing — continue anyway (vision alone).
-    func skipCalibration() {
-        saveProfile()
-        finishSetup()
-    }
-
-    /// The end of setup. A gangsa set up just now is offered, once each and
-    /// both skippable, a recording of its own keys and then a strike
-    /// controller (Flow D); everything else lands on the kotekan picker as
-    /// before. `closeNoteCapture` hands on to the controller offer.
-    private func finishSetup() {
-        guard offerControllerAfterSetup else {
+            // Editing an existing gangsa: its name, photo and count.
+            saveProfile()
             screen = .chooseKotekan
             return
         }
-        offerControllerAfterSetup = false
+        // Not saved here: the gangsa is added when the whole setup is done
+        // (`closeControllerSetup`), so backing out of a later step adds
+        // nothing. On to recording its keys, then the controller (Flow D).
+        //
+        // R Framing, aligning the camera mask and learning the gangsa's voice
+        // R (the strike-sound baseline) sat between here and there, then
+        // R behind Settings for realigning by hand; they went with the camera
+        // R play mode.
         openNoteCapture(setup: true)
     }
 }

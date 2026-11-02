@@ -20,13 +20,22 @@ enum AppButtonSize {
     /// The screen's way on: GO, NEXT, START.
     case large
 
-    /// The height of the drawn glass. A compact control is drawn at 36 but
+    /// The height of the drawn surface. A compact control is drawn at 36 but
     /// still takes a 44pt target — see `AppControlSurface`.
     var height: CGFloat {
         switch self {
         case .compact: 36
         case .regular: 44
         case .large: 52 // = Theme.buttonHeight, so Sign in with Apple sits level
+        }
+    }
+
+    /// How far a tactile face stands above its base — see `AppControlSurface`.
+    var depth: CGFloat {
+        switch self {
+        case .compact: 2
+        case .regular: 3
+        case .large: 4
         }
     }
 
@@ -72,12 +81,10 @@ extension View {
     func appLabel(_ size: AppButtonSize, prominence: AppButton.Prominence = .secondary) -> some View {
         switch prominence {
         case .primary:
-            textCase(.uppercase)
-                .tracking(Theme.buttonTracking)
-                .font(.sans(size.labelPoints, weight: Theme.buttonWeight))
+            font(.sans(size.labelPoints, weight: Theme.buttonWeight))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-        case .secondary:
+        case .secondary, .quiet, .selected:
             font(.sans(size.labelPoints, weight: .semibold))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)

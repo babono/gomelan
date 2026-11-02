@@ -37,15 +37,29 @@ private struct ControllerSetupContent: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TopBar(
-                title: "Sensor controller",
-                onBack: back,
-                trailingText: LocalizedStringKey(vm.app.profile.name),
-                trailingTitle: skipTitle,
-                onTrailing: vm.close,
-                infoAction: { vm.app.openGuide(guide) },
-                infoLabel: vm.step == .test ? "How the key check works" : "How to fit the sensors"
-            )
+            // The last step of adding a gangsa wears the setup header; from
+            // Settings it is a screen of its own.
+            if vm.app.controllerSetupIsOffer, vm.app.isAddingNewInstrument {
+                SetupHeader(
+                    step: 3,
+                    onLeading: back,
+                    trailingTitle: skipTitle,
+                    onTrailing: vm.close,
+                    onInfo: { vm.app.openGuide(guide) },
+                    infoLabel: infoLabel
+                )
+                .padding(.horizontal, 24)
+            } else {
+                TopBar(
+                    title: "Sensor controller",
+                    onBack: back,
+                    trailingText: LocalizedStringKey(vm.app.profile.name),
+                    trailingTitle: skipTitle,
+                    onTrailing: vm.close,
+                    infoAction: { vm.app.openGuide(guide) },
+                    infoLabel: infoLabel
+                )
+            }
             Group {
                 switch vm.step {
                 case .scanning: scanning
@@ -85,6 +99,10 @@ private struct ControllerSetupContent: View {
     /// The help button explains the step you are on.
     private var guide: AppState.Guide {
         vm.step == .test ? .sensorCheck : .sensor
+    }
+
+    private var infoLabel: LocalizedStringKey {
+        vm.step == .test ? "How the key check works" : "How to fit the sensors"
     }
 
     /// Skip sits in the trailing corner, so Back keeps the leading one.
@@ -137,7 +155,7 @@ private struct ControllerSetupContent: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text(vm.app.controllerSetupIsOffer ? "Have a sensor controller?" : "Connect your controller")
                     .font(.serif(34))
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.heading)
                 // Short on purpose: fitting the sensors is the guide's job (the
                 // ? button), so this only has to get the controller listed.
                 Text("Turn on Bluetooth and switch the controller on. An active controller shows up on the right.")
@@ -152,7 +170,7 @@ private struct ControllerSetupContent: View {
                 // Sentence case, not `SectionLabel`'s tracked capitals.
                 Text("Nearby")
                     .font(.sans(15, weight: .semibold))
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.description)
                 if sensor.found.isEmpty {
                     if quietTooLong {
                         Text(
@@ -235,7 +253,7 @@ private struct ControllerSetupContent: View {
             if let info = sensor.info, sensor.isReady {
                 Text(info.name)
                     .font(.serif(34))
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.heading)
                 HStack(alignment: .top, spacing: 36) {
                     stat("Controller inputs", "\(info.inputCount)")
                     if info.hasPlugDetect {
@@ -311,7 +329,7 @@ private struct ControllerSetupContent: View {
             SectionLabel(title)
             Text(value)
                 .font(.serif(44))
-                .foregroundStyle(Theme.cream)
+                .foregroundStyle(Theme.heading)
             if let detail {
                 Text(detail)
                     .font(.sans(13))
@@ -430,7 +448,7 @@ private struct ControllerSetupContent: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Hit key \(k + 1)")
                         .font(.serif(34))
-                        .foregroundStyle(Theme.cream)
+                        .foregroundStyle(Theme.heading)
                     Text(vm.inputForKey[k] == nil
                         ? "This key has no sensor yet. Hit it to assign one."
                         : "\(vm.sensorCount) sensors found. Hit each key in order.")
@@ -439,7 +457,7 @@ private struct ControllerSetupContent: View {
                 }
                 Spacer()
                 if vm.inputForKey[k] != nil {
-                    AppButton(title: "No sensor on key \(k + 1)", systemImage: "camera", size: .compact) {
+                    AppButton(title: "No sensor on key \(k + 1)", systemImage: "minus.circle", size: .compact) {
                         vm.markNoSensor()
                     }
                 }
@@ -448,9 +466,9 @@ private struct ControllerSetupContent: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("All keys check out")
                     .font(.serif(34))
-                    .foregroundStyle(Theme.hit)
+                    .foregroundStyle(Theme.ok)
                 Text(vm.sensorCount < vm.keyCount
-                    ? "Keys without a sensor use the camera and mic."
+                    ? "Keys without a sensor can't be heard, so their notes count as missed."
                     : "Every key has a sensor.")
                     .font(.sans(14))
                     .foregroundStyle(Theme.cream.opacity(0.65))

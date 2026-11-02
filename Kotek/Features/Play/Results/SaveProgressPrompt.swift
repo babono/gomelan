@@ -27,7 +27,7 @@ struct SaveProgressPrompt: View {
                     .font(.serif(24))
                     .textCase(.uppercase)
                     .tracking(1.5)
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.heading)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
@@ -58,7 +58,7 @@ struct SaveProgressPrompt: View {
             }
             .padding(24)
             .frame(maxWidth: 560)
-            .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)

@@ -83,7 +83,7 @@ struct ControllerKeyTile: View {
     }
 
     private var fill: Color {
-        if isChecked { return Theme.hit }
+        if isChecked { return Theme.ok }
         return Theme.bronze.opacity(input == nil ? 0.08 : 0.2)
     }
 
@@ -112,7 +112,7 @@ struct ControllerKeyTile: View {
         var parts = [String(localized: "Key \(key + 1)")]
         parts
             .append(input
-                .map { String(localized: "input \($0 + 1)") } ?? String(localized: "no sensor, camera and microphone"))
+                .map { String(localized: "input \($0 + 1)") } ?? String(localized: "no sensor, not heard"))
         if isChecked { parts.append(String(localized: "checked")) }
         if isCurrent { parts.append(String(localized: "hit this key now")) }
         if mixUp == .hit { parts.append(String(localized: "you hit this key")) }

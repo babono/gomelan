@@ -77,7 +77,7 @@ struct SensorCheckGuideView: View {
 
     private func promptColor(_ demo: Demo) -> Color {
         if demo.mixUp != nil { return Theme.wrong }
-        return demo.current == nil ? Theme.hit : Theme.cream
+        return demo.current == nil ? Theme.ok : Theme.cream
     }
 
     private func row(_ demo: Demo) -> some View {
@@ -204,10 +204,12 @@ private struct StepList: View {
                 .opacity(active == nil || active == i ? 1 : 0.45)
                 .animation(.easeInOut(duration: 0.25), value: active)
             }
-            Text("A key with no sensor? Choose “No sensor on key …” and it uses the camera and microphone instead.")
-                .font(.sans(12))
-                .foregroundStyle(Theme.cream.opacity(0.55))
-                .fixedSize(horizontal: false, vertical: true)
+            Text(
+                "A key with no sensor? Choose “No sensor on key …”. Its hits can't be heard, so its notes count as missed."
+            )
+            .font(.sans(12))
+            .foregroundStyle(Theme.cream.opacity(0.55))
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

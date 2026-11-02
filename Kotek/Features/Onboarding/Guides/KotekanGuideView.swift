@@ -42,7 +42,7 @@ struct KotekanGuideWeave: View {
 struct KotekanGuideLegend: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionLabel("Reading a card", color: Theme.gold)
+            SectionLabel("Reading a card", color: Theme.goldText)
 
             GuideLead(
                 "Each card draws its pattern across one gong cycle: time runs left to right, and the keys go low to high up the side. Swipe to hear the next."

@@ -7,15 +7,18 @@
 
 import SwiftUI
 
-/// The HIG's lighter pill under the chosen label. The cream at low opacity
-/// rather than the gold of a primary button, so gold stays the colour of a
-/// screen's way on; the one place to change if that ever flips.
+/// The HIG's lighter pill under the chosen label: white on the Krem track,
+/// with a breath of shadow so it sits ON the track — the design system's
+/// "Pemade | Kantilan". Not Merah, so the red stays the screen's way on —
+/// except where the choice IS a colour: Polos / Sangsih fill it with the
+/// voice's own (`AppSwitcher.tint`).
 struct AppThumb<S: Shape>: View {
     let shape: S
+    var fill: Color = Theme.surface
 
     var body: some View {
         shape
-            .fill(Theme.cream.opacity(0.18))
-            .overlay(shape.stroke(Theme.cream.opacity(0.22), lineWidth: 0.5))
+            .fill(fill)
+            .shadow(color: Theme.ireng.opacity(0.12), radius: 2, y: 1)
     }
 }

@@ -15,8 +15,6 @@ extension AppState {
     func activateInstrument(_ p: InstrumentProfile) {
         profile = p
         ProfileStore.setSelectedID(p.id)
-        baselineLearned = p.hasLearnedBaseline
-        if !p.hasLearnedBaseline { requireStrikeSound = false }
     }
 
     /// Pick this instrument and advance to kotekan selection.
@@ -64,12 +62,6 @@ extension AppState {
         screen = .chooseInstrument
     }
 
-    func realignInstrument(_ p: InstrumentProfile) {
-        profile = p
-        ProfileStore.setSelectedID(p.id)
-        screen = .aligning
-    }
-
     /// Delete an instrument, including the last one.
     func deleteInstrument(_ profileID: String) {
         let photo = savedProfiles.first { $0.id == profileID }?.photoVersion
@@ -93,13 +85,9 @@ extension AppState {
         if let next = savedProfiles.first {
             profile = next
             ProfileStore.setSelectedID(next.id)
-            baselineLearned = next.hasLearnedBaseline
-            if !next.hasLearnedBaseline { requireStrikeSound = false }
         } else {
             profile = ResourceLoader.defaultProfile()
             ProfileStore.setSelectedID("")
-            baselineLearned = false
-            requireStrikeSound = false
         }
     }
 

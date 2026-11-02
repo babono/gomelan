@@ -109,7 +109,7 @@ private struct NamePopup: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Name your kotek")
                     .font(.serif(24))
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.heading)
                 TextField("My kotekan", text: $name)
                     .textFieldStyle(.plain)
                     .font(.sans(17))

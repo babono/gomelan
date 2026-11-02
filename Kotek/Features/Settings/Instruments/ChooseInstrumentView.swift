@@ -33,11 +33,12 @@ struct ChooseInstrumentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // The redesign titles the empty state for what it is about to
+            // hold, and the picker for the question it asks.
             TopBar(
-                title: "Choose your gangsa",
+                title: app.savedProfiles.isEmpty ? "Your gangsa" : "Choose your gangsa",
+                subtitle: app.savedProfiles.isEmpty ? nil : "Which one are you playing today?",
                 onBack: { app.screen = .welcome },
-                trailingText: app.savedProfiles.isEmpty
-                    ? nil : "\(app.savedProfiles.count) saved",
                 settingsAction: { app.openSettings() },
                 showsMenu: true,
                 edgeInset: 0
@@ -50,7 +51,8 @@ struct ChooseInstrumentView: View {
                 rail
                     .frame(maxHeight: .infinity)
                 // Bottom right, flush to the safe-area edge, as on the kotekan picker.
-                HStack {
+                HStack(alignment: .bottom) {
+                    KipliGuide(message: "Tap your gangsa to begin.")
                     Spacer()
                     AppIconButton(systemImage: "plus", label: "Add gangsa") { app.addNewInstrument() }
                 }
@@ -61,7 +63,8 @@ struct ChooseInstrumentView: View {
             Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             title: "Delete this gangsa?",
             message: LocalizedStringKey(GangsaDeletion.message(pendingDelete?.name)),
-            confirmTitle: "Delete"
+            confirmTitle: "Delete",
+            kipli: .sad
         ) {
             guard let p = pendingDelete else { return }
             app.deleteInstrument(p.id)

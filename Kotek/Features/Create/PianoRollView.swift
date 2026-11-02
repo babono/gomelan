@@ -118,7 +118,7 @@ private struct PianoRollControls: View {
                 AppIconButton(
                     systemImage: "pianokeys",
                     label: viewModel.showsGangsa ? "Hide gangsa" : "Show gangsa",
-                    prominence: viewModel.showsGangsa ? .primary : .secondary,
+                    prominence: viewModel.showsGangsa ? .selected : .quiet,
                     size: .compact
                 ) { viewModel.showsGangsa.toggle() }
             }
@@ -152,7 +152,9 @@ private struct PianoRollControls: View {
             Image(systemName: "eraser")
                 .font(.symbol(AppButtonSize.compact.symbolPoints, weight: .semibold))
                 .foregroundStyle(selected ? Theme.onGlassFill : Theme.cream)
-                .appControlSurface(size: .compact, shape: .circle, prominence: selected ? .primary : .secondary)
+                // A tool that is on is Ireng, one that is off Krem — the design
+                // system's tool buttons. Merah is for Next.
+                .appControlSurface(size: .compact, shape: .circle, prominence: selected ? .selected : .quiet)
         }
         .buttonStyle(AppButtonStyle())
         .accessibilityLabel("Delete")
@@ -606,7 +608,7 @@ struct PianoRollRuler: View {
                 }
                 Text("\(bar + 1)")
                     .font(.sans(11, weight: .bold))
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.goldText)
                     .offset(x: CGFloat(bar) * barWidth + 4, y: 2)
             }
         }
@@ -693,7 +695,8 @@ private struct PianoRollTransport: View {
                 AppIconButton(
                     systemImage: running ? "pause.fill" : "play.fill",
                     label: running ? "Pause" : "Play",
-                    prominence: .primary,
+                    // Secondary: one red button per screen, and that is Next.
+                    prominence: .secondary,
                     size: .compact
                 ) { viewModel.togglePlay() }
                     .disabled(draft.isEmpty && !running)
@@ -742,7 +745,7 @@ struct PlayheadClock: View {
 ///
 /// Not an `AppButton`: its primary sets the label heavy and uppercase like
 /// NEXT, so "Recording" jumped in weight and case. Like the half pills, only
-/// the glass changes. Now icon-only (the label is dropped), so it's a circle.
+/// the fill changes. Now icon-only (the label is dropped), so it's a circle.
 private struct RecordButton: View {
     let recording: Bool
     let action: () -> Void

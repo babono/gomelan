@@ -2,166 +2,79 @@
 //  PatternBackground.swift
 //  Kotek
 //
-//  The ground every screen sits on: warm brown, and across it two rows of the
-//  carved motif — one hanging from the top edge, one standing on the bottom,
-//  half a motif apart so they interlock like teeth — running slowly to the
-//  right, forever, like a marquee.
+//  The ground every screen sits on (the November 2026 redesign): paper, and at
+//  each side the silhouette of the split gate the launch screen walks through
+//  — the same `pura-gate` artwork, flat in the pattern beige, its stepped
+//  flank reaching in from the edge. Every screen after launch is, in the
+//  story, inside the gate.
 //
-//  The motif (`bg-motif`, the designer's second pass, October 2026) is ONE
-//  outline unit standing up: a fan at the foot rising to a flame-shaped tip.
-//  The hanging row is the same file turned over. It is a template image, so
-//  its colour is `Theme.pattern` — the asset catalog's.
+//  It replaced two rows of carved leaves running right forever (`bg-motif`
+//  in a Core Animation `Marquee`). The redesign's mockups have no ambient
+//  motion, which also retires the reason the marquee existed: a background
+//  that moved needed the render server, or it stuttered whenever the main
+//  thread was busy. A still one is two images.
 //
-//  The proportions are the design's: each motif is 1/1.2 of the band, so the
-//  rows overlap by all but a fifth of a motif, and neighbours sit 6.5% of a
-//  motif's width apart rather than touching.
+//  The geometry is read off the mockups (874 x 402, 1x) and scaled by
+//  `LaunchLayout.unit`: the art at 1x, its post 88pt off the screen's edge and
+//  4pt above the top, so about 120pt of flank shows.
 //
-//  Core Animation, not SwiftUI: each row's period is drawn into a bitmap
-//  once, and a `Marquee` repeats that texture across the screen and slides it
-//  on the render server. This used to be a Canvas moved
-//  by a SwiftUI `repeatForever` offset, on the belief that the render server
-//  interpolated it. It does not: SwiftUI computes each frame of its own
-//  animations on the main thread, so the "free" background was a per-frame
-//  cost on every screen, and stuttered whenever the main thread was busy.
 
 import SwiftUI
 
 struct PatternBackground: View {
-    /// One name, used by both the size probe and the draw. They must not drift.
-    static let assetName = "bg-motif"
-
-    /// The artwork's proportions, read from the asset rather than typed in —
-    /// a hardcoded size has gone stale in this file twice before.
-    private static let motifAspect: CGFloat = {
-        guard let size = UIImage(named: assetName)?.size, size.height > 0 else { return 342.0 / 424.0 }
-        return size.width / size.height
-    }()
-
-    /// Each motif's height, as a share of the screen's.
-    private static let heightFraction: CGFloat = 1 / 1.2
-    /// From one motif to the next, as a share of a motif's width.
-    private static let pitch: CGFloat = 1.065
-
-    /// Points per second, travelling right.
-    var speed: Double = 9
-    var opacity: Double = Theme.patternOpacity
-    /// Set false for screens where the ground is a live camera image.
-    var showsGround = true
-
-    /// False keeps the leaves off screen. Turned true, they arrive — the
-    /// hanging ones down from the top, the upturned ones up from the bottom —
-    /// and only then start to move across. Launch holds them back until the
-    /// splash's curtains are gone, which is both the grander entrance and two
-    /// fewer things to draw behind the splash.
+    /// False keeps the silhouettes off screen; turned true, they slide in from
+    /// the sides. Launch holds them back until the splash has gone, so the
+    /// landing screen's gate seems to become them.
     private let shown: Bool
     @State private var entered: Bool
-    @State private var running = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    init(speed: Double = 9, opacity: Double = Theme.patternOpacity, showsGround: Bool = true, shown: Bool = true) {
-        self.speed = speed
-        self.opacity = opacity
-        self.showsGround = showsGround
+    init(shown: Bool = true) {
         self.shown = shown
         _entered = State(initialValue: shown)
     }
 
-    /// How long the leaves take to come in from the edges.
+    /// `pura-gate`'s size, and where each flank sits, in the mockups' units.
+    private static let art = CGSize(width: 208, height: 434)
+    private static let postOffscreen: CGFloat = 88
+    private static let top: CGFloat = -4
+    /// How long the flanks take to come in from the edges.
     private static let entrance = 0.9
 
     var body: some View {
-        GeometryReader { geo in
-            let height = geo.size.height
-            let period = height * Self.heightFraction * Self.motifAspect * Self.pitch
-            let count = Int((geo.size.width / period).rounded(.up)) + 2
-            ZStack {
-                if showsGround { Theme.ground }
-                if height > 0 {
-                    // Two rows, one texture each, sliding on one clock: they
-                    // start in the same transaction with the same duration, so
-                    // the teeth stay interlocked however long the screen is up.
-                    ForEach([true, false], id: \.self) { hanging in
-                        Marquee(
-                            image: Self.row(hanging: hanging, height: height),
-                            origin: .zero,
-                            spacing: CGVector(dx: period, dy: 0),
-                            count: count,
-                            travel: CGVector(dx: period, dy: 0),
-                            duration: period / speed,
-                            // Still, with Reduce Motion on: ambient movement is
-                            // exactly what that setting asks apps to leave out.
-                            running: running && !reduceMotion,
-                            placement: entered
-                                ? CATransform3DIdentity
-                                : Marquee.shifted(CGVector(dx: 0, dy: hanging ? -height : height)),
-                            placementDuration: Self.entrance
-                        )
-                    }
-                    .opacity(opacity)
-                }
+        GeometryReader { proxy in
+            let size = proxy.size
+            let u = LaunchLayout.unit(in: size)
+            let art = CGSize(width: Self.art.width * u, height: Self.art.height * u)
+            // Out of sight: past the edge by the width that shows.
+            let away = entered ? 0 : art.width - Self.postOffscreen * u
+
+            ZStack(alignment: .topLeading) {
+                Theme.ground
+                // Left: the artwork as drawn, its flank stepping down to the
+                // right. Right: mirrored.
+                flank
+                    .frame(width: art.width, height: art.height)
+                    .offset(x: -Self.postOffscreen * u - away, y: Self.top * u)
+                flank
+                    .scaleEffect(x: -1, y: 1)
+                    .frame(width: art.width, height: art.height)
+                    .offset(x: size.width - art.width + Self.postOffscreen * u + away, y: Self.top * u)
             }
         }
         .allowsHitTesting(false)
+        .accessibilityHidden(true)
         .ignoresSafeArea()
-        .onAppear { if entered { running = true } }
         .onChange(of: shown) { _, now in
             guard now, !entered else { return }
-            entered = true
-            Task {
-                try? await Task.sleep(for: .seconds(Self.entrance))
-                running = true
-            }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: Self.entrance)) { entered = true }
         }
     }
 
-    /// One period of one row, for a screen this tall. The hanging row is a
-    /// motif turned over, from the top, in the middle; the standing row is the
-    /// upright motifs either side of it, cut at the edges so the copies join
-    /// without a seam. Drawn once per height.
-    private static func row(hanging: Bool, height: CGFloat) -> UIImage {
-        let key = "\(hanging)-\(height)"
-        if let cached = cache[key] { return cached }
-        let motif = CGSize(width: height * heightFraction * motifAspect, height: height * heightFraction)
-        let period = motif.width * pitch
-        let leaf = UIImage(named: assetName)?
-            .withTintColor(UIColor(named: "PatternBackground") ?? .brown, renderingMode: .alwaysOriginal)
-        let image = Marquee.render(size: CGSize(width: period, height: height)) { cg in
-            if hanging {
-                // Turned over, from the top edge, centred in the period.
-                cg.translateBy(x: 0, y: motif.height)
-                cg.scaleBy(x: 1, y: -1)
-                leaf?.draw(in: CGRect(origin: CGPoint(x: (period - motif.width) / 2, y: 0), size: motif))
-            } else {
-                // Upright on the bottom edge, half a period either side.
-                for x in [-period / 2, period / 2] {
-                    let origin = CGPoint(x: x + (period - motif.width) / 2, y: height - motif.height)
-                    leaf?.draw(in: CGRect(origin: origin, size: motif))
-                }
-            }
-        }
-        cache[key] = image
-        return image
-    }
-
-    private nonisolated(unsafe) static var cache: [String: UIImage] = [:]
-}
-
-// MARK: - Convenience
-
-extension View {
-    /// Put the Kotek ground behind this view.
-    ///
-    /// `ignoresSafeArea` is applied inside the background so the pattern reaches
-    /// the edges without the content having to.
-    func kotekGround() -> some View {
-        background(PatternBackground())
-    }
-
-    /// The pattern alone, for screens whose ground is the camera feed. Laid over
-    /// the preview at a lower strength so it reads as a tint rather than
-    /// competing with the instrument — three quarters of the tile's own
-    /// strength, which is where the old 0.06-against-0.08 sat.
-    func kotekPatternOverlay(opacity: Double = 0.75) -> some View {
-        overlay(PatternBackground(opacity: opacity, showsGround: false))
+    private var flank: some View {
+        Image("pura-gate")
+            .resizable()
+            .renderingMode(.template)
+            .foregroundStyle(Theme.pattern)
     }
 }

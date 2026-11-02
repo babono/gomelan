@@ -51,6 +51,14 @@ private struct ChooseKotekanContentView: View {
                 edgeInset: 0
             )
 
+            // Kipli in the gap between the header and the rail, his bubble
+            // opening to his right. In the bottom row the filter pills covered
+            // it; among the header's controls it dropped onto the subtitle.
+            KipliGuide(message: "Swipe to hear each kotekan. Tap one to play it.", style: .quiet)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // Above the rail, which is drawn after him.
+                .zIndex(1)
+
             Group {
                 if vm.kotekans.isEmpty {
                     noMatches
@@ -66,7 +74,8 @@ private struct ChooseKotekanContentView: View {
             Binding(get: { vm.pendingDelete != nil }, set: { if !$0 { vm.pendingDelete = nil } }),
             title: "Delete this kotekan?",
             message: "\(vm.pendingDelete?.name ?? "It") will be removed from this account on every device. Its records on your gangsa stay.",
-            confirmTitle: "Delete"
+            confirmTitle: "Delete",
+            kipli: .sad
         ) {
             if let k = vm.pendingDelete { vm.delete(k) }
         }
@@ -74,10 +83,10 @@ private struct ChooseKotekanContentView: View {
             if let error = vm.deleteError {
                 Text(error)
                     .font(.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.onButtonFill)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(Theme.miss.opacity(0.9), in: Capsule())
+                    .background(Theme.destructive, in: Capsule())
                     .padding(.top, 60)
                     .onTapGesture { vm.deleteError = nil }
             }
@@ -126,7 +135,7 @@ private struct ChooseKotekanContentView: View {
         VStack(spacing: 8) {
             Text(noMatchesTitle)
                 .font(.serif(26))
-                .foregroundStyle(Theme.cream)
+                .foregroundStyle(Theme.heading)
             Text(noMatchesDetail)
                 .font(.sans(14))
                 .foregroundStyle(Theme.stone)

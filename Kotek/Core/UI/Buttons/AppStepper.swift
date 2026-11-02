@@ -2,8 +2,8 @@
 //  AppStepper.swift
 //  Kotek
 //
-//  A −/number/+ stepper. Big serif number, circular buttons — the shared control
-//  for key count and cycle count.
+//  A −/number/+ stepper. Big serif number, quiet Krem circles either side —
+//  the shared control for key count and cycle count.
 //
 
 import SwiftUI
@@ -15,7 +15,7 @@ struct AppStepper: View {
 
     var body: some View {
         HStack(spacing: 22) {
-            AppIconButton(systemImage: "minus", label: "Fewer", size: .large) {
+            AppIconButton(systemImage: "minus", label: "Fewer", prominence: .quiet, size: .large) {
                 value = max(range.lowerBound, value - 1)
             }
             .disabled(value <= range.lowerBound)
@@ -24,7 +24,7 @@ struct AppStepper: View {
                 .foregroundStyle(Theme.cream)
                 .frame(minWidth: numberSize * 1.1)
                 .contentTransition(.numericText())
-            AppIconButton(systemImage: "plus", label: "More", size: .large) {
+            AppIconButton(systemImage: "plus", label: "More", prominence: .quiet, size: .large) {
                 value = min(range.upperBound, value + 1)
             }
             .disabled(value >= range.upperBound)

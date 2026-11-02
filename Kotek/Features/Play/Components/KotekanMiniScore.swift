@@ -47,9 +47,8 @@ struct KotekanMiniScore: View {
                 size.height - CGFloat(key - range.lowerBound + 1) * lane + (lane - blockH) / 2
             }
 
-            // Same skin as the waterfall's blocks, with a rim scaled down to
-            // the card: the waterfall's 1.5pt eats most of a 6pt block.
-            let rimWidth = min(1, blockH * 0.12)
+            // The card's own flat skins (`VoiceSkin.polosCard`), both solid.
+            let rimWidth = max(1.25, min(1.5, blockH * 0.2))
 
             func draw(_ key: Int, slot: Int, skin: VoiceSkin, half: Bool, rightHalf: Bool) {
                 let rect = CGRect(
@@ -78,12 +77,12 @@ struct KotekanMiniScore: View {
                 let s = kotekan.sangsih[slot]
 
                 if let p, p == s {
-                    draw(p, slot: offset, skin: .polos, half: true, rightHalf: false)
-                    draw(p, slot: offset, skin: .sangsih, half: true, rightHalf: true)
+                    draw(p, slot: offset, skin: .polosCard, half: true, rightHalf: false)
+                    draw(p, slot: offset, skin: .sangsihCard, half: true, rightHalf: true)
                     continue
                 }
-                if let p { draw(p, slot: offset, skin: .polos, half: false, rightHalf: false) }
-                if let s { draw(s, slot: offset, skin: .sangsih, half: false, rightHalf: false) }
+                if let p { draw(p, slot: offset, skin: .polosCard, half: false, rightHalf: false) }
+                if let s { draw(s, slot: offset, skin: .sangsihCard, half: false, rightHalf: false) }
             }
         }
     }
@@ -96,9 +95,10 @@ struct KotekanMiniScore: View {
             let playhead = engine.playhead
             return Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
                 let x = size.width * min(1, max(0, playhead))
+                // Gold: the design system's beam.
                 ctx.fill(
-                    Path(CGRect(x: x - 0.75, y: 0, width: 1.5, height: size.height)),
-                    with: .color(Theme.cream.opacity(0.85))
+                    Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)),
+                    with: .color(Theme.gold)
                 )
             }
         }

@@ -87,7 +87,7 @@ private struct HistoryRowView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(kotekanName)
                     .font(.serif(22))
-                    .foregroundStyle(Theme.cream)
+                    .foregroundStyle(Theme.heading)
                 Text(subtitle)
                     .font(.sans(13))
                     .foregroundStyle(Theme.cream.opacity(0.62))

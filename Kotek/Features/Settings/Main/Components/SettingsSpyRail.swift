@@ -45,12 +45,14 @@ struct SettingsSpyRail: View {
                 .padding(.vertical, 8)
                 .frame(minHeight: 34)
                 .background(
-                    active ? Theme.buttonFill : .clear,
+                    // Ireng, as the design system's selected chip; Merah is
+                    // for the way on, and a section is not that.
+                    active ? Theme.tertiary : .clear,
                     in: RoundedRectangle(cornerRadius: 10)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(active ? .clear : Theme.cream.opacity(0.18), lineWidth: 1)
+                        .strokeBorder(active ? .clear : Theme.hairline, lineWidth: 1)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 10))
         }

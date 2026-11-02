@@ -6,8 +6,8 @@
 //
 //  The strike controller and the note clips come first: this version plays on
 //  the waterfall, hears strikes from the sensors and sounds your own recorded
-//  bilah. Re-align keys and Calibrate voice only serve the camera mode, so
-//  they moved to Deprecated.
+//  bilah. (Re-align keys and Calibrate voice served only the camera mode;
+//  they moved to a Deprecated card, and went with the mode.)
 //
 
 import SwiftUI
@@ -36,18 +36,18 @@ struct InstrumentSectionView: View {
                     TextField("Gangsa name", text: $viewModel.draftName)
                         .textFieldStyle(.plain)
                         .font(.serif(22))
-                        .foregroundStyle(Theme.cream)
+                        .foregroundStyle(Theme.heading)
                         .focused($nameFocused)
                         .submitLabel(.done)
                         .autocorrectionDisabled()
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
                         .frame(maxWidth: 360, alignment: .leading)
-                        .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.radius))
+                        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
                         .overlay(
                             RoundedRectangle(cornerRadius: Theme.radius)
                                 .strokeBorder(
-                                    nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
+                                    nameFocused ? Theme.gold : Theme.hairline,
                                     lineWidth: nameFocused ? 2 : 1
                                 )
                         )
@@ -119,7 +119,7 @@ struct InstrumentSectionView: View {
                 }
             } else {
                 Text(
-                    "Optional. Sensors on each bilah catch every hit exactly, without the camera or mic."
+                    "Optional. Sensors on each bilah catch every hit exactly, so your playing can be scored."
                 )
                 .font(.sans(14))
                 .foregroundStyle(Theme.cream.opacity(0.62))
@@ -191,7 +191,7 @@ struct InstrumentSectionView: View {
     private func controllerLine(_ link: ControllerLink) -> String {
         let sensors = app.profile.keys.filter { $0.sensorInput != nil }.count
         var line = String(localized: "\(link.name) · \(sensors) of \(app.profile.keyCount) keys have sensors")
-        if sensors < app.profile.keyCount { line += String(localized: " · the rest use camera and mic") }
+        if sensors < app.profile.keyCount { line += String(localized: " · the rest aren't heard") }
         return line
     }
 

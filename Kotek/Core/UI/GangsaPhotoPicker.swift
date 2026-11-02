@@ -37,10 +37,10 @@ struct GangsaPhotoPicker: View {
                         .clipped()
                     Text("Change")
                         .font(.sans(12, weight: .semibold))
-                        .foregroundStyle(Theme.ground)
+                        .foregroundStyle(Theme.onButtonFill)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 4)
-                        .background(Theme.gold, in: Capsule())
+                        .background(Theme.primary, in: Capsule())
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                         .padding(8)
                 } else {
@@ -50,7 +50,7 @@ struct GangsaPhotoPicker: View {
                         Text("Add a photo")
                             .font(.sans(13, weight: .medium))
                     }
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.description)
                 }
             }
             .frame(width: width, height: height)
@@ -59,8 +59,8 @@ struct GangsaPhotoPicker: View {
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.radius)
                     .strokeBorder(
-                        Theme.gold.opacity(image == nil ? 0.4 : 0.2),
-                        style: StrokeStyle(lineWidth: 1, dash: image == nil ? [4, 3] : [])
+                        Theme.description.opacity(image == nil ? 0.5 : 0.25),
+                        style: StrokeStyle(lineWidth: 1.5, dash: image == nil ? [6, 5] : [])
                     )
             )
         }

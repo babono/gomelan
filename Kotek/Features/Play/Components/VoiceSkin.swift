@@ -2,11 +2,10 @@
 //  VoiceSkin.swift
 //  Kotek
 //
-//  A voice's block, from the design drawing (`polos-on`, `sangsih-on`):
-//  lighter at the top, a brighter rim. (`polos-mute` and `sangsih-mute`, the
-//  half you are not playing, went when the waterfall stopped drawing it.) Shared
-//  by the waterfall and the picker cards' mini score so a figure looks the
-//  same before you pick it as it does while you play it.
+//  A voice's block on the picker cards' mini score: a fill and a rim. It was
+//  shared with the waterfall, whose blocks were shaded — lighter at the top,
+//  a brighter rim (`polos-on`, `sangsih-on`) — until the designer's waterfall
+//  (November 2026) drew flat pills in the voice colours instead.
 //
 
 import SwiftUI
@@ -14,30 +13,12 @@ import SwiftUI
 struct VoiceSkin {
     var top: Color, bottom: Color, rim: Color
 
-    /// Not `Theme.polosVoice`/`sangsihVoice` — the drawing deepens both so
-    /// they sit on the warm ground without glowing.
-    static let polos = VoiceSkin(
-        top: Color(hex: 0x678BC6),
-        bottom: Color(hex: 0x3E527F),
-        rim: Color(hex: 0x7BA2E4)
-    )
-    /// Darker than `sangsih-on` as drawn (A382C6 → 78529F): on screen that
-    /// read paler than polos, its bottom ~45% brighter. These are the drawn
-    /// hues scaled to polos's luminance, so the two halves weigh the same.
-    static let sangsih = VoiceSkin(
-        top: Color(hex: 0x9C7DBE),
-        bottom: Color(hex: 0x644486),
-        rim: Color(hex: 0xB391D8)
-    )
-    static let damp = VoiceSkin(
-        top: Color(hex: 0x715736),
-        bottom: Color(hex: 0x55422D),
-        rim: Color(hex: 0x9E7B49)
-    )
-
-    static func of(_ half: KotekanHalf) -> VoiceSkin {
-        half == .polos ? .polos : .sangsih
-    }
+    /// The picker card's score: polos a solid Merah tile, sangsih a solid
+    /// blue one — flat, because at a 7pt tile the shading was mud. Sangsih was
+    /// first white ringed in blue, as the design system drew it; beside solid
+    /// Merah it read as a gap, a note not there.
+    static let polosCard = VoiceSkin(top: Theme.merah, bottom: Theme.merah, rim: Theme.merah)
+    static let sangsihCard = VoiceSkin(top: Theme.sangsihBlue, bottom: Theme.sangsihBlue, rim: Theme.sangsihBlue)
 
     func draw(_ ctx: GraphicsContext, _ r: CGRect, rimWidth: CGFloat = 1.5) {
         let radius = min(r.width, r.height) * 0.22

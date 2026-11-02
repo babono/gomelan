@@ -70,7 +70,7 @@ struct ResultsFeedbackView: View {
                     } icon: {
                         Image(systemName: "arrow.turn.down.right")
                             .font(.symbol(13, weight: .semibold))
-                            .foregroundStyle(Theme.terracotta)
+                            .foregroundStyle(Theme.goldText)
                     }
                     .font(.sans(15))
                     .foregroundStyle(Theme.charcoal.opacity(0.85))
@@ -112,7 +112,7 @@ struct ResultsFeedbackView: View {
                                     .imageScale(.small)
                             }
                             .font(.sans(13, weight: .medium))
-                            .foregroundStyle(Theme.gold)
+                            .foregroundStyle(Theme.goldText)
                             .padding(.vertical, 6)
                             .contentShape(Rectangle())
                         }
@@ -134,7 +134,7 @@ struct ResultsFeedbackView: View {
                 SectionLabel("Feedback", color: Theme.stone)
                 Image(systemName: "sparkles")
                     .font(.sans(11))
-                    .foregroundStyle(Theme.terracotta)
+                    .foregroundStyle(Theme.goldText)
             }
             content()
         }

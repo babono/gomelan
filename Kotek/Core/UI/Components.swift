@@ -2,119 +2,19 @@
 //  Components.swift
 //  Kotek
 //
-//  Shared UI pieces, in the Kotek design language: one warm brown ground,
-//  cream type, capsule buttons.
+//  Shared UI pieces, in the Kotek design language: one paper ground,
+//  charcoal type, orange headings, capsule buttons.
 //
-//  Every action control is Liquid Glass (`Buttons/`, drawn by
-//  `AppControlSurface`): gold-tinted for the screen's way on, tinted with the
-//  ground for the rest.
-//  That is an explicit product decision — Apple's guidance keeps glass to the
-//  floating layer. What was tried before: glass for bars only, opaque gold for
-//  the way on inside content, a flat 12% wash for secondaries (clear glass was
-//  tried there and was still too loud). Three looks for one kind of control is
-//  what read as inconsistent. What you tap that is not a control — cards, grid
-//  cells, tab rails, dots, the dev screens — stays `.appPlain`.
+//  Every action control is solid (`Buttons/`, drawn by `AppControlSurface`):
+//  filled with the primary for the screen's way on, the beige surface for
+//  the rest. It was Liquid Glass until the November 2026 redesign — glass is
+//  iOS-only and the app is going to Android. One look for one kind of control
+//  is still the rule; three (glass bars, opaque gold, a flat wash) is what
+//  read as inconsistent before. What you tap that is not a control — cards,
+//  grid cells, tab rails, dots, the dev screens — stays `.appPlain`.
 //
 
 import SwiftUI
-
-// MARK: - Wordmark
-
-/// The KOTEK wordmark, at the one size and position the app draws it.
-///
-/// Shared by the splash and the landing screen ON PURPOSE, and this is the
-/// whole reason it is a type rather than two `Image` calls: the two screens
-/// hand over by cross-fading everything AROUND the wordmark while the wordmark
-/// itself stays exactly where it is. That only works if both screens agree on
-/// its geometry to the point, which they cannot do if each computes its own.
-///
-/// Sized from the container rather than fixed, so it holds its proportions on
-/// an iPad and on a small phone in landscape. The cap is what stops it turning
-/// into a banner on a 13" screen.
-///
-/// Drawn plain, at full strength, on every screen that shows it. The splash
-/// used to fill it with cream from the bottom as loading progressed; that made
-/// the wordmark rise into view, which read as an entrance animation rather than
-/// as progress and was the wrong thing for a mark that is supposed to be simply
-/// present. The pill underneath reports progress, and reports it alone.
-struct KotekWordmark: View {
-    /// The width the LATIN wordmark takes. The Sanskrit below is sized from it,
-    /// so one number governs the whole mark.
-    let width: CGFloat
-
-    /// The artwork's own proportions (287 x 83), so the height follows from the
-    /// width and the two screens cannot drift apart.
-    static let aspectRatio: CGFloat = 287.0 / 83.0
-    /// The Sanskrit mark's own proportions (176 x 59).
-    static let sanskritAspectRatio: CGFloat = 176.0 / 59.0
-
-    /// How wide the Sanskrit sits under the wordmark, as a fraction of it.
-    /// Narrower on purpose: it is the second mark, and matching the width would
-    /// read as two logos stacked rather than one with its script beneath.
-    private static let sanskritScale: CGFloat = 0.58
-    private static let gapScale: CGFloat = 0.06
-
-    /// The width the wordmark takes in a container this wide.
-    static func width(in containerWidth: CGFloat) -> CGFloat {
-        min(280, containerWidth * 0.25)
-    }
-
-    /// Where the top of the wordmark sits in a container this tall. Shared for
-    /// the same reason as the width.
-    static func topInset(in containerHeight: CGFloat) -> CGFloat {
-        containerHeight * 0.17
-    }
-
-    /// The whole mark's height, script included — what a screen laying out
-    /// around it needs, and the reason the width is a parameter rather than a
-    /// `.frame` the caller bolts on afterwards. A `GeometryReader` in here would
-    /// read the width but claim all the height going, which is precisely the
-    /// layout both screens cannot afford.
-    static func height(for width: CGFloat) -> CGFloat {
-        width / aspectRatio
-            + width * gapScale
-            + (width * sanskritScale) / sanskritAspectRatio
-    }
-
-    var body: some View {
-        VStack(spacing: width * Self.gapScale) {
-            // Named `wordmark-kotek`, NOT `logo-kotek`. The app icon already
-            // claims `logo-kotek` (see ASSETCATALOG_COMPILER_APPICON_NAME and
-            // `Kotek/logo-kotek.icon`), and an asset catalog will happily
-            // compile two unrelated things under one name — the icon stack and
-            // this artwork — and leave `Image("logo-kotek")` to pick between
-            // them. Renaming is the fix; do not name anything else
-            // `logo-kotek`.
-            image("wordmark-kotek", width: width, aspect: Self.aspectRatio)
-
-            // A template image, tinted here: the export carries a gold a shade
-            // off the palette's, and the script should be the title colour.
-            image(
-                "logo-sanskrit",
-                width: width * Self.sanskritScale,
-                aspect: Self.sanskritAspectRatio
-            )
-            .foregroundStyle(Theme.gold)
-        }
-        // One accessibility element: VoiceOver reading two undescribed images
-        // in a row is worse than reading the name once.
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Kotek")
-    }
-
-    /// Both frames are given a HEIGHT as well as a width. `.fit` on its own only
-    /// constrains — a resizable image in a width-only frame is free to take the
-    /// height it likes, and the two marks would size independently of each
-    /// other.
-    private func image(_ name: String, width: CGFloat, aspect: CGFloat)
-        -> some View
-    {
-        Image(name)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .frame(width: width, height: width / aspect)
-    }
-}
 
 // MARK: - The tick under every control
 
@@ -125,17 +25,43 @@ struct KotekWordmark: View {
 /// `.plain` and an explicit style beats an inherited one. Nothing sets a toggle
 /// style, so the environment carries this everywhere by itself.
 ///
-/// Renders `.switch` inside, which is what these were getting from the default
-/// on iOS anyway.
+/// Drawn rather than `.switch`, since the Nawa Sanga design system: Pandan
+/// when on, Garis when off, a white thumb. The system switch takes a tint for
+/// ON only — its off track stays the system grey, which on the Putih canvas
+/// read as disabled.
 struct AppToggleStyle: ToggleStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
-        Toggle(isOn: configuration.$isOn) { configuration.label }
-            .toggleStyle(.switch)
-            // On the VALUE, not on the touch: a switch can also be flipped by a
-            // drag across it, and that should sound the same as tapping it.
-            .onChange(of: configuration.isOn) {
-                KajarTick.strike()
-            }
+        HStack {
+            configuration.label
+            Spacer(minLength: 12)
+            Capsule()
+                .fill(configuration.isOn ? Theme.ok : Theme.hairline)
+                .frame(width: 51, height: 31)
+                .overlay(alignment: configuration.isOn ? .trailing : .leading) {
+                    Circle()
+                        .fill(Theme.surface)
+                        .shadow(color: Theme.ireng.opacity(0.18), radius: 1.5, y: 1)
+                        .padding(3)
+                }
+                .opacity(isEnabled ? 1 : 0.45)
+                .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: configuration.isOn)
+                // The HIG target, round a 31pt track.
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+                .onTapGesture { configuration.isOn.toggle() }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityValue(configuration.isOn ? Text("On") : Text("Off"))
+        .accessibilityAction { configuration.isOn.toggle() }
+        // On the VALUE, not on the touch, so a change made any way —
+        // VoiceOver included — sounds the same.
+        .onChange(of: configuration.isOn) {
+            KajarTick.strike()
+        }
     }
 }
 
@@ -184,14 +110,14 @@ struct TopBar: View {
     /// A line under the title saying what the screen is about — the kotekan
     /// picker's "On Pemade 1".
     var subtitle: LocalizedStringKey?
-    /// nil is plain Back: a chevron in a glass circle. A title is for a leading
+    /// nil is plain Back: a chevron in a beige circle. A title is for a leading
     /// action that is not simply "back" — Done, Cancel, Skip, Rescan — and
-    /// shows as words in a glass capsule.
+    /// shows as words in a beige capsule.
     var backTitle: LocalizedStringKey?
     var onBack: (() -> Void)?
     var trailingText: LocalizedStringKey?
     /// A trailing action in words — a setup step's Skip / Done, in the corner
-    /// so the leading slot stays Back. Secondary glass, as Settings' Done.
+    /// so the leading slot stays Back. Secondary, as Settings' Done.
     var trailingTitle: LocalizedStringKey?
     var onTrailing: (() -> Void)?
     /// When set, a gear button is shown at the trailing edge (e.g. open Settings).
@@ -203,8 +129,8 @@ struct TopBar: View {
     /// When set, a status dot in the far corner, beside the gear — e.g. the
     /// kotekan picker's "sensors connected".
     var status: (color: Color, label: String)?
-    var tint: Color = Theme.cream
-    var accent: Color = Theme.gold
+    var tint: Color = Theme.heading
+    var accent: Color = Theme.description
     /// Slimmer header with no divider — used over full-bleed camera screens.
     var compact: Bool = false
     /// Folds the gear and the strike-controller status into one ⋯ menu, as the
@@ -212,7 +138,7 @@ struct TopBar: View {
     var showsMenu: Bool = false
     /// A control before the trailing ones — the kotekan picker's Solo / Co-op
     /// menu. It was a Co-op button, first a gold primary, which shouted over
-    /// the carousel it sits above; keep whatever goes here secondary glass.
+    /// the carousel it sits above; keep whatever goes here secondary.
     var accessory: AnyView?
     /// Space between the controls and the safe-area edge. The pickers pass 0 so
     /// the buttons sit in the corners, on the line their carousel ends at.
@@ -220,15 +146,11 @@ struct TopBar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // One container for the bar's glass, as Apple recommends
-            // wherever glass controls sit together: they render as one
-            // pass and blend as glass should when they move.
-            GlassEffectContainer(spacing: 14) {
+            Group {
                 HStack(spacing: 14) {
                     // R Was "‹ Back" as bare text, then a chevron in a flat
-                    // R wash. Glass now: back, help and settings are the
-                    // R navigation layer, which is what Liquid Glass is for —
-                    // R and how iOS itself draws them.
+                    // R wash, then glass, then a solid beige circle. White on
+                    // R a Garis edge now — the design system's back button.
                     if let onBack {
                         if let backTitle {
                             AppButton(title: backTitle, action: onBack)
@@ -335,14 +257,25 @@ private struct MoreMenu: View {
             Image(systemName: "ellipsis")
                 .font(.symbol(AppButtonSize.regular.symbolPoints, weight: .semibold))
                 .foregroundStyle(Theme.cream)
-                .appControlSurface(size: .regular, shape: .circle, prominence: .secondary, growsHitArea: false)
-                .overlay(alignment: .topTrailing) {
-                    if app.controllerNeedsCheck {
-                        Circle().fill(Theme.wrong).frame(width: 9, height: 9)
-                    }
-                }
+                .frame(width: AppButtonSize.regular.height, height: AppButtonSize.regular.height)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        // The circle outside the menu, as `AppMenuPicker` draws its pill: the
+        // system redraws a menu's label as it opens and closes, and dropped
+        // the edge for a frame.
+        .tactile(
+            Circle(),
+            fill: Theme.glassTint,
+            outline: Theme.hairline,
+            base: Theme.hairline,
+            depth: AppButtonSize.regular.depth
+        )
+        .overlay(alignment: .topTrailing) {
+            if app.controllerNeedsCheck {
+                Circle().fill(Theme.wrong).frame(width: 9, height: 9)
+            }
+        }
         .accessibilityLabel("More, \(status.text)")
     }
 }
@@ -352,8 +285,8 @@ private struct MoreMenu: View {
 /// Uppercase tracked eyebrow/section label.
 struct SectionLabel: View {
     let text: LocalizedStringKey
-    var color: Color = Theme.gold
-    init(_ text: LocalizedStringKey, color: Color = Theme.gold) {
+    var color: Color = Theme.description
+    init(_ text: LocalizedStringKey, color: Color = Theme.description) {
         self.text = text
         self.color = color
     }
@@ -432,7 +365,7 @@ struct BusyOverlay: View {
             .padding(.horizontal, 40)
             .padding(.vertical, 30)
             .frame(minWidth: 260)
-            .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
@@ -462,8 +395,14 @@ struct ConfirmDialog: View {
     /// The confirming button's colour. `Theme.miss` — the app's red — for
     /// anything that destroys something, which so far is all of them.
     var confirmTint: Color = Theme.miss
+    /// Kipli beside the title, in this mood — sad over losing something.
+    var kipli: KipliGuide.Mood?
     let onConfirm: () -> Void
     let onCancel: () -> Void
+
+    /// He says the title as the dialog opens.
+    @State private var talking = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -477,13 +416,18 @@ struct ConfirmDialog: View {
                 }
 
             VStack(alignment: .leading, spacing: 10) {
-                Text(title)
-                    .font(.serif(24))
-                    .textCase(.uppercase)
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.cream)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                HStack(spacing: 12) {
+                    if let kipli {
+                        KipliFace(mood: kipli, height: 44, talking: talking)
+                    }
+                    Text(title)
+                        .font(.serif(24))
+                        .textCase(.uppercase)
+                        .tracking(1.5)
+                        .foregroundStyle(Theme.heading)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
 
                 Text(message)
                     .font(.sans(14))
@@ -491,14 +435,14 @@ struct ConfirmDialog: View {
                     .lineSpacing(1)
                     .fixedSize(horizontal: false, vertical: true)
 
-                GlassEffectContainer(spacing: 12) {
+                Group {
                     HStack(spacing: 12) {
                         Spacer(minLength: 0)
                         AppButton(title: "Cancel", size: .compact) {
                             onCancel()
                         }
-                        // R The destructive button is plain glass with type in
-                        // R its own colour rather than the gold-tinted way on.
+                        // R The destructive button is a secondary with type in
+                        // R its own colour rather than the filled way on.
                         // R `.primary` is the app's one "do this" — and the
                         // R delete is precisely not the thing being recommended.
                         AppButton(title: confirmTitle, size: .compact, tint: confirmTint, action: onConfirm)
@@ -508,13 +452,19 @@ struct ConfirmDialog: View {
             }
             .padding(24)
             .frame(maxWidth: 520)
-            .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
             .overlay(
                 RoundedRectangle(cornerRadius: 22)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
             .padding(.horizontal, 28)
+        }
+        .task {
+            guard kipli != nil, !reduceMotion else { return }
+            talking = true
+            try? await Task.sleep(for: .seconds(1.2))
+            talking = false
         }
     }
 }
@@ -530,6 +480,7 @@ extension View {
         message: LocalizedStringKey,
         confirmTitle: LocalizedStringKey,
         confirmTint: Color = Theme.miss,
+        kipli: KipliGuide.Mood? = nil,
         action: @escaping () -> Void
     ) -> some View {
         overlay {
@@ -539,6 +490,7 @@ extension View {
                     message: message,
                     confirmTitle: confirmTitle,
                     confirmTint: confirmTint,
+                    kipli: kipli,
                     // Act FIRST, then dismiss. The pickers present this from
                     // the thing being deleted (`pendingDelete != nil`), so
                     // dismissing first cleared it and the action found

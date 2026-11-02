@@ -14,8 +14,6 @@ import SwiftUI
 /// what a background is. This is a dimmed backdrop and a panel.
 struct GuidePanel<Content: View>: View {
     let title: LocalizedStringKey
-    /// An asset to draw in place of the title.
-    var titleImage: String?
     var onClose: () -> Void
     /// Whether the body scrolls. True for the columns; false for anything that manages its own height.
     var scrolls: Bool = true
@@ -57,7 +55,7 @@ struct GuidePanel<Content: View>: View {
                 body_
             }
         }
-        .background(Theme.deep, in: RoundedRectangle(cornerRadius: 22))
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
         .overlay(
             RoundedRectangle(cornerRadius: 22)
                 .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
@@ -68,22 +66,13 @@ struct GuidePanel<Content: View>: View {
     /// Title and dismiss on ONE row.
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            if let titleImage {
-                Image(titleImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 26)
-                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 4 }
-                    .accessibilityLabel(title)
-            } else {
-                Text(title)
-                    .font(.serif(24))
-                    .textCase(.uppercase)
-                    .tracking(1.5)
-                    .foregroundStyle(Theme.cream)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
+            Text(title)
+                .font(.serif(24))
+                .textCase(.uppercase)
+                .tracking(1.5)
+                .foregroundStyle(Theme.heading)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             Spacer(minLength: 16)
 

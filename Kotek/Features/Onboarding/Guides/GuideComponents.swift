@@ -33,7 +33,7 @@ struct GuideBlock: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            SectionLabel(heading, color: Theme.gold)
+            SectionLabel(heading, color: Theme.goldText)
             Text(text)
                 .font(.sans(13))
                 .foregroundStyle(Theme.cream.opacity(0.75))

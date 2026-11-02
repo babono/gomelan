@@ -32,7 +32,7 @@ struct CoopSetupView: View {
                     VStack(spacing: 2) {
                         Text(k.name)
                             .font(.serif(28))
-                            .foregroundStyle(Theme.cream)
+                            .foregroundStyle(Theme.heading)
                         Text(k.specLabel)
                             .font(.sans(13, weight: .medium).monospacedDigit())
                             .foregroundStyle(Theme.stone)
@@ -82,11 +82,12 @@ struct CoopSetupView: View {
         let k = app.selectedKotekan
         let playable = k.map(app.coopPlayable) ?? false
         return HStack(spacing: 14) {
-            Text(playable || k == nil
-                ? "Sensors aren't used together yet. Play along — nothing is scored."
-                : "\(k!.name) needs \(k!.requiredKeys) bilah on both gangsa.")
-                .font(.sans(13))
-                .foregroundStyle(playable ? Theme.cream.opacity(0.45) : Theme.wrong)
+            // Kipli says it: what coop does not do yet, or why it cannot start.
+            KipliGuide(
+                message: playable || k == nil
+                    ? "Sensors aren't used together yet. Play along — nothing is scored."
+                    : "\(k!.name) needs \(k!.requiredKeys) bilah on both gangsa."
+            )
             Spacer()
             AppButton(
                 title: "Start",
@@ -124,17 +125,17 @@ private struct PlayerCard: View {
             TextField("Name", text: $player.name)
                 .textFieldStyle(.plain)
                 .font(.serif(20))
-                .foregroundStyle(Theme.cream)
+                .foregroundStyle(Theme.heading)
                 .focused($nameFocused)
                 .submitLabel(.done)
                 .autocorrectionDisabled()
                 .padding(.horizontal, 12)
                 .padding(.vertical, 9)
-                .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.radius))
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.radius))
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.radius)
                         .strokeBorder(
-                            nameFocused ? Theme.buttonFill : Theme.cream.opacity(0.15),
+                            nameFocused ? Theme.gold : Theme.hairline,
                             lineWidth: nameFocused ? 2 : 1
                         )
                 )
@@ -170,7 +171,7 @@ private struct PlayerCard: View {
                             .font(.symbol(9, weight: .semibold))
                     }
                 }
-                .foregroundStyle(Theme.copper)
+                .foregroundStyle(Theme.cream)
             }
             .disabled(profiles.count < 2)
         }

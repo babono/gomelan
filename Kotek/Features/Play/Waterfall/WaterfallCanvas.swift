@@ -2,10 +2,21 @@
 //  WaterfallCanvas.swift
 //  Kotek
 //
-//  The falling notes. Every stroke is a block in its bilah's lane that reaches
-//  the bottom edge — the top of the bar — at the instant it is due. Right
-//  behind it in the same lane rides a damp cue: the moment the note ends, the
-//  left hand pinches that bilah (§5.5).
+//  The falling notes. Every stroke is a short pill in its bilah's lane that
+//  reaches the bottom edge — the gangsa's rail, the one line there is to hit
+//  on — at the instant it is due. Above it in the same lane rides a grey
+//  damp pill, on a cream stem as long as the note: when the grey reaches the
+//  line, the note ends and the left hand pinches that bilah (§5.5).
+//
+//  The designer's drawing, November 2026. It replaced a stroke block as tall
+//  as the note with a dark damp tile of the same height stacked on it, a
+//  pinching hand drawn in it (`DampGlyph`): two tall blocks per note, and no
+//  telling from them which edge meant "now". The stem says how long the note
+//  rings; the pills are the two moments.
+//
+//  A grey hit line along the foot was tried with them, turning gold under a
+//  hit and darker under a pinch. Right above the gangsa's own rail it made
+//  two lines, and which one to hit on was less clear than with none.
 //
 //  One Canvas, reading the engine, so the per-frame redraw stays in here and
 //  never reaches the instrument or the chrome.
@@ -31,8 +42,23 @@ struct WaterfallCanvas: View {
         max(34, height / 6)
     }
 
-    private var yourSkin: VoiceSkin {
-        .of(yourHalf)
+    /// A stroke pill's height for a bar this wide — the designer's 222 x 62.
+    static func strikeHeight(barWidth: CGFloat) -> CGFloat {
+        max(8, barWidth * 0.28)
+    }
+
+    /// The damp pill, thinner (222 x 42), and the stem between, narrower.
+    private static func dampHeight(barWidth: CGFloat) -> CGFloat {
+        max(6, barWidth * 0.19)
+    }
+
+    private static let stemFill: CGFloat = 0.61
+
+    private static let dampGrey = Color(hex: 0x9C9FA8)
+    private static let stemCream = Color(hex: 0xF5E7D2)
+
+    private var yourColour: Color {
+        yourHalf == .polos ? Theme.polosVoice : Theme.sangsihVoice
     }
 
     var body: some View {
@@ -69,16 +95,20 @@ struct WaterfallCanvas: View {
             drawCycles(ctx, size: size, aheadMs: aheadMs, y: y)
 
             let notes = engine.fallingNotes(aheadMs: aheadMs, behindMs: beatMs)
+                .filter { $0.voice == .yours }
             // Only your half falls. The other half used to come down beside
             // it as a muted slate block, and between the two the lanes were
             // twice as busy as the part you actually play; you still hear
-            // it. Damp cues first, then yours, so the thing you strike is on
-            // top in its lane.
-            for note in notes where note.voice == .yours && damp.showsTiles {
-                drawDamp(ctx, note: note, y: y, pxPerMs: pxPerMs)
+            // it. Damp cues first, then the strokes, so the thing you strike
+            // is on top in its lane — a short note's damp pill can reach
+            // into its own stroke's.
+            if damp.showsTiles {
+                for note in notes {
+                    drawDamp(ctx, note: note, y: y)
+                }
             }
-            for note in notes where note.voice == .yours {
-                drawYours(ctx, note: note, y: y, pxPerMs: pxPerMs)
+            for note in notes {
+                drawStroke(ctx, note: note, y: y)
             }
 
             drawFloaters(ctx, lineY: lineY)
@@ -126,105 +156,90 @@ struct WaterfallCanvas: View {
             ctx.draw(
                 Text("Cycle \(cycle.number)")
                     .font(.sans(11, weight: .bold))
-                    .foregroundStyle(Theme.gold),
+                    .foregroundStyle(Theme.goldText),
                 at: CGPoint(x: onLeft ? 6 : size.width - 6, y: yy - 3),
                 anchor: onLeft ? .bottomLeading : .bottomTrailing
             )
         }
     }
 
-    private func block(
-        _ note: FallingNote,
-        width: CGFloat,
-        y: (Double) -> CGFloat,
-        pxPerMs: Double,
-        minHeight: CGFloat = 20
-    ) -> CGRect {
-        let bottom = y(note.msAhead)
-        let height = max(minHeight, note.durationMs * pxPerMs - 3)
-        return CGRect(
-            x: layout.laneCenter(note.keyIndex) - width / 2,
-            y: bottom - height,
-            width: width,
-            height: height
-        )
+    /// A pill in a note's lane, its bottom edge at `bottom`.
+    private func pill(_ key: Int, bottom: CGFloat, width: CGFloat, height: CGFloat) -> Path {
+        let r = CGRect(x: layout.laneCenter(key) - width / 2, y: bottom - height, width: width, height: height)
+        return Path(roundedRect: r, cornerRadius: height * 0.36)
     }
 
-    /// Right or wrong, as a glow rising off the rail in the bar's lane:
-    /// green for a hit, red for a missed note. It used to recolour the bar
-    /// itself, but a miss is judged as the next stroke comes due — the very
-    /// moment the damp cue lights that same bar — so the red hid the pinch.
-    /// Up here, behind the falling blocks, it covers nothing.
+    /// Right or wrong, as a glow rising off the rail in the bar's lane: gold
+    /// for a hit, red for a missed note. It used to recolour the bar itself,
+    /// but a miss is judged as the next stroke comes due — the very moment
+    /// the damp cue lights that same bar — so the red hid the pinch. Up here,
+    /// behind the falling notes, it covers nothing.
     ///
-    /// Gradients as drawn (`correct-hit.svg`, `miss.svg`): their end points
-    /// sit beyond the 124 × 89 tile, so the bottom never reaches full colour.
+    /// A hit was green (`correct-hit.svg`) until the designer's waterfall
+    /// made it gold, the colour of a hit everywhere else in the app, and
+    /// taller: a column, as if the stroke rang up the lane. The miss is the
+    /// drawn one (`miss.svg`), whose gradient's end points sit beyond its
+    /// 124 x 89 tile, so the bottom never reaches full colour.
     private func drawVerdicts(_ ctx: GraphicsContext, lineY: CGFloat) {
         let u = layout.unit
         for (key, flash) in engine.keyFlashes {
-            let r = CGRect(
-                x: layout.laneCenter(key) - u * 62,
-                y: lineY - u * 89,
-                width: u * 124,
-                height: u * 89
-            )
             let hit = flash.result.isHit
-            let colour = Color(hex: hit ? 0x79EC90 : 0x821C28)
-            let fadeTo = hit ? colour.opacity(0) : Color(hex: 0x8F303B, alpha: 0)
             var c = ctx
             c.opacity = 1 - pow(min(1, flash.age / engine.flashDuration), 2)
-            c.fill(Path(r), with: .linearGradient(
-                Gradient(colors: [colour, fadeTo]),
-                startPoint: CGPoint(x: r.midX, y: r.minY + u * (hit ? 223 : 135)),
-                endPoint: CGPoint(x: r.midX, y: r.minY + u * (hit ? 11 : 0))
-            ))
+            if hit {
+                let r = CGRect(
+                    x: layout.laneCenter(key) - layout.lane * 0.55,
+                    y: lineY - layout.lane * 3,
+                    width: layout.lane * 1.1,
+                    height: layout.lane * 3
+                )
+                c.fill(Path(r), with: .linearGradient(
+                    Gradient(colors: [Theme.gold.opacity(0), Theme.gold.opacity(0.55)]),
+                    startPoint: CGPoint(x: r.midX, y: r.minY),
+                    endPoint: CGPoint(x: r.midX, y: r.maxY)
+                ))
+            } else {
+                let r = CGRect(x: layout.laneCenter(key) - u * 62, y: lineY - u * 89, width: u * 124, height: u * 89)
+                c.fill(Path(r), with: .linearGradient(
+                    Gradient(colors: [Color(hex: 0x821C28), Color(hex: 0x8F303B, alpha: 0)]),
+                    startPoint: CGPoint(x: r.midX, y: r.minY + u * 135),
+                    endPoint: CGPoint(x: r.midX, y: r.minY)
+                ))
+            }
         }
     }
 
-    /// Keeps its colour after it is judged — the verdict is painted on the
-    /// bar it landed on (`GangsaView`), where the eye is at the stroke.
-    private func drawYours(
-        _ ctx: GraphicsContext,
-        note: FallingNote,
-        y: (Double) -> CGFloat,
-        pxPerMs: Double
-    ) {
-        yourSkin.draw(ctx, block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs))
+    /// The stroke: a short pill in your voice's colour, its bottom edge on
+    /// the rail at the instant it is due. Keeps its colour after it is
+    /// judged — the verdict glows in the lane.
+    private func drawStroke(_ ctx: GraphicsContext, note: FallingNote, y: (Double) -> CGFloat) {
+        let h = Self.strikeHeight(barWidth: layout.barWidth)
+        ctx.fill(
+            pill(note.keyIndex, bottom: y(note.msAhead), width: layout.barWidth, height: h),
+            with: .color(yourColour)
+        )
     }
 
-    /// Follows its stroke up the same lane, as long as the stroke, reaching
-    /// the bar the instant the note ends: a bronze tile with a pinch, the
-    /// colour of the bar it stops, so it never reads as a target.
-    private func drawDamp(
-        _ ctx: GraphicsContext,
-        note: FallingNote,
-        y: (Double) -> CGFloat,
-        pxPerMs: Double
-    ) {
+    /// Follows its stroke up the same lane: a cream stem from the stroke to a
+    /// grey pill whose bottom edge reaches the rail the instant the note
+    /// ends. Grey, not a voice's colour, so it never reads as a target.
+    private func drawDamp(_ ctx: GraphicsContext, note: FallingNote, y: (Double) -> CGFloat) {
         guard note.dampsAfter else { return }
-        let stroke = block(note, width: layout.barWidth, y: y, pxPerMs: pxPerMs)
-        let width = layout.barWidth * 0.84
-        // Its bottom is the note's end; the 3pt the stroke leaves at its top
-        // is the gap between the two.
-        let bottom = y(note.msAhead + note.durationMs)
-        let r = CGRect(
-            x: layout.laneCenter(note.keyIndex) - width / 2,
-            y: bottom - stroke.height,
-            width: width,
-            height: stroke.height
-        )
-        VoiceSkin.damp.draw(ctx, r)
-        let iconH = min(r.width * 0.5, r.height - 6)
-        let iconW = iconH * 0.8
-        DampGlyph.draw(
-            in: ctx,
-            rect: CGRect(
-                x: r.midX - iconW / 2,
-                y: r.midY - iconH / 2,
-                width: iconW,
-                height: iconH
-            ),
-            color: Color(hex: 0x2B211C)
-        )
+        let w = layout.barWidth
+        let strokeTop = y(note.msAhead) - Self.strikeHeight(barWidth: w)
+        let dampBottom = y(note.msAhead + note.durationMs)
+        if strokeTop > dampBottom {
+            let stemW = w * Self.stemFill
+            let stem = CGRect(
+                x: layout.laneCenter(note.keyIndex) - stemW / 2,
+                y: dampBottom - 1,
+                width: stemW,
+                height: strokeTop - dampBottom + 2
+            )
+            ctx.fill(Path(stem), with: .color(Self.stemCream))
+        }
+        let h = Self.dampHeight(barWidth: w)
+        ctx.fill(pill(note.keyIndex, bottom: dampBottom, width: w, height: h), with: .color(Self.dampGrey))
     }
 
     /// "PERFECT", "LATE"… rising off the bar that was struck.
