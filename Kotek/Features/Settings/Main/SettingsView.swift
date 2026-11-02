@@ -2,9 +2,9 @@
 //  SettingsView.swift
 //  Kotek
 //
-//  Settings (PRD §8): account, the gangsa, judging, the old camera mode, and
-//  the dev test screens. Tempo and the guide and partner voices are not here:
-//  they are on the practice screen, where they change without stopping.
+//  Settings (PRD §8): a sidebar of the player's gangsa, then the app's own
+//  pages — Practice, Account, and last the dev test screens. Tempo is not
+//  here: it is on the practice screen, where it changes without stopping.
 //
 
 import SwiftUI
@@ -38,37 +38,24 @@ private struct SettingsContentView: View {
                 onTrailing: { app.closeSettings() }
             )
 
-            ScrollViewReader { scroll in
-                SettingsSpyRail(viewModel: vm, contentScroll: scroll)
-
-                Rectangle()
-                    .fill(Theme.cream.opacity(0.10))
-                    .frame(height: 1)
+            HStack(alignment: .top, spacing: 16) {
+                sidebar
+                    .frame(width: 220)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: 22))
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        section(.account) {
-                            AccountSectionView(viewModel: vm)
-                        }
-
-                        section(.instrument) {
-                            InstrumentSectionView(viewModel: vm)
-                        }
-
-                        section(.debug) {
-                            DebugSectionView(app: app)
-                        }
-                    }
-                    .padding(.horizontal, 28)
-                    .padding(.top, 22)
-                    .padding(.bottom, vm.tailInset)
+                    page
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(22)
                 }
-                .coordinateSpace(.named(SettingsViewModel.scrollSpace))
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
-                    vm.viewport = $0
-                    vm.spy()
-                }
+                // A new page opens at its top, not where the last one was left.
+                .id(vm.page)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: 22))
             }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
         }
         .onChange(of: app.profile.id) { _, _ in
             vm.updateActiveProfileId()
@@ -102,28 +89,73 @@ private struct SettingsContentView: View {
         }
     }
 
-    private func section(
-        _ id: SettingsSection,
-        @ViewBuilder content: () -> some View
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionLabel(LocalizedStringKey(viewModel.heading(for: id)))
-            content()
+    // MARK: - Sidebar
+
+    private var sidebar: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                groupHeader("My gangsa")
+                ForEach(app.savedProfiles) { p in
+                    sidebarRow(.gangsa(p.id)) {
+                        Text(p.name).lineLimit(1)
+                        Spacer(minLength: 6)
+                        Text("\(p.keyCount)")
+                            .font(.sans(12).monospacedDigit())
+                            .foregroundStyle(Theme.stone)
+                    }
+                }
+
+                groupHeader("App")
+                // Its own key: "Practice" is also the results screen's
+                // duration label, translated as that.
+                sidebarRow(.practice) { Text(String(localized: "Settings.practice", defaultValue: "Practice")) }
+                sidebarRow(.account) { Text("Account") }
+
+                // Kept reachable, last and quiet: the test screens are not
+                // for most players. (The camera mode's Deprecated page sat
+                // here too, until the mode went.)
+                // Its own key: "More" is also the stepper's "+", "Tambah".
+                groupHeader(LocalizedStringKey("Settings.more"))
+                sidebarRow(.debug) { Text("Debug") }
+            }
+            .padding(10)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 22)
-        .padding(.vertical, 20)
-        .background(Theme.surface, in: RoundedRectangle(cornerRadius: 22))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
-        )
-        .onGeometryChange(for: CGRect.self) {
-            $0.frame(in: .named(SettingsViewModel.scrollSpace))
-        } action: {
-            viewModel.metrics.frames[id] = $0
-            viewModel.spy()
+    }
+
+    private func groupHeader(_ title: LocalizedStringKey) -> some View {
+        SectionLabel(title, color: Theme.stone)
+            .padding(.horizontal, 10)
+            .padding(.top, 12)
+            .padding(.bottom, 2)
+    }
+
+    private func sidebarRow(_ page: SettingsPage, @ViewBuilder label: () -> some View) -> some View {
+        let selected = viewModel.page == page
+        return Button {
+            viewModel.open(page)
+        } label: {
+            HStack(spacing: 6) { label() }
+                .font(.sans(15, weight: selected ? .semibold : .regular))
+                .foregroundStyle(selected ? Theme.cream : Theme.cream.opacity(0.7))
+                .padding(.horizontal, 10)
+                .frame(minHeight: 40)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(selected ? Theme.cream.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                .contentShape(Rectangle())
         }
-        .id(id)
+        .buttonStyle(.appPlain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    // MARK: - Page
+
+    @ViewBuilder
+    private var page: some View {
+        switch viewModel.page {
+        case .gangsa: InstrumentSectionView(viewModel: viewModel)
+        case .practice: PracticeSectionView(app: app)
+        case .account: AccountSectionView(viewModel: viewModel)
+        case .debug: DebugSectionView(app: app)
+        }
     }
 }

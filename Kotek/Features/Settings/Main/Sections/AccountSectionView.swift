@@ -55,22 +55,44 @@ struct AccountSectionView: View {
                 // Said plainly, because nothing else will say it: a guest
                 // finds out their progress was only on this phone the day
                 // they delete the app.
-                Label("Guest · not backed up", systemImage: "exclamationmark.icloud")
-                    .font(.sans(16, weight: .medium))
-                    .foregroundStyle(Theme.destructive)
-
-                Text(
-                    "Only saved on this iPhone. Sign in with Apple to keep your data safe."
-                )
-                .font(.sans(13))
-                .foregroundStyle(Theme.cream.opacity(0.75))
-                .frame(maxWidth: 360, alignment: .leading)
-
-                AppleSignInButton { token, nonce, name in
-                    Task { await app.linkApple(idToken: token, nonce: nonce, fullName: name, from: .settings) }
-                } onError: { _ in
-                    app.accountError = String(localized: "Couldn't link your Apple ID. Try again.")
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "sparkle")
+                        .font(.symbol(16, weight: .medium))
+                        .foregroundStyle(Theme.gold)
+                        .frame(width: 38, height: 38)
+                        .overlay(Circle().strokeBorder(
+                            Theme.cream.opacity(0.4),
+                            style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+                        ))
+                    Text(
+                        "You're playing as a guest. Sign in and I'll keep your gangsa, kotek and progress on all your devices."
+                    )
+                    .font(.sans(14))
+                    .foregroundStyle(Theme.cream.opacity(0.85))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(
+                        Theme.cream.opacity(0.15),
+                        lineWidth: 1
+                    ))
                 }
+
+                // Under the bubble, at its right edge: beside the words it
+                // squeezed them into a column, and inside the bubble it read
+                // as part of the message rather than the thing to tap.
+                AppleSignInButton(
+                    onToken: { token, nonce, name in
+                        Task { await app.linkApple(idToken: token, nonce: nonce, fullName: name, from: .settings) }
+                    },
+                    onError: { _ in
+                        app.accountError = String(localized: "Couldn't link your Apple ID. Try again.")
+                    },
+                    size: .compact,
+                    signIn: true
+                )
+                .frame(maxWidth: .infinity, alignment: .trailing)
             }
 
             if let error = app.accountError {
@@ -78,6 +100,49 @@ struct AccountSectionView: View {
                     .font(.sans(13))
                     .foregroundStyle(Theme.miss)
             }
+
+            SettingsGroup(header: "General") {
+                // Kotek's page in the Settings app, where iOS lists Language
+                // for any app with more than one. That page is as deep as an
+                // app may link: the language list itself is one tap further,
+                // and only private URLs (rejected in review) reach it.
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    SettingsRow(title: "Language", divider: false) {
+                        HStack(spacing: 6) {
+                            Text(verbatim: Self.languageName)
+                                .font(.sans(14))
+                                .foregroundStyle(Theme.stone)
+                            Image(systemName: "chevron.right")
+                                .font(.symbol(12, weight: .semibold))
+                                .foregroundStyle(Theme.stone)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.appPlain)
+            }
+            .padding(.top, 10)
+
+            SettingsGroup(header: "About") {
+                SettingsRow(title: "Version", subtitle: "Kotek \(Self.version)", divider: false) { EmptyView() }
+            }
         }
+    }
+
+    /// The app's language, named in itself: "Bahasa Indonesia", "English".
+    /// Indonesian by hand: Foundation names it "Indonesia", the country.
+    private static var languageName: String {
+        let code = Bundle.main.preferredLocalizations.first ?? "en"
+        if code == "id" { return "Bahasa Indonesia" }
+        let name = Locale(identifier: code).localizedString(forLanguageCode: code) ?? code
+        return name.prefix(1).uppercased() + name.dropFirst()
+    }
+
+    private static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
     }
 }

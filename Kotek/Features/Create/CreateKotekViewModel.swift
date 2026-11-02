@@ -212,10 +212,86 @@ final class CreateKotekViewModel {
         audition(key)
     }
 
+    /// A controller is connected, so recording has something to listen to.
+    /// Without one Record is off, and the drawn gangsa writes instead.
+    var hasSensor: Bool {
+        app.controllerConnected
+    }
+
     /// A bilah tapped on the drawn gangsa: written while recording, as a
-    /// sensor hit is, otherwise only heard.
+    /// sensor hit is; without a sensor, written note by note (`step`);
+    /// otherwise only heard.
     func touch(key: Int) {
-        if recording { record(key: key) } else { audition(key) }
+        if recording {
+            record(key: key)
+        } else if !hasSensor {
+            step(key: key)
+        } else {
+            audition(key)
+        }
+    }
+
+    /// Step entry: the stroke is written where the line is, and the line moves
+    /// on one snap step for the next. No tempo to keep up with, so a figure can
+    /// be put together one note at a time.
+    func step(key: Int) {
+        pause()
+        let tick = Int((playhead / Double(snap.ticks)).rounded(.down)) * snap.ticks
+        guard tick < KotekanDraft.timelineTicks else { return audition(key) }
+        let draft = draft
+        draft.edit { draft.set(half: writing, tick: tick, key: key, length: snap.ticks) }
+        audition(key)
+        playhead = Double(min(tick + snap.ticks, KotekanDraft.timelineTicks - 1))
+    }
+
+    /// Step entry's rest: the line on one snap step with nothing written, for
+    /// a beat the half leaves empty. Dragging the ruler did it, a finger's
+    /// width at a time.
+    func skip() {
+        guard !recording else { return }
+        pause()
+        let tick = Int((playhead / Double(snap.ticks)).rounded(.down)) * snap.ticks
+        playhead = Double(min(tick + snap.ticks, KotekanDraft.timelineTicks - 1))
+    }
+
+    func undo() {
+        follow { draft.undo() }
+    }
+
+    func redo() {
+        follow { draft.redo() }
+    }
+
+    /// A tap or an erase on the roll. Only a stroke taken out moves the line:
+    /// a tap writes wherever the finger is, and the line following every one
+    /// of those would be dragged all over the figure.
+    func editRoll(_ change: () -> Void) {
+        follow(onAdd: false) { draft.edit(change) }
+    }
+
+    /// The line goes where the change was, so the next tap carries on from
+    /// there and Stop is not needed to put it back: to where a stroke taken
+    /// out sat, the end of one put back, and the start once the figure is
+    /// empty. Not while recording, whose line keeps time.
+    private func follow(onAdd: Bool = true, _ change: () -> Void) {
+        guard !recording else { return change() }
+        let before = Set(draft.notes)
+        change()
+        let after = Set(draft.notes)
+        let removed = before.subtracting(after)
+        let added = after.subtracting(before)
+        let to: Int? = if draft.isEmpty {
+            0
+        } else if let tick = removed.map(\.tick).min() {
+            tick
+        } else if onAdd, let end = added.map({ $0.tick + $0.length }).max() {
+            end
+        } else {
+            nil
+        }
+        guard let to else { return }
+        pause()
+        playhead = Double(min(to, KotekanDraft.timelineTicks - 1))
     }
 
     /// Put the line at `tick`, snapped — a drag on the ruler. A recording
@@ -336,7 +412,7 @@ final class CreateKotekViewModel {
         for tick in stride(from: Int((from / Double(beat)).rounded(.up)) * beat, to: Int(to.rounded(.up)), by: beat)
             where range.contains(Double(tick))
         {
-            KotekanDraft.colotomic(atBeat: tick / beat).forEach(strike)
+            draft.colotomic(atBeat: tick / beat).forEach(strike)
         }
     }
 

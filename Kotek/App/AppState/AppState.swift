@@ -194,6 +194,11 @@ final class AppState {
     /// Note capture opened as the step before the controller offer: "Skip"
     /// rather than "Back", and closing it moves on instead of to Settings.
     var noteCaptureIsSetup = false
+    /// Where closing note capture goes outside setup: Settings, or the gangsa
+    /// picker when it was opened from a card's menu.
+    var noteCaptureReturn = Route.settings
+    /// Where Done in Settings goes; see `openSettings`.
+    var settingsReturn = Route.chooseKotekan
 
     // MARK: - Account
 
@@ -308,12 +313,16 @@ final class AppState {
         screen = .createKotek
     }
 
+    /// Done goes back to the picker Settings was opened from: the gangsa
+    /// picker has its own gear now, and Done from there used to land on the
+    /// kotekan picker instead. Anywhere else (a Shortcut) still goes there.
     func openSettings() {
+        settingsReturn = screen == .chooseInstrument ? .chooseInstrument : .chooseKotekan
         screen = .settings
     }
 
     func closeSettings() {
-        screen = .chooseKotekan
+        screen = settingsReturn
     }
 
     func openHistory() {
@@ -324,14 +333,15 @@ final class AppState {
         screen = .settings
     }
 
-    func openNoteCapture(setup: Bool = false) {
+    func openNoteCapture(setup: Bool = false, returnTo: Route = .settings) {
         noteCaptureIsSetup = setup
+        noteCaptureReturn = returnTo
         screen = .noteCapture
     }
 
     func closeNoteCapture() {
         guard noteCaptureIsSetup else {
-            screen = .settings
+            screen = noteCaptureReturn
             return
         }
         noteCaptureIsSetup = false

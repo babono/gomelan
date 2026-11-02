@@ -126,6 +126,9 @@ struct TopBar: View {
     var infoAction: (() -> Void)?
     /// What the help button opens, for VoiceOver.
     var infoLabel: LocalizedStringKey = "How Kotek works"
+    /// A line under `infoLabel` when the help sits in the ⋯ menu — what the
+    /// guide covers, so it is chosen for its content and not as a generic ?.
+    var infoSubtitle: LocalizedStringKey?
     /// When set, a status dot in the far corner, beside the gear — e.g. the
     /// kotekan picker's "sensors connected".
     var status: (color: Color, label: String)?
@@ -177,7 +180,7 @@ struct TopBar: View {
                     }
                     // 44pt circles: a bare glyph in a corner is a 19pt
                     // target, and the HIG minimum is 44.
-                    if let infoAction {
+                    if let infoAction, !showsMenu {
                         AppIconButton(
                             systemImage: "questionmark",
                             label: infoLabel,
@@ -185,7 +188,10 @@ struct TopBar: View {
                         )
                     }
                     if showsMenu {
-                        MoreMenu(settingsAction: settingsAction)
+                        MoreMenu(
+                            info: infoAction.map { ($0, infoLabel, infoSubtitle) },
+                            settingsAction: settingsAction
+                        )
                     } else if let settingsAction {
                         AppIconButton(
                             systemImage: "gearshape",
@@ -239,17 +245,28 @@ struct TopBar: View {
     }
 }
 
-/// The ⋯ in a picker's top bar: the sensor's state, then Settings.
+/// The ⋯ in a picker's top bar: the screen's guide, then Settings.
+///
+/// R It led with a disabled row reporting the sensor. The kotekan picker has
+/// R its own sensor chip now, beside Mode, and a report inside a menu was the
+/// R one place nobody looked for it.
 private struct MoreMenu: View {
     @Environment(AppState.self) private var app
+    let info: (action: () -> Void, title: LocalizedStringKey, subtitle: LocalizedStringKey?)?
     let settingsAction: (() -> Void)?
 
     var body: some View {
-        let status = SensorIndicator.summary(for: app)
         Menu {
-            // A row that reports, not an action: disabled so it reads as status.
-            Button {} label: { Label { Text(status.text) } icon: { status.icon } }
-                .disabled(true)
+            if let info {
+                Button(action: info.action) {
+                    Label {
+                        Text(info.title)
+                        if let subtitle = info.subtitle { Text(subtitle) }
+                    } icon: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                }
+            }
             if let settingsAction {
                 Button("Settings", systemImage: "gearshape", action: settingsAction)
             }
@@ -276,7 +293,7 @@ private struct MoreMenu: View {
                 Circle().fill(Theme.wrong).frame(width: 9, height: 9)
             }
         }
-        .accessibilityLabel("More, \(status.text)")
+        .accessibilityLabel("More")
     }
 }
 
