@@ -45,7 +45,7 @@ struct SensorChip: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.appPlain)
-        .popover(isPresented: $explaining) { noSensor.presentationCompactAdaptation(.popover) }
+        .popover(isPresented: $explaining) { noSensor }
     }
 
     private var title: LocalizedStringKey {
@@ -67,25 +67,11 @@ struct SensorChip: View {
     }
 
     private var noSensor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("No sensor found")
-                .font(.sans(17, weight: .semibold))
-                .foregroundStyle(Theme.cream)
-            Text("You can still play. The camera and mic listen instead, but your hits won't be scored.")
-                .font(.sans(14))
-                .foregroundStyle(Theme.cream.opacity(0.7))
-                .fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 12) {
-                AppButton(title: "Connect", prominence: .primary, size: .compact) {
-                    explaining = false
-                    app.openControllerSetup(returnTo: .chooseKotekan)
-                }
-                AppButton(title: "Not now", size: .compact) { explaining = false }
-            }
-            .padding(.top, 6)
-        }
-        .padding(20)
-        .frame(width: 320, alignment: .leading)
-        .background(Theme.ground)
+        SensorTip(
+            title: "No sensor found",
+            message: "You can still play. The camera and mic listen instead, but your hits won't be scored.",
+            onConnect: { app.openControllerSetup(returnTo: .chooseKotekan) },
+            onDismiss: { explaining = false }
+        )
     }
 }
