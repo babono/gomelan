@@ -21,6 +21,9 @@ nonisolated struct RemoteKotekan {
     var polos: [Int?]
     var sangsih: [Int?]
     var colotomic: [ColotomicHit]
+    /// `Kotekan.polosDamp` / `sangsihDamp`, from `kotekan_hits.damp_slots`.
+    var polosDamp: [Int?]?
+    var sangsihDamp: [Int?]?
 
     init(
         id: String,
@@ -32,7 +35,9 @@ nonisolated struct RemoteKotekan {
         instrumentID: String? = nil,
         polos: [Int?],
         sangsih: [Int?],
-        colotomic: [ColotomicHit] = []
+        colotomic: [ColotomicHit] = [],
+        polosDamp: [Int?]? = nil,
+        sangsihDamp: [Int?]? = nil
     ) {
         self.id = id
         self.name = name
@@ -44,6 +49,8 @@ nonisolated struct RemoteKotekan {
         self.polos = polos
         self.sangsih = sangsih
         self.colotomic = colotomic
+        self.polosDamp = polosDamp
+        self.sangsihDamp = sangsihDamp
     }
 }
 
@@ -56,11 +63,17 @@ nonisolated extension RemoteKotekan {
         guard row.slotsPerCycle > 0, row.bpm > 0 else { return nil }
         var polos = [Int?](repeating: nil, count: row.slotsPerCycle)
         var sangsih = polos
+        var polosDamp = [Int?](repeating: nil, count: row.slotsPerCycle)
+        var sangsihDamp = polosDamp
         var colotomic: [ColotomicHit] = []
         for hit in hits where polos.indices.contains(hit.beatIndex) {
             switch hit.type {
-            case "polos": polos[hit.beatIndex] = hit.keyIndex
-            case "sangsih": sangsih[hit.beatIndex] = hit.keyIndex
+            case "polos":
+                polos[hit.beatIndex] = hit.keyIndex
+                polosDamp[hit.beatIndex] = hit.dampSlots
+            case "sangsih":
+                sangsih[hit.beatIndex] = hit.keyIndex
+                sangsihDamp[hit.beatIndex] = hit.dampSlots
             default:
                 if let instrument = ColotomicInstrument(hitType: hit.type) {
                     colotomic.append(ColotomicHit(slot: hit.beatIndex, instrument: instrument))
@@ -77,7 +90,9 @@ nonisolated extension RemoteKotekan {
             instrumentID: row.instrumentID?.uuidString,
             polos: polos,
             sangsih: sangsih,
-            colotomic: colotomic
+            colotomic: colotomic,
+            polosDamp: polosDamp.contains { $0 != nil } ? polosDamp : nil,
+            sangsihDamp: sangsihDamp.contains { $0 != nil } ? sangsihDamp : nil
         )
     }
 
@@ -97,7 +112,9 @@ nonisolated extension RemoteKotekan {
             instrumentID: instrumentID,
             polos: k.polos,
             sangsih: k.sangsih,
-            colotomic: k.colotomic
+            colotomic: k.colotomic,
+            polosDamp: k.polosDamp,
+            sangsihDamp: k.sangsihDamp
         )
     }
 }
@@ -121,7 +138,9 @@ extension Kotekan {
             polos: r.polos,
             sangsih: r.sangsih,
             strokeMs: Int((60000.0 / Double(r.bpm)).rounded()),
-            colotomic: r.source == .builtin ? Kotekan.builtinKajar(slots: r.polos.count) : r.colotomic
+            colotomic: r.source == .builtin ? Kotekan.builtinKajar(slots: r.polos.count) : r.colotomic,
+            polosDamp: r.polosDamp,
+            sangsihDamp: r.sangsihDamp
         )
     }
 

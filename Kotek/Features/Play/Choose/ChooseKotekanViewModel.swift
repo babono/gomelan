@@ -141,8 +141,14 @@ final class ChooseKotekanViewModel {
         startPreview()
     }
 
+    /// The guide over the picker plays its own sample, on the same cue
+    /// player; the preview under it is quiet until it closes.
+    func handleGuideChanged(open: Bool) {
+        if open { stopPreview() } else { startPreview() }
+    }
+
     func startPreview() {
-        guard let k = current else { return stopPreview() }
+        guard app.visibleGuide == nil, let k = current else { return stopPreview() }
         engine.cue = cue
         applyMuted()
         engine.configure(

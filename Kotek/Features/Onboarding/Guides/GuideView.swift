@@ -23,7 +23,13 @@ struct GuideView: View {
                 AppGuideView()
             }
         case .kotekan:
-            GuidePanel(title: "Kotekan", onClose: onClose) {
+            GuidePanel(
+                title: "How kotekan works",
+                kipli: "One melody, split between two players. Together they sound like one fast line.",
+                onClose: onClose,
+                // Sized to fit: the sample rolls give way instead.
+                scrolls: false
+            ) {
                 KotekanGuideView()
             }
         case .sensor:

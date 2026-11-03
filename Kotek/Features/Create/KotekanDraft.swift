@@ -47,15 +47,30 @@ struct Subdivision: Hashable, Identifiable {
     }
 }
 
-/// One stroke. `length` is how long the player means it to ring — written at
-/// the snap value, then dragged longer or shorter on the piano roll. The
-/// engine only reads `tick`: a bilah rings until it is damped.
+/// One stroke. `length` is where the player damps it, dragged on the piano
+/// roll; nil — every stroke as written — rings until the half's next stroke,
+/// as a gangsa player damps each bilah as they strike the next. That is the
+/// rule the waterfall draws its damp cap by (`PlayEngine.fallingNotes`).
+///
+/// It used to be written at the snap value, a block one cell long, with a grip
+/// to drag it out — and nothing read the length but the roll, so a
+/// quarter-long block said the bilah was stopped where the player would in
+/// fact let it ring. A dragged damp point is saved now (`Kotekan.polosDamp`,
+/// `kotekan_hits.damp_slots`) and played.
 struct DraftNote: Hashable, Identifiable {
     var id = UUID()
     var half: KotekanHalf
     var key: Int
     var tick: Int
-    var length: Int
+    var length: Int?
+}
+
+/// How long a stroke rings on the roll, and whether it ends in a damp.
+struct DraftRing: Equatable {
+    var ticks: Int
+    /// Stopped by the hand rather than struck again: the next stroke of the
+    /// half is another bilah, or the player damped it before that.
+    var damps: Bool
 }
 
 /// The colotomic cycle the player picks in Studio, one instrument per beat.
@@ -107,8 +122,8 @@ final class KotekanDraft {
     var source: KotekanSource = .manual
     /// Beats per minute, a beat being the value labelled 1. Four grid slots to
     /// the beat, so the database's per-slot `bpm` is four times this.
-    /// ponytail: no control for it — a new figure is 100, an opened one keeps
-    /// the tempo it was saved at.
+    /// Typed in Studio's controls row (`BPMField`); a new figure starts at
+    /// 100, an opened one at the tempo it was saved at.
     var bpm = 100
     private(set) var notes: [DraftNote] = []
 
@@ -141,7 +156,8 @@ final class KotekanDraft {
     var bars: Int {
         // A note's end counts too, so one dragged across a bar line takes the
         // figure with it.
-        let last = notes.map { $0.tick + $0.length - 1 }.max() ?? 0
+        // A ringing stroke does not: it would run the figure on forever.
+        let last = notes.map { $0.tick + ($0.length ?? 1) - 1 }.max() ?? 0
         let written = last / Self.ticksPerBar + 1
         // Up to whole cycles: a 2-beat figure over the 8-beat template looped
         // back to its start before the gong ever came round.
@@ -173,42 +189,85 @@ final class KotekanDraft {
     /// A half is one mallet, so it strikes one bilah at a time — writing a note
     /// replaces whatever that half already had starting on the same tick.
     ///
+    /// Only the stroke's own cell takes it out, not the whole of its ring: a
+    /// stroke rings to the next one, so a tap further along its row is
+    /// striking that bilah again, not undoing the first.
+    ///
     /// Writing past the end of the figure stretches it to the bar the note is
     /// in, the way a DAW region grows when you draw beyond it.
     func toggle(half: KotekanHalf, key: Int, at position: Int, snap: Subdivision) {
         if let hit = notes.firstIndex(where: {
-            $0.half == half && $0.key == key && $0.tick <= position && position < $0.tick + $0.length
+            $0.half == half && $0.key == key && $0.tick <= position && position < $0.tick + snap.ticks
         }) {
             notes.remove(at: hit)
             return
         }
         let tick = position / snap.ticks * snap.ticks
         guard tick < Self.timelineTicks else { return }
-        set(half: half, tick: tick, key: key, length: min(snap.ticks, Self.timelineTicks - tick))
+        set(half: half, tick: tick, key: key)
     }
 
     /// Write `key` (or a rest) at exactly `tick`. Used by the review grid and
     /// the sensors, which both write at a given place rather than a tap's.
-    func set(half: KotekanHalf, tick: Int, key: Int?, length: Int? = nil) {
+    func set(half: KotekanHalf, tick: Int, key: Int?) {
         notes.removeAll { $0.half == half && $0.tick == tick }
         guard let key else { return }
-        notes.append(DraftNote(half: half, key: key, tick: tick, length: length ?? slotTicks))
+        notes.append(DraftNote(half: half, key: key, tick: tick))
     }
 
-    /// Stretch or shorten a stroke, from the handle on its end. Never past the
-    /// next stroke of the same half — a half is one mallet, so its next stroke
-    /// is where this one is damped — nor past the end of the timeline.
+    /// The damp grip's step, and the shortest a stroke rings: one block, a
+    /// quarter, whatever the snap. A block is one stroke's room to be struck
+    /// and stopped before the same bilah is struck again on the next.
+    ///
+    /// Half a block was tried, to pinch a bilah inside its own block for a
+    /// fast repeated note. A player cannot damp that fast, and the block
+    /// already is that note.
+    static let dampStep = Subdivision.quarter.ticks
+
+    /// Damp a stroke earlier, or let it ring longer, from the grip on its end.
+    /// Never past the next stroke of the same half — a half is one mallet, so
+    /// its next stroke stops this one anyway — and never under one block.
+    /// Dragged all the way there it goes back to the default, and follows the
+    /// next stroke if that moves.
     func resize(_ id: DraftNote.ID, length: Int) {
         guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
-        let note = notes[i]
-        let next = notes
-            .filter { $0.half == note.half && $0.tick > note.tick }
-            .map(\.tick).min() ?? Self.timelineTicks
-        notes[i].length = length.clamped(to: 1, next - note.tick)
+        let gap = gap(after: notes[i])
+        notes[i].length = length >= gap ? nil : max(Self.dampStep, length)
     }
 
-    func length(of id: DraftNote.ID) -> Int? {
-        notes.first { $0.id == id }?.length
+    /// Put a stored damp point back as it was — nil for the default. The
+    /// grip's undo step, which `resize` can't do: it clamps.
+    func setDampPoint(_ id: DraftNote.ID, _ length: Int?) {
+        guard let i = notes.firstIndex(where: { $0.id == id }) else { return }
+        notes[i].length = length
+    }
+
+    /// Ticks to the half's next stroke, or to the end of the figure.
+    private func gap(after note: DraftNote) -> Int {
+        let next = notes
+            .filter { $0.half == note.half && $0.tick > note.tick }
+            .map(\.tick).min() ?? max(lengthTicks, note.tick + 1)
+        return next - note.tick
+    }
+
+    /// How long each stroke rings, keyed by id. Its own pass over the notes
+    /// rather than `gap` per note: the roll asks for every one each frame.
+    ///
+    /// The last stroke of a half rings to the end of the figure, and is damped
+    /// if the figure, going round, comes back in on another bilah.
+    static func rings(_ notes: [DraftNote], patternTicks: Int) -> [DraftNote.ID: DraftRing] {
+        var out: [DraftNote.ID: DraftRing] = [:]
+        for half in [KotekanHalf.polos, .sangsih] {
+            let strokes = notes.filter { $0.half == half }.sorted { $0.tick < $1.tick }
+            for (i, note) in strokes.enumerated() {
+                let next = i + 1 < strokes.count ? strokes[i + 1] : nil
+                let gap = max(1, (next?.tick ?? patternTicks) - note.tick)
+                let nextKey = (next ?? strokes[0]).key
+                let ticks = min(note.length ?? gap, gap)
+                out[note.id] = DraftRing(ticks: ticks, damps: ticks < gap || nextKey != note.key)
+            }
+        }
+        return out
     }
 
     /// Take out the stroke on `key` under the finger — the half being written
@@ -216,8 +275,10 @@ final class KotekanDraft {
     /// player can see there.
     func eraseNote(key: Int, at position: Int, preferring half: KotekanHalf) {
         for h in [half, half.other] {
+            let rings = Self.rings(notes, patternTicks: lengthTicks)
             if let hit = notes.firstIndex(where: {
-                $0.half == h && $0.key == key && $0.tick <= position && position < $0.tick + $0.length
+                $0.half == h && $0.key == key && $0.tick <= position
+                    && position < $0.tick + (rings[$0.id]?.ticks ?? 1)
             }) {
                 notes.remove(at: hit)
                 return
@@ -298,8 +359,9 @@ final class KotekanDraft {
     /// Open a saved figure for editing: its grid back onto the piano roll.
     ///
     /// A saved figure keeps only slots and milliseconds per slot. A slot comes
-    /// back as a quarter of a beat. Its colotomic line is not read back: the
-    /// cycle is laid under it again from its length.
+    /// back as a quarter of a beat, and a damp point as that many slots. Its
+    /// colotomic line is not read back: the cycle is laid under it again from
+    /// its length.
     func load(_ k: Kotekan) {
         name = k.name
         source = k.source
@@ -308,9 +370,18 @@ final class KotekanDraft {
             to: Self.bpmRange.lowerBound,
             Self.bpmRange.upperBound
         )
-        notes = [(KotekanHalf.polos, k.polos), (.sangsih, k.sangsih)].flatMap { half, grid in
-            grid.enumerated().compactMap { i, key in
-                key.map { DraftNote(half: half, key: $0, tick: i * slot, length: slot) }
+        notes = [KotekanHalf.polos, .sangsih].flatMap { half in
+            let damp = k.damp(half)
+            return k.pattern(half).enumerated().compactMap { i, key in
+                key.map {
+                    let set = damp.flatMap { $0.indices.contains(i) ? $0[i] : nil }
+                    return DraftNote(
+                        half: half,
+                        key: $0,
+                        tick: i * slot,
+                        length: set.map { $0 * slot }
+                    )
+                }
             }
         }
         undoStack = []
@@ -325,7 +396,9 @@ final class KotekanDraft {
     // MARK: - As a kotekan
 
     /// Ticks per engine slot: a quarter, unless a stroke was written off it (the
-    /// sensors can) — then the coarsest step every one lands on.
+    /// sensors can) — then the coarsest step every one lands on. Damp points
+    /// are whole blocks, and a block is a whole number of slots, so they never
+    /// make it finer.
     var slotTicks: Int {
         notes.map(\.tick).reduce(Subdivision.quarter.ticks) { gcd($0, $1) }
     }
@@ -340,6 +413,16 @@ final class KotekanDraft {
             grid[note.tick / slotTicks] = note.key
         }
         return grid
+    }
+
+    /// The damp points, slot by slot; nil when the half has none set, so a
+    /// figure that keeps the default saves nothing extra.
+    func dampGrid(_ half: KotekanHalf) -> [Int?]? {
+        var grid = [Int?](repeating: nil, count: slotCount)
+        for note in notes where note.half == half {
+            if let length = note.length { grid[note.tick / slotTicks] = max(1, length / slotTicks) }
+        }
+        return grid.contains { $0 != nil } ? grid : nil
     }
 
     /// Milliseconds from the top of the figure to `tick` at `bpm`.
@@ -364,7 +447,9 @@ final class KotekanDraft {
             polos: grid(.polos),
             sangsih: grid(.sangsih),
             strokeMs: strokeMs,
-            colotomic: colotomic.map { ColotomicHit(slot: $0.tick / slotTicks, instrument: $0.instrument) }
+            colotomic: colotomic.map { ColotomicHit(slot: $0.tick / slotTicks, instrument: $0.instrument) },
+            polosDamp: dampGrid(.polos),
+            sangsihDamp: dampGrid(.sangsih)
         )
     }
 }

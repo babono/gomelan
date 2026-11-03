@@ -124,6 +124,16 @@ struct Kotekan: Identifiable, Codable, Equatable {
     /// ponytail: only the kajar is played from here. The engine still lays the
     /// gong and kempur under every figure itself and ignores the rest.
     var colotomic: [ColotomicHit] = []
+    /// Where the hand stops each stroke, slot by slot like `polos` and
+    /// `sangsih`: how many slots it rings before it is damped. nil — the whole
+    /// grid, or one stroke in it — is the default: the stroke rings until the
+    /// half's next one, and is damped there if that is another bilah. Set in
+    /// Studio by dragging a stroke's damp cap; nil on every built-in.
+    ///
+    /// Optional, not empty: a figure cached before there were damp points
+    /// (`KotekanStore`) has no key for them, and must still decode.
+    var polosDamp: [Int?]?
+    var sangsihDamp: [Int?]?
 
     ///    static let strokesPerCycle = 16
     var slotsPerCycle: Int {
@@ -139,6 +149,10 @@ struct Kotekan: Identifiable, Codable, Equatable {
 
     func pattern(_ half: KotekanHalf) -> [Int?] {
         half == .polos ? polos : sangsih
+    }
+
+    func damp(_ half: KotekanHalf) -> [Int?]? {
+        half == .polos ? polosDamp : sangsihDamp
     }
 
     /// The bilah this figure touches across BOTH halves — the lanes the river
@@ -176,28 +190,57 @@ struct Kotekan: Identifiable, Codable, Equatable {
     /// tone family ("Level 2 · Telu family"); the length and the tempo say more
     /// about the figure you are about to play.
     ///
-    /// The length reads like a song's, m:ss, hours only past one: a cycle is
-    /// two to eight seconds, so "00:00:04" would be mostly zeros.
+    /// The picker card had dropped the length and showed the tempo alone;
+    /// it is back there, before the tempo, as it reads everywhere else.
     var specLabel: String {
+        String(localized: "\(lengthLabel) · \(bpm) BPM")
+    }
+
+    /// One pass, gong to gong. It reads like a song's length, m:ss, hours only
+    /// past one: a cycle is two to eight seconds, so "00:00:04" would be
+    /// mostly zeros.
+    var lengthLabel: String {
         let d = Duration.milliseconds(cycleMs)
-        let length = cycleMs >= 3_600_000
+        return cycleMs >= 3_600_000
             ? d.formatted(.time(pattern: .hourMinuteSecond(
                 padHourToLength: 1,
                 roundFractionalSeconds: .toNearestOrEven
             )))
             : d.formatted(.time(pattern: .minuteSecond(padMinuteToLength: 1, roundFractionalSeconds: .toNearestOrEven)))
-        return "\(length) · \(bpm) BPM"
     }
 
     /// Render the chosen half, repeated `cycles` times, into engine notes.
+    ///
+    /// Each note lasts as long as its bilah rings: to the half's next stroke
+    /// (round into the next pass), or to the damp point the player set in
+    /// Studio. It was a flat 0.9 of a slot, so a note before a rest showed its
+    /// damp straight after the stroke, while Studio drew it ringing through
+    /// the rest. A tenth of a slot is still left before the next stroke, so
+    /// the damp cap lands just ahead of it rather than on it.
+    ///
+    /// The very last note of the song stops at its end: ringing past it would
+    /// stretch the loop (`PlayEngine` takes the pattern's length from the
+    /// last note's end).
     func makeSong(half: KotekanHalf, cycles: Int) -> Song {
         let grid = pattern(half)
+        let marks = damp(half)
+        let struck = grid.indices.filter { grid[$0] != nil }
         var notes: [Note] = []
         for c in 0 ..< cycles {
-            for (slot, value) in grid.enumerated() {
-                guard let key = value else { continue }
-                let t = (c * slotsPerCycle + slot) * strokeMs
-                notes.append(Note(keyIndex: key, timeMs: t, durationMs: Int(Double(strokeMs) * 0.9)))
+            for (i, slot) in struck.enumerated() {
+                guard let key = grid[slot] else { continue }
+                let next = i + 1 < struck.count ? struck[i + 1] : slotsPerCycle + struck[0]
+                let nextKey = grid[next % slotsPerCycle]
+                var gap = next - slot
+                if c == cycles - 1, i == struck.count - 1 { gap = min(gap, slotsPerCycle - slot) }
+                let set = marks.flatMap { $0.indices.contains(slot) ? $0[slot] : nil }
+                let ring = max(1, min(set ?? gap, gap))
+                notes.append(Note(
+                    keyIndex: key,
+                    timeMs: (c * slotsPerCycle + slot) * strokeMs,
+                    durationMs: Int(Double(strokeMs) * (Double(ring) - 0.1)),
+                    damped: ring < gap || nextKey != key
+                ))
             }
         }
         let duration = cycles * cycleMs

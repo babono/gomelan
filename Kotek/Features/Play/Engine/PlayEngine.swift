@@ -647,7 +647,7 @@ final class PlayEngine {
                     // The stroke after the last one of a pass is the first one
                     // of the next — the figure goes round without a seam.
                     let next = i + 1 < list.count ? list[i + 1] : list[0]
-                    let damps = voice == .yours && next.keyIndex != note.keyIndex
+                    let damps = voice == .yours && (note.damped ?? (next.keyIndex != note.keyIndex))
                     let outcome = voice == .yours && loop == loopIndex && phase == .userTurn
                         && outcomes.indices.contains(i) ? outcomes[i] : nil
                     out.append(FallingNote(
@@ -1278,8 +1278,11 @@ final class PlayEngine {
             return
         }
 
+        /// The stroke, not its ring: a note lasts until it is damped now
+        /// (`Kotekan.makeSong`), which across a rest is several slots, and
+        /// the river draws where each bilah is struck.
         func width(_ note: Note) -> Double {
-            min(0.25, Double(note.durationMs) / tempoScale / pageMs)
+            min(0.25, min(Double(note.durationMs) / tempoScale, beatMs * 0.9) / pageMs)
         }
 
         /// Where a note sits on this page, or nil if it belongs to another one.

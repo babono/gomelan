@@ -118,7 +118,10 @@ struct FallingNote: Identifiable, Equatable {
     ///
     /// It used to be the previous stroke's bilah, pinched as this one was
     /// struck. That made the damp wait for the next note, so a note before a
-    /// rest rang on through the rest with no damp shown at all.
+    /// rest rang on through the rest with no damp shown at all. It rings
+    /// through the rest now too (`Kotekan.makeSong`), but its own damp shows
+    /// at the end of it — or sooner, where Studio set a damp point
+    /// (`Note.damped`), which damps a re-struck bilah as well.
     ///
     /// The musical fact only: whether it is SHOWN is `DampGuide`, applied by
     /// the views, so it can change mid-session from the pause screen.

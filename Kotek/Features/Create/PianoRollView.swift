@@ -48,8 +48,13 @@ struct PianoRollView: View {
             }
             .frame(minHeight: 50)
 
-            HStack(spacing: 10) {
+            // Tight: on a phone the row only just holds every control (see
+            // `PianoRollControls`).
+            HStack(spacing: 6) {
                 PianoRollControls(viewModel: viewModel)
+                // The figure's own tempo, saved with it. Tempo beside it is
+                // only how fast the preview plays it back.
+                BPMField(bpm: Bindable(draft).bpm)
                 AppMenuPicker<Double>.tempo($viewModel.tempoScale)
                 // The gong cycle under the figure. Its own control, not a
                 // tool: the colotomic line is laid, never drawn by hand.
@@ -114,26 +119,33 @@ struct PianoRollView: View {
 /// too, and they were two more glyphs for something the fingers already do. The colotomic
 /// instruments used to be tools here; the draft lays them now. A row too wide
 /// for a small phone scrolls rather than squeezing one chip over the next.
+///
+/// The gangsa button stays out of the scroll. Inside it, it was the last
+/// thing in the row and the first to go: once the BPM field came back, a
+/// phone's row had no room left for it, and the gangsa could not be got out
+/// without knowing to swipe the tools. The thin dividers between the halves,
+/// the eraser and the gangsa went for the same room; the quiet circles mark
+/// themselves off from the pills well enough.
 private struct PianoRollControls: View {
     @Bindable var viewModel: CreateKotekViewModel
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 10) {
-                halves
-                divider
-                eraser
-                divider
-                AppIconButton(
-                    systemImage: "pianokeys",
-                    label: viewModel.showsGangsa ? "Hide gangsa" : "Show gangsa",
-                    prominence: viewModel.showsGangsa ? .selected : .quiet,
-                    size: .compact
-                ) { viewModel.showsGangsa.toggle() }
+        HStack(spacing: 6) {
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    halves
+                    eraser
+                }
             }
+            .scrollIndicators(.hidden)
+            .scrollBounceBehavior(.basedOnSize)
+            AppIconButton(
+                systemImage: "pianokeys",
+                label: viewModel.showsGangsa ? "Hide gangsa" : "Show gangsa",
+                prominence: viewModel.showsGangsa ? .selected : .quiet,
+                size: .compact
+            ) { viewModel.showsGangsa.toggle() }
         }
-        .scrollIndicators(.hidden)
-        .scrollBounceBehavior(.basedOnSize)
     }
 
     private var halves: some View {
@@ -169,10 +181,6 @@ private struct PianoRollControls: View {
         .buttonStyle(AppButtonStyle())
         .accessibilityLabel("Delete")
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-    }
-
-    private var divider: some View {
-        Rectangle().fill(Theme.cream.opacity(0.15)).frame(width: 1, height: 24)
     }
 }
 
@@ -238,8 +246,10 @@ private struct PianoRollGrid: View {
             ScrollView(.vertical) {
                 HStack(alignment: .top, spacing: 0) {
                     VStack(spacing: 0) {
-                        // Too thin to read in the overview.
-                        keyLabels(rows: rows, rowHeight: rowHeight).opacity(compact ? 0 : 1)
+                        // In the overview too: hidden there as too thin to
+                        // read, it left the rows with nothing to say which
+                        // bilah each was. Set smaller to fit instead.
+                        keyLabels(rows: rows, rowHeight: rowHeight)
                         Image(systemName: "circle.circle")
                             .font(.symbol(11, weight: .semibold))
                             .foregroundStyle(Theme.stone)
@@ -289,6 +299,7 @@ private struct PianoRollGrid: View {
                                     NoteLengthHandles(
                                         draft: draft,
                                         notes: notes.filter { $0.half == writing },
+                                        rings: KotekanDraft.rings(notes, patternTicks: length),
                                         rows: rows,
                                         rowHeight: rowHeight,
                                         lead: lead,
@@ -358,7 +369,8 @@ private struct PianoRollGrid: View {
         VStack(spacing: 0) {
             ForEach((0 ..< rows).reversed(), id: \.self) { key in
                 Text("\(key + 1)")
-                    .font(.sans(11, weight: .semibold))
+                    .font(.sans(min(11, max(7, rowHeight * 0.75)), weight: .semibold))
+                    .lineLimit(1)
                     .foregroundStyle(Theme.stone)
                     .frame(height: rowHeight)
             }
@@ -386,41 +398,56 @@ private struct PianoRollGrid: View {
     }
 }
 
-/// The grip on the end of each stroke of the half being written: drag it to
-/// make the stroke longer or shorter, in steps of the snap value. Grips rather
-/// than a drag anywhere on a stroke, because a drag on the grid is how the roll
-/// scrolls.
+/// The grip on the end of each stroke of the half being written: where the
+/// bilah is damped. A stroke rings to the half's next one by itself; drag the
+/// grip back to damp it sooner, a block at a time, or out again to
+/// let it ring. Grips rather than a drag anywhere on a stroke, because a drag
+/// on the grid is how the roll scrolls.
+///
+/// A white line on the stroke's beige damp cap (`PianoRollCanvas.drawNote`),
+/// edged in a deeper beige so it holds against it. It was `Theme.cream`, which
+/// the Nawa Sanga palette repointed to Ireng: a black line on a red or blue
+/// block that read as part of the drawing rather than something to take hold of.
 private struct NoteLengthHandles: View {
     let draft: KotekanDraft
     let notes: [DraftNote]
+    let rings: [DraftNote.ID: DraftRing]
     let rows: Int
     let rowHeight: CGFloat
     let lead: CGFloat
     let pxPerTick: CGFloat
     let snapTicks: Int
 
-    /// The stroke being dragged, and its length when the drag began.
-    @State private var dragging: (id: DraftNote.ID, from: Int)?
+    private static let gripEdge = Color(hex: 0xC9B79A)
+
+    /// The stroke being dragged, how long it rang when the drag began, and
+    /// its damp point then (nil: the default) to put back for the undo step.
+    @State private var dragging: (id: DraftNote.ID, from: Int, stored: Int?)?
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             ForEach(notes) { note in
                 let row = rows - 1 - note.key
+                let ring = rings[note.id]?.ticks ?? snapTicks
                 if row >= 0 {
                     Capsule()
-                        .fill(Theme.cream.opacity(0.85))
-                        .frame(width: 3, height: max(6, rowHeight * 0.45))
+                        .fill(.white)
+                        .overlay(Capsule().strokeBorder(Self.gripEdge, lineWidth: 0.75))
+                        .frame(width: 3.5, height: max(6, rowHeight * 0.4))
                         .frame(width: 20, height: rowHeight)
                         .contentShape(Rectangle())
-                        .gesture(drag(note))
+                        .gesture(drag(note, ring: ring))
                         .accessibilityElement()
-                        .accessibilityLabel("Stroke length")
+                        .accessibilityLabel("Damp point")
                         .accessibilityAdjustableAction { direction in
-                            let step = direction == .increment ? snapTicks : -snapTicks
-                            draft.edit { draft.resize(note.id, length: max(snapTicks, note.length + step)) }
+                            let step = direction == .increment ? KotekanDraft.dampStep : -KotekanDraft.dampStep
+                            draft.edit { draft.resize(note.id, length: ring + step) }
                         }
                         .position(
-                            x: lead + CGFloat(note.tick + note.length) * pxPerTick - 6,
+                            // On the cap's middle: the note ends a point
+                            // short of its tick, and the cap runs back from there.
+                            x: lead + CGFloat(note.tick + ring) * pxPerTick - 1
+                                - PianoRollCanvas.capWidth(rowHeight: rowHeight) / 2,
                             y: (CGFloat(row) + 0.5) * rowHeight
                         )
                 }
@@ -429,25 +456,27 @@ private struct NoteLengthHandles: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func drag(_ note: DraftNote) -> some Gesture {
+    private func drag(_ note: DraftNote, ring: Int) -> some Gesture {
         // Global space: the grip moves as the stroke grows, and a translation
         // measured in its own space would chase it.
         DragGesture(minimumDistance: 1, coordinateSpace: .global)
             .onChanged { value in
-                let from = dragging?.from ?? note.length
-                if dragging == nil { dragging = (note.id, from) }
+                let from = dragging?.from ?? ring
+                if dragging == nil { dragging = (note.id, from, note.length) }
                 let raw = Double(from) + Double(value.translation.width / pxPerTick)
-                let length = max(snapTicks, Int((raw / Double(snapTicks)).rounded()) * snapTicks)
+                // A block at a time, whatever the snap (`KotekanDraft.dampStep`).
+                let step = Double(KotekanDraft.dampStep)
+                let length = Int((raw / step).rounded() * step)
                 draft.resize(note.id, length: length)
             }
             .onEnded { _ in
                 guard let d = dragging else { return }
                 dragging = nil
                 // One undo step for the whole drag, not one per frame: put the
-                // old length back, then write the new one through `edit`.
-                let final = draft.length(of: d.id) ?? d.from
-                draft.resize(d.id, length: d.from)
-                draft.edit { draft.resize(d.id, length: final) }
+                // old damp point back, then write the new one through `edit`.
+                let final = draft.notes.first { $0.id == d.id }?.length
+                draft.setDampPoint(d.id, d.stored)
+                draft.edit { draft.setDampPoint(d.id, final) }
             }
     }
 }
@@ -471,6 +500,7 @@ struct PianoRollCanvas: View {
     let pxPerTick: CGFloat
 
     var body: some View {
+        let rings = KotekanDraft.rings(notes, patternTicks: patternTicks)
         Canvas { ctx, size in
             ctx.translateBy(x: lead, y: 0)
             let rowsHeight = size.height - laneHeight
@@ -514,19 +544,16 @@ struct PianoRollCanvas: View {
             for note in ordered {
                 let row = rows - 1 - note.key
                 guard row >= 0 else { continue }
-                let rect = CGRect(
-                    x: CGFloat(note.tick) * pxPerTick + 1,
-                    y: CGFloat(row) * rowHeight + 2,
-                    width: max(4, CGFloat(note.length) * pxPerTick - 2),
-                    height: rowHeight - 4
+                var c = ctx
+                c.opacity = writing == nil || note.half == writing ? 1 : 0.35
+                Self.drawNote(
+                    c,
+                    at: CGPoint(x: CGFloat(note.tick) * pxPerTick, y: CGFloat(row) * rowHeight),
+                    ring: rings[note.id] ?? DraftRing(ticks: snapTicks, damps: false),
+                    pxPerTick: pxPerTick,
+                    rowHeight: rowHeight,
+                    color: note.half == .polos ? Theme.polosVoice : Theme.sangsihVoice
                 )
-                let color = note.half == .polos ? Theme.polosVoice : Theme.sangsihVoice
-                let active = writing == nil || note.half == writing
-                let block = Path(roundedRect: rect, cornerRadius: 4)
-                ctx.fill(block, with: .color(color.opacity(active ? 0.9 : 0.3)))
-                if active {
-                    ctx.stroke(block, with: .color(Theme.cream.opacity(0.5)), lineWidth: 1)
-                }
             }
 
             // The colotomic lane.
@@ -552,6 +579,73 @@ struct PianoRollCanvas: View {
                 }
             }
         }
+    }
+}
+
+extension PianoRollCanvas {
+    /// The damp cap along the time axis, the grip's place. Wider than the
+    /// waterfall's, which is two fifths of its stroke: it is held and dragged
+    /// here.
+    static func capWidth(rowHeight: CGFloat) -> CGFloat {
+        max(6, (rowHeight - 4) * 0.2)
+    }
+
+    /// One note as the waterfall draws it, lying down: a pill in the voice's
+    /// colour where the bilah is struck, and the cream stem, outlined in
+    /// beige, out to where it stops ringing, capped there in beige where the
+    /// hand damps it. The designer's waterfall note (November 2026).
+    ///
+    /// The pill is one block, a quarter, whatever the snap — the size of the
+    /// cell it was tapped into, and the shortest a stroke rings. It was the
+    /// waterfall's stroke turned on its side, a sliver a few points wide, and
+    /// too thin to see or hit.
+    ///
+    /// It was first a block in the voice's colour as long as the ring, a dark
+    /// cap on its end — a second drawing of the same note, and the colour ran
+    /// right across a rest the player had left empty.
+    ///
+    /// The waterfall draws no stem on a stroke struck again on the same bilah
+    /// (nothing to damp); here it still runs, uncapped, so its grip has
+    /// somewhere to be when the player wants it stopped sooner.
+    static func drawNote(
+        _ ctx: GraphicsContext,
+        at origin: CGPoint,
+        ring: DraftRing,
+        pxPerTick: CGFloat,
+        rowHeight: CGFloat,
+        color: Color
+    ) {
+        let h = rowHeight - 4
+        let top = origin.y + 2
+        let start = origin.x + 1
+        let block = max(4, CGFloat(Subdivision.quarter.ticks) * pxPerTick - 2)
+        let end = max(start + 4, origin.x + CGFloat(ring.ticks) * pxPerTick - 1)
+        let cap = ring.damps ? capWidth(rowHeight: rowHeight) : 0
+
+        if end > start + block {
+            let stemH = h * 0.7
+            let stemY = top + (h - stemH) / 2
+            // Into the pill a little, so the stem meets it without a seam.
+            let foot = start + block - 2
+            let r = stemH * 0.1
+            let outline = UnevenRoundedRectangle(bottomTrailingRadius: r, topTrailingRadius: r)
+                .path(in: CGRect(x: foot, y: stemY, width: end - foot, height: stemH))
+            ctx.fill(outline, with: .color(Theme.dampBeige))
+            let edge = max(1, h * 0.03)
+            let inner = CGRect(
+                x: foot,
+                y: stemY + edge,
+                width: max(0, end - foot - (ring.damps ? min(cap, end - foot) : edge)),
+                height: stemH - 2 * edge
+            )
+            ctx.fill(Path(inner), with: .color(Theme.stemCream))
+        }
+
+        // Shorter only where the next stroke comes sooner than a block,
+        // which only a sensor take can write.
+        let width = min(block, end - start)
+        let stroke = CGRect(x: start, y: top, width: width, height: h)
+        ctx.fill(Path(roundedRect: stroke, cornerRadius: min(width, h) * 0.3), with: .color(color))
     }
 }
 
@@ -751,6 +845,83 @@ struct PlayheadClock: View {
     static func format(_ ms: Double) -> String {
         let total = Int(ms)
         return String(format: "%d:%02d.%03d", total / 60000, total / 1000 % 60, total % 1000)
+    }
+}
+
+/// The figure's tempo, typed. It was here as a bare number box in the
+/// transport, and went when the transport was rebuilt (October 2026), which
+/// left every new figure at 100 BPM and an opened one stuck at its own. Typed
+/// rather than a menu or a − / + stepper: 88 → 160 is one entry, not
+/// seventy-two taps.
+///
+/// It writes through while the number is plausible (see `typedFloor`), and
+/// settles to the nearest allowed value when the field is left. Drawn as the menus beside it are, a white capsule on a
+/// Garis
+/// edge, so the row reads as one set of controls.
+private struct BPMField: View {
+    @Binding var bpm: Int
+
+    @State private var text = ""
+    @FocusState private var focused: Bool
+
+    private let size = AppButtonSize.compact
+
+    var body: some View {
+        HStack(spacing: 4) {
+            TextField("", text: $text)
+                .keyboardType(.numberPad)
+                .focused($focused)
+                .multilineTextAlignment(.trailing)
+                .font(.sans(size.labelPoints, weight: .semibold).monospacedDigit())
+                .frame(width: 30)
+                .accessibilityLabel("Beats per minute")
+            Text("BPM")
+                .font(.sans(size.labelPoints - 2, weight: .medium))
+                .foregroundStyle(Theme.stone)
+        }
+        .foregroundStyle(Theme.cream)
+        .padding(.horizontal, size.horizontalPadding - 8)
+        .frame(minHeight: size.height)
+        .contentShape(Capsule())
+        .onTapGesture { focused = true }
+        .tactile(
+            Capsule(),
+            fill: Theme.glassTint,
+            outline: focused ? Theme.primary : Theme.hairline,
+            outlineWidth: focused ? 2 : 1,
+            base: Theme.hairline,
+            depth: size.depth
+        )
+        .fixedSize()
+        .onAppear { text = "\(bpm)" }
+        .onChange(of: text) { _, new in
+            let digits = String(new.filter(\.isNumber).prefix(3))
+            if digits != new { text = digits }
+            if let v = Int(digits), KotekanDraft.bpmRange.contains(v), v >= Self.typedFloor { bpm = v }
+        }
+        .onChange(of: bpm) { _, v in
+            if !focused { text = "\(v)" }
+        }
+        .onChange(of: focused) { _, isFocused in
+            if !isFocused { commit() }
+        }
+        .onSubmit(commit)
+        // A number pad has no return key; this is the way out of it.
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focused = false }
+            }
+        }
+    }
+
+    /// Below this a number is taken as still being typed: "1" on the way to
+    /// "120" would otherwise run the preview at 1 BPM for a keystroke.
+    private static let typedFloor = 20
+
+    private func commit() {
+        bpm = (Int(text) ?? bpm).clamped(to: KotekanDraft.bpmRange.lowerBound, KotekanDraft.bpmRange.upperBound)
+        text = "\(bpm)"
     }
 }
 

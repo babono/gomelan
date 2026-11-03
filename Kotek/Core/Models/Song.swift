@@ -13,7 +13,13 @@ import Foundation
 struct Note: Codable, Equatable, Identifiable {
     var keyIndex: Int
     var timeMs: Int
+    /// How long the bilah rings before the hand stops it.
     var durationMs: Int
+    /// Whether the hand stops it at the end of `durationMs`: false when the
+    /// half's next stroke is this bilah again, which re-strikes it ringing.
+    /// nil (a song not built from a kotekan) leaves it to `PlayEngine`, which
+    /// works it out from the next note.
+    var damped: Bool?
 
     var id: String {
         "\(keyIndex)-\(timeMs)"
