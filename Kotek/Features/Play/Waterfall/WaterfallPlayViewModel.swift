@@ -53,6 +53,14 @@ final class WaterfallPlayViewModel {
     private var live = false
 
     var paused = false
+    /// Free play's tour: its stops for this gangsa, and the one up — nil
+    /// when it is not showing. The clock is held (`paused`) underneath, but
+    /// the pause screen is not shown.
+    private(set) var tourStops: [FreePlayTour.Stop] = []
+    private(set) var tourIndex: Int?
+    /// Opened over the count-in, which is its own countdown: ending the tour
+    /// runs on from it rather than counting 3, 2, 1 into it.
+    private var tourFromStart = false
     /// 3, 2, 1 between pressing Resume and the clock running again — nil
     /// otherwise. Resuming straight away dropped the player back into a
     /// falling figure with their hands still off the bilah.
@@ -188,6 +196,12 @@ final class WaterfallPlayViewModel {
 
         voice.onCommand = { [weak self] in self?.heard($0) }
         if voiceOn { voice.start() }
+
+        // The first free play opens with the tour.
+        if lesson == nil, !Defaults.bool(FreePlayTour.seenKey, false) {
+            tourFromStart = true
+            startTour()
+        }
     }
 
     /// From the top of the figure, count-in and all — setup's half, and
@@ -230,6 +244,36 @@ final class WaterfallPlayViewModel {
         pauseStartedAt = CACurrentMediaTime()
         displayLink.stop()
         cue.stopKeySamples()
+    }
+
+    // MARK: - Tour
+
+    /// From the first free play, or the pause screen's "Show the tour".
+    func startTour() {
+        guard live, lesson == nil, !engine.isFinished else { return }
+        cancelResume()
+        pause()
+        tourStops = FreePlayTour.stops(hasController: app.profile.controller != nil)
+        tourIndex = 0
+    }
+
+    func nextTourStop() {
+        guard let i = tourIndex else { return }
+        if i + 1 < tourStops.count { tourIndex = i + 1 } else { endTour() }
+    }
+
+    /// Skip or Let's play: back to the figure — at once over the count-in,
+    /// else with Resume's 3, 2, 1, hands back on the panggul first.
+    func endTour() {
+        guard tourIndex != nil else { return }
+        tourIndex = nil
+        Defaults.set(FreePlayTour.seenKey, true)
+        if tourFromStart {
+            tourFromStart = false
+            finishResume()
+        } else {
+            resume()
+        }
     }
 
     /// Count 3, 2, 1, then run. Still paused while it counts — the countdown
@@ -480,6 +524,7 @@ final class WaterfallPlayViewModel {
     /// except over the opening count-in, which is already a countdown:
     /// paused there, Resume's 3, 2, 1 ran into it and there were two.
     func tapped() {
+        guard tourIndex == nil else { return }
         if isStep, engine.heldKey != nil {
             engine.releaseStep()
         } else if engine.msUntilFirstNote == nil {
@@ -515,7 +560,7 @@ final class WaterfallPlayViewModel {
     // MARK: - Voice
 
     private func heard(_ command: VoiceCommand) {
-        guard live, !engine.isFinished else { return }
+        guard live, !engine.isFinished, tourIndex == nil else { return }
         switch command {
         case .slower, .faster, .normalSpeed:
             // A Learn step sets its own speed; Build up's climb is the point.
