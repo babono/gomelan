@@ -31,6 +31,7 @@ struct PolishView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static let labelWidth: CGFloat = 28
+    private static let edgeWidth: CGFloat = 16
     private static let headerHeight: CGFloat = 22
 
     private var voice: Color {
@@ -81,40 +82,52 @@ struct PolishView: View {
     /// R Slots are a fixed width and the roll scrolls sideways. Fitting the
     /// R whole cycle to the screen was tried first: fine for 16 slots, but a
     /// R 32-slot figure came out as slivers. The bilah numbers stay pinned
-    /// R outside the scroll so a row can be read halfway along.
+    /// R so a row can be read halfway along. They are a bar over the scroll,
+    /// R as on the graph this replaced, so the system's soft edge blurs the
+    /// R roll away under them; a column beside it cut every pill at a line.
     private var roll: some View {
         GeometryReader { geo in
             let grid = Grid(height: geo.size.height, slots: kotekan.slotsPerCycle, rows: rows)
-            let visible = geo.size.width - Self.labelWidth
-            HStack(spacing: 0) {
-                bilahNumbers(grid)
-                    .frame(width: Self.labelWidth)
-                    .overlay { scrim }
-                ScrollView(.horizontal) {
-                    ZStack(alignment: .topLeading) {
-                        beats(grid)
-                        ForEach(result.strokes.indices, id: \.self) { i in
-                            if !spots.contains(where: { $0.stroke == i }) {
-                                let note = result.strokes[i]
-                                pill(voice.opacity(0.22), grid)
-                                    .position(grid.point(key: note.keyIndex, slot: slot(of: note)))
-                            }
-                        }
-                        ForEach(spots.indices, id: \.self) { i in
-                            if selected != i { mark(i, grid) }
-                        }
-                        if let selected {
-                            scrim
-                            mark(selected, grid)
+            let visible = geo.size.width - Self.labelWidth - Self.edgeWidth
+            ScrollView(.horizontal) {
+                ZStack(alignment: .topLeading) {
+                    beats(grid)
+                    ForEach(result.strokes.indices, id: \.self) { i in
+                        if !spots.contains(where: { $0.stroke == i }) {
+                            let note = result.strokes[i]
+                            pill(voice.opacity(0.22), grid)
+                                .position(grid.point(key: note.keyIndex, slot: slot(of: note)))
                         }
                     }
-                    .frame(width: grid.width, height: geo.size.height)
+                    ForEach(spots.indices, id: \.self) { i in
+                        if selected != i { mark(i, grid) }
+                    }
+                    if let selected {
+                        // Out past the content, under both bars: a scrim on each
+                        // bar too dimmed twice where the roll slid beneath it.
+                        scrim.padding(.horizontal, -geo.size.width)
+                        mark(selected, grid)
+                    }
                 }
-                .scrollIndicators(.hidden)
-                .scrollPosition($scroll)
-                .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
-                    offset = x
-                }
+                .frame(width: grid.width, height: geo.size.height)
+            }
+            .safeAreaBar(edge: .leading, spacing: 0) {
+                bilahNumbers(grid)
+                    .frame(width: Self.labelWidth)
+            }
+            // Empty: only so the trailing edge blurs as the leading one does.
+            .safeAreaBar(edge: .trailing, spacing: 0) {
+                Color.clear
+                    .frame(width: Self.edgeWidth)
+            }
+            .scrollEdgeEffectStyle(.soft, for: .horizontal)
+            .scrollIndicators(.hidden)
+            .scrollPosition($scroll)
+            // From where the content starts, as `scrollTo(x:)` counts: at
+            // rest `contentOffset` is minus the leading bar.
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x + $0.contentInsets.leading } action: {
+                _, x in
+                offset = x
             }
             .overlay(alignment: cardOnLeft(grid, visible: visible) ? .topLeading : .topTrailing) {
                 if let selected {
