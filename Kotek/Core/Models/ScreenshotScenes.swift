@@ -86,11 +86,13 @@
                 screen = .chooseKotekan
                 visibleGuide = .kotekan
             case "results":
+                var rng = SeededRNG() // the same session every capture
                 lastResult = Self.sampleResult(
                     kotekan: kotekans[0],
                     half: chosenHalf,
                     tempo: tempoScale,
-                    landed: 260
+                    landed: 260,
+                    rng: &rng
                 )
                 previousRecord = 0.74
                 lastSetRecord = true
@@ -118,47 +120,68 @@
 
         /// The results screen over a made-up session of Babaru, from Settings → Debug.
         ///
-        /// Babaru because it is the longest bundled figure (32 slots, past the
-        /// graph's 16-slot window), so the minimap and scrolling are on screen.
+        /// A new session every time, and the real overview run on it: a canned
+        /// one could not show whether the model reads the numbers right.
         ///
         /// ponytail: leaves Babaru as `selectedKotekan`, so Retry from here plays it.
         func openMockResults() {
+            PolishSpot.selfCheck()
             let babaru = kotekans.first { $0.id == "babaru" } ?? kotekans[0]
             selectedKotekan = babaru
-            lastResult = Self.sampleResult(kotekan: babaru, half: chosenHalf, tempo: tempoScale, landed: 260)
-            lastResultIsSample = true
+            var rng = SystemRandomNumberGenerator()
+            lastResult = Self.sampleResult(kotekan: babaru, half: chosenHalf, tempo: tempoScale, landed: 260, rng: &rng)
             previousRecord = 0.74
             lastSetRecord = true
             screen = .results
         }
 
-        /// Twelve passes of a half that starts shaky and settles, and keeps
-        /// slipping in its third quarter — the shape a real session has, so the
-        /// cycle chart and the overview have something to say.
+        /// A session that starts shaky and settles, with one weak quarter of
+        /// the cycle and a few habits for "Where to polish" — a stroke that
+        /// drags, one that rushes, one that lands a bar off — each on a stroke,
+        /// and at a rate, the generator picks. Seeded for screenshots, so a
+        /// capture can be retaken; random from Debug.
         private static func sampleResult(
             kotekan: Kotekan,
             half: KotekanHalf,
             tempo: Double,
-            landed: Int
+            landed: Int,
+            rng: inout some RandomNumberGenerator
         ) -> SongResult {
             let song = kotekan.makeSong(half: half, cycles: 1)
-            var rng = SeededRNG() // the same session every capture
+            let count = song.notes.count
+            let passes = Int.random(in: 4 ... 14, using: &rng)
+            let start = Double.random(in: 0.45 ... 0.85, using: &rng)
+            let weakQuarter = Int.random(in: 0 ..< 4, using: &rng)
+            let habits = Array((0 ..< count).shuffled(using: &rng).prefix(3))
+            let rates = (0 ..< 3).map { _ in Double.random(in: 0.2 ... 0.8, using: &rng) }
             var judgements: [NoteJudgement] = []
             var cycles: [CycleScore] = []
-            for c in 0 ..< 12 {
-                let settled = min(0.97, 0.62 + Double(c) * 0.04)
+            for c in 0 ..< passes {
+                let settled = min(0.97, start + Double(c) * 0.04)
                 var score = 0, onBeat = 0, mistakes = 0
                 for (i, note) in song.notes.enumerated() {
-                    let third = note.timeMs * 4 / song.durationMs == 2
-                    let skill = third ? settled - 0.22 : settled
+                    let weak = note.timeMs * 4 / song.durationMs == weakQuarter
+                    let skill = weak ? settled - 0.22 : settled
                     let roll = Double.random(in: 0 ... 1, using: &rng)
-                    let result: JudgementResult = roll < skill * 0.8 ? .perfect
+                    var result: JudgementResult = roll < skill * 0.8 ? .perfect
                         : roll < skill ? .good
                         : roll < skill + 0.08 ? .lateEarly
                         : .miss
-                    let err = result == .miss ? 0 : Double.random(in: -60 ... 60, using: &rng)
+                    var err = result == .miss ? 0 : Double.random(in: -60 ... 60, using: &rng)
+                    var struck = note.keyIndex
+                    let habit = Double.random(in: 0 ... 1, using: &rng)
+                    if i == habits.first, habit < rates[0] {
+                        result = .lateEarly
+                        err = -Double.random(in: 110 ... 170, using: &rng)
+                    } else if habits.count > 1, i == habits[1], habit < rates[1] {
+                        result = .lateEarly
+                        err = Double.random(in: 110 ... 170, using: &rng)
+                    } else if habits.count > 2, i == habits[2], habit < rates[2] {
+                        result = .wrongKey
+                        struck = note.keyIndex + (note.keyIndex > 0 && habit < rates[2] / 2 ? -1 : 1)
+                    }
                     judgements.append(NoteJudgement(
-                        keyIndex: note.keyIndex,
+                        keyIndex: struck,
                         stroke: i,
                         result: result,
                         timingErrorMs: err
@@ -170,34 +193,24 @@
                 cycles.append(CycleScore(
                     index: c,
                     startMs: Double(c * kotekan.slotsPerCycle * kotekan.strokeMs),
-                    noteCount: song.notes.count,
+                    noteCount: count,
                     score: score,
                     onBeat: onBeat,
                     mistakes: mistakes
                 ))
             }
-            // A few passes of the other side too, with a wrong-bilah habit, so the
-            // graph shows marks on both halves of the interlock.
-            var partner: [NoteJudgement] = []
-            let other = kotekan.makeSong(half: half.other, cycles: 1)
-            for _ in 0 ..< 4 {
-                for (i, note) in other.notes.enumerated() {
-                    let roll = Double.random(in: 0 ... 1, using: &rng)
-                    let result: JudgementResult = roll < 0.12 ? .wrongKey : .perfect
-                    partner.append(NoteJudgement(keyIndex: note.keyIndex, stroke: i, result: result, timingErrorMs: 0))
-                }
-            }
             return SongResult(
                 songTitle: kotekan.name,
                 subtitle: "\(kotekan.name) · \(half.title) · \(Theme.tempoLabel(tempo))",
                 judgements: judgements,
-                partnerJudgements: partner,
                 cycles: cycles,
                 strokes: song.notes,
                 cycleMs: song.durationMs,
                 landedNotes: landed,
-                // Twelve passes at the figure's own speed.
-                practiceSeconds: Double(song.durationMs) * 12 / tempo / 1000
+                // Every pass at the figure's own speed.
+                practiceSeconds: Double(song.durationMs) * Double(passes) / tempo / 1000,
+                passes: passes,
+                topTempoScale: tempo
             )
         }
     }

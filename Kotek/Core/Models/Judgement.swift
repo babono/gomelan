@@ -195,6 +195,13 @@ struct SongResult: Equatable {
     let landedNotes: Int
     /// How long the session was played, pauses and count-in left out.
     var practiceSeconds: Double = 0
+    /// Whole passes played, judged or not — `cycles` holds only the judged ones.
+    var passes = 0
+    /// The fastest speed reached, as a tempo scale.
+    var topTempoScale = 1.0
+    /// Whether any stroke was judged at all. False is a session with no
+    /// sensor: nothing to score, only passes, time and tempo to show.
+    var sensed = true
 
     var totalScore: Int {
         judgements.reduce(0) { $0 + $1.result.score }
