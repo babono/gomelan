@@ -91,6 +91,9 @@ struct BilahCue: Equatable {
     var struckAge: Double?
     /// 0…1, the left hand should be pinching this bar.
     var damp: Double = 0
+    /// The bar to strike next (Learn's Step): a dashed gold ring around it,
+    /// its glow at this point of its pulse, 0…1. Nil on every other bar.
+    var next: Double?
 }
 
 /// Where one of the player's hands is: on its way from bar `from` to bar
@@ -129,9 +132,14 @@ struct GangsaView: View {
                     if let damper {
                         GangsaHands.palm(ctx, bar: handBar(damper, height: size.height), pinch: damper.pose)
                     }
-                    // Struck bars last: the halo reaches into the gaps.
+                    // Struck bars last: the halo reaches into the gaps. The
+                    // bar to strike next before them, so its glow is not cut
+                    // by a neighbour's edge.
                     let keys = 0 ..< layout.keyCount
-                    for key in keys where cues[key]?.struckAge == nil {
+                    for key in keys where cues[key]?.struckAge == nil && cues[key]?.next == nil {
+                        drawBar(ctx, key: key, height: size.height)
+                    }
+                    for key in keys where cues[key]?.struckAge == nil && cues[key]?.next != nil {
                         drawBar(ctx, key: key, height: size.height)
                     }
                     for key in keys where cues[key]?.struckAge != nil {
@@ -302,6 +310,10 @@ struct GangsaView: View {
         let w = layout.barWidth
         var rect = barRect(key, height: height)
 
+        if let pulse = cue.next {
+            drawNext(ctx, around: rect, pulse: reduceMotion ? 1 : pulse)
+        }
+
         if let age = cue.struckAge {
             // Struck: the bar rings. A sideways shake that dies away fast,
             // like the bronze settling after the mallet.
@@ -373,6 +385,24 @@ struct GangsaView: View {
                 .font(.system(size: max(11, layout.barWidth * 0.36), weight: .bold, design: .default))
                 .foregroundStyle(skin.number),
             at: CGPoint(x: rect.midX, y: rect.minY + u * 100)
+        )
+    }
+
+    /// The bar to strike next: a soft gold glow that breathes with `pulse`,
+    /// under a dashed gold ring in the gap round the bar — outside the bar
+    /// and its ground-coloured edge, so the bar itself is drawn as ever.
+    /// The ring stays put and only the glow throbs: a blinking ring flickered,
+    /// where a glow coming and going reads as calling you to it.
+    private func drawNext(_ ctx: GraphicsContext, around bar: CGRect, pulse: Double) {
+        let ring = Path(roundedRect: bar.insetBy(dx: -u * 9.5, dy: -u * 9.5), cornerRadius: u * 31)
+        var glow = ctx
+        glow.addFilter(.blur(radius: u * 12))
+        glow.opacity = 0.3 + 0.7 * pulse
+        glow.stroke(ring, with: .color(Theme.gold), lineWidth: u * 24)
+        ctx.stroke(
+            ring,
+            with: .color(Theme.gold),
+            style: StrokeStyle(lineWidth: u * 8, dash: [u * 14, u * 9])
         )
     }
 

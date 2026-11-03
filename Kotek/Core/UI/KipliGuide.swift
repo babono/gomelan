@@ -18,7 +18,8 @@
 //     together.").
 //   - `.quiet` — a small face for a screen that needs the room (the kotekan
 //     picker, in the gap under its header; the waterfall's top-left corner,
-//     in Learn and free play). He says his line as the screen
+//     in Learn and free play; Learn's Watch, over the stage's top-left under
+//     the lane pills). He says his line as the screen
 //     opens — the bubble opens at his RIGHT, over the layout rather than in
 //     it, so nothing shifts when it closes — then closes it after a few
 //     seconds; tapping him opens it again. He was first in the picker's
@@ -29,8 +30,14 @@
 //     On the waterfall he first stood at the bottom-left, beside the gangsa
 //     (or on it), his bubble opening above him (`.aside`) — down where the
 //     eye is on the notes landing. Moved to the top-left, out of the way.
-//   - `.drop` — the same in a header (Learn's Watch, which has no corner
-//     free: two gangsa side by side), the bubble dropping below him.
+//   - `.flying` — Learn's Watch, where there is nothing to play and he can
+//     have the stage: the small face drifting about its top over both
+//     gangsa, bobbing as he hovers, the bubble dropping below him wherever
+//     he is. He holds still while he talks, so the words never slide away
+//     from the eye, and flies on once the bubble closes. Watch had a `.drop`
+//     first — the face in the header beside the step strip, the bubble
+//     dropping onto the stage — then a `.quiet` one parked at the stage's
+//     top-left; both read as part of the layout, not a guide over it.
 //
 //  He speaks in the OUTLINED bubble, as the design system has it: white,
 //  ringed in Ireng, standing on a Garis edge like the buttons. The words type
@@ -50,7 +57,7 @@
 import SwiftUI
 
 struct KipliGuide: View {
-    enum Style { case hint, intro, quiet, drop }
+    enum Style { case hint, intro, quiet, flying }
 
     enum Mood { case happy, sad, angry }
 
@@ -67,14 +74,20 @@ struct KipliGuide: View {
     /// styles that close themselves, the timer that closes the bubble.
     @State private var said = 0
     @State private var talking = false
+    /// `.flying`: seconds of flight before the leg under way, and when that
+    /// leg began (nil while he is talking). His place is a function of the
+    /// flight time, so stopping the clock stops him exactly where he is —
+    /// an animation to a waypoint could only be cut short with a jump.
+    @State private var flown: Double = 0
+    @State private var legStarted: Double?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// How long a `.quiet` or `.drop` Kipli keeps his bubble open on his own,
+    /// How long a `.quiet` Kipli keeps his bubble open on his own,
     /// after he has finished saying it.
     private static let quietFor: Duration = .seconds(5)
 
     private var closesItself: Bool {
-        style == .quiet || style == .drop
+        style == .quiet || style == .flying
     }
 
     /// The line as it reads, for counting and for noticing a new one.
@@ -86,11 +99,58 @@ struct KipliGuide: View {
         switch style {
         case .intro: 66
         case .hint: 52
-        case .quiet, .drop: 40
+        case .quiet, .flying: 40
         }
     }
 
     var body: some View {
+        placed
+            // One element: "Kipli says: …". The face alone means nothing read out.
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text("Kipli says: \(Text(message))"))
+            // Talk for as long as the words take to type, then — the styles
+            // that close themselves — leave the line up a while and close it.
+            // Restarted (cancelled and run again) by every new line; a cancelled
+            // run changes nothing, or a new line would be closed by the old one.
+            .task(id: said) {
+                talking = !reduceMotion
+                do {
+                    try await Task.sleep(for: .seconds(Typewriter.duration(of: spoken.count)))
+                    talking = false
+                    guard closesItself else { return }
+                    try await Task.sleep(for: Self.quietFor)
+                } catch {
+                    return
+                }
+                withAnimation(.easeInOut(duration: 0.25)) { speaking = false }
+            }
+            // A new line from him opens the bubble again.
+            .onChange(of: spoken) {
+                withAnimation(.easeInOut(duration: 0.2)) { speaking = true }
+                said += 1
+            }
+            // `.flying`: the flight clock runs only while he is quiet.
+            .onChange(of: speaking) { _, now in
+                let t = Date.timeIntervalSinceReferenceDate
+                if now {
+                    flown += legStarted.map { t - $0 } ?? 0
+                    legStarted = nil
+                } else {
+                    legStarted = t
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var placed: some View {
+        if style == .flying {
+            flight
+        } else {
+            laidOut
+        }
+    }
+
+    private var laidOut: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center, spacing: 14) {
                 if style == .quiet {
@@ -106,16 +166,6 @@ struct KipliGuide: View {
                                     .transition(pop(from: .leading))
                             }
                         }
-                } else if style == .drop {
-                    face
-                        .overlay(alignment: .topLeading) {
-                            if speaking {
-                                bubble
-                                    .frame(width: 280, alignment: .topLeading)
-                                    .offset(y: faceHeight + 10)
-                                    .transition(pop(from: .topLeading))
-                            }
-                        }
                 } else {
                     face
                     bubble
@@ -129,31 +179,52 @@ struct KipliGuide: View {
                     .padding(.leading, faceHeight * KipliFace.aspect + 14)
             }
         }
-        // One element: "Kipli says: …". The face alone means nothing read out.
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("Kipli says: \(Text(message))"))
-        // Talk for as long as the words take to type, then — the styles
-        // that close themselves — leave the line up a while and close it.
-        // Restarted (cancelled and run again) by every new line; a cancelled
-        // run changes nothing, or a new line would be closed by the old one.
-        .task(id: said) {
-            talking = !reduceMotion
-            do {
-                try await Task.sleep(for: .seconds(Typewriter.duration(of: spoken.count)))
-                talking = false
-                guard closesItself else { return }
-                try await Task.sleep(for: Self.quietFor)
-            } catch {
-                return
+    }
+
+    // MARK: Flying
+
+    /// `.flying`: over the whole of what it is laid over, the face wandering
+    /// its top and the bubble dropping below him. A slow figure of eight —
+    /// two eased swings, side to side over 34 s and up and down over 13 —
+    /// that starts in the top-left corner, where he says his first line.
+    /// Any faster and he darted; the eye followed him instead of the notes.
+    private var flight: some View {
+        GeometryReader { geo in
+            TimelineView(.animation(paused: reduceMotion)) { context in
+                let now = context.date.timeIntervalSinceReferenceDate
+                let t = reduceMotion ? 0 : flown + (legStarted.map { now - $0 } ?? 0)
+                let faceWidth = faceHeight * KipliFace.aspect
+                let roamX = max(0, geo.size.width - faceWidth)
+                // The upper part only, with room under him for the bubble.
+                let roamY = max(0, min(geo.size.height * 0.35, geo.size.height - faceHeight - 150))
+                let x = roamX * (0.5 - 0.5 * cos(2 * .pi * t / 34))
+                let y = roamY * (0.5 - 0.5 * cos(2 * .pi * t / 13))
+                // The hover: a bob and a slight rock, always — even while he
+                // talks — on its own clock, so he never hangs dead still.
+                let bob = reduceMotion ? 0 : sin(2 * .pi * now / 2.2)
+                let bubbleWidth = min(Self.flyingBubbleWidth, geo.size.width)
+                ZStack(alignment: .topLeading) {
+                    face
+                        .rotationEffect(.degrees(3 * bob))
+                        .offset(x: x, y: y + 4 * bob)
+                    if speaking {
+                        bubble
+                            .frame(width: bubbleWidth, alignment: .leading)
+                            // Under him, kept on the screen at the edges.
+                            .offset(
+                                x: min(max(0, x - 8), geo.size.width - bubbleWidth),
+                                y: y + faceHeight + 10
+                            )
+                            .transition(pop(from: .topLeading))
+                    }
+                }
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
             }
-            withAnimation(.easeInOut(duration: 0.25)) { speaking = false }
-        }
-        // A new line from him opens the bubble again.
-        .onChange(of: spoken) {
-            withAnimation(.easeInOut(duration: 0.2)) { speaking = true }
-            said += 1
         }
     }
+
+    /// Wide enough for two lines of a long one; a short line keeps its own width.
+    private static let flyingBubbleWidth: CGFloat = 320
 
     private func pop(from anchor: UnitPoint) -> AnyTransition {
         reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.9, anchor: anchor))

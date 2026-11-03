@@ -120,6 +120,9 @@ struct CoopStage: View {
     let voicedKeys: ClosedRange<Int>
     let damp: DampGuide
 
+    /// The player pill over each lane, for what floats below it (Learn's Kipli).
+    static let laneHeader = CoopStageLayout.header
+
     var body: some View {
         GeometryReader { geo in
             let stage = CoopStageLayout(size: geo.size, keyCounts: lanes.map(\.keyCount))

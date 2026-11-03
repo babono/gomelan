@@ -182,6 +182,13 @@ final class PlayEngine {
     private(set) var stepsDone = false
     private var stepIndex = 0
 
+    /// The bar the next note in Step is for — while it falls as well as once
+    /// the clock is held on it — so the gangsa can mark it (`BilahCue.next`).
+    var stepKey: Int? {
+        guard waitsForEachNote, !stepsDone, notes.indices.contains(stepIndex) else { return nil }
+        return notes[stepIndex].keyIndex
+    }
+
     // Dependencies set before start
     var cue: CuePlayer?
     var onComplete: ((SongResult?) -> Void)?
