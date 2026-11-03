@@ -32,11 +32,17 @@ import SwiftUI
 struct AppToggleStyle: ToggleStyle {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// `.labelsHidden()`, honoured: a custom style has to read it itself.
+    /// Ignored, Settings' Practice rows showed each title twice — the row's
+    /// own, and the toggle's beside the switch.
+    @Environment(\.labelsVisibility) private var labelsVisibility
 
     func makeBody(configuration: Configuration) -> some View {
         HStack {
-            configuration.label
-            Spacer(minLength: 12)
+            if labelsVisibility != .hidden {
+                configuration.label
+                Spacer(minLength: 12)
+            }
             Capsule()
                 .fill(configuration.isOn ? Theme.ok : Theme.hairline)
                 .frame(width: 51, height: 31)
@@ -53,10 +59,12 @@ struct AppToggleStyle: ToggleStyle {
                 .contentShape(Rectangle())
                 .onTapGesture { configuration.isOn.toggle() }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isToggle)
-        .accessibilityValue(configuration.isOn ? Text("On") : Text("Off"))
-        .accessibilityAction { configuration.isOn.toggle() }
+        // Read as a system switch, with its label even when it is not drawn.
+        // The plain switch inside, or it would be drawn with this style.
+        .accessibilityRepresentation {
+            Toggle(isOn: configuration.$isOn) { configuration.label }
+                .toggleStyle(.switch)
+        }
         // On the VALUE, not on the touch, so a change made any way —
         // VoiceOver included — sounds the same.
         .onChange(of: configuration.isOn) {
