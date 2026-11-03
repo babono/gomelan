@@ -125,9 +125,6 @@ final class AppState {
     /// likely to be in. It is one tap away in the top bar for when it is wanted.
     var bottomBarVisible: Bool = false
     var lastResult: SongResult?
-    /// `lastResult` is the made-up session from Settings → Debug, so the
-    /// results screen shows a canned overview instead of asking the model.
-    var lastResultIsSample = false
     /// What the figure's record was BEFORE the session that just ended, and
     /// whether that session beat it. Read by the results screen; set by
     /// `finish`, which is the only place that can tell, because filing the new

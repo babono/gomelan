@@ -135,6 +135,11 @@ final class PlayEngine {
     private(set) var currentTimeMs: Double = 0
     /// Time spent playing since the first note fell due, pauses excluded.
     private(set) var practiceSeconds: Double = 0
+    /// Whole passes played, judged or not — what a session with no sensor
+    /// can still say about itself on the results screen.
+    private(set) var passesPlayed = 0
+    /// The fastest speed the session reached; the results screen's top tempo.
+    private(set) var topTempoScale: Double = 1
     private var lastTickHostTime: Double?
     private(set) var currentBeatIndex: Int = 0
     private(set) var isFinished = false
@@ -368,6 +373,8 @@ final class PlayEngine {
         self.song = song
         self.profile = profile
         self.tempoScale = max(0.25, tempoScale)
+        topTempoScale = self.tempoScale
+        passesPlayed = 0
         cyclesByPart = [:]
         judgementsByPart = [:]
         landedNotes = 0
@@ -483,6 +490,7 @@ final class PlayEngine {
         guard abs(next - tempoScale) > 0.001 else { return }
         let beatsElapsed = currentTimeMs / beatMs
         tempoScale = next
+        topTempoScale = max(topTempoScale, next)
         recomputeTiming()
         startHostTime = now - beatsElapsed * beatMs / 1000
         // R The clock too, not only its origin. Left for the next tick, the
@@ -538,14 +546,15 @@ final class PlayEngine {
     /// near-total failure on the notes it never reached, and it would land in
     /// the graph as a cliff at the end of every single session.
     ///
-    /// A session that was not judged (no sensor: guidance only) reports nil,
-    /// which the screens already take as "back to the picker" — an empty
-    /// result would file a record and a PracticeSession for nothing.
+    /// A session that was never judged (no sensor: guidance only) still
+    /// reports — passes, time and tempo — with `sensed` false. Whether to file
+    /// it is the caller's call: an unjudged result filed as a record and a
+    /// PracticeSession would be filing nothing.
     func end() {
         guard !isFinished else { return }
         isFinished = true
         cue?.stop()
-        onComplete?(judging ? SongResult(
+        onComplete?(SongResult(
             songTitle: song.title,
             subtitle: sessionSubtitle,
             judgements: judgementsByPart[partKey] ?? [],
@@ -554,8 +563,11 @@ final class PlayEngine {
             strokes: notes,
             cycleMs: song.durationMs,
             landedNotes: landedNotes,
-            practiceSeconds: practiceSeconds
-        ) : nil)
+            practiceSeconds: practiceSeconds,
+            passes: passesPlayed,
+            topTempoScale: topTempoScale,
+            sensed: !judgementsByPart.isEmpty
+        ))
     }
 
     private func recomputeTiming() {
@@ -742,7 +754,10 @@ final class PlayEngine {
                 // R this is the one moment its score is final, and the turn of
                 // R the cycle is also the only place a running total can be cut
                 // R without splitting a note's judgement across two passes.
-                if lastLoopIndex >= 0 { closeCycle(index: lastLoopIndex) }
+                if lastLoopIndex >= 0 {
+                    closeCycle(index: lastLoopIndex)
+                    passesPlayed += 1
+                }
                 lastLoopIndex = idx
                 tally = CycleTally(startMs: patternOriginMs)
                 cycleVoided = false

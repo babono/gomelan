@@ -104,7 +104,6 @@ extension AppState {
         fileRecord(result)
         recordSession(landed: result.landedNotes)
         lastResult = result
-        lastResultIsSample = false
         screen = .results
         offerSaveIfDue()
 
@@ -122,6 +121,30 @@ extension AppState {
             } catch {
                 log.error("session sync failed: \(error.localizedDescription)")
             }
+        }
+    }
+
+    /// The results of a session played with no sensor: passes, time and
+    /// tempo. Nothing is filed — there is no record or score to keep — so no
+    /// save prompt either.
+    func showUnscored(_ result: SongResult) {
+        lastResult = result
+        screen = .results
+    }
+
+    /// This figure and half's sessions on this gangsa from before `start`,
+    /// newest first, with an accuracy — what Kipli compares the one just
+    /// played with. Empty offline, signed out, or the first time.
+    ///
+    /// `start` because `finish` uploads the session just played at the same
+    /// moment this reads, and it must not be compared with itself.
+    func pastSessions(before start: Date) async -> [PracticeHistoryRow] {
+        guard let k = selectedKotekan else { return [] }
+        let half = chosenHalf.rawValue
+        let rows = await (try? sessionRepo.history(instrumentID: profile.id)) ?? []
+        return rows.filter {
+            $0.kotekanID == k.id && $0.half == half && $0.accuracy != nil
+                && (InstrumentProfile.date(from: $0.createdAt) ?? .distantFuture) < start
         }
     }
 
