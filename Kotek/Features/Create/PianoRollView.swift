@@ -143,6 +143,7 @@ private struct PianoRollControls: View {
             selection: viewModel.tool == .notes ? viewModel.writing : nil,
             title: \.title,
             dot: { $0 == .polos ? Theme.polosVoice : Theme.sangsihVoice },
+            tint: { $0 == .polos ? Theme.polosVoice : Theme.sangsihVoice },
             style: .pills
         ) {
             viewModel.writing = $0

@@ -10,8 +10,8 @@ import SwiftUI
 /// Two looks for the same choice, picked by the screen:
 /// - `.toggle`, the play screens': the HIG's segmented toggle ("All | Missed"),
 ///   one Krem track with a white thumb that slides under the chosen label.
-/// - `.pills`, the Create screen's: chips — the chosen one Ireng, the rest
-///   white and outlined, as the design system's "All" filter.
+/// - `.pills`, the Create screen's: chips — the chosen one Ireng (or its
+///   `tint`), the rest white and outlined, as the design system's "All" filter.
 ///
 /// In both, selection never changes the type — the same face, size and weight
 /// whichever is chosen. The primary's heavy uppercase on the chosen segment made
@@ -24,11 +24,14 @@ struct AppSwitcher<Option: Hashable>: View {
     /// (the piano roll writing a colotomic instrument).
     let selection: Option?
     let title: (Option) -> String
-    /// A coloured dot before the label, e.g. the voice's colour.
+    /// A small coloured block before the label, e.g. the voice's colour: a
+    /// note block in little, as the piano roll draws them. On a tinted chip
+    /// that is chosen it turns white — in its own colour it vanished.
     var dot: (Option) -> Color? = { _ in nil }
-    /// `.toggle` only: the thumb in this colour, its label white, instead of
-    /// white with the label in ink — Polos red and Sangsih blue, so the
-    /// switch shows the colour of the notes it will drop.
+    /// The chosen one in this colour, its label white: `.toggle`'s thumb
+    /// instead of white with the label in ink, `.pills`' chip instead of
+    /// Ireng — Polos red and Sangsih blue, so the switch shows the colour of
+    /// the notes it will drop.
     var tint: (Option) -> Color? = { _ in nil }
     var size = AppButtonSize.compact
     var style = Style.toggle
@@ -47,10 +50,12 @@ struct AppSwitcher<Option: Hashable>: View {
         }
     }
 
-    private func label(_ option: Option) -> some View {
-        HStack(spacing: 6) {
+    private func label(_ option: Option, selected: Bool = false) -> some View {
+        HStack(spacing: 7) {
             if let color = dot(option) {
-                Circle().fill(color).frame(width: 7, height: 7)
+                RoundedRectangle(cornerRadius: 2.5)
+                    .fill(selected && tint(option) != nil ? Theme.onButtonFill : color)
+                    .frame(width: 14, height: 8)
             }
             Text(title(option)).appLabel(size)
         }
@@ -98,15 +103,19 @@ struct AppSwitcher<Option: Hashable>: View {
             HStack(spacing: 8) {
                 ForEach(options, id: \.self) { option in
                     let selected = selection == option
+                    let tinted = tint(option)
                     Button {
                         onSelect(option)
                     } label: {
-                        label(option)
-                            .foregroundStyle(selected ? Theme.onGlassFill : Theme.cream)
+                        label(option, selected: selected)
+                            .foregroundStyle(
+                                selected ? (tinted == nil ? Theme.onGlassFill : Theme.onButtonFill) : Theme.cream
+                            )
                             .appControlSurface(
                                 size: size,
                                 shape: .capsule,
-                                prominence: selected ? .selected : .secondary
+                                prominence: selected ? .selected : .secondary,
+                                tint: selected ? tinted : nil
                             )
                     }
                     .buttonStyle(.appPlain)
