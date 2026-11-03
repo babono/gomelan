@@ -72,9 +72,14 @@ struct InstrumentSectionView: View {
 
             noteClips
 
-            // No "Switch gangsa": every gangsa is in the sidebar now.
-            AppButton(title: "History", systemImage: "clock.arrow.circlepath", size: .compact) {
-                app.openHistory()
+            // Settings shows only the gangsa in play; another is a switch away.
+            FlowLayout(spacing: 10) {
+                AppButton(title: "Switch gangsa", systemImage: "arrow.triangle.2.circlepath", size: .compact) {
+                    app.openChooseInstrument()
+                }
+                AppButton(title: "History", systemImage: "clock.arrow.circlepath", size: .compact) {
+                    app.openHistory()
+                }
             }
 
             AppButton(

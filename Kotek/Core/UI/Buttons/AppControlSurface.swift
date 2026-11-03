@@ -28,7 +28,8 @@ struct AppControlSurface: ViewModifier {
     let size: AppButtonSize
     let shape: AppControlShape
     let prominence: AppButton.Prominence
-    /// Replaces the primary's Merah, e.g. the Ireng of "Continue as guest".
+    /// Replaces the primary's Merah, e.g. the Ireng of "Continue as guest",
+    /// or the selected chip's Ireng (Kotek Studio's Polos red, Sangsih blue).
     var tint: Color?
 
     @Environment(\.isEnabled) private var isEnabled
@@ -48,7 +49,7 @@ struct AppControlSurface: ViewModifier {
         case .primary: washed(tint ?? Theme.buttonFill)
         case .secondary: Theme.glassTint
         case .quiet: Theme.deep
-        case .selected: Theme.tertiary
+        case .selected: tint ?? Theme.tertiary
         }
     }
 

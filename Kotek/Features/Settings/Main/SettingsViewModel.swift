@@ -28,19 +28,7 @@ final class SettingsViewModel {
     init(app: AppState) {
         self.app = app
         draftName = app.profile.name
-        page = .gangsa(app.profile.id)
-    }
-
-    /// A gangsa's page shows the active one (the gangsa card reads
-    /// `app.profile`), so picking it makes it active — as centring it in the
-    /// picker does.
-    func open(_ page: SettingsPage) {
-        if case let .gangsa(id) = page, id != app.profile.id,
-           let p = app.savedProfiles.first(where: { $0.id == id })
-        {
-            app.activateInstrument(p)
-        }
-        self.page = page
+        page = .gangsa
     }
 
     func updateActiveProfileId() {

@@ -94,29 +94,31 @@ private struct SettingsContentView: View {
     private var sidebar: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
-                groupHeader("My gangsa")
-                ForEach(app.savedProfiles) { p in
-                    sidebarRow(.gangsa(p.id)) {
-                        Text(p.name).lineLimit(1)
-                        Spacer(minLength: 6)
-                        Text("\(p.keyCount)")
-                            .font(.sans(12).monospacedDigit())
-                            .foregroundStyle(Theme.stone)
-                    }
+                // Only the one being played; see `SettingsPage`.
+                groupHeader("Gangsa")
+                sidebarRow(.gangsa, symbol: "pianokeys", tile: Theme.keyDampened) {
+                    Text(app.profile.name).lineLimit(1)
+                    Spacer(minLength: 6)
+                    Text("\(app.profile.keyCount)")
+                        .font(.sans(12).monospacedDigit())
+                        .foregroundStyle(Theme.stone)
                 }
 
                 groupHeader("App")
                 // Its own key: "Practice" is also the results screen's
                 // duration label, translated as that.
-                sidebarRow(.practice) { Text(String(localized: "Settings.practice", defaultValue: "Practice")) }
-                sidebarRow(.account) { Text("Account") }
+                sidebarRow(.practice, symbol: "metronome", tile: Theme.primary) { Text(String(
+                    localized: "Settings.practice",
+                    defaultValue: "Practice"
+                )) }
+                sidebarRow(.account, symbol: "person.fill", tile: Theme.sangsihVoice) { Text("Account") }
 
                 // Kept reachable, last and quiet: the test screens are not
                 // for most players. (The camera mode's Deprecated page sat
                 // here too, until the mode went.)
                 // Its own key: "More" is also the stepper's "+", "Tambah".
                 groupHeader(LocalizedStringKey("Settings.more"))
-                sidebarRow(.debug) { Text("Debug") }
+                sidebarRow(.debug, symbol: "ladybug.fill", tile: Theme.stone) { Text("Debug") }
             }
             .padding(10)
         }
@@ -129,19 +131,43 @@ private struct SettingsContentView: View {
             .padding(.bottom, 2)
     }
 
-    private func sidebarRow(_ page: SettingsPage, @ViewBuilder label: () -> some View) -> some View {
+    /// A row: its symbol on a small tile in its own colour, as iOS's Settings
+    /// has them — found by colour before the word is read — then the label.
+    /// The open page is a raised white card, the way a chosen card is lifted
+    /// off the paper elsewhere; the rest sit flat on the sidebar.
+    private func sidebarRow(
+        _ page: SettingsPage,
+        symbol: String,
+        tile: Color,
+        @ViewBuilder label: () -> some View
+    ) -> some View {
         let selected = viewModel.page == page
         return Button {
-            viewModel.open(page)
+            viewModel.page = page
         } label: {
-            HStack(spacing: 6) { label() }
-                .font(.sans(15, weight: selected ? .semibold : .regular))
-                .foregroundStyle(selected ? Theme.cream : Theme.cream.opacity(0.7))
-                .padding(.horizontal, 10)
-                .frame(minHeight: 40)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(selected ? Theme.cream.opacity(0.1) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                .contentShape(Rectangle())
+            HStack(spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.symbol(14, weight: .semibold))
+                    .foregroundStyle(Theme.onButtonFill)
+                    .frame(width: 28, height: 28)
+                    .background(tile, in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityHidden(true)
+                label()
+            }
+            .font(.sans(15, weight: selected ? .semibold : .regular))
+            .foregroundStyle(selected ? Theme.heading : Theme.cream.opacity(0.8))
+            .padding(.horizontal, 8)
+            .frame(minHeight: 44)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                if selected {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Theme.surface)
+                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline, lineWidth: 1))
+                        .shadow(color: Theme.hairline.opacity(0.6), radius: 0, y: 2)
+                }
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.appPlain)
         .accessibilityAddTraits(selected ? .isSelected : [])

@@ -121,19 +121,15 @@ private struct WaterfallContentView: View {
                         .padding(.trailing, 24)
                         .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
                 }
-                // Kipli, guiding Learn and cheering free play: beside the
-                // gangsa's left end, in the margin the instrument leaves — or,
-                // where a long gangsa leaves none, standing on it. His bubble
-                // opens above him.
-                .overlay(alignment: .bottomLeading) {
+                // Kipli, guiding Learn and cheering free play: top left, under
+                // the bar, where the notes have only just appeared — not down
+                // by the gangsa, where the eye is on them landing. His bubble
+                // opens at his right and closes itself.
+                .overlay(alignment: .topLeading) {
                     if let kipli = vm.kipli {
-                        let margin = (geo.size.width - layout.frameWidth) / 2
-                        // Inside the safe area: on a phone that is about
-                        // 67pt, for his 46.
-                        let beside = margin >= 40 * KipliFace.aspect + 20
-                        KipliGuide(message: kipli.line, style: .aside, mood: kipli.mood)
+                        KipliGuide(message: kipli.line, style: .quiet, mood: kipli.mood)
                             .padding(.leading, 16)
-                            .padding(.bottom, beside ? 20 : gangsaHeight - sunk + layout.postRise + 10)
+                            .padding(.top, 8)
                     }
                 }
             }

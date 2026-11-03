@@ -4,15 +4,21 @@
 //
 //  The falling notes. Every stroke is a short pill in its bilah's lane that
 //  reaches the bottom edge — the gangsa's rail, the one line there is to hit
-//  on — at the instant it is due. Above it in the same lane rides a grey
-//  damp pill, on a cream stem as long as the note: when the grey reaches the
-//  line, the note ends and the left hand pinches that bilah (§5.5).
+//  on — at the instant it is due. Above it in the same lane rides a cream
+//  stem as long as the note, capped with a short beige damp block: when the
+//  cap reaches the line, the note ends and the left hand pinches that bilah
+//  (§5.5).
 //
 //  The designer's drawing, November 2026. It replaced a stroke block as tall
 //  as the note with a dark damp tile of the same height stacked on it, a
 //  pinching hand drawn in it (`DampGlyph`): two tall blocks per note, and no
 //  telling from them which edge meant "now". The stem says how long the note
 //  rings; the pills are the two moments.
+//
+//  The damp was first a grey pill as wide as the stroke, the stem running
+//  between them. It drew the eye as much as the stroke did; the designer's
+//  second pass made it the stem's own cap, its width and in its outline's
+//  beige, smaller than the stroke and quieter than it.
 //
 //  A grey hit line along the foot was tried with them, turning gold under a
 //  hit and darker under a pinch. Right above the gangsa's own rail it made
@@ -47,15 +53,17 @@ struct WaterfallCanvas: View {
         max(8, barWidth * 0.28)
     }
 
-    /// The damp pill, thinner (222 x 42), and the stem between, narrower.
+    /// The damp cap, about two fifths of the stroke's height (26 to its 66 in
+    /// the designer's drawing), on a stem 132 of the stroke's 187 wide.
     private static func dampHeight(barWidth: CGFloat) -> CGFloat {
-        max(6, barWidth * 0.19)
+        max(4, strikeHeight(barWidth: barWidth) * 0.4)
     }
 
-    private static let stemFill: CGFloat = 0.61
+    private static let stemFill: CGFloat = 0.7
 
-    private static let dampGrey = Color(hex: 0x9C9FA8)
-    private static let stemCream = Color(hex: 0xF5E7D2)
+    /// The cap and the stem's outline, one colour, so they read as one piece.
+    private static let dampBeige = Color(hex: 0xE7DBC6)
+    private static let stemCream = Color(hex: 0xF7EDDC)
 
     private var yourColour: Color {
         yourHalf == .polos ? Theme.polosVoice : Theme.sangsihVoice
@@ -220,26 +228,30 @@ struct WaterfallCanvas: View {
         )
     }
 
-    /// Follows its stroke up the same lane: a cream stem from the stroke to a
-    /// grey pill whose bottom edge reaches the rail the instant the note
-    /// ends. Grey, not a voice's colour, so it never reads as a target.
+    /// Follows its stroke up the same lane: a cream stem, outlined in beige,
+    /// from the stroke to its beige cap, whose bottom edge reaches the rail
+    /// the instant the note ends. Beige, not a voice's colour, so it never
+    /// reads as a target.
     private func drawDamp(_ ctx: GraphicsContext, note: FallingNote, y: (Double) -> CGFloat) {
         guard note.dampsAfter else { return }
         let w = layout.barWidth
+        let stemW = w * Self.stemFill
+        let x = layout.laneCenter(note.keyIndex) - stemW / 2
         let strokeTop = y(note.msAhead) - Self.strikeHeight(barWidth: w)
         let dampBottom = y(note.msAhead + note.durationMs)
-        if strokeTop > dampBottom {
-            let stemW = w * Self.stemFill
-            let stem = CGRect(
-                x: layout.laneCenter(note.keyIndex) - stemW / 2,
-                y: dampBottom - 1,
-                width: stemW,
-                height: strokeTop - dampBottom + 2
-            )
+        let capTop = dampBottom - Self.dampHeight(barWidth: w)
+        // Into the stroke a little, so the stem meets it without a seam. A
+        // note too short for a stem is the cap alone, under its stroke.
+        let foot = max(strokeTop + 2, dampBottom)
+        let r = stemW * 0.1
+        let outline = UnevenRoundedRectangle(topLeadingRadius: r, topTrailingRadius: r)
+            .path(in: CGRect(x: x, y: capTop, width: stemW, height: foot - capTop))
+        ctx.fill(outline, with: .color(Self.dampBeige))
+        if foot > dampBottom {
+            let edge = max(1, w * 0.02)
+            let stem = CGRect(x: x + edge, y: dampBottom, width: stemW - 2 * edge, height: foot - dampBottom)
             ctx.fill(Path(stem), with: .color(Self.stemCream))
         }
-        let h = Self.dampHeight(barWidth: w)
-        ctx.fill(pill(note.keyIndex, bottom: dampBottom, width: w, height: h), with: .color(Self.dampGrey))
     }
 
     /// "PERFECT", "LATE"… rising off the bar that was struck.

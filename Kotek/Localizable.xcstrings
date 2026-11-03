@@ -3350,16 +3350,6 @@
         }
       }
     },
-    "My gangsa" : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gangsaku"
-          }
-        }
-      }
-    },
     "My kotek" : {
       "localizations" : {
         "id" : {
@@ -5550,6 +5540,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ganti akun"
+          }
+        }
+      }
+    },
+    "Switch gangsa" : {
+      "comment" : "Text for the button that opens the screen to choose a different gangsa.",
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilih gangsa lain"
           }
         }
       }

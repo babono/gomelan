@@ -17,16 +17,18 @@
 //     an empty state where he is the whole story ("Let's set up your gangsa
 //     together.").
 //   - `.quiet` — a small face for a screen that needs the room (the kotekan
-//     picker, in the gap under its header). He says his line as the screen
+//     picker, in the gap under its header; the waterfall's top-left corner,
+//     in Learn and free play). He says his line as the screen
 //     opens — the bubble opens at his RIGHT, over the layout rather than in
 //     it, so nothing shifts when it closes — then closes it after a few
 //     seconds; tapping him opens it again. He was first in the picker's
 //     bottom row, the bubble popping up above him, where the filter pills
 //     drawn after him covered it; then among the header's controls with it
 //     dropping below, where it covered the subtitle and the centred card.
-//   - `.aside` — small, in a corner of a screen that is busy everywhere else
-//     (Learn's waterfall, beside the gangsa). Like `.quiet`, but the bubble
-//     opens ABOVE him and wraps, and every new line opens it again.
+//     Every new line opens the bubble again.
+//     On the waterfall he first stood at the bottom-left, beside the gangsa
+//     (or on it), his bubble opening above him (`.aside`) — down where the
+//     eye is on the notes landing. Moved to the top-left, out of the way.
 //   - `.drop` — the same in a header (Learn's Watch, which has no corner
 //     free: two gangsa side by side), the bubble dropping below him.
 //
@@ -48,7 +50,7 @@
 import SwiftUI
 
 struct KipliGuide: View {
-    enum Style { case hint, intro, quiet, aside, drop }
+    enum Style { case hint, intro, quiet, drop }
 
     enum Mood { case happy, sad, angry }
 
@@ -67,12 +69,12 @@ struct KipliGuide: View {
     @State private var talking = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// How long a `.quiet` or `.aside` Kipli keeps his bubble open on his own,
+    /// How long a `.quiet` or `.drop` Kipli keeps his bubble open on his own,
     /// after he has finished saying it.
     private static let quietFor: Duration = .seconds(5)
 
     private var closesItself: Bool {
-        style == .quiet || style == .aside || style == .drop
+        style == .quiet || style == .drop
     }
 
     /// The line as it reads, for counting and for noticing a new one.
@@ -84,7 +86,7 @@ struct KipliGuide: View {
         switch style {
         case .intro: 66
         case .hint: 52
-        case .quiet, .aside, .drop: 40
+        case .quiet, .drop: 40
         }
     }
 
@@ -102,17 +104,6 @@ struct KipliGuide: View {
                                     // iPad and the bubble sat on his face.
                                     .offset(x: faceHeight * KipliFace.aspect + 10)
                                     .transition(pop(from: .leading))
-                            }
-                        }
-                } else if style == .aside {
-                    face
-                        .overlay(alignment: .bottomLeading) {
-                            if speaking {
-                                bubble
-                                    .frame(width: 230, alignment: .bottomLeading)
-                                    // Above his head, by the same means.
-                                    .offset(y: -(faceHeight + 10))
-                                    .transition(pop(from: .bottomLeading))
                             }
                         }
                 } else if style == .drop {
