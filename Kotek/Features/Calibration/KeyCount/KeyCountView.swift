@@ -20,7 +20,10 @@ struct KeyCountView: View {
     /// Picked here, kept only on Next — like the name.
     @State private var photo: Data?
     @FocusState private var nameFocused: Bool
-    private let range = 1 ... 14
+    /// No fewer than four: kotekan empat interlocks over four neighbouring
+    /// bilah, so a smaller count leaves a pattern nowhere to land. It went
+    /// down to one, and three made a "gangsa" the app could not teach on.
+    private let range = 4 ... 14
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,7 +75,7 @@ struct KeyCountView: View {
                     BilahBarsView(count: count, height: 34)
                         .frame(height: 34)
                         .frame(maxWidth: 260)
-                    Text("Up to \(range.upperBound) bilah")
+                    Text("\(range.lowerBound) to \(range.upperBound) bilah")
                         .font(.sans(13))
                         .foregroundStyle(Theme.description)
                 }
