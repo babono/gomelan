@@ -21,45 +21,14 @@ import Translation
 @Generable
 nonisolated struct SessionOverview {
     @Guide(
-        description: "One or two sentences on how the session went: the overall accuracy, and which part of the gong cycle was strongest and which needs work."
+        description: "At most 30 words, in one or two short sentences, said as the coach who listened (\"I heard…\"): whether this session was better, worse or about the same as the ones before (or that it is the first), then the one bilah to fix and where in the gong cycle."
     )
     var summary: String
 
-    @Guide(description: "One or two sentences giving one specific way to practise the weakest part next time.")
+    @Guide(
+        description: "At most 25 words: one drill for next time, as an instruction that starts with a verb. Give the drill itself (how slow, how many times, what to listen for); do not repeat the problem from the summary."
+    )
     var suggestion: String
-}
-
-/// One book in the credit line, with the pages the overview was given from it.
-///
-/// "Given", not "used": the model is handed these passages and cannot say
-/// reliably which of them it leaned on — a small model asked to cite tends to
-/// cite whatever number it was shown. So the credit claims only what is true:
-/// the advice was written with these pages in front of it.
-struct BookCitation: Identifiable, Equatable {
-    let book: BookInfo
-    let pages: [Int]
-
-    var id: String {
-        book.title
-    }
-
-    /// "Michael Tenzer, Gamelan Gong Kebyar, pp. 213, 236"
-    var label: String {
-        let pageList = pages.map(String.init).joined(separator: ", ")
-        let where_ = pages.count == 1 ? "p. \(pageList)" : "pp. \(pageList)"
-        return [book.author, book.title, where_].compactMap { $0 }.joined(separator: ", ")
-    }
-
-    /// Grouped by book in the order the books first appear, pages ascending.
-    static func from(_ passages: [BookPassage]) -> [BookCitation] {
-        var order: [BookInfo] = []
-        var pages: [BookInfo: Set<Int>] = [:]
-        for p in passages {
-            if pages[p.book] == nil { order.append(p.book) }
-            pages[p.book, default: []].insert(p.page)
-        }
-        return order.map { BookCitation(book: $0, pages: pages[$0, default: []].sorted()) }
-    }
 }
 
 @Observable
@@ -80,9 +49,6 @@ final class SessionOverviewModel {
     private(set) var phase: Phase = .thinking
     private(set) var summary = ""
     private(set) var suggestion = ""
-    /// The books the advice drew on and the pages it was given from them,
-    /// best match first. Empty when no book is bundled.
-    private(set) var citations: [BookCitation] = []
     /// Set once an English overview is ready and the player reads another
     /// language the model cannot write (Indonesian, for now). The view runs
     /// it through `translate(using:)` — a `translationTask` is what lets the
@@ -91,14 +57,41 @@ final class SessionOverviewModel {
 
     @ObservationIgnored private let log = Logger(subsystem: "Kotek", category: "overview")
 
+    /// R Kipli's voice, not a teacher's report. The first prompt asked for "a
+    /// R patient teacher" and got one: seven lines reciting every number on
+    /// R the screen, then a closing motto. The rules below are the no-slop
+    /// R list cut down to what a small model actually does wrong, plus a
+    /// R coach's habits — where you stand against last time, then one
+    /// R instruction, no menu of options. It opened with "you did X well" at
+    /// R first; praise the numbers do not back reads as filler, so he compares
+    /// R with your own past sessions instead. The numbers stay out because the tiles under him show them.
     private static let instructions = """
-    You are a patient Balinese gamelan teacher. A student has just practised \
-    one half of a kotekan, an interlocking pattern, on a gangsa, and you are \
-    given the measured results of the session.
-    Write in plain, encouraging language, speaking to the student as "you".
-    Use only the numbers you are given and never change them.
-    Base your advice on the teaching notes when they are relevant; otherwise \
-    give general practice advice. Never mention the notes, a book or passages.
+    You are Kipli, a barong who coaches a student learning Balinese gamelan. \
+    The student just practised one half of a kotekan, an interlocking pattern, \
+    on a gangsa. You watched the whole session, and you are given what was measured.
+
+    How you talk:
+    - Caring and patient. Open with how this session compares with the ones before \
+    it: better, worse, or about the same, exactly as the results say. No praise \
+    for its own sake. If it is worse, say so kindly and plainly; one session down \
+    is part of learning. If it is the first, say you will be tracking from here.
+    - Expressive, as if you were in the room: "I heard bilah 7 drag behind the beat."
+    - Assertive, like a good coach: one clear instruction, never a list of options. \
+    Say "Play", "Count", "Start"; never "you might consider" or "try to maybe".
+    - Call the student "you" and yourself "I".
+    - Short, plain sentences. Name the bilah and where in the gong cycle it happens. \
+    Use at most one number; the screen already shows them. Never change or invent one.
+
+    Never:
+    - use these words: delve, foster, leverage, utilize, facilitate, empower, robust, \
+    elevate, embark, harness, journey, testament, crucial, pivotal, truly, honestly, simply.
+    - write "It's not X, it's Y", "Here's the thing", "Remember,", "Keep up the great work", \
+    or end on a motto or a summary of what you just said.
+    - use dashes, emoji, or exclamation marks in every sentence.
+    - mention the teaching notes, a book or passages, or borrow their terms \
+    (neliti, ombak, ngubeng…) unless the results use them too.
+
+    Base your advice on the teaching notes when they fit; otherwise give general practice advice.
     """
 
     /// The app's language when the model cannot write it, so the English
@@ -124,40 +117,6 @@ final class SessionOverviewModel {
         return name
     }
 
-    /// A finished overview with nothing behind it, for the mock results
-    /// screen. Without it the feedback was blank on every device that cannot
-    /// run Apple Intelligence (an iPad mini 6, say), and its layout could not
-    /// be reviewed there.
-    ///
-    /// Written to match `openMockResults`' session — shaky start, settling,
-    /// slipping in the third quarter — and credited to real pages of the
-    /// bundled books that say the same thing, so it demos as the real one does.
-    func showSample() {
-        summary = "77% overall, and you got steadier with every pass. The start and end of the cycle are secure; the third quarter is where the interlock still slips."
-        suggestion = "Take the third quarter on its own at 0.75×, keeping a steady beat with your foot, until it locks in. Then join it back to the rest and bring the tempo up again."
-        citations = [
-            BookCitation(
-                book: BookInfo(
-                    title: "Balinese Gamelan Music",
-                    author: "Michael Tenzer",
-                    url: URL(
-                        string: "https://www.tuttlepublishing.com/books-by-country/balinese-gamelan-music-paperback-with-disc"
-                    )
-                ),
-                pages: [69, 75]
-            ),
-            BookCitation(
-                book: BookInfo(
-                    title: "Gamelan Gong Kebyar",
-                    author: "Michael Tenzer",
-                    url: URL(string: "https://press.uchicago.edu/ucp/books/book/chicago/G/bo3630827.html")
-                ),
-                pages: [213]
-            )
-        ]
-        phase = .done
-    }
-
     /// The English overview into the player's language. If it can't be —
     /// the download was declined, or there is no signal to fetch it — the
     /// English stands: advice in the wrong language beats no advice.
@@ -175,6 +134,13 @@ final class SessionOverviewModel {
         } catch {
             log.error("overview translation failed: \(String(describing: error))")
         }
+    }
+
+    /// Dashes out, whatever the prompt said: a small model reaches for them as
+    /// rhythm, and a speech bubble is short copy, where they read as slop.
+    private static func tidy(_ text: String) -> String {
+        text.replacing(/\s*[—–]\s*/, with: ", ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func run(facts: SessionFacts) async {
@@ -200,8 +166,10 @@ final class SessionOverviewModel {
         }
 
         phase = .thinking
+        // R The pages are given to the model but no longer credited on
+        // R screen: the overview is Kipli talking now, and a reading list in
+        // R his speech bubble was the book talking.
         let passages = await BookIndex.bundled.passages(for: facts.query)
-        citations = BookCitation.from(passages)
         log.debug("query: \(facts.query) → \(passages.map { "\($0.book.title) p\($0.page)" })")
 
         var prompt = "Session results:\n\(facts.text)\n"
@@ -211,10 +179,12 @@ final class SessionOverviewModel {
                 prompt += "[\(i + 1)] \(p.text)\n"
             }
         }
-        prompt += "\nWrite the overview for the student."
+        prompt += "\nTalk to the student now, as Kipli."
 
         let session = LanguageModelSession(
-            instructions: Self.instructions + "\nWrite the overview in \(Self.replyLanguage)."
+            instructions: Self.instructions + "\nWrite in \(Self.replyLanguage)."
+                // The app's own Indonesian voice: warm, and "kamu", never "Anda".
+                + (Self.replyLanguage == "Indonesian" ? " Call the student \"kamu\"." : "")
         )
         do {
             let target = Self.translationTarget
@@ -225,6 +195,8 @@ final class SessionOverviewModel {
                 // words flowing in, then swapped for Indonesian, reads as a glitch.
                 if !summary.isEmpty, target == nil { phase = .writing }
             }
+            summary = Self.tidy(summary)
+            suggestion = Self.tidy(suggestion)
             if summary.isEmpty {
                 phase = .failed
             } else if let target {

@@ -12,18 +12,15 @@ struct ResultsBottomBar: View {
     let onRetry: () -> Void
 
     var body: some View {
-        Group {
-            HStack(spacing: 14) {
-                // Compact: the bar shares a half-width column with the feedback
-                // now, and at full size "Choose another kotekan" pushed Retry off
-                // the edge of the screen.
-                AppButton(title: "Other kotekan", size: .regular) {
-                    onChooseAnother()
-                }
-                AppButton(title: "Retry", prominence: .primary, size: .regular) {
-                    onRetry()
-                }
-                Spacer()
+        // Full words again: the bar has the screen's width since the graph
+        // column went, and "Other kotekan" / "Retry" were only ever short to fit
+        // half of it.
+        HStack(spacing: 14) {
+            AppButton(title: "Choose another kotekan", size: .regular) {
+                onChooseAnother()
+            }
+            AppButton(title: "Play again", systemImage: "play.fill", prominence: .primary, size: .regular) {
+                onRetry()
             }
         }
         .padding(.top, 2)

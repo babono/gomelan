@@ -26,7 +26,11 @@ extension SessionFacts {
     /// anyone can hear, and not worth an overview's sentence.
     private static let driftWorthMentioningMs = 25.0
 
-    init(result: SongResult, figure: String, half: String, tempo: String) {
+    /// Closer than this to the last session is "about the same": a few
+    /// points either way is one stroke in a short session, not progress.
+    private static let sameWithin = 0.03
+
+    init(result: SongResult, past: [PracticeHistoryRow], figure: String, half: String, tempo: String) {
         var lines: [String] = []
         lines.append("Pattern: \(figure), playing the \(half) half, at \(tempo) speed.")
         lines.append("Full cycles played: \(result.cycles.count).")
@@ -34,6 +38,7 @@ extension SessionFacts {
         if minutes > 0 { lines.append("Time practised: \(minutes) minute\(minutes == 1 ? "" : "s").") }
         if let best = result.best {
             lines.append("Best accuracy over \(best.range.count) cycles in a row: \(Self.percent(best.accuracy)).")
+            lines.append(contentsOf: Self.comparison(best.accuracy, with: past))
         }
 
         let parts = result.partAverages
@@ -65,12 +70,58 @@ extension SessionFacts {
             problems.append(drift.contains("early") ? "rushing ahead of the beat" : "dragging behind the beat")
         }
 
+        // The same spots "Where to polish" shows, so the overview names the
+        // bilah the player will find there.
+        for spot in PolishSpot.spots(in: result) {
+            let bilah = spot.keyIndex + 1
+            let what = switch spot.kind {
+            case .late: "Bilah \(bilah) landed late"
+            case .early: "Bilah \(bilah) landed early"
+            case let .wrongBilah(struck): "Bilah \(struck + 1) was struck instead of bilah \(bilah)"
+            case .missed: "Bilah \(bilah) was missed"
+            }
+            lines.append("\(what) in \(spot.times) of \(spot.of) cycles.")
+        }
+
         if problems.isEmpty { problems.append("playing steadily at a faster tempo") }
         text = lines.joined(separator: "\n")
         // R In the BOOK's words, not a learner's. A text about gamelan says
         // R "kotekan", "polos", "sangsih", "gong cycle"; it rarely says "how to
         // R practise", and a query phrased that way matched drum technique.
         query = "Kotekan polos and sangsih interlocking on the gangsa, playing the \(half): \(problems.joined(separator: ", ")), in the gong cycle."
+    }
+
+    /// This session against the ones before it, decided here: "better" or
+    /// "worse" is arithmetic, and a small model asked to compare two
+    /// percentages gets it backwards often enough to matter.
+    private static func comparison(_ now: Double, with past: [PracticeHistoryRow]) -> [String] {
+        let earlier = past.compactMap(\.accuracy)
+        guard let last = earlier.first, let lastRow = past.first else {
+            return ["This is the student's first recorded session of this pattern and half."]
+        }
+        var lines = [
+            "Previous session: \(percent(last)) at \(Theme.tempoLabel(lastRow.tempoScale)) speed. "
+                + "This session is \(verdict(now - last)) the previous one."
+        ]
+        let recent = Array(earlier.prefix(5))
+        if recent.count > 1 {
+            let mean = recent.reduce(0, +) / Double(recent.count)
+            lines.append(
+                "Average of the \(recent.count) sessions before: \(percent(mean)). "
+                    + "This session is \(verdict(now - mean)) that average."
+            )
+        }
+        if let best = earlier.max(), now > best + sameWithin {
+            lines.append("This is the student's best session of this pattern and half so far.")
+        }
+        return lines
+    }
+
+    private static func verdict(_ delta: Double) -> String {
+        let points = Int((abs(delta) * 100).rounded())
+        if delta >= sameWithin { return "\(points) points better than" }
+        if delta <= -sameWithin { return "\(points) points worse than" }
+        return "about the same as"
     }
 
     private static func percent(_ x: Double) -> String {

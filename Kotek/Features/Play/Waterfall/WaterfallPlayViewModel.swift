@@ -159,6 +159,9 @@ final class WaterfallPlayViewModel {
                     self.app.exitLearn()
                 } else if let result, self.everSensed {
                     self.app.finish(result: result)
+                } else if let result, result.passes > 0 {
+                    // No sensor: nothing scored, but the passes were played.
+                    self.app.showUnscored(result)
                 } else {
                     self.app.backToKotekan()
                 }

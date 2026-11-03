@@ -208,7 +208,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
   - `Learn/LearnView.swift`, `Coop/` — a pattern taught in steps; two players, one screen.
   - `PlayEngine.swift` — display-link-driven timing loop, judgement windows, and cue firing.
   - `Components/NotesRiver.swift` — piano-roll strip of both halves against the cycle (the sensor test's).
-  - `ResultsView.swift` — post-session accuracy score, streak, and landed notes.
+  - `Results/ResultsView.swift` — the session's result: cycles, time and accuracy (or top tempo with no sensor), Kipli giving the Apple Intelligence feedback. `Results/Polish/` — "Where to polish": the late, early, wrong-bilah and missed strokes on one pass of the roll, each explained by Kipli.
   - `DisplayLink.swift` — `CADisplayLink` frame driver.
 - **`Settings/`**:
   - `SettingsView.swift` — account, the active gangsa (sounds, controller), Debug.
