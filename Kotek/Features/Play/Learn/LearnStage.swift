@@ -54,6 +54,13 @@ enum LearnStage: Hashable {
     /// The speeds Build up climbs, ending a little over the figure as written
     /// so full speed feels within reach afterwards.
     static let buildUpTempos: [Double] = [0.5, 0.75, 1.0, 1.1]
+    /// What each of those is called on the stepper (`BuildUpStepper`).
+    static let buildUpNames: [LocalizedStringResource] = [
+        "Slow",
+        "Steady",
+        "Full speed",
+        LocalizedStringResource("BuildUp.faster", defaultValue: "Faster")
+    ]
     /// Without sensors nothing says whether a pass was clean, so each speed
     /// gets a set number of passes instead.
     static let passesPerTempoUnsensed = 2

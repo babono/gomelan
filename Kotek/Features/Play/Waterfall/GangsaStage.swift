@@ -128,6 +128,16 @@ struct GangsaStage: View {
             }
         }
 
+        // Learn's Step: the bar to strike next, outlined and pulsing, so
+        // the one to hit is found on the instrument and not only by
+        // following its lane down. A steady 1.2 Hz throb, off the engine's
+        // clock — which stands still while a note is held, so not the song
+        // time.
+        if let key = engine.stepKey {
+            let pulse = 0.5 - 0.5 * cos(2 * .pi * 1.2 * engine.renderNow)
+            cues[key, default: BilahCue()].next = pulse
+        }
+
         // The raw sensor, before any judging — so a dead piezo is obvious.
         if let sensed = sensedStrike(engine.renderNow) {
             struck(sensed.key, age: sensed.age)

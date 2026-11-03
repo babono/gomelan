@@ -45,12 +45,6 @@ private struct LearnWatchView: View {
                     vm.teardown()
                     app.exitLearn()
                 }
-                // Kipli says what the caption under the strip used to; his
-                // bubble drops over the stage, the one place free here.
-                KipliGuide(
-                    message: "Polos on the left, sangsih on the right. Next when you have the shape of it.",
-                    style: .drop
-                )
                 LearnStrip(stage: .watch)
                 Spacer(minLength: 0)
                 if LearnProgress.learnedAny {
@@ -69,10 +63,21 @@ private struct LearnWatchView: View {
             .frame(height: 50)
             .padding(.horizontal, 24)
             .padding(.vertical, 6)
-            // Over the stage, drawn after it, so Kipli's bubble is on top.
-            .zIndex(1)
 
             CoopStage(lanes: vm.lanes, voicedKeys: vm.voicedKeys, damp: app.dampGuide)
+                // Kipli says what the caption under the strip used to, flying
+                // about over the stage under the Polos / Sangsih pills
+                // (`.flying`). First he sat in the header beside the strip,
+                // then parked at the stage's top-left; both looked like part
+                // of the layout.
+                .overlay {
+                    KipliGuide(
+                        message: "Polos on the left, sangsih on the right. Next when you have the shape of it.",
+                        style: .flying
+                    )
+                    .padding(.horizontal, 24)
+                    .padding(.top, CoopStage.laneHeader + 8)
+                }
         }
         .background(Theme.ground.ignoresSafeArea())
         .onAppear(perform: vm.setup)
@@ -124,5 +129,48 @@ struct LearnStrip: View {
         .fixedSize()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Learn, \(String(localized: Self.parts[current])), \(stage.title)")
+    }
+}
+
+/// Build up's climb, Slow › Steady › Full speed › Faster: the speeds behind
+/// you ticked, the one you are on lit, the ones to come faint. It replaced
+/// the speed as a number in the caption ("0.5× · pass 2 of 2"), which said
+/// where you were but not how far there was to go.
+struct BuildUpStepper: View {
+    let step: Int
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(LearnStage.buildUpNames.indices, id: \.self) { i in
+                HStack(spacing: 4) {
+                    if i < step {
+                        Image(systemName: "checkmark")
+                            .font(.symbol(10, weight: .bold))
+                    }
+                    Text(LearnStage.buildUpNames[i])
+                }
+                .font(.sans(13, weight: i == step ? .semibold : .medium))
+                .foregroundStyle(
+                    i == step ? Theme.surface : Theme.cream.opacity(i < step ? 0.75 : 0.35)
+                )
+                .padding(.horizontal, 12)
+                .frame(height: 28)
+                .background {
+                    if i == step {
+                        Capsule().fill(Theme.primary)
+                    }
+                }
+            }
+        }
+        .lineLimit(1)
+        .fixedSize()
+        .padding(3)
+        .background(Theme.surface, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.hairline, lineWidth: 1.5))
+        .animation(.easeInOut(duration: 0.3), value: step)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "Speed: \(String(localized: LearnStage.buildUpNames[min(step, LearnStage.buildUpNames.count - 1)])), \(step + 1) of \(LearnStage.buildUpNames.count)"
+        )
     }
 }

@@ -291,6 +291,9 @@ private struct WaterfallContentView: View {
                     }
                 }
                 Spacer(minLength: 0)
+                if case .buildUp = lesson {
+                    BuildUpStepper(step: vm.tempoStep)
+                }
                 sensorDot
                 voiceMark
                 // Step's taps let notes go, so pausing needs a button there.
