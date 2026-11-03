@@ -206,6 +206,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
   - `ChooseKotekanView.swift` — select kotekan figure.
   - `Waterfall/WaterfallPlayView.swift` — notes falling onto the drawn gangsa; scored from the strike controller. `WaterfallCanvas` draws each note as the designer's pills: a short stroke pill in the voice colour, a cream stem as long as the note, outlined in beige and capped where it ends with a short beige damp block, the stem's width; all land on the gangsa's rail, the one hit line, and a hit glows gold up its lane.
   - `Learn/LearnView.swift`, `Coop/` — a pattern taught in steps (Build up's speeds on `BuildUpStepper`; Note by note rings the next bilah, `BilahCue.next`); two players, one screen.
+  - `Waterfall/FreePlayTour.swift` — the first free play's tour: Kipli at each control in turn (cycle count, gangsa, controller, voice, tap to pause), spotlit under a dim through `tourTarget` anchors, the clock held; "Show the tour" on free play's pause screen runs it again.
   - `PlayEngine.swift` — display-link-driven timing loop, judgement windows, and cue firing.
   - `Components/NotesRiver.swift` — piano-roll strip of both halves against the cycle (the sensor test's).
   - `Results/ResultsView.swift` — the session's result: cycles, time and accuracy (or top tempo with no sensor), Kipli giving the Apple Intelligence feedback. `Results/Polish/` — "Where to polish": the late, early, wrong-bilah and missed strokes on one pass of the roll, each explained by Kipli.

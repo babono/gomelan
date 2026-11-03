@@ -50,7 +50,7 @@ private struct WaterfallContentView: View {
                 // top of a paused screen.
                 .frame(maxWidth: .infinity)
                 .background {
-                    if vm.paused {
+                    if vm.paused, vm.tourIndex == nil {
                         Color.black.opacity(PauseStage.dim).ignoresSafeArea(edges: [.top, .horizontal])
                     }
                 }
@@ -92,6 +92,7 @@ private struct WaterfallContentView: View {
                     }
                     .frame(width: lanesWidth)
                     .frame(maxHeight: .infinity)
+                    .tourTarget(.stage)
 
                     GangsaStage(
                         engine: vm.engine,
@@ -102,6 +103,7 @@ private struct WaterfallContentView: View {
                         autoStrikes: autoStrikes
                     )
                     .frame(width: layout.frameWidth, height: gangsaHeight)
+                    .tourTarget(.gangsa)
                     .contentShape(Rectangle())
                     .gesture(swipeToTilt)
                     .accessibilityElement()
@@ -126,7 +128,8 @@ private struct WaterfallContentView: View {
                 // by the gangsa, where the eye is on them landing. His bubble
                 // opens at his right and closes itself.
                 .overlay(alignment: .topLeading) {
-                    if let kipli = vm.kipli {
+                    // Not over the tour, where he is talking already.
+                    if let kipli = vm.kipli, vm.tourIndex == nil {
                         KipliGuide(message: kipli.line, style: .quiet, mood: kipli.mood)
                             .padding(.leading, 16)
                             .padding(.top, 8)
@@ -139,7 +142,7 @@ private struct WaterfallContentView: View {
             // Over the stage only: the session controls are in the top bar
             // while paused, and they have to stay reachable.
             .overlay {
-                if vm.paused {
+                if vm.paused, vm.tourIndex == nil {
                     PauseStage(
                         resumeCount: vm.resumeCount,
                         onResume: vm.resume,
@@ -154,6 +157,19 @@ private struct WaterfallContentView: View {
             }
         }
         .background(Theme.ground.ignoresSafeArea())
+        // Over everything, top bar included: its stops are in both.
+        .overlayPreferenceValue(TourTargetKey.self) { targets in
+            if let i = vm.tourIndex {
+                FreePlayTourOverlay(
+                    stops: vm.tourStops,
+                    index: i,
+                    targets: targets,
+                    onNext: vm.nextTourStop,
+                    onSkip: vm.endTour
+                )
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: vm.tourIndex == nil)
         // A tap anywhere pauses. The pause button it replaces was a 40pt target
         // in a corner, hard to find mid-figure with a panggul in each hand.
         .contentShape(Rectangle())
@@ -185,10 +201,13 @@ private struct WaterfallContentView: View {
         }
     }
 
-    /// Free play offers Learn; Learn offers its ways out.
+    /// Free play offers Learn and its tour again; Learn offers its ways out.
     private var pauseActions: [PauseAction] {
         guard vm.lesson != nil else {
-            return [PauseAction(title: "Learn this pattern", systemImage: "graduationcap", action: vm.learnAgain)]
+            return [
+                PauseAction(title: "Learn this pattern", systemImage: "graduationcap", action: vm.learnAgain),
+                PauseAction(title: "Show the tour", systemImage: "questionmark.circle", action: vm.startTour)
+            ]
         }
         var actions = [PauseAction(title: "Skip this step", systemImage: "forward.end", action: vm.nextStep)]
         if LearnProgress.learnedAny {
@@ -207,7 +226,7 @@ private struct WaterfallContentView: View {
         @Bindable var bindableApp = app
         if let lesson = vm.lesson {
             lessonBar(lesson)
-        } else if vm.paused, vm.resumeCount == nil {
+        } else if vm.paused, vm.resumeCount == nil, vm.tourIndex == nil {
             HStack(spacing: 14) {
                 AppSwitcher(
                     options: [KotekanHalf.polos, .sangsih],
@@ -243,8 +262,11 @@ private struct WaterfallContentView: View {
         } else {
             HStack(spacing: 10) {
                 SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: false)
+                    .tourTarget(.cycle)
                 sensorDot
+                    .tourTarget(.sensor)
                 voiceMark
+                    .tourTarget(.voice)
             }
             .frame(minHeight: 34)
             .transition(.opacity)
