@@ -133,8 +133,9 @@ private struct SettingsContentView: View {
 
     /// A row: its symbol on a small tile in its own colour, as iOS's Settings
     /// has them — found by colour before the word is read — then the label.
-    /// The open page is a raised white card, the way a chosen card is lifted
-    /// off the paper elsewhere; the rest sit flat on the sidebar.
+    /// The open page is a plain white card; the rest sit flat on the
+    /// sidebar. (It was raised too — an outline and an edge under it — which
+    /// on the sidebar's own tint read as a double border.)
     private func sidebarRow(
         _ page: SettingsPage,
         symbol: String,
@@ -159,14 +160,7 @@ private struct SettingsContentView: View {
             .padding(.horizontal, 8)
             .frame(minHeight: 44)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                if selected {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Theme.surface)
-                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Theme.hairline, lineWidth: 1))
-                        .shadow(color: Theme.hairline.opacity(0.6), radius: 0, y: 2)
-                }
-            }
+            .background(selected ? Theme.surface : .clear, in: RoundedRectangle(cornerRadius: 12))
             .contentShape(Rectangle())
         }
         .buttonStyle(.appPlain)
