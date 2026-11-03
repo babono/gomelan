@@ -55,7 +55,11 @@ final class CreateKotekViewModel {
     var tempoScale = 1.0
     /// The touch gangsa is out, and the roll above it is a small overview;
     /// tapping the overview puts it away and opens the roll to edit.
-    var showsGangsa = true
+    ///
+    /// Put away to begin with: Studio opens on the roll, where a figure is
+    /// written, and the gangsa is one tap away for playing it in. It opened
+    /// out, and the roll it opened on was too squeezed to write on.
+    var showsGangsa = false
     /// The roll's zoom, both ways: 1 is a quarter cell and a row each big
     /// enough to tap (`PianoRollGrid`).
     var zoom: CGFloat = 1
@@ -112,7 +116,7 @@ final class CreateKotekViewModel {
         editing = app.editingKotekan
         if let editing { draft.load(editing) }
         #if DEBUG
-            if UserDefaults.standard.string(forKey: "screenshot") == "create-polos-roll" { showsGangsa = false }
+            if UserDefaults.standard.string(forKey: "screenshot") == "create-polos" { showsGangsa = true }
         #endif
     }
 
@@ -206,7 +210,7 @@ final class CreateKotekViewModel {
         let at = lead > 0 && lead <= Double(snap.ticks) / 2 ? playhead : playhead - lead
         let tick = Int((at / Double(snap.ticks)).rounded(.down)) * snap.ticks
         guard tick >= 0, tick < KotekanDraft.timelineTicks else { return audition(key) }
-        draft.edit { draft.set(half: writing, tick: tick, key: key, length: snap.ticks) }
+        draft.edit { draft.set(half: writing, tick: tick, key: key) }
         draft.source = .automatic
         take.insert(tick)
         audition(key)
@@ -239,7 +243,7 @@ final class CreateKotekViewModel {
         let tick = Int((playhead / Double(snap.ticks)).rounded(.down)) * snap.ticks
         guard tick < KotekanDraft.timelineTicks else { return audition(key) }
         let draft = draft
-        draft.edit { draft.set(half: writing, tick: tick, key: key, length: snap.ticks) }
+        draft.edit { draft.set(half: writing, tick: tick, key: key) }
         audition(key)
         playhead = Double(min(tick + snap.ticks, KotekanDraft.timelineTicks - 1))
     }
@@ -284,7 +288,7 @@ final class CreateKotekViewModel {
             0
         } else if let tick = removed.map(\.tick).min() {
             tick
-        } else if onAdd, let end = added.map({ $0.tick + $0.length }).max() {
+        } else if onAdd, let end = added.map({ $0.tick + snap.ticks }).max() {
             end
         } else {
             nil

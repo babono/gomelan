@@ -120,6 +120,7 @@ private struct ChooseKotekanContentView: View {
         // focused slot without the slot moving.
         .onChange(of: vm.current?.id) { _, _ in vm.onSlotChanged() }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
+        .onChange(of: app.visibleGuide != nil) { _, open in vm.handleGuideChanged(open: open) }
         .onChange(of: vm.muted) { _, isMuted in vm.handleMutedChanged(isMuted) }
     }
 

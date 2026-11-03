@@ -42,19 +42,3 @@ struct GuideBlock: View {
         }
     }
 }
-
-/// The prose under a column heading.
-struct GuideLead: View {
-    let text: LocalizedStringKey
-    init(_ text: LocalizedStringKey) {
-        self.text = text
-    }
-
-    var body: some View {
-        Text(text)
-            .font(.sans(13))
-            .foregroundStyle(Theme.cream.opacity(0.75))
-            .lineSpacing(1)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-}

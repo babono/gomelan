@@ -117,6 +117,11 @@ enum Theme {
     /// A bilah the player's hand has just stopped ringing — see
     /// `GangsaTable`.
     static let keyDampened = Color("KeyDampened")
+    /// A note's ring, from its stroke to where it is damped: a cream stem
+    /// outlined in beige, capped in the beige. The waterfall draws it falling,
+    /// Studio's piano roll lying down, so a note looks the same on both.
+    static let stemCream = Color(hex: 0xF7EDDC)
+    static let dampBeige = Color(hex: 0xE7DBC6)
 
     // MARK: - Status
 

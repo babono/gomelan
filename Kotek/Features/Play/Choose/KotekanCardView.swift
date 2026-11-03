@@ -8,7 +8,7 @@
 import SwiftUI
 
 /// A card in the Kotekan selection carousel: the title, a mini score, and its
-/// tempo with the mastery record (or the key requirement) under it. The
+/// length and tempo with the mastery record (or the key requirement) under it. The
 /// centred card is the one previewing, and only it carries the mute.
 struct KotekanCardView: View {
     let kotekan: Kotekan
@@ -84,10 +84,14 @@ struct KotekanCardView: View {
                 .font(.sans(12, weight: .medium))
                 .foregroundStyle(Theme.miss)
         } else {
-            // Nothing is scored without the sensor, so the record is only
-            // shown when the caller has one to beat.
-            Text(bestRecord.map { String(localized: "\(kotekan.bpm) BPM · best \(Theme.percentLabel($0.accuracy))") }
-                ?? String(localized: "\(kotekan.bpm) BPM"))
+            // How long one pass lasts, then its tempo. Nothing is scored
+            // without the sensor, so the record is only shown when the caller
+            // has one to beat.
+            Text(bestRecord.map {
+                String(
+                    localized: "\(kotekan.lengthLabel) · \(kotekan.bpm) BPM · best \(Theme.percentLabel($0.accuracy))"
+                )
+            } ?? kotekan.specLabel)
                 .font(.sans(13, weight: .medium).monospacedDigit())
                 .foregroundStyle(Theme.description)
                 .lineLimit(1)

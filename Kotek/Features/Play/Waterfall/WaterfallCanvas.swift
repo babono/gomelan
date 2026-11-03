@@ -61,9 +61,8 @@ struct WaterfallCanvas: View {
 
     private static let stemFill: CGFloat = 0.7
 
-    /// The cap and the stem's outline, one colour, so they read as one piece.
-    private static let dampBeige = Color(hex: 0xE7DBC6)
-    private static let stemCream = Color(hex: 0xF7EDDC)
+    // The cap and the stem's outline, one colour, so they read as one piece
+    // (`Theme.dampBeige`, `Theme.stemCream`, shared with Studio's roll).
 
     private var yourColour: Color {
         yourHalf == .polos ? Theme.polosVoice : Theme.sangsihVoice
@@ -246,11 +245,11 @@ struct WaterfallCanvas: View {
         let r = stemW * 0.1
         let outline = UnevenRoundedRectangle(topLeadingRadius: r, topTrailingRadius: r)
             .path(in: CGRect(x: x, y: capTop, width: stemW, height: foot - capTop))
-        ctx.fill(outline, with: .color(Self.dampBeige))
+        ctx.fill(outline, with: .color(Theme.dampBeige))
         if foot > dampBottom {
             let edge = max(1, w * 0.02)
             let stem = CGRect(x: x + edge, y: dampBottom, width: stemW - 2 * edge, height: foot - dampBottom)
-            ctx.fill(Path(stem), with: .color(Self.stemCream))
+            ctx.fill(Path(stem), with: .color(Theme.stemCream))
         }
     }
 

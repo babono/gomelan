@@ -58,9 +58,18 @@ nonisolated struct KotekanRepository {
         try await remote.upsert(row, in: "kotekan")
 
         try await remote.delete(from: "kotekan_hits", matching: "kotekan_id", equals: k.id)
-        let hits = [("polos", k.polos), ("sangsih", k.sangsih)].flatMap { type, grid in
+        let halves = [("polos", k.polos, k.polosDamp), ("sangsih", k.sangsih, k.sangsihDamp)]
+        let hits = halves.flatMap { type, grid, damp in
             grid.enumerated().compactMap { slot, key in
-                key.map { KotekanHitRow(kotekanID: k.id, type: type, beatIndex: slot, keyIndex: $0) }
+                key.map {
+                    KotekanHitRow(
+                        kotekanID: k.id,
+                        type: type,
+                        beatIndex: slot,
+                        keyIndex: $0,
+                        dampSlots: damp.flatMap { $0.indices.contains(slot) ? $0[slot] : nil }
+                    )
+                }
             }
         } + k.colotomic.map {
             KotekanHitRow(kotekanID: k.id, type: $0.instrument.hitType, beatIndex: $0.slot)
