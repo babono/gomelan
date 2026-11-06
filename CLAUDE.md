@@ -193,7 +193,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
 - **`Calibration/`**:
   - `KeyCountView.swift` — adding a gangsa, step 1/3: name, photo, bilah count.
 - **`Detection/`**:
-  - `Capture/NoteCaptureView.swift` — adding a gangsa, step 2/3: record each bilah's own sound.
+  - `Capture/NoteCaptureView.swift` — adding a gangsa, step 2/3 (and Settings' re-recording): hands-free, Start listening once and hit each bilah (`AudioEngineController.listenForStrike` waits for the strike); then "Have a listen", a tile's `NoteBilahCard` to hear or redo it.
   - `Sensor/SensorPlayView.swift` — Debug: the strike controller's raw strikes against a pattern.
 - **`Controller/`**: `ControllerSetupView` — adding a gangsa, step 3/3: pair the strike controller and check each key's sensor.
 - **`Create/`**: the piano-roll composer. Its tools (colotomic instruments, eraser) are named chips in the top row beside the Polos / Sangsih pills; snap and the typed BPM sit in the bottom transport.
