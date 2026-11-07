@@ -52,10 +52,9 @@ struct PianoRollView: View {
             // `PianoRollControls`).
             HStack(spacing: 6) {
                 PianoRollControls(viewModel: viewModel)
-                // The figure's own tempo, saved with it. Tempo beside it is
-                // only how fast the preview plays it back.
+                // The figure's own tempo, saved with it. A Tempo menu sat
+                // beside it for the preview's speed: two controls for one thing.
                 BPMField(bpm: Bindable(draft).bpm)
-                AppMenuPicker<Double>.tempo($viewModel.tempoScale)
                 // The gong cycle under the figure. Its own control, not a
                 // tool: the colotomic line is laid, never drawn by hand.
                 AppMenuPicker(
@@ -81,10 +80,16 @@ struct PianoRollView: View {
                 // gangsa is only watched, here it is played, and bars sunk to
                 // the glass sat under the home indicator, where a tap went
                 // to the system's swipe instead of the bilah.
-                TouchGangsa(viewModel: viewModel)
-                    .padding(.bottom, 4)
-                    // A swipe off a bar must not go home on the first try.
-                    .defersSystemGestures(on: .bottom)
+                HStack(spacing: 8) {
+                    TouchGangsa(viewModel: viewModel)
+                    // Beside the bars, where the fingers are: step entry's
+                    // rest, the same move as the transport's skip.
+                    AppButton(title: "Gap") { viewModel.skip() }
+                        .disabled(viewModel.recording)
+                }
+                .padding(.bottom, 4)
+                // A swipe off a bar must not go home on the first try.
+                .defersSystemGestures(on: .bottom)
             } else {
                 PianoRollGrid(viewModel: viewModel, compact: false)
                     .padding(.bottom, 4)
@@ -124,8 +129,11 @@ struct PianoRollView: View {
 /// thing in the row and the first to go: once the BPM field came back, a
 /// phone's row had no room left for it, and the gangsa could not be got out
 /// without knowing to swipe the tools. The thin dividers between the halves,
-/// the eraser and the gangsa went for the same room; the quiet circles mark
-/// themselves off from the pills well enough.
+/// the eraser and the gangsa went for the same room.
+///
+/// Both circles go secondary to selected, as the pills beside them do. They
+/// were quiet when off: flat, with no edge, so they sat apart from every other
+/// button here and seemed to change size when switched on.
 private struct PianoRollControls: View {
     @Bindable var viewModel: CreateKotekViewModel
 
@@ -142,9 +150,10 @@ private struct PianoRollControls: View {
             AppIconButton(
                 systemImage: "pianokeys",
                 label: viewModel.showsGangsa ? "Hide gangsa" : "Show gangsa",
-                prominence: viewModel.showsGangsa ? .selected : .quiet,
+                prominence: viewModel.showsGangsa ? .selected : .secondary,
                 size: .compact
             ) { viewModel.showsGangsa.toggle() }
+                .accessibilityAddTraits(viewModel.showsGangsa ? .isSelected : [])
         }
     }
 
@@ -168,19 +177,13 @@ private struct PianoRollControls: View {
     /// is for clearing several without one stray tap writing a new one.
     private var eraser: some View {
         let selected = viewModel.tool == .erase
-        return Button {
-            viewModel.tool = selected ? .notes : .erase
-        } label: {
-            Image(systemName: "eraser")
-                .font(.symbol(AppButtonSize.compact.symbolPoints, weight: .semibold))
-                .foregroundStyle(selected ? Theme.onGlassFill : Theme.cream)
-                // A tool that is on is Ireng, one that is off Krem — the design
-                // system's tool buttons. Merah is for Next.
-                .appControlSurface(size: .compact, shape: .circle, prominence: selected ? .selected : .quiet)
-        }
-        .buttonStyle(AppButtonStyle())
-        .accessibilityLabel("Delete")
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        return AppIconButton(
+            systemImage: "eraser",
+            label: "Delete",
+            prominence: selected ? .selected : .secondary,
+            size: .compact
+        ) { viewModel.tool = selected ? .notes : .erase }
+            .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
 
@@ -220,15 +223,16 @@ private struct PianoRollGrid: View {
         let notes = draft.notes
         let colotomic = draft.colotomic
         let length = draft.lengthTicks
-        let timeline = KotekanDraft.timelineTicks
+        let timeline = draft.timelineTicks
+        let timelineBars = draft.timelineBars
         let snap = viewModel.snap
         let writing = viewModel.writing
         let rows = viewModel.keyCount
         let zoom = viewModel.zoom
 
         GeometryReader { geo in
-            let visible = max(1, geo.size.width - labelWidth)
-            let fitAll = visible / CGFloat(KotekanDraft.timelineBars * 4)
+            let visible = max(1, geo.size.width - (compact ? 0 : labelWidth))
+            let fitAll = visible / CGFloat(timelineBars * 4)
             let ppq = max(fitAll, Self.pointsPerQuarter * zoom)
             let pxPerTick = ppq / CGFloat(KotekanDraft.ticksPerQuarter)
             let width = CGFloat(timeline) * pxPerTick
@@ -245,23 +249,25 @@ private struct PianoRollGrid: View {
             // gets in the way.
             ScrollView(.vertical) {
                 HStack(alignment: .top, spacing: 0) {
-                    VStack(spacing: 0) {
-                        // In the overview too: hidden there as too thin to
-                        // read, it left the rows with nothing to say which
-                        // bilah each was. Set smaller to fit instead.
-                        keyLabels(rows: rows, rowHeight: rowHeight)
-                        Image(systemName: "circle.circle")
-                            .font(.symbol(11, weight: .semibold))
-                            .foregroundStyle(Theme.stone)
-                            .frame(height: laneHeight)
-                            .accessibilityLabel("Gong, kempur, klentong and kajar")
+                    // Not in the overview: the gangsa under it says which
+                    // bilah each row is. It was shown there for a while, set
+                    // small to fit, and only took width from the roll.
+                    if !compact {
+                        VStack(spacing: 0) {
+                            keyLabels(rows: rows, rowHeight: rowHeight)
+                            Image(systemName: "circle.circle")
+                                .font(.symbol(11, weight: .semibold))
+                                .foregroundStyle(Theme.stone)
+                                .frame(height: laneHeight)
+                                .accessibilityLabel("Gong, kempur, klentong and kajar")
+                        }
+                        .padding(.top, rulerHeight)
+                        .frame(width: labelWidth)
                     }
-                    .padding(.top, rulerHeight)
-                    .frame(width: labelWidth)
 
                     ScrollView(.horizontal) {
                         VStack(spacing: 0) {
-                            PianoRollRuler(bars: KotekanDraft.timelineBars, pxPerTick: pxPerTick)
+                            PianoRollRuler(bars: timelineBars, pxPerTick: pxPerTick)
                                 .frame(height: rulerHeight)
                                 .padding(.leading, lead)
                                 .contentShape(Rectangle())

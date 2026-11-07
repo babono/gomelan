@@ -49,10 +49,6 @@ final class CreateKotekViewModel {
     /// The half the grid writes into, and the half the sensors record.
     var writing: KotekanHalf = .polos
     var snap = Subdivision.quarter
-    /// The play screen's speed multiplier, for playing back and recording.
-    /// Not saved: the figure keeps its tempo, so a take recorded slow plays
-    /// back at full speed.
-    var tempoScale = 1.0
     /// The touch gangsa is out, and the roll above it is a small overview;
     /// tapping the overview puts it away and opens the roll to edit.
     ///
@@ -81,7 +77,10 @@ final class CreateKotekViewModel {
     private(set) var playhead: Double = 0 {
         didSet {
             let bar = Int(playhead) / KotekanDraft.ticksPerBar
-            if bar != playheadBar { playheadBar = bar }
+            if bar != playheadBar {
+                playheadBar = bar
+                draft.lineBar = bar
+            }
         }
     }
 
@@ -169,7 +168,7 @@ final class CreateKotekViewModel {
 
     /// From wherever the line is, after a count of four on the kajar at the
     /// tempo. It does not loop: like a DAW recording, it runs on over the
-    /// empty roll until stopped or the roll ends.
+    /// empty roll until stopped, the roll growing ahead of it.
     func startRecording() {
         guard !recording else { return }
         pause()
@@ -209,7 +208,7 @@ final class CreateKotekViewModel {
         // start; anything earlier is only heard.
         let at = lead > 0 && lead <= Double(snap.ticks) / 2 ? playhead : playhead - lead
         let tick = Int((at / Double(snap.ticks)).rounded(.down)) * snap.ticks
-        guard tick >= 0, tick < KotekanDraft.timelineTicks else { return audition(key) }
+        guard tick >= 0, tick < draft.timelineTicks else { return audition(key) }
         draft.edit { draft.set(half: writing, tick: tick, key: key) }
         draft.source = .automatic
         take.insert(tick)
@@ -240,12 +239,12 @@ final class CreateKotekViewModel {
     /// be put together one note at a time.
     func step(key: Int) {
         pause()
-        let tick = Int((playhead / Double(snap.ticks)).rounded(.down)) * snap.ticks
-        guard tick < KotekanDraft.timelineTicks else { return audition(key) }
         let draft = draft
+        let tick = Int((playhead / Double(snap.ticks)).rounded(.down)) * snap.ticks
+        guard tick < draft.timelineTicks else { return audition(key) }
         draft.edit { draft.set(half: writing, tick: tick, key: key) }
         audition(key)
-        playhead = Double(min(tick + snap.ticks, KotekanDraft.timelineTicks - 1))
+        playhead = Double(min(tick + snap.ticks, draft.timelineTicks - 1))
     }
 
     /// Step entry's rest: the line on one snap step with nothing written, for
@@ -255,7 +254,7 @@ final class CreateKotekViewModel {
         guard !recording else { return }
         pause()
         let tick = Int((playhead / Double(snap.ticks)).rounded(.down)) * snap.ticks
-        playhead = Double(min(tick + snap.ticks, KotekanDraft.timelineTicks - 1))
+        playhead = Double(min(tick + snap.ticks, draft.timelineTicks - 1))
     }
 
     func undo() {
@@ -295,7 +294,7 @@ final class CreateKotekViewModel {
         }
         guard let to else { return }
         pause()
-        playhead = Double(min(to, KotekanDraft.timelineTicks - 1))
+        playhead = Double(min(to, draft.timelineTicks - 1))
     }
 
     /// Put the line at `tick`, snapped — a drag on the ruler. A recording
@@ -303,7 +302,7 @@ final class CreateKotekViewModel {
     func seek(toTick tick: Int) {
         if !recording { pause() }
         let snapped = Int((Double(tick) / Double(snap.ticks)).rounded()) * snap.ticks
-        playhead = Double(snapped.clamped(to: 0, KotekanDraft.timelineTicks - 1))
+        playhead = Double(snapped.clamped(to: 0, draft.timelineTicks - 1))
     }
 
     // MARK: - Preview
@@ -356,7 +355,7 @@ final class CreateKotekViewModel {
     private func frame(now: Double) {
         let elapsed = lastFrame.map { now - $0 } ?? 0
         lastFrame = now
-        let step = elapsed * Double(draft.bpm) * tempoScale / 60 * Double(KotekanDraft.ticksPerBeat)
+        let step = elapsed * Double(draft.bpm) / 60 * Double(KotekanDraft.ticksPerBeat)
 
         if recording {
             var step = step
@@ -376,11 +375,9 @@ final class CreateKotekViewModel {
                 step = -lead
                 lead = 0
             }
-            let end = Double(KotekanDraft.timelineTicks)
-            let to = min(playhead + step, end)
+            let to = playhead + step
             sound(from: playhead, to: to)
             playhead = to
-            if to >= end { stopRecording() }
             return
         }
 

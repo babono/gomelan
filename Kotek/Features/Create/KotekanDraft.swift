@@ -77,7 +77,9 @@ struct DraftRing: Equatable {
 enum ColotomicTemplate: String, CaseIterable, Identifiable {
     /// Four beats: kempur, kajar, klentong, kajar.
     case four
-    /// Eight beats: four kajar, then gong, kempur, kajar, kempur.
+    /// Eight beats: gong, kempur, klentong, kempur, a kajar between each. It
+    /// was four kajar and then the gong on beat 5, with no klentong: the gong
+    /// opens the cycle, as it lands on the figure's first slot in `PlayEngine`.
     case eight
 
     var id: String {
@@ -87,7 +89,7 @@ enum ColotomicTemplate: String, CaseIterable, Identifiable {
     var cycle: [ColotomicInstrument] {
         switch self {
         case .four: [.kempur, .kajar, .klentong, .kajar]
-        case .eight: [.kajar, .kajar, .kajar, .kajar, .gong, .kempur, .kajar, .kempur]
+        case .eight: [.gong, .kajar, .kempur, .kajar, .klentong, .kajar, .kempur, .kajar]
         }
     }
 
@@ -111,9 +113,8 @@ final class KotekanDraft {
     static let ticksPerBar = ticksPerQuarter * 4
     /// One BPM beat: the value labelled 1.
     static let ticksPerBeat = ticksPerBar
-    /// How far the piano roll scrolls. The figure itself is `bars` long and
-    /// grows when a note is written past its end; this is just the room.
-    static let timelineBars = 32
+    /// The least the piano roll scrolls, however little is written.
+    static let minTimelineBars = 32
     static let bpmRange = 1 ... 999
 
     /// Empty until the player names it on Save; `kotekan(id:)` falls back to
@@ -169,8 +170,19 @@ final class KotekanDraft {
         bars * Self.ticksPerBar
     }
 
-    static var timelineTicks: Int {
-        timelineBars * ticksPerBar
+    /// The bar the line is in, set by the view model. A take over rests or a
+    /// run of gaps writes nothing, so `bars` alone would not make room for it.
+    var lineBar = 0
+
+    /// How far the piano roll scrolls: a cycle past the figure or the line,
+    /// whichever is further. It was a fixed 32 bars, and nothing could be
+    /// written past them. The figure itself is `bars` long; this is the room.
+    var timelineBars: Int {
+        max(Self.minTimelineBars, max(bars, lineBar + 1) + template.cycle.count)
+    }
+
+    var timelineTicks: Int {
+        timelineBars * Self.ticksPerBar
     }
 
     /// No strokes: nothing to save, and nothing to play.
@@ -203,7 +215,7 @@ final class KotekanDraft {
             return
         }
         let tick = position / snap.ticks * snap.ticks
-        guard tick < Self.timelineTicks else { return }
+        guard tick < timelineTicks else { return }
         set(half: half, tick: tick, key: key)
     }
 

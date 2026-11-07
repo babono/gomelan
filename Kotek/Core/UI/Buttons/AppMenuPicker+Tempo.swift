@@ -2,7 +2,7 @@
 //  AppMenuPicker+Tempo.swift
 //  Kotek
 //
-//  The tempo menu: the practice session's, and Create Kotek's preview.
+//  The tempo menu: the practice session's.
 //
 //  A gauge, not a metronome: the metronome click is gone (the kajar keeps the
 //  pulse), and a metronome icon on the one control left read as a switch for
