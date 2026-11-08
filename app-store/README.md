@@ -46,15 +46,20 @@ matters):
 resized in `screenshots/highlights-6.3/` (2622 × 1206), `highlights-6.1/`
 (2556 × 1179) and `highlights-ipad-12.9/` (2732 × 2048).
 
-**Product page header** — `screenshots/header/`: `header-5244x2950.jpg` or
-`header-3840x1646.jpg`. The brand, one idea: the welcome screen's split gate,
-the wordmark, the gangsa and Kipli, "Learn kotekan on your own gangsa".
+**Product page header, search result, universal** — PNG and JPEG of each
+(`.jpg` was refused as an invalid extension):
 
-**Search result** — `screenshots/search/`: `search-5244x2950.jpg`,
-`search-3840x2560.jpg` or `search-1920x1280.jpg`. What it is at a glance:
-"Learn Balinese gangsa, note by note" beside an iPad (Watch) and an iPhone
-(note by note). Rendered from `marketing/assets.html` by
-`marketing/render-assets.sh`.
+- Header: `screenshots/header/header-3840x1646.png`
+- Search result: `screenshots/search/search-3840x2560.png` or `search-1920x1280.png`
+- Or one universal asset for both: `screenshots/universal/universal-5244x2950.png`
+
+Art only, inside the "Art Safe Area" of Apple's creative assets template
+(`creative_assets-templates.fig`): the store crops these and lays the app's
+name and subtitle over the rest, so there is no type. Header and universal:
+Kipli on the gangsa. Search: an iPad on Watch and an iPhone on note by note.
+The welcome screen's split gate frames the edges. Rendered from
+`marketing/assets.html` by `marketing/render-assets.sh` (`SAFE=1` outlines the
+safe area).
 
 Rendered from `marketing/frames.html` (copy in `FRAMES` at the bottom) by
 `marketing/render.sh`, from the raw captures below.

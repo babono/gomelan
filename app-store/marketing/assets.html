@@ -1,98 +1,99 @@
 <!doctype html>
 <!--
-  App Store product page header and search result assets (render-assets.sh).
-  ?kind=header|search&w=…&h=…  — every size is laid out from the canvas, in
-  units of its height (--u = 1% of the height), so one design serves them all.
+  App Store product page header, search result and universal assets
+  (render-assets.sh). ?kind=header|search|universal&w=…&h=…
 
-  Header: the brand, one idea — the welcome screen's split gate, the wordmark,
-  the gangsa and Kipli. Search result: what the app is at a glance — the line
-  and the interface, an iPhone and an iPad with notes falling onto the gangsa.
-  Nawa Sanga palette and Katibeh, sentence case, as in the app.
+  Apple's creative assets template (creative_assets-templates.fig) marks an
+  "Art Safe Area" on each canvas: the App Store crops and lays its own text
+  over everything outside it. Measured from the template:
+
+    universal 5244 × 2950   x 37–63%   y 22–56%
+    search    3840 × 2560   x 21–79%   y 29–71%   (1920 × 1280 the same)
+    header    3840 × 1646   x 29–71%   y 29–71%
+
+  So the subject sits inside that box and there is no type: the store shows
+  the app's name and subtitle itself. The first version had a headline and
+  the wordmark out at the edges, where they would have been cut or covered.
+  Outside the box is only ground: the welcome screen's split gate and a glow.
+  Nawa Sanga palette, as in the app.
 -->
 <html>
 <head>
 <meta charset="utf-8">
 <style>
-  @font-face { font-family: "Katibeh"; src: url("../../Kotek/Resources/font/Katibeh-Regular.ttf"); }
-  :root {
-    --putih: #FBF6EE; --krem: #F5EDE0; --garis: #CDBBA3; --ireng: #1E2435;
-    --merah: #E14B2F; --kuning: #F5B331; --sangsih: #2F4B82; --description: #6B6E78;
-  }
   * { margin: 0; box-sizing: border-box; }
-  html, body { overflow: hidden; background: var(--putih); }
-  body { position: relative; font-family: "SF Pro Rounded", -apple-system, sans-serif; color: var(--ireng); }
+  html, body { overflow: hidden; background: #FBF6EE; }
+  body { position: relative; }
   .a { position: absolute; }
-  .glow { background: radial-gradient(closest-side, rgba(245, 179, 49, .26), rgba(245, 179, 49, 0)); }
-
-  /* Header ------------------------------------------------------------- */
+  .glow { background: radial-gradient(closest-side, rgba(245, 179, 49, .30), rgba(245, 179, 49, 0)); }
   .gate { background: url("../../Kotek/Resources/Assets.xcassets/pura-gate.imageset/pura-gate.svg") 0 100% / contain no-repeat; }
   .gate.right { transform: scaleX(-1); }
-  .center { left: 50%; transform: translateX(-50%); text-align: center; }
-  .wordmark { display: block; margin: 0 auto; }
-  h1 { font-family: "Katibeh", serif; font-weight: 400; line-height: 1; color: var(--ireng); }
-  p.line { color: var(--description); }
-
-  /* Search ------------------------------------------------------------- */
-  .phone, .tablet {
-    background: linear-gradient(145deg, #2a3042, #11141d);
-    box-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 7) rgba(30, 36, 53, .28);
-  }
-  .phone img, .tablet img { display: block; width: 100%; }
-  .kicker { display: flex; align-items: center; color: var(--merah); font-weight: 700; }
+  .device { background: linear-gradient(145deg, #2a3042, #11141d); box-shadow: 0 2.5vh 6vh rgba(30, 36, 53, .28); }
+  .device img { display: block; width: 100%; }
+  /* Debug: ?safe=1 outlines the art safe area. */
+  .safe { outline: 6px dashed #2fb34a; }
 </style>
 </head>
 <body>
 <script>
 const q = new URLSearchParams(location.search);
 const W = +q.get("w"), H = +q.get("h"), kind = q.get("kind");
-document.documentElement.style.cssText = `width:${W}px;height:${H}px`;
-document.body.style.cssText = `width:${W}px;height:${H}px`;
-const u = H / 100;
-document.documentElement.style.setProperty("--u", u + "px");
+for (const el of [document.documentElement, document.body]) { el.style.width = W + "px"; el.style.height = H + "px"; }
 const A = "../../Kotek/Resources/Assets.xcassets/";
 const S = "../screenshots/";
-const px = v => v * u + "px";
-const add = (html) => document.body.insertAdjacentHTML("beforeend", html);
+const add = html => document.body.insertAdjacentHTML("beforeend", html);
 
-if (kind === "header") {
-  // The gate halves stand at the very edges, so the wide 3840 × 1646 crop and
-  // the 16:9 one both read as the welcome screen's opening gate.
-  const gateH = 112, gateW = gateH * 208 / 434;
-  add(`<div class="a glow" style="width:${px(150)};height:${px(150)};left:50%;top:${px(-10)};transform:translateX(-50%)"></div>`);
-  add(`<div class="a gate" style="height:${px(gateH)};width:${px(gateW)};left:${px(-8)};bottom:${px(-6)}"></div>`);
-  add(`<div class="a gate right" style="height:${px(gateH)};width:${px(gateW)};right:${px(-8)};bottom:${px(-6)}"></div>`);
-  add(`<div class="a center" style="top:${px(12)};width:${px(150)}">
-    <img class="wordmark" src="${A}wordmark-kotek-red.imageset/wordmark-kotek-red.svg" style="height:${px(17)}">
-    <img class="wordmark" src="${A}wordmark-kotek-script.imageset/wordmark-kotek-script.svg" style="height:${px(8.5)};margin-top:${px(2.5)}">
-    <h1 style="font-size:${px(7.4)};margin-top:${px(5)}">Learn kotekan on your own gangsa</h1>
-  </div>`);
-  add(`<img class="a center" src="${A}gangsa-full.imageset/gangsa-full.svg" style="height:${px(40)};bottom:${px(-4)}">`);
-  add(`<img class="a" src="${A}kipli-happy.imageset/kipli-happy.svg" style="height:${px(17)};left:calc(50% + ${px(30)});bottom:${px(27)};transform:rotate(8deg)">`);
-} else {
-  // Copy in a column on the left; the devices get whatever is to its right,
-  // the iPad behind and the iPhone over its lower left corner. Laid out from
-  // the room left, not the canvas, so on the squarer 3:2 sizes the devices
-  // shrink rather than run over the copy.
-  const left = W * 0.06, copyW = W * 0.34, gap = W * 0.03, right = W * 0.04;
-  add(`<div class="a glow" style="width:${px(170)};height:${px(170)};right:${px(-30)};top:${px(-35)}"></div>`);
-  add(`<div class="a" style="left:${left}px;top:0;bottom:0;width:${copyW}px;display:flex;flex-direction:column;justify-content:center">
-    <div class="kicker" style="font-size:${px(3.4)};gap:${px(1.6)};margin-bottom:${px(2.6)}">
-      <img src="${A}kipli-happy.imageset/kipli-happy.svg" style="height:${px(7.5)}">Kotek</div>
-    <h1 style="font-size:${Math.min(u * 10, copyW / 7.4)}px;line-height:1.04">Learn Balinese gangsa, note by note</h1>
-    <p class="line" style="font-size:${Math.min(u * 3.6, copyW / 24)}px;line-height:1.4;margin-top:${px(3.4)}">
-      Notes fall onto the bilah to strike next. Learn polos and sangsih with Kipli, then play them on your real gangsa.</p>
-  </div>`);
-  const x0 = left + copyW + gap, room = W - right - x0;
-  // iPad 4:3 plus bezel; the iPhone hangs below it by a third of its height.
-  const tabW = Math.min(room * 0.84, (H * 0.74) / 0.8), tabPad = tabW * 0.022;
-  const tabH = tabW * 0.75 + tabPad * 2;
-  const phW = tabW * 0.62, phPad = phW * 0.014, phH = phW * (1320 / 2868) + phPad * 2;
-  const top = (H - (tabH + phH * 0.4)) / 2;
-  add(`<div class="a tablet" style="width:${tabW}px;padding:${tabPad}px;border-radius:${tabPad * 2.2}px;left:${x0 + room - tabW}px;top:${top}px">
+const SAFE = {
+  universal: [0.37, 0.63, 0.22, 0.56],
+  search:    [0.21, 0.79, 0.29, 0.71],
+  header:    [0.29, 0.71, 0.29, 0.71],
+}[kind];
+// The box, a little inside the measured one: the template was read off its
+// thumbnail, good to a percent or two.
+const inset = 0.015;
+const box = {
+  x: W * (SAFE[0] + inset), y: H * (SAFE[2] + inset),
+  w: W * (SAFE[1] - SAFE[0] - 2 * inset), h: H * (SAFE[3] - SAFE[2] - 2 * inset),
+};
+const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+
+// Ground: a glow behind the subject and the gate halves at the edges.
+const glow = Math.max(box.w, box.h) * 2.4;
+add(`<div class="a glow" style="width:${glow}px;height:${glow}px;left:${cx - glow / 2}px;top:${cy - glow / 2}px"></div>`);
+// On the squarer search canvas a full-height gate crowds the devices.
+const gateH = H * (kind === "search" ? 0.8 : 1.05), gateW = gateH * 208 / 434;
+add(`<div class="a gate" style="height:${gateH}px;width:${gateW}px;left:${-gateW * 0.12}px;bottom:${-H * 0.03}px"></div>`);
+add(`<div class="a gate right" style="height:${gateH}px;width:${gateW}px;right:${-gateW * 0.12}px;bottom:${-H * 0.03}px"></div>`);
+
+if (kind === "search") {
+  // State the obvious, show the interface: an iPad on Watch and an iPhone on
+  // note by note, the pair fitted to the box.
+  const pairW = box.w, pairH = box.h;
+  // iPad width t: its height is 0.75t + bezel; the iPhone (0.62t wide) hangs
+  // 40% of its own height below the iPad and starts at the box's left edge.
+  const fit = t => {
+    const tabH = t * 0.75 + t * 0.044, phW = t * 0.62, phH = phW * (1320 / 2868) + phW * 0.028;
+    return { tabH, phW, phH, w: t * 1.25, h: tabH + phH * 0.4 };
+  };
+  let t = pairW / 1.25;
+  if (fit(t).h > pairH) t = pairH / (fit(1).h);
+  const f = fit(t), left = cx - f.w / 2, top = cy - f.h / 2, tabPad = t * 0.022, phPad = f.phW * 0.014;
+  add(`<div class="a device" style="width:${t}px;padding:${tabPad}px;border-radius:${tabPad * 2.2}px;left:${left + f.w - t}px;top:${top}px">
     <img src="${S}ipad-13/03-two-halves.jpg" style="border-radius:${tabPad * 1.2}px"></div>`);
-  add(`<div class="a phone" style="width:${phW}px;padding:${phPad}px;border-radius:${phPad * 4.6}px;left:${x0}px;top:${top + tabH - phH * 0.6}px">
+  add(`<div class="a device" style="width:${f.phW}px;padding:${phPad}px;border-radius:${phPad * 4.6}px;left:${left}px;top:${top + f.tabH - f.phH * 0.6}px">
     <img src="${S}iphone-6.9/02-note-by-note.jpg" style="border-radius:${phPad * 3.7}px"></div>`);
+} else {
+  // The brand, one idea: the gangsa with Kipli on it, as on the welcome screen.
+  // Kipli's head rises a third of the gangsa's height above its rim.
+  const art = 474 / 245, kipliShare = 0.42;
+  let gw = box.w, gh = gw / art;
+  if (gh * (1 + kipliShare) > box.h) { gh = box.h / (1 + kipliShare); gw = gh * art; }
+  const total = gh * (1 + kipliShare), top = cy - total / 2;
+  const kh = gh * 0.62;
+  add(`<img class="a" src="${A}kipli-happy.imageset/kipli-happy.svg" style="height:${kh}px;left:${cx - kh * (389 / 341) / 2}px;top:${top}px">`);
+  add(`<img class="a" src="${A}gangsa-full.imageset/gangsa-full.svg" style="width:${gw}px;left:${cx - gw / 2}px;top:${top + gh * kipliShare}px">`);
 }
+if (q.get("safe")) add(`<div class="a safe" style="left:${W * SAFE[0]}px;top:${H * SAFE[2]}px;width:${W * (SAFE[1] - SAFE[0])}px;height:${H * (SAFE[3] - SAFE[2])}px"></div>`);
 </script>
 </body>
 </html>
