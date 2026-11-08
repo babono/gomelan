@@ -2,14 +2,17 @@
 //  NoteCaptureView.swift
 //  Kotek
 //
-//  Dev screen: record one struck key at a time and save it as a fixed-length
-//  clip, labelled by key index, under Documents/NoteClips (see NoteClipCapture).
-//  Audio only, so no camera: the instrument is drawn as numbered bars.
+//  Record one sound per bilah and save it as a fixed-length clip, labelled by
+//  key index, under Documents/NoteClips (see NoteClipCapture). Audio only: the
+//  instrument is drawn as numbered tiles.
 //
-//  Also step 2 of adding a gangsa (`noteCaptureIsSetup`), where it wears the
-//  redesign's setup header and Kipli asks for each bilah in turn.
+//  Hands-free. Start listening once, then just play the real bilah, one hit
+//  each; the tiles fill in and Kipli keeps up. Once every tile has a clip it
+//  is the review, "Have a listen": tap a tile to hear it (`NoteBilahCard`).
 //
-
+//  Step 2 of adding a gangsa (`noteCaptureIsSetup`) wears the setup header;
+//  from Settings it wears a top bar, and the card can delete a recording.
+//
 import SwiftUI
 
 struct NoteCaptureView: View {
@@ -32,12 +35,10 @@ private struct NoteCaptureContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             if app.noteCaptureIsSetup {
-                // Step 2 of adding a gangsa: the redesign's header, and Kipli
-                // asking for the bilah by name.
                 SetupHeader(
                     step: 2,
                     onLeading: app.backToKeyCount,
-                    trailingTitle: viewModel.keysWithClips.isEmpty ? "Skip" : "Done",
+                    trailingTitle: viewModel.isReview ? nil : "Skip",
                     onTrailing: app.closeNoteCapture
                 )
                 .padding(.horizontal, 24)
@@ -52,35 +53,92 @@ private struct NoteCaptureContentView: View {
                 )
             }
 
-            HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 12) {
-                    if app.noteCaptureIsSetup {
-                        Text("Hit bilah \(NoteCaptureViewModel.number(for: viewModel.keyIndex))")
-                            .font(.serif(26))
-                            .foregroundStyle(Theme.heading)
-                    }
-                    NoteKeyBarsView(
-                        keyIndices: app.profile.keys.map(\.index),
-                        selected: viewModel.keyIndex,
-                        recorded: viewModel.keysWithClips,
-                        enabled: !viewModel.isRecording,
-                        onSelect: { viewModel.select($0) },
-                        listening: viewModel.isRecording
-                    )
-                    .frame(maxHeight: .infinity)
-                    KipliGuide(
-                        message: "\(viewModel.keysWithClips.count) of \(app.profile.keys.count) recorded. Tap one to record it again."
-                    )
-                }
-                .padding(.horizontal, 24)
-                .padding(.top, 12)
-                .padding(.bottom, Theme.footerBottom)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 12) {
+                Text(viewModel.isReview ? "Have a listen" : "Record your gangsa")
+                    .font(.serif(30))
+                    .foregroundStyle(Theme.heading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                NoteCapturePanel(viewModel: viewModel)
+                NoteKeyBarsView(
+                    keyIndices: app.profile.keys.map(\.index),
+                    current: viewModel.currentKey,
+                    recorded: viewModel.keysWithClips,
+                    quiet: viewModel.quietKeys,
+                    inspected: viewModel.inspected,
+                    phase: viewModel.phase,
+                    onSelect: { viewModel.inspect($0) }
+                )
+                .frame(maxHeight: .infinity, alignment: .top)
+
+                footer
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 14)
+            .padding(.bottom, Theme.footerBottom)
+        }
+        .overlayPreferenceValue(InspectedTileBounds.self) { anchor in
+            if let anchor, let key = viewModel.inspected {
+                GeometryReader { geo in
+                    card(for: key, beside: geo[anchor], in: geo.size)
+                }
             }
         }
         .onAppear { viewModel.start() }
         .onDisappear { viewModel.teardown() }
+    }
+
+    private var footer: some View {
+        HStack(spacing: 12) {
+            KipliGuide(message: viewModel.kipliLine, mood: viewModel.kipliMood)
+            Spacer(minLength: 0)
+            if let quiet = viewModel.quietKeys.first {
+                AppButton(
+                    title: "Redo \(NoteCaptureViewModel.number(for: quiet))",
+                    systemImage: "arrow.clockwise",
+                    size: .large,
+                    silent: true,
+                    action: { viewModel.redo(quiet) }
+                )
+                .fixedSize()
+            }
+            if viewModel.isListening || viewModel.isReview {
+                AppButton(
+                    title: app.noteCaptureIsSetup ? "Next" : "Done",
+                    prominence: .primary,
+                    size: .large,
+                    action: app.closeNoteCapture
+                )
+                .disabled(viewModel.isListening)
+                .fixedSize()
+            } else {
+                // Silent: a tick now would be the first thing it hears.
+                AppButton(
+                    title: "Start listening",
+                    systemImage: "mic.fill",
+                    prominence: .primary,
+                    size: .large,
+                    silent: true,
+                    action: { viewModel.startListening() }
+                )
+                .fixedSize()
+            }
+        }
+    }
+
+    /// Beside the tile, on whichever side it fits; tapping anywhere else closes it.
+    private func card(for key: Int, beside tile: CGRect, in size: CGSize) -> some View {
+        let width = NoteBilahCard.width(deletes: !app.noteCaptureIsSetup)
+        let fitsRight = tile.maxX + 10 + width <= size.width
+        return ZStack {
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { viewModel.closeCard() }
+                .accessibilityHidden(true)
+            NoteBilahCard(viewModel: viewModel, key: key, deletes: !app.noteCaptureIsSetup)
+                .position(
+                    x: fitsRight ? tile.maxX + 10 + width / 2 : tile.minX - 10 - width / 2,
+                    y: tile.midY
+                )
+        }
     }
 }

@@ -18,9 +18,9 @@ struct BilahBarsView: View {
         HStack(alignment: .bottom, spacing: 5) {
             ForEach(0 ..< count, id: \.self) { i in
                 let t = count > 1 ? Double(i) / Double(count - 1) : 0
-                // Gold, the redesign's colour for the bilah themselves.
+                // Garis, as the design system draws them; gold is for a reward.
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(Theme.secondary)
+                    .fill(Theme.hairline)
                     .frame(width: 18, height: height * (1.0 - 0.3 * t))
             }
         }
