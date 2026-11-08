@@ -25,8 +25,6 @@ struct SaveProgressPrompt: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(app.lastSetRecord ? "New record — keep it?" : "Keep your progress?")
                     .font(.serif(24))
-                    .textCase(.uppercase)
-                    .tracking(1.5)
                     .foregroundStyle(Theme.heading)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -63,6 +61,9 @@ struct SaveProgressPrompt: View {
                 RoundedRectangle(cornerRadius: 22)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
             )
+            // Composited first: a shadow on a plain stack is drawn under every
+            // view in it, so each button, line of text and Kipli wore a halo.
+            .compositingGroup()
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
             .padding(.horizontal, 28)
         }

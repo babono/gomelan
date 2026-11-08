@@ -84,6 +84,7 @@ struct CardMenuOverlay<Card: View>: View {
                     // card it was drawn from showed through, doubled.
                     .background(Theme.ground, in: RoundedRectangle(cornerRadius: 20))
                     .scaleEffect(shown ? Self.lift : 1)
+                    .compositingGroup()
                     .shadow(color: .black.opacity(0.4), radius: 20, y: 8)
                     .position(x: rect.midX - (shown ? shift : 0), y: rect.midY)
                     .allowsHitTesting(false)

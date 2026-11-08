@@ -31,8 +31,6 @@ struct ControllerPINDialog: View {
             VStack(alignment: .leading, spacing: 10) {
                 Text(title)
                     .font(.serif(24))
-                    .textCase(.uppercase)
-                    .tracking(1.5)
                     .foregroundStyle(Theme.heading)
 
                 Text(message)
@@ -77,6 +75,9 @@ struct ControllerPINDialog: View {
                 RoundedRectangle(cornerRadius: 22)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
             )
+            // Composited first: a shadow on a plain stack is drawn under every
+            // view in it, so each button, line of text and Kipli wore a halo.
+            .compositingGroup()
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
             .padding(.horizontal, 28)
             // Up top: landscape, the number pad takes the bottom half.
