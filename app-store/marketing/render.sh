@@ -4,6 +4,7 @@
 #
 #   screenshots/highlights-6.9/   2868 × 1320, the 6.9" iPhone slot
 #   screenshots/highlights-ipad-13/ 2752 × 2064, the 13" iPad slot
+#   …-6.3 (2622 × 1206), -6.1 (2556 × 1179), -ipad-12.9 (2732 × 2048), resized
 #
 # App Store Connect scales these two down for every smaller iPhone and iPad.
 #
@@ -25,10 +26,17 @@ render() {  # frame, size query, width, height, out dir
   mkdir -p $5
   sips -s format jpeg -s formatOptions 92 $TMP/f.png --out $5/0${names[$1]}.jpg >/dev/null
   echo $5/0${names[$1]}.jpg
+  # Smaller slots take only their own sizes when they are filled in by hand.
+  # Same aspect ratio within 0.2%, so a straight resize, no re-layout.
+  for slot in ${@:6}; do
+    set -- ${(s/:/)slot}
+    mkdir -p ../screenshots/highlights-$1
+    sips -s format jpeg -s formatOptions 92 -z $3 $2 $TMP/f.png --out ../screenshots/highlights-$1/0${names[$i]}.jpg >/dev/null
+  done
 }
 
 for i in {1..6}; do
-  render $i "" 2868 1320 ../screenshots/highlights-6.9
-  render $i "&size=ipad" 2752 2064 ../screenshots/highlights-ipad-13
+  render $i "" 2868 1320 ../screenshots/highlights-6.9 6.3:2622:1206 6.1:2556:1179
+  render $i "&size=ipad" 2752 2064 ../screenshots/highlights-ipad-13 ipad-12.9:2732:2048
 done
 rm -rf $TMP

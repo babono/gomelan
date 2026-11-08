@@ -42,6 +42,20 @@ matters):
 | 5 | `05-kotek-studio.jpg` — the composer | same name |
 | 6 | `06-two-players.jpg` — coop | same name |
 
+**Smaller slots**, if App Store Connect asks for them by hand: the same frames
+resized in `screenshots/highlights-6.3/` (2622 × 1206), `highlights-6.1/`
+(2556 × 1179) and `highlights-ipad-12.9/` (2732 × 2048).
+
+**Product page header** — `screenshots/header/`: `header-5244x2950.jpg` or
+`header-3840x1646.jpg`. The brand, one idea: the welcome screen's split gate,
+the wordmark, the gangsa and Kipli, "Learn kotekan on your own gangsa".
+
+**Search result** — `screenshots/search/`: `search-5244x2950.jpg`,
+`search-3840x2560.jpg` or `search-1920x1280.jpg`. What it is at a glance:
+"Learn Balinese gangsa, note by note" beside an iPad (Watch) and an iPhone
+(note by note). Rendered from `marketing/assets.html` by
+`marketing/render-assets.sh`.
+
 Rendered from `marketing/frames.html` (copy in `FRAMES` at the bottom) by
 `marketing/render.sh`, from the raw captures below.
 
