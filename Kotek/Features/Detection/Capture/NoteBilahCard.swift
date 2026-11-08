@@ -73,6 +73,7 @@ struct NoteBilahCard: View {
         .padding(14)
         .frame(width: Self.width(deletes: deletes))
         .background(Theme.deep, in: RoundedRectangle(cornerRadius: 16))
+        .compositingGroup()
         .shadow(color: Theme.ireng.opacity(0.25), radius: 14, y: 6)
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)

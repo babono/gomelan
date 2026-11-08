@@ -251,9 +251,7 @@ private struct LaneHeader: View {
                     }
             }
             Text(player.half.title)
-                .font(.sans(11, weight: .bold))
-                .textCase(.uppercase)
-                .tracking(1.4)
+                .font(.sans(12, weight: .bold))
                 .foregroundStyle(Theme.ink)
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)

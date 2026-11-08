@@ -107,8 +107,6 @@ struct GuidePanel<Content: View>: View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
                 .font(.serif(24))
-                .textCase(.uppercase)
-                .tracking(1.5)
                 .foregroundStyle(Theme.heading)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)

@@ -307,7 +307,9 @@ private struct MoreMenu: View {
 
 // MARK: - Labels
 
-/// Uppercase tracked eyebrow/section label.
+/// A section's label, in sentence case: small and semibold in a quiet colour.
+/// It was uppercase and letter-spaced ("SENSOR CONTROLLER"); the design keeps
+/// capitals for the wordmark alone.
 struct SectionLabel: View {
     let text: LocalizedStringKey
     var color: Color = Theme.description
@@ -318,9 +320,7 @@ struct SectionLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.sans(12, weight: .semibold))
-            .textCase(.uppercase)
-            .tracking(2.5)
+            .font(.sans(13, weight: .semibold))
             .foregroundStyle(color)
     }
 }
@@ -395,6 +395,9 @@ struct BusyOverlay: View {
                 RoundedRectangle(cornerRadius: 22)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
             )
+            // Composited first: a shadow on a plain stack is drawn under every
+            // view in it, so each button, line of text and Kipli wore a halo.
+            .compositingGroup()
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
         }
     }
@@ -440,29 +443,30 @@ struct ConfirmDialog: View {
                     onCancel()
                 }
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 12) {
-                    if let kipli {
-                        KipliFace(mood: kipli, height: 44, talking: talking)
-                    }
-                    Text(title)
-                        .font(.serif(24))
-                        .textCase(.uppercase)
-                        .tracking(1.5)
-                        .foregroundStyle(Theme.heading)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+            // Centred, Kipli on top: the question is his, so he leads it. He
+            // sat beside the title at first, where he read as an icon on a
+            // left-aligned system alert rather than as someone asking.
+            VStack(spacing: 10) {
+                if let kipli {
+                    KipliFace(mood: kipli, height: 60, talking: talking)
+                        .padding(.bottom, 2)
                 }
+                Text(title)
+                    .font(.serif(24))
+                    .foregroundStyle(Theme.heading)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
 
                 Text(message)
                     .font(.sans(14))
                     .foregroundStyle(Theme.cream.opacity(0.75))
+                    .multilineTextAlignment(.center)
                     .lineSpacing(1)
                     .fixedSize(horizontal: false, vertical: true)
 
                 Group {
                     HStack(spacing: 12) {
-                        Spacer(minLength: 0)
                         AppButton(title: "Cancel", size: .compact) {
                             onCancel()
                         }
@@ -482,6 +486,9 @@ struct ConfirmDialog: View {
                 RoundedRectangle(cornerRadius: 22)
                     .strokeBorder(Theme.cream.opacity(0.12), lineWidth: 1)
             )
+            // Composited first: a shadow on a plain stack is drawn under every
+            // view in it, so each button, line of text and Kipli wore a halo.
+            .compositingGroup()
             .shadow(color: .black.opacity(0.5), radius: 24, y: 8)
             .padding(.horizontal, 28)
         }

@@ -48,9 +48,7 @@ struct SetupHeader: View {
 
             VStack(spacing: 6) {
                 Text("Step \(step) of \(total)")
-                    .font(.sans(12, weight: .bold))
-                    .textCase(.uppercase)
-                    .tracking(1)
+                    .font(.sans(13, weight: .semibold))
                     .foregroundStyle(Theme.description)
                 HStack(spacing: 4) {
                     ForEach(1 ... total, id: \.self) { i in

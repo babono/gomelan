@@ -124,9 +124,7 @@ private struct HistoryRowView: View {
                 .foregroundStyle(Theme.cream)
                 .monospacedDigit()
             Text(label)
-                .font(.sans(11, weight: .medium))
-                .textCase(.uppercase)
-                .tracking(1.2)
+                .font(.sans(12, weight: .medium))
                 .foregroundStyle(Theme.cream.opacity(0.55))
         }
         .frame(width: 84)
