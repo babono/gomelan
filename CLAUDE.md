@@ -200,7 +200,7 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
 - **`Onboarding/`**:
   - `WelcomeView.swift` — landing screen and flow entry. `Penjor.swift` — the bamboo pole arching in from each gate post (`janur-pole`) with its sampian (`janur-hang`) swinging from the tip; laid out at the landing's camera, so the gate reveals it. Easter egg: `HangTilt` (Core Motion gravity, no permission) keeps each sampian hanging towards the real ground as the device tilts, and a sideways jolt swings it.
   - `SplashView.swift` — launch animation masking preloader warm-up: Kipli chomping (`KipliMascot`) before the turning nawa sanga rose (`nawasanga`; Core Animation while loading, SwiftUI from the pan, on one clock), a camera pan past it over a strip of bare paper down to a distant split gate (`PuraGate`), and a walk up to it as it opens on the landing screen.
-  - `OnboardingView.swift` — introduction carousel with Lottie animations.
+  - `OnboardingView.swift` — the first-run introduction, three slides (Skip on the first two): the nawa sanga mark lighting petal by petal as it turns (`onboarding-mark` + `-lit-0…7`, split by `scripts/split-onboarding-mark.py`), two gangsas playing the interlock with Polos / Sangsih / Together to hear it, and a gangsa under a screen of falling notes, with "How the sensors work" (`SensorHowView`, the website's explainer ported). Art in `OnboardingArt.swift`.
   - `GuideView.swift` — contextual help cards.
 - **`Play/`** (The Core Practice Loop):
   - `ChooseKotekanView.swift` — select kotekan figure.

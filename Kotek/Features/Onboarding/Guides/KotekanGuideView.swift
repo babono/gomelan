@@ -116,7 +116,7 @@ struct KotekanGuideView: View {
 }
 
 /// One card: a half on its own, or both.
-private enum GuideVoice: CaseIterable, Identifiable {
+enum GuideVoice: CaseIterable, Identifiable {
     case polos, sangsih, together
 
     var id: Self {
@@ -163,7 +163,7 @@ private enum GuideVoice: CaseIterable, Identifiable {
 ///
 /// Key indices, as everywhere, so it plays on whatever gangsa is in use; every
 /// gangsa has the bundled sound for 4 to 7 to fall back on.
-private enum KotekanSample {
+enum KotekanSample {
     static let line = [5, 6, 7, 6, 5, 4, 5, 6]
     static let slots = line.count
     static let keys = 4 ... 7
@@ -179,7 +179,7 @@ private enum KotekanSample {
 /// right: the card's half solid, the other a dashed ghost in its own colour.
 /// Together joins the strokes with a thread, the one line they make. The slot
 /// sounding is ringed in gold, the palette's hit.
-private struct KotekanSampleRoll: View {
+struct KotekanSampleRoll: View {
     let voice: GuideVoice
     let slot: Int?
 

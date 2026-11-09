@@ -122,7 +122,11 @@ struct WelcomeView: View {
         }
         .task {
             try? await Task.sleep(for: .seconds(SplashChime.totalDuration))
-            music.setLevel(1.0, fadeDuration: 1.8)
+            music.setLevel(app.musicHushed ? 0 : 1.0, fadeDuration: 1.8)
+        }
+        // Down quickly for the onboarding's sample, back slowly after it.
+        .onChange(of: app.musicHushed) { _, hushed in
+            music.setLevel(hushed ? 0 : 1.0, fadeDuration: hushed ? 0.3 : 1.5)
         }
         .onAppear { if !reduceMotion { tilt.start() } }
         .onDisappear {
