@@ -10,7 +10,7 @@
 	     it, and App Store review rejects the build. Worded for the person
 	     being asked, not for us. -->
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Kotek listens for the sound of each strike, so it can tell a real note from a hovering mallet and judge your timing, and for voice commands like “slower” or “pause” while your hands are busy.</string>
+	<string>Kotek records the sound of each bilah when you add a gangsa, so practice plays your own instrument, and listens for voice commands like “slower” or “pause” while your hands are busy.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Kotek recognises voice commands like “slower” or “pause” on this device while your hands are busy playing.</string>
 

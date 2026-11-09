@@ -6,9 +6,11 @@
 	     app's own Supabase project, keyed by a user id that is either an
 	     anonymous guest or an Apple ID (the name Apple shares, or one typed on
 	     the profile step; never an email): the player's name and avatar,
-	     instruments, kotekan the player made, and practice sessions. The audio
-	     dictionary and captured training crops stay in the app's container.
-	     Keep the App Store Connect privacy answers in step with this list. -->
+	     instruments with their photo and each bilah's recorded sound
+	     (InstrumentRemoteRepository's storage buckets), kotekan the player
+	     made, and practice sessions. Photos or Videos and Audio Data are those
+	     photos and sounds. Keep the App Store Connect privacy answers in step
+	     with this list. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
@@ -51,6 +53,30 @@
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
 			</array>
 		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePhotosorVideos</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeAudioData</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
 	</array>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
@@ -65,7 +91,8 @@
 			</array>
 		</dict>
 		<dict>
-			<!-- TrainingCapture writes and enumerates PNG crops in Documents. -->
+			<!-- NoteClipCapture orders a bilah's recorded clips by their
+			     modification date, in the app's own container. -->
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
 			<key>NSPrivacyAccessedAPITypeReasons</key>
