@@ -21,8 +21,10 @@ xcodebuild -exportArchive -archivePath build/Kotek.xcarchive \
   teamID U96VKD93X4> -exportPath build/export -allowProvisioningUpdates
 ```
 
-`scripts/ExportOptions.plist` names team `QHL64K2LPL`, which is not the signing
-team — don't use it as it is.
+`scripts/ExportOptions.plist` is that plist without `destination` (it exports
+an .ipa); add `<key>destination</key><string>upload</string>` to upload
+straight from the export. Its team was `QHL64K2LPL` before 2.0.1, not the
+signing team.
 
 ## 2. Screenshots
 
@@ -252,14 +254,13 @@ keep everything on the device). Not used for tracking. For each type below:
 | User Content | **Audio Data** | Each bilah's recorded sound |
 | User Content | **Other User Content** | Gangsa setups, Studio patterns, practice records |
 
-Not collected: the microphone for voice commands and strike timing is
-processed on the device (speech recognition runs on-device); the session
+Not collected: the microphone for voice commands is processed on the
+device (speech recognition runs on-device); the session
 overview is written by Apple Intelligence on the device.
 
-⚠️ `PrivacyInfo.xcprivacy` in build 9 lists Name, User ID and Other User
-Content but not **Photos or Videos** or **Audio Data**. App Store Connect's
-answers are what the label shows, but add the two types to the manifest in
-build 10 so they agree.
+`PrivacyInfo.xcprivacy` lists all five from 2.0.1 (10). Build 9 (2.0.0) left
+out **Photos or Videos** and **Audio Data**; App Store Connect's answers are
+what the label shows, so 2.0.0's label was already right.
 
 **Privacy policy** (must be at a public URL; update v1's):
 
@@ -273,8 +274,8 @@ build 10 so they agree.
 > there on all your devices. It is used only to run the app: no analytics,
 > no advertising, no tracking, and it is never sold or shared.
 >
-> The microphone is used while you play to hear strikes and voice commands,
-> and when you record your bilah. Speech is recognised on your device; only
+> The microphone is used to record your bilah when you add a gangsa, and
+> while you play to hear voice commands. Speech is recognised on your device; only
 > the bilah recordings you save are uploaded. Bluetooth connects the Kotek
 > strike controller. Session feedback is written on your device by Apple
 > Intelligence.
@@ -311,5 +312,5 @@ build 10 so they agree.
 > a session with it on a real gangsa: <link to an unlisted video>.
 >
 > Account deletion: Settings → Account → Delete account (signed-in users).
-> Microphone: strike sounds, voice commands and recording bilah sounds,
-> processed on the device. Bluetooth: the strike controller.
+> Microphone: recording each bilah's sound when adding a gangsa, and voice
+> commands, processed on the device. Bluetooth: the strike controller.
