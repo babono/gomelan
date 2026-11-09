@@ -1,0 +1,99 @@
+<!doctype html>
+<!--
+  App Store product page header, search result and universal assets
+  (render-assets.sh). ?kind=header|search|universal&w=…&h=…
+
+  Apple's creative assets template (creative_assets-templates.fig) marks an
+  "Art Safe Area" on each canvas: the App Store crops and lays its own text
+  over everything outside it. Measured from the template:
+
+    universal 5244 × 2950   x 37–63%   y 22–56%
+    search    3840 × 2560   x 21–79%   y 29–71%   (1920 × 1280 the same)
+    header    3840 × 1646   x 29–71%   y 29–71%
+
+  So the subject sits inside that box and there is no type: the store shows
+  the app's name and subtitle itself. The first version had a headline and
+  the wordmark out at the edges, where they would have been cut or covered.
+  Outside the box is only ground: the welcome screen's split gate and a glow.
+  Nawa Sanga palette, as in the app.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { overflow: hidden; background: #FBF6EE; }
+  body { position: relative; }
+  .a { position: absolute; }
+  .glow { background: radial-gradient(closest-side, rgba(245, 179, 49, .30), rgba(245, 179, 49, 0)); }
+  .gate { background: url("../../Kotek/Resources/Assets.xcassets/pura-gate.imageset/pura-gate.svg") 0 100% / contain no-repeat; }
+  .gate.right { transform: scaleX(-1); }
+  .device { background: linear-gradient(145deg, #2a3042, #11141d); box-shadow: 0 2.5vh 6vh rgba(30, 36, 53, .28); }
+  .device img { display: block; width: 100%; }
+  /* Debug: ?safe=1 outlines the art safe area. */
+  .safe { outline: 6px dashed #2fb34a; }
+</style>
+</head>
+<body>
+<script>
+const q = new URLSearchParams(location.search);
+const W = +q.get("w"), H = +q.get("h"), kind = q.get("kind");
+for (const el of [document.documentElement, document.body]) { el.style.width = W + "px"; el.style.height = H + "px"; }
+const A = "../../Kotek/Resources/Assets.xcassets/";
+const S = "../screenshots/";
+const add = html => document.body.insertAdjacentHTML("beforeend", html);
+
+const SAFE = {
+  universal: [0.37, 0.63, 0.22, 0.56],
+  search:    [0.21, 0.79, 0.29, 0.71],
+  header:    [0.29, 0.71, 0.29, 0.71],
+}[kind];
+// The box, a little inside the measured one: the template was read off its
+// thumbnail, good to a percent or two.
+const inset = 0.015;
+const box = {
+  x: W * (SAFE[0] + inset), y: H * (SAFE[2] + inset),
+  w: W * (SAFE[1] - SAFE[0] - 2 * inset), h: H * (SAFE[3] - SAFE[2] - 2 * inset),
+};
+const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+
+// Ground: a glow behind the subject and the gate halves at the edges.
+const glow = Math.max(box.w, box.h) * 2.4;
+add(`<div class="a glow" style="width:${glow}px;height:${glow}px;left:${cx - glow / 2}px;top:${cy - glow / 2}px"></div>`);
+// On the squarer search canvas a full-height gate crowds the devices.
+const gateH = H * (kind === "search" ? 0.8 : 1.05), gateW = gateH * 208 / 434;
+add(`<div class="a gate" style="height:${gateH}px;width:${gateW}px;left:${-gateW * 0.12}px;bottom:${-H * 0.03}px"></div>`);
+add(`<div class="a gate right" style="height:${gateH}px;width:${gateW}px;right:${-gateW * 0.12}px;bottom:${-H * 0.03}px"></div>`);
+
+if (kind === "search") {
+  // State the obvious, show the interface: an iPad on Watch and an iPhone on
+  // note by note, the pair fitted to the box.
+  const pairW = box.w, pairH = box.h;
+  // iPad width t: its height is 0.75t + bezel; the iPhone (0.62t wide) hangs
+  // 40% of its own height below the iPad and starts at the box's left edge.
+  const fit = t => {
+    const tabH = t * 0.75 + t * 0.044, phW = t * 0.62, phH = phW * (1320 / 2868) + phW * 0.028;
+    return { tabH, phW, phH, w: t * 1.25, h: tabH + phH * 0.4 };
+  };
+  let t = pairW / 1.25;
+  if (fit(t).h > pairH) t = pairH / (fit(1).h);
+  const f = fit(t), left = cx - f.w / 2, top = cy - f.h / 2, tabPad = t * 0.022, phPad = f.phW * 0.014;
+  add(`<div class="a device" style="width:${t}px;padding:${tabPad}px;border-radius:${tabPad * 2.2}px;left:${left + f.w - t}px;top:${top}px">
+    <img src="${S}ipad-13/03-two-halves.jpg" style="border-radius:${tabPad * 1.2}px"></div>`);
+  add(`<div class="a device" style="width:${f.phW}px;padding:${phPad}px;border-radius:${phPad * 4.6}px;left:${left}px;top:${top + f.tabH - f.phH * 0.6}px">
+    <img src="${S}iphone-6.9/02-note-by-note.jpg" style="border-radius:${phPad * 3.7}px"></div>`);
+} else {
+  // The brand, one idea: the gangsa with Kipli on it, as on the welcome screen.
+  // Kipli's head rises a third of the gangsa's height above its rim.
+  const art = 474 / 245, kipliShare = 0.42;
+  let gw = box.w, gh = gw / art;
+  if (gh * (1 + kipliShare) > box.h) { gh = box.h / (1 + kipliShare); gw = gh * art; }
+  const total = gh * (1 + kipliShare), top = cy - total / 2;
+  const kh = gh * 0.62;
+  add(`<img class="a" src="${A}kipli-happy.imageset/kipli-happy.svg" style="height:${kh}px;left:${cx - kh * (389 / 341) / 2}px;top:${top}px">`);
+  add(`<img class="a" src="${A}gangsa-full.imageset/gangsa-full.svg" style="width:${gw}px;left:${cx - gw / 2}px;top:${top + gh * kipliShare}px">`);
+}
+if (q.get("safe")) add(`<div class="a safe" style="left:${W * SAFE[0]}px;top:${H * SAFE[2]}px;width:${W * (SAFE[1] - SAFE[0])}px;height:${H * (SAFE[3] - SAFE[2])}px"></div>`);
+</script>
+</body>
+</html>
