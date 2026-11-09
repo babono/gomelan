@@ -24,6 +24,146 @@
         }
       }
     },
+    "A controller sends your phone which bilah you hit, and when." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller memberi tahu ponselmu bilah mana yang kamu pukul, dan kapan."
+          }
+        }
+      }
+    },
+    "A mallet strikes a bilah. The piezo disc under it feels the vibration, and a signal runs along its wire to a controller, which sends it to the phone by Bluetooth." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panggul memukul bilah. Cakram piezo di bawahnya merasakan getarannya, lalu sinyal mengalir lewat kabelnya ke controller, yang mengirimnya ke ponsel lewat Bluetooth."
+          }
+        }
+      }
+    },
+    "A piezo disc feels it" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cakram piezo merasakannya"
+          }
+        }
+      }
+    },
+    "Bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilah"
+          }
+        }
+      }
+    },
+    "Bluetooth" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        }
+      }
+    },
+    "Bluetooth tells the app" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth memberi tahu aplikasi"
+          }
+        }
+      }
+    },
+    "Controller" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller"
+          }
+        }
+      }
+    },
+    "Every strike makes the bilah vibrate. That vibration is what Kotek reads." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setiap pukulan membuat bilah bergetar. Getaran itulah yang dibaca Kotek."
+          }
+        }
+      }
+    },
+    "How the sensors work" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cara kerja sensor"
+          }
+        }
+      }
+    },
+    "It vibrates, the same way it always has." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilah bergetar, seperti biasanya."
+          }
+        }
+      }
+    },
+    "One piezo disc under each bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satu cakram piezo di bawah tiap bilah"
+          }
+        }
+      }
+    },
+    "One small disc under each bilah turns that vibration into a signal." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cakram kecil di bawah tiap bilah mengubah getaran itu jadi sinyal."
+          }
+        }
+      }
+    },
+    "What the disc feels" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yang dirasakan cakram"
+          }
+        }
+      }
+    },
+    "You strike the bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kamu memukul bilah"
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },

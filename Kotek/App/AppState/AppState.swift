@@ -170,6 +170,9 @@ final class AppState {
     )
 
     var showingOnboarding = false
+    /// The landing's music bed held silent while something else is sounding
+    /// over it: the onboarding's interlock sample. `WelcomeView` owns the bed.
+    var musicHushed = false
     var hasSeenOnboarding = Defaults.bool("hasSeenOnboarding", false)
 
     // MARK: - Adding a gangsa
