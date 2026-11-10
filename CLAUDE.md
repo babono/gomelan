@@ -203,7 +203,8 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
   - `OnboardingView.swift` — introduction carousel with Lottie animations.
   - `GuideView.swift` — contextual help cards.
 - **`Play/`** (The Core Practice Loop):
-  - `ChooseKotekanView.swift` — select kotekan figure.
+  - `ChooseKotekanView.swift` — select kotekan figure. Holding a card opens its menu; the player's own figures have Share there.
+  - `Share/` — a kotekan shared by link (`KotekanLink`: Share sends `https://www.kotek.app/share/<id>` (www: the apex redirects, and iOS won't follow that for the AASA), a universal link — the kotek-web repo serves its AASA; `kotek://k/<id>` is the page's "Open in Kotek"). `AddSharedKotekanView`, a full screen over any screen from `RootView`, draws the figure (`shared_kotekan_figure`) beside the gangsa cards and adds a **copy** to the chosen one (`copy_shared_kotekan`, a security-definer function: the receiver owns it, nothing syncs). Sharing and adding need an Apple account; guests get `LinkApplePrompt`.
   - `Waterfall/WaterfallPlayView.swift` — notes falling onto the drawn gangsa; scored from the strike controller. `WaterfallCanvas` draws each note as the designer's pills: a short stroke pill in the voice colour, a cream stem as long as the note, outlined in beige and capped where it ends with a short beige damp block, the stem's width; all land on the gangsa's rail, the one hit line, and a hit glows gold up its lane.
   - `Learn/LearnView.swift`, `Coop/` — a pattern taught in steps (Build up's speeds on `BuildUpStepper`; Note by note rings the next bilah, `BilahCue.next`); two players, one screen.
   - `Waterfall/FreePlayTour.swift` — the first free play's tour: Kipli at each control in turn (cycle count, gangsa, controller, voice, tap to pause), spotlit under a dim through `tourTarget` anchors, the clock held; "Show the tour" on free play's pause screen runs it again.

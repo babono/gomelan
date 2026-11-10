@@ -17,6 +17,21 @@
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Kotek connects to the gangsa's strike sensors, so it can feel exactly which bar you hit and when.</string>
 
+	<!-- kotek://k/<id> opens a shared kotekan (KotekanLink): the web page's
+	     "Open in Kotek" button. https://www.kotek.app/share/<id> comes in as a
+	     universal link (applinks in Kotek.entitlements). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>kotekan-share</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>kotek</string>
+			</array>
+		</dict>
+	</array>
+
 	<!-- Filled from Config.xcconfig at build time. Read by RemoteStore. -->
 	<key>SupabaseURL</key>
 	<string>$(SUPABASE_URL)</string>

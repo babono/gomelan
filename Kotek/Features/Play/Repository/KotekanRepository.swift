@@ -79,6 +79,58 @@ nonisolated struct KotekanRepository {
         }
     }
 
+    // MARK: - Sharing
+
+    /// The functions' arguments, by name. `instrumentID` nil goes as NULL.
+    private nonisolated struct ShareParams: Encodable {
+        let id: String
+        var instrumentID: UUID??
+
+        enum CodingKeys: String, CodingKey {
+            case id = "p_id"
+            case instrumentID = "p_instrument_id"
+        }
+
+        func encode(to encoder: any Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(id, forKey: .id)
+            // Present only for the copy, and then always — NULL included, or
+            // PostgREST looks for a one-argument function that is not there.
+            if let instrumentID { try c.encode(instrumentID, forKey: .instrumentID) }
+        }
+    }
+
+    /// `shared_kotekan_figure`'s one object: the row's columns with its hits.
+    private nonisolated struct SharedFigure: Decodable {
+        let row: KotekanRow
+        let hits: [KotekanHitRow]
+
+        enum CodingKeys: String, CodingKey { case hits }
+
+        init(from decoder: any Decoder) throws {
+            row = try KotekanRow(from: decoder)
+            hits = try decoder.container(keyedBy: CodingKeys.self).decode([KotekanHitRow].self, forKey: .hits)
+        }
+    }
+
+    /// A shared figure, whole, read past row-level security by
+    /// `shared_kotekan_figure` — the add screen draws its notes, as the
+    /// picker's cards do. Nil when it is gone, or was never a player's.
+    func shared(id: String) async throws -> RemoteKotekan? {
+        let figure: SharedFigure? = try await remote.call("shared_kotekan_figure", params: ShareParams(id: id))
+        return figure.flatMap { RemoteKotekan(row: $0.row, hits: $0.hits) }
+    }
+
+    /// A copy of someone's figure, now this player's own, filed on the gangsa
+    /// given. Not synced with the original — see the share migration. Returns
+    /// the copy's id.
+    func copyShared(id: String, instrumentID: String?) async throws -> String {
+        try await remote.call(
+            "copy_shared_kotekan",
+            params: ShareParams(id: id, instrumentID: .some(instrumentID.flatMap(UUID.init(uuidString:))))
+        )
+    }
+
     /// A player's own figure, gone: its hits, then the row. Row-level security
     /// limits both deletes to rows this user owns, so a built-in cannot be
     /// removed from here even by mistake.
