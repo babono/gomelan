@@ -345,19 +345,10 @@ extension Font {
 // MARK: - Reusable text treatments
 
 extension View {
-    /// The uppercase, letter-spaced label used for section headers and eyebrows.
+    /// The small label over a section, in sentence case (see `SectionLabel`).
     func eyebrow(_ color: Color) -> some View {
-        font(.sans(12))
-            .textCase(.uppercase)
-            .tracking(2.5)
+        font(.sans(13, weight: .semibold))
             .foregroundStyle(color)
-    }
-}
-
-extension Text {
-    /// Convenience for a tracked uppercase eyebrow string.
-    func trackedLabel() -> some View {
-        textCase(.uppercase).tracking(2.5)
     }
 }
 

@@ -46,10 +46,7 @@ struct KeyCountView: View {
                 // rather than under it: stacked, the column ran past the
                 // bottom of a landscape phone.
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Tell me about your gangsa")
-                        .font(.serif(26))
-                        .foregroundStyle(Theme.heading)
-                        .fixedSize(horizontal: false, vertical: true)
+                    KipliGuide(message: "Tell me about your gangsa.")
 
                     HStack(alignment: .bottom, spacing: 14) {
                         InstrumentNameField(name: $name, isFocused: $nameFocused)
@@ -85,8 +82,7 @@ struct KeyCountView: View {
             .padding(.horizontal, 40)
             .frame(maxHeight: .infinity)
 
-            HStack(alignment: .bottom) {
-                KipliGuide(message: "Count the bilah from one end to the other.")
+            HStack {
                 Spacer()
                 AppButton(title: "Next", prominence: .primary, size: .large) {
                     // Landscape keyboards cover most of the screen, so this

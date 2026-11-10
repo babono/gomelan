@@ -39,10 +39,10 @@ nonisolated enum NoteClipCapture {
 
         var errorDescription: String? {
             switch self {
-            case .badFileName: "That recording's file name isn't valid."
-            case .noNote: "No note detected, try again."
-            case .tooLate: "Struck too late, try again right after \"Strike now\"."
-            case .noisyLead: "Too much sound before the strike. Stay quiet for the first half second, or move somewhere quieter."
+            case .badFileName: String(localized: "That recording's file name isn't valid.")
+            case .noNote: String(localized: "I didn't catch that one. Hit it again.")
+            case .tooLate: String(localized: "That one got cut short. Hit it again.")
+            case .noisyLead: String(localized: "Too noisy just before that hit. Wait for quiet, then hit it again.")
             }
         }
     }
@@ -63,11 +63,11 @@ nonisolated enum NoteClipCapture {
     /// Tail window checked for "still ringing" at the cut.
     static let tailSeconds = 0.1
 
-    /// The user is told to strike at `strikePromptSeconds`, and has until
-    /// `strikeDeadlineSeconds` to do it; the take leaves a full clip after that.
-    static let strikePromptSeconds = 0.5
-    static let strikeDeadlineSeconds = 1.5
-    static let takeSeconds = strikeDeadlineSeconds + clipSeconds
+    /// What a take keeps around the live detector's onset: more lead than
+    /// `noiseProfileSeconds`, and past a full clip, since `extract` finds its
+    /// own onset and that can land a little after the detector's.
+    static let takeLeadSeconds = 0.5
+    static let takeTailSeconds = clipSeconds + 0.2
 
     struct Clip {
         let samples: [Float]

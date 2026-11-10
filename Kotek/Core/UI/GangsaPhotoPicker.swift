@@ -45,9 +45,9 @@ struct GangsaPhotoPicker: View {
                         .padding(8)
                 } else {
                     VStack(spacing: 6) {
-                        Image(systemName: loading ? "hourglass" : "photo.badge.plus")
+                        Image(systemName: loading ? "hourglass" : "photo")
                             .font(.symbol(22))
-                        Text("Add a photo")
+                        Text("Add photo")
                             .font(.sans(13, weight: .medium))
                     }
                     .foregroundStyle(Theme.description)

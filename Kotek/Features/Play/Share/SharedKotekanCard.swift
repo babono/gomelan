@@ -23,9 +23,8 @@ struct SharedKotekanCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Shared with you", systemImage: "link")
-                .font(.sans(11, weight: .bold))
-                .textCase(.uppercase)
-                .tracking(0.8)
+                // Sentence case: the design keeps capitals for the wordmark.
+                .font(.sans(12, weight: .semibold))
                 .foregroundStyle(Theme.cream)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)

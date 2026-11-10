@@ -46,10 +46,6 @@ final class AudioEngineController {
 
     var onOnsetDebug: ((OnsetDebug) -> Void)?
 
-    /// Main queue; the peak of each buffer and how far through the take it is
-    /// (0…1), while `captureRawSamples` runs. Drives the live waveform.
-    var onRawLevel: ((_ peak: Float, _ progress: Double) -> Void)?
-
     /// Called on the main queue when a strike is confirmed as a real gangsa hit:
     /// it passed the amplitude gate AND its spectrum matched the learned baseline
     /// above `baselineThreshold`. This is the play trigger when a baseline exists —
@@ -102,15 +98,20 @@ final class AudioEngineController {
 
     private var capture: Capture?
 
-    /// A plain sample grab for the note-clip tool. Kept out of the ring: the ring
-    /// holds ~2 s and a clip needs silence + onset + the full decay.
-    private struct RawCapture {
-        let target: Int
-        var samples: [Float]
+    /// The note-clip tool, armed and waiting for one strike. Kept out of the
+    /// ring: the ring holds ~2 s and a clip needs silence + onset + the full decay.
+    private struct StrikeListen {
+        let leadSamples: Int
+        let tailSamples: Int
+        /// The latest audio, trimmed to a lead until a strike; then the take.
+        var samples: [Float] = []
+        /// Ring index the take runs to, once a strike has set it.
+        var end: Int?
+        let onHeard: () -> Void
         let completion: ([Float], Double) -> Void
     }
 
-    private var rawCapture: RawCapture?
+    private var strikeListen: StrikeListen?
 
     private let engine = AVAudioEngine()
     private let queue = DispatchQueue(label: "me.babono.kotek.audio.dsp")
@@ -354,21 +355,27 @@ final class AudioEngineController {
         }
     }
 
-    /// Record `duration` seconds of raw mic samples, then report them with the
-    /// sample rate they were taken at (the hardware input rate, not a fixed
-    /// 44100). Don't overlap with `captureStrongestStrike`; `cancelCapture` ends
-    /// either one.
-    func captureRawSamples(
-        duration: TimeInterval,
+    /// Wait, however long it takes, for one strike, then report it as raw mic
+    /// samples: `lead` seconds before the onset and `tail` after, at the rate
+    /// they were taken (the hardware input rate, not a fixed 44100). The player
+    /// is looking at the instrument, so a timed take — "strike now", 1 s to do
+    /// it — lost every hit that fell outside it. What counts as a strike is
+    /// `emit`'s gate, the game's own. Don't overlap with
+    /// `captureStrongestStrike`; `cancelCapture` ends either one.
+    func listenForStrike(
+        lead: TimeInterval,
+        tail: TimeInterval,
+        onHeard: @escaping () -> Void,
         completion: @escaping (_ samples: [Float], _ sampleRate: Double) -> Void
     ) {
         queue.async { [weak self] in
             guard let self else { return }
             let rate = config.sampleRate
-            let target = Int(duration * rate)
-            var samples: [Float] = []
-            samples.reserveCapacity(target)
-            rawCapture = RawCapture(target: target, samples: samples) { samples, _ in
+            strikeListen = StrikeListen(
+                leadSamples: Int(lead * rate),
+                tailSamples: Int(tail * rate),
+                onHeard: onHeard
+            ) { samples, rate in
                 DispatchQueue.main.async { completion(samples, rate) }
             }
         }
@@ -377,7 +384,7 @@ final class AudioEngineController {
     func cancelCapture() {
         queue.async { [weak self] in
             guard let self else { return }
-            rawCapture = nil
+            strikeListen = nil
             guard let capture else { return }
             self.capture = nil
             DispatchQueue.main.async { capture.completion(nil) }
@@ -456,30 +463,38 @@ final class AudioEngineController {
         }
 
         ring.write(channel, count: frames)
-        appendRawCapture(channel, frames: frames)
+        appendStrikeListen(channel, frames: frames)
         processAvailableWindows()
         drainPending()
         finishCaptureIfDue()
     }
 
-    private func appendRawCapture(_ channel: UnsafePointer<Float>, frames: Int) {
-        guard var raw = rawCapture else { return }
-        let take = min(frames, raw.target - raw.samples.count)
-        raw.samples.append(contentsOf: UnsafeBufferPointer(start: channel, count: take))
-        if let report = onRawLevel {
-            var peak: Float = 0
-            for i in 0 ..< take {
-                peak = max(peak, abs(channel[i]))
-            }
-            let progress = Double(raw.samples.count) / Double(raw.target)
-            DispatchQueue.main.async { report(peak, progress) }
+    private func appendStrikeListen(_ channel: UnsafePointer<Float>, frames: Int) {
+        // Through the optional, never a local copy: holding one while appending
+        // would duplicate the whole take on every buffer.
+        guard let lead = strikeListen?.leadSamples else { return }
+        strikeListen?.samples.append(contentsOf: UnsafeBufferPointer(start: channel, count: frames))
+        if let end = strikeListen?.end {
+            guard ring.totalWritten >= end, let take = strikeListen else { return }
+            strikeListen = nil
+            take.completion(take.samples, config.sampleRate)
+        } else if let count = strikeListen?.samples.count, count > lead * 4 {
+            // Twice the lead stays: the detector names an onset after the fact.
+            strikeListen?.samples.removeFirst(count - lead * 2)
         }
-        if raw.samples.count >= raw.target {
-            rawCapture = nil
-            raw.completion(raw.samples, config.sampleRate)
-        } else {
-            rawCapture = raw
-        }
+    }
+
+    /// A strike, for whoever is armed: cut the lead to size and set the take's end.
+    private func heardStrike(atSample onset: Int) {
+        guard let listen = strikeListen, listen.end == nil else { return }
+        let first = ring.totalWritten - listen.samples.count
+        // The detector names an onset late, so one can land just after arming
+        // from a hit before it: the previous note, or a tap. Not this take's.
+        guard onset >= first else { return }
+        let extra = onset - listen.leadSamples - first
+        if extra > 0 { strikeListen?.samples.removeFirst(extra) }
+        strikeListen?.end = onset + listen.tailSamples
+        DispatchQueue.main.async(execute: listen.onHeard)
     }
 
     /// Close the capture window once the last strike inside it has had time to be
@@ -601,6 +616,8 @@ final class AudioEngineController {
             strikeAmplitudePeak * amplitudePeakDecay,
             peak
         )
+
+        heardStrike(atSample: onset.sampleIndex)
 
         // Record the onset time so the vision path can snap its (frame-grained)
         // strike timing onto this (sub-ms) onset when the two line up.

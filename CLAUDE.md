@@ -193,14 +193,14 @@ mic tap → SampleRing → 1024/256 STFT → SpectralFlux → OnsetDetector
 - **`Calibration/`**:
   - `KeyCountView.swift` — adding a gangsa, step 1/3: name, photo, bilah count.
 - **`Detection/`**:
-  - `Capture/NoteCaptureView.swift` — adding a gangsa, step 2/3: record each bilah's own sound.
+  - `Capture/NoteCaptureView.swift` — adding a gangsa, step 2/3 (and Settings' re-recording): hands-free, Start listening once and hit each bilah (`AudioEngineController.listenForStrike` waits for the strike); then "Have a listen", a tile's `NoteBilahCard` to hear or redo it.
   - `Sensor/SensorPlayView.swift` — Debug: the strike controller's raw strikes against a pattern.
 - **`Controller/`**: `ControllerSetupView` — adding a gangsa, step 3/3: pair the strike controller and check each key's sensor.
 - **`Create/`**: the piano-roll composer. Its tools (colotomic instruments, eraser) are named chips in the top row beside the Polos / Sangsih pills; snap and the typed BPM sit in the bottom transport.
 - **`Onboarding/`**:
   - `WelcomeView.swift` — landing screen and flow entry. `Penjor.swift` — the bamboo pole arching in from each gate post (`janur-pole`) with its sampian (`janur-hang`) swinging from the tip; laid out at the landing's camera, so the gate reveals it. Easter egg: `HangTilt` (Core Motion gravity, no permission) keeps each sampian hanging towards the real ground as the device tilts, and a sideways jolt swings it.
   - `SplashView.swift` — launch animation masking preloader warm-up: Kipli chomping (`KipliMascot`) before the turning nawa sanga rose (`nawasanga`; Core Animation while loading, SwiftUI from the pan, on one clock), a camera pan past it over a strip of bare paper down to a distant split gate (`PuraGate`), and a walk up to it as it opens on the landing screen.
-  - `OnboardingView.swift` — introduction carousel with Lottie animations.
+  - `OnboardingView.swift` — the first-run introduction, three slides (Skip on the first two): the nawa sanga mark lighting petal by petal as it turns (`onboarding-mark` + `-lit-0…7`, split by `scripts/split-onboarding-mark.py`), two gangsas playing the interlock with Polos / Sangsih / Together to hear it, and a gangsa under a screen of falling notes, with "How the sensors work" (`SensorHowView`, the website's explainer ported). Art in `OnboardingArt.swift`.
   - `GuideView.swift` — contextual help cards.
 - **`Play/`** (The Core Practice Loop):
   - `ChooseKotekanView.swift` — select kotekan figure. Holding a card opens its menu; the player's own figures have Share there.

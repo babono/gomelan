@@ -24,6 +24,146 @@
         }
       }
     },
+    "A controller sends your phone which bilah you hit, and when." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller memberi tahu ponselmu bilah mana yang kamu pukul, dan kapan."
+          }
+        }
+      }
+    },
+    "A mallet strikes a bilah. The piezo disc under it feels the vibration, and a signal runs along its wire to a controller, which sends it to the phone by Bluetooth." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panggul memukul bilah. Cakram piezo di bawahnya merasakan getarannya, lalu sinyal mengalir lewat kabelnya ke controller, yang mengirimnya ke ponsel lewat Bluetooth."
+          }
+        }
+      }
+    },
+    "A piezo disc feels it" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cakram piezo merasakannya"
+          }
+        }
+      }
+    },
+    "Bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilah"
+          }
+        }
+      }
+    },
+    "Bluetooth" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        }
+      }
+    },
+    "Bluetooth tells the app" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth memberi tahu aplikasi"
+          }
+        }
+      }
+    },
+    "Controller" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller"
+          }
+        }
+      }
+    },
+    "Every strike makes the bilah vibrate. That vibration is what Kotek reads." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setiap pukulan membuat bilah bergetar. Getaran itulah yang dibaca Kotek."
+          }
+        }
+      }
+    },
+    "How the sensors work" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cara kerja sensor"
+          }
+        }
+      }
+    },
+    "It vibrates, the same way it always has." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilah bergetar, seperti biasanya."
+          }
+        }
+      }
+    },
+    "One piezo disc under each bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satu cakram piezo di bawah tiap bilah"
+          }
+        }
+      }
+    },
+    "One small disc under each bilah turns that vibration into a signal." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cakram kecil di bawah tiap bilah mengubah getaran itu jadi sinyal."
+          }
+        }
+      }
+    },
+    "What the disc feels" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yang dirasakan cakram"
+          }
+        }
+      }
+    },
+    "You strike the bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kamu memukul bilah"
+          }
+        }
+      }
+    },
     "—" : {
       "shouldTranslate" : false
     },
@@ -528,6 +668,7 @@
     },
     "%lld of %lld recorded. Tap one to record it again." : {
       "comment" : "Kipli, while recording a new gangsa's bilah: how many are done, of how many.",
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -710,6 +851,7 @@
       }
     },
     "Add a photo" : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -745,6 +887,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tambah gangsa"
+          }
+        }
+      }
+    },
+    "Add photo" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tambah foto"
           }
         }
       }
@@ -1035,6 +1187,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Bilah %lld terlewat"
+          }
+        }
+      }
+    },
+    "Bilah %lld was a bit quiet.\nTap any bilah to hear it again." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilah %lld agak pelan.\nKetuk bilah mana saja untuk mendengarnya lagi."
           }
         }
       }
@@ -1648,6 +1810,7 @@
     },
     "Count the bilah from one end to the other." : {
       "comment" : "Kipli, on the first step of adding a gangsa.",
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -2227,6 +2390,16 @@
         }
       }
     },
+    "Find a quiet spot, then just hit the real bilah.\nNo need to touch the screen." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cari tempat yang tenang, lalu pukul saja bilah aslinya.\nKamu nggak perlu menyentuh layar."
+          }
+        }
+      }
+    },
     "Find them under Learned." : {
       "localizations" : {
         "id" : {
@@ -2500,6 +2673,16 @@
         }
       }
     },
+    "Got it. Let it ring…" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dapat! Biarkan berdengung dulu…"
+          }
+        }
+      }
+    },
     "Guide" : {
       "comment" : "Button title for the guide voices toggle.",
       "isCommentAutoGenerated" : true,
@@ -2575,6 +2758,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ada rekaman nada"
+          }
+        }
+      }
+    },
+    "Have a listen" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yuk, dengarkan"
           }
         }
       }
@@ -2747,6 +2940,7 @@
     },
     "Hit bilah %lld" : {
       "comment" : "Heading while recording a new gangsa: the bilah to strike now.",
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -2882,6 +3076,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cara memasang sensor"
+          }
+        }
+      }
+    },
+    "I didn't catch that one. Hit it again." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yang tadi nggak kedengaran. Pukul lagi, ya."
           }
         }
       }
@@ -3037,6 +3241,7 @@
     },
     "Key %lld not recorded" : {
       "comment" : "A label that appears when a user has not yet recorded a key.",
+      "extractionState" : "stale",
       "isCommentAutoGenerated" : true,
       "localizations" : {
         "id" : {
@@ -3048,6 +3253,7 @@
       }
     },
     "Key %lld recorded" : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -3794,6 +4000,7 @@
       }
     },
     "Next key" : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -4200,6 +4407,16 @@
         }
       }
     },
+    "One hit, normal strength. I'm listening." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satu pukulan, kekuatan biasa. Aku mendengarkan."
+          }
+        }
+      }
+    },
     "One melody, split between two players. Together they sound like one fast line." : {
       "localizations" : {
         "id" : {
@@ -4561,6 +4778,16 @@
         }
       }
     },
+    "Playing…" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Memutar…"
+          }
+        }
+      }
+    },
     "Plays off the beat. Fills the gaps." : {
       "localizations" : {
         "id" : {
@@ -4691,6 +4918,7 @@
       }
     },
     "Processing…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -4731,6 +4959,7 @@
       }
     },
     "Quiet…" : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -4831,6 +5060,16 @@
         }
       }
     },
+    "Record your gangsa" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rekam gangsamu"
+          }
+        }
+      }
+    },
     "Record your keys" : {
       "comment" : "Title of the NoteCaptureView.",
       "extractionState" : "stale",
@@ -4855,6 +5094,7 @@
       }
     },
     "Recording deleted." : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -4892,6 +5132,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ulangi"
+          }
+        }
+      }
+    },
+    "Redo %lld" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ulangi %lld"
           }
         }
       }
@@ -5130,6 +5380,7 @@
       }
     },
     "Saved." : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -5140,6 +5391,7 @@
       }
     },
     "Saved. The note was still ringing when the recording stopped." : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -5817,6 +6069,16 @@
         }
       }
     },
+    "Start listening" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mulai mendengarkan"
+          }
+        }
+      }
+    },
     "Steady" : {
       "comment" : "Build up's second speed, on its stepper.",
       "localizations" : {
@@ -5875,6 +6137,7 @@
       }
     },
     "Strike now" : {
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
@@ -6139,11 +6402,22 @@
     },
     "Tell me about your gangsa" : {
       "comment" : "Kipli's heading on the first step of adding a gangsa.",
+      "extractionState" : "stale",
       "localizations" : {
         "id" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ceritakan tentang gangsamu"
+          }
+        }
+      }
+    },
+    "Tell me about your gangsa." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ceritakan tentang gangsamu."
           }
         }
       }
@@ -6218,6 +6492,16 @@
         }
       }
     },
+    "That one got cut short. Hit it again." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yang tadi terpotong. Pukul lagi, ya."
+          }
+        }
+      }
+    },
     "That one's tricky." : {
       "localizations" : {
         "id" : {
@@ -6236,6 +6520,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Yang ini memang sulit. Ayo kita pelankan bersama."
+          }
+        }
+      }
+    },
+    "That recording's file name isn't valid." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nama file rekaman itu tidak valid."
           }
         }
       }
@@ -6481,6 +6775,16 @@
         }
       }
     },
+    "They all sound good.\nTap any bilah to hear it again." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Semuanya terdengar bagus.\nKetuk bilah mana saja untuk mendengarnya lagi."
+          }
+        }
+      }
+    },
     "This Apple ID already has an account" : {
       "localizations" : {
         "id" : {
@@ -6581,6 +6885,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Terlalu banyak PIN salah. Coba lagi dalam %lld dtk."
+          }
+        }
+      }
+    },
+    "Too noisy just before that hit. Wait for quiet, then hit it again." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terlalu ramai sebelum pukulan tadi. Tunggu sampai tenang, lalu pukul lagi."
           }
         }
       }
