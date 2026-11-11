@@ -222,6 +222,13 @@ final class AppState {
     var linkOrigin: Route?
     /// The one-time "keep your progress" prompt on the results screen.
     var showingSavePrompt = false
+    /// A kotekan someone shared, from the link that opened the app, waiting
+    /// on `AddSharedKotekanView`. See `AppState+Share`.
+    var pendingShare: String?
+    #if DEBUG
+        /// The share screen opened from Settings › Debug, not from a link.
+        var sharePreview: SharePreview?
+    #endif
 
     // MARK: - Remote Repositories
 

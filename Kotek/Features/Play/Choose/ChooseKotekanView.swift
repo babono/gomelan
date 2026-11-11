@@ -82,6 +82,18 @@ private struct ChooseKotekanContentView: View {
         ) {
             if let k = vm.pendingDelete { vm.delete(k) }
         }
+        .sheet(item: $vm.shareURL) { ShareSheet(items: [$0]) }
+        .overlay {
+            if vm.askSignInToShare {
+                LinkApplePrompt(
+                    title: "Sign in to share",
+                    message: "A shared kotekan is a link to your account. Link an Apple ID and anyone with the link can add a copy to their gangsa.",
+                    origin: .chooseKotekan
+                ) {
+                    vm.askSignInToShare = false
+                }
+            }
+        }
         .overlay(alignment: .top) {
             if let error = vm.deleteError {
                 Text(error)
@@ -119,6 +131,7 @@ private struct ChooseKotekanContentView: View {
         // The figure, not the slot: a filter can change what sits in the
         // focused slot without the slot moving.
         .onChange(of: vm.current?.id) { _, _ in vm.onSlotChanged() }
+        .onChange(of: app.selectedKotekan?.id) { _, id in vm.land(on: id) }
         .onChange(of: scenePhase) { _, phase in vm.handleScenePhase(phase) }
         .onChange(of: app.visibleGuide != nil) { _, open in vm.handleGuideChanged(open: open) }
         .onChange(of: vm.muted) { _, isMuted in vm.handleMutedChanged(isMuted) }
@@ -140,7 +153,9 @@ private struct ChooseKotekanContentView: View {
         }
         items.append(CardMenuItem(title: "Hear polos only", systemImage: "speaker.wave.2") { vm.hear(.polos) })
         items.append(CardMenuItem(title: "Hear sangsih only", systemImage: "speaker.wave.2") { vm.hear(.sangsih) })
+        // Built-ins are on every phone already.
         if k.source != .builtin {
+            items.append(CardMenuItem(title: "Share", systemImage: "square.and.arrow.up") { vm.share(k) })
             items.append(CardMenuItem(title: "Edit", systemImage: "pencil") { vm.edit(k) })
             items
                 .append(CardMenuItem(title: "Delete", systemImage: "trash", destructive: true) { vm.pendingDelete = k })

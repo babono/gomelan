@@ -144,6 +144,14 @@ nonisolated struct SupabaseRepository {
             .execute()
     }
 
+    // MARK: - RPC
+
+    /// A Postgres function, for what row-level security keeps the tables
+    /// themselves from doing — see the kotekan share migration.
+    func call<T: Decodable & Sendable>(_ function: String, params: some Encodable & Sendable) async throws -> T {
+        try await client.rpc(function, params: params).execute().value
+    }
+
     // MARK: - Upsert
 
     func upsert(_ value: some Encodable & Sendable, in table: String) async throws {

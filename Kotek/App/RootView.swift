@@ -71,6 +71,19 @@ struct RootView: View {
                 OnboardingView { app.closeOnboarding() }
             }
         }
+        // A shared kotekan's link, over whatever screen it found. Waits for the
+        // splash, the introduction and the welcome screen's account choice:
+        // adding it needs someone to add it for. Off the profile step too — a
+        // first Apple sign-in lands there, and Add would jump past it.
+        .overlay {
+            if let id = app.pendingShare, app.account != nil, splashGone, !app.showingOnboarding,
+               app.screen != .welcome, app.screen != .profileSetup
+            {
+                AddSharedKotekanView(id: id, app: app)
+                    .id(id)
+            }
+        }
+        .onOpenURL { app.openSharedKotekan($0) }
         // Account work can start on several screens — welcome, Settings, the
         // results screen's save prompt — so its scrim and the switch question
         // live here, once, rather than in each of them.

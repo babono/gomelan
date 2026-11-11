@@ -208,6 +208,30 @@ final class ChooseKotekanViewModel {
         app.openEditKotek(k)
     }
 
+    /// The link the share sheet is up for.
+    var shareURL: URL?
+    /// A guest tried to share: sharing needs an account, so they are asked to
+    /// link an Apple ID instead.
+    var askSignInToShare = false
+
+    /// Onto a figure chosen while the picker was already up: a shared one just
+    /// added (`AppState.addSharedKotekan`). The card under the finger, chosen
+    /// by a tap, is already where it is.
+    func land(on id: String?) {
+        guard let id, kotekan(atSlot: focusedSlot)?.id != id,
+              let i = kotekans.firstIndex(where: { $0.id == id })
+        else { return }
+        position = Double(i)
+    }
+
+    func share(_ k: Kotekan) {
+        if app.account == .apple {
+            shareURL = KotekanLink.url(for: k.id)
+        } else {
+            askSignInToShare = true
+        }
+    }
+
     /// The figure waiting on the delete confirmation.
     var pendingDelete: Kotekan?
     var deleting = false
