@@ -225,6 +225,10 @@ final class AppState {
     /// A kotekan someone shared, from the link that opened the app, waiting
     /// on `AddSharedKotekanView`. See `AppState+Share`.
     var pendingShare: String?
+    #if DEBUG
+        /// The share screen opened from Settings › Debug, not from a link.
+        var sharePreview: SharePreview?
+    #endif
 
     // MARK: - Remote Repositories
 

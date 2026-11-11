@@ -3,7 +3,8 @@
 //  Kotek
 //
 //  A guest asked to link an Apple ID, over whatever wanted one: keeping a
-//  record on the results screen, sharing a kotekan, adding a shared one. Laid
+//  record on the results screen, sharing a kotekan. (Adding a shared one has
+//  its own, `ShareSignInView`, in the add screen's look.) Laid
 //  out like `ConfirmDialog` so it reads as the same family, but the action is
 //  Apple's own button — and declining is a plain "Not now", not a cancel: the
 //  same offer stays in Settings.
@@ -16,9 +17,6 @@ struct LinkApplePrompt: View {
     let message: LocalizedStringKey
     /// Where the player lands again once linked; see `AppState.linkApple`.
     let origin: Route
-    /// Instead of closing when Apple hands back a token. The add-shared
-    /// dialog stays up through the link and turns into itself once signed in.
-    var onLink: (() -> Void)?
     /// Either answer, and a failed link, close it.
     let onClose: () -> Void
 
@@ -50,7 +48,7 @@ struct LinkApplePrompt: View {
                     Spacer(minLength: 0)
                     AppButton(title: "Not now", size: .compact, action: onClose)
                     AppleSignInButton { token, nonce, name in
-                        (onLink ?? onClose)()
+                        onClose()
                         Task {
                             await app.linkApple(idToken: token, nonce: nonce, fullName: name, from: origin)
                         }

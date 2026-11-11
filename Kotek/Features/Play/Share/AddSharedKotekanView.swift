@@ -23,17 +23,21 @@ struct AddSharedKotekanView: View {
     }
 
     var body: some View {
-        if app.account == .guest {
-            LinkApplePrompt(
-                title: "Sign in to add it",
-                message: "Someone shared a kotekan with you. Link an Apple ID to add it to your gangsa and keep it on every device.",
-                origin: app.screen,
-                onLink: {},
-                onClose: viewModel.close
-            )
+        if app.account == .guest || signInPreview {
+            // A preview's Apple button only closes: the account on this phone
+            // may well be linked already.
+            ShareSignInView(origin: app.screen, linksAccount: !signInPreview, onClose: viewModel.close)
         } else {
             screen
         }
+    }
+
+    private var signInPreview: Bool {
+        #if DEBUG
+            app.sharePreview == .signIn
+        #else
+            false
+        #endif
     }
 
     private var screen: some View {
@@ -53,7 +57,16 @@ struct AddSharedKotekanView: View {
                 let group = SharedKotekanCard.width + 18 + 40 + 18 + InstrumentCardView.width
                 let leading = max(24, (geo.size.width - group) / 2)
                 HStack(alignment: .top, spacing: 18) {
-                    if viewModel.phase != .notFound {
+                    if viewModel.phase == .notFound {
+                        // The link leads nowhere: an empty slot where the figure
+                        // would be, Kipli under it. Centred on its own.
+                        VStack(spacing: 14) {
+                            ShareNotFoundSlot()
+                            KipliGuide(message: viewModel.kipliMessage, mood: viewModel.kipliMood)
+                                .frame(maxWidth: 420)
+                        }
+                        .frame(width: geo.size.width - leading * 2)
+                    } else {
                         SharedKotekanCard(kotekan: viewModel.kotekan, height: cardHeight)
                         ShareArrow()
                             .stroke(Theme.primary, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
@@ -87,8 +100,11 @@ struct AddSharedKotekanView: View {
             // held to about 300pt so a line breaks in two — across the whole
             // footer it ran on in one.
             HStack(alignment: .bottom, spacing: 12) {
-                KipliGuide(message: viewModel.kipliMessage, mood: viewModel.kipliMood)
-                    .frame(maxWidth: 380, alignment: .leading)
+                // Not found: he is in the middle, under the empty slot.
+                if viewModel.phase != .notFound {
+                    KipliGuide(message: viewModel.kipliMessage, mood: viewModel.kipliMood)
+                        .frame(maxWidth: 380, alignment: .leading)
+                }
                 Spacer(minLength: 0)
                 footerButton
             }

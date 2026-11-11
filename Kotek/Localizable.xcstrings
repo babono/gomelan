@@ -24,142 +24,62 @@
         }
       }
     },
-    "A controller sends your phone which bilah you hit, and when." : {
+    "A shared kotekan" : {
       "localizations" : {
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Controller memberi tahu ponselmu bilah mana yang kamu pukul, dan kapan."
+            "value" : "Kotekan kiriman"
           }
         }
       }
     },
-    "A mallet strikes a bilah. The piezo disc under it feels the vibration, and a signal runs along its wire to a controller, which sends it to the phone by Bluetooth." : {
+    "Its name and notes open once you're signed in." : {
       "localizations" : {
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Panggul memukul bilah. Cakram piezo di bawahnya merasakan getarannya, lalu sinyal mengalir lewat kabelnya ke controller, yang mengirimnya ke ponsel lewat Bluetooth."
+            "value" : "Nama dan not-notnya terbuka setelah kamu masuk."
           }
         }
       }
     },
-    "A piezo disc feels it" : {
+    "Sharing is between accounts, so it can follow you to every device." : {
       "localizations" : {
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cakram piezo merasakannya"
+            "value" : "Berbagi itu antar akun, jadi bisa ikut kamu di semua perangkat."
           }
         }
       }
     },
-    "Bilah" : {
+    "Someone shared a kotekan with you! Link your Apple ID and I'll put it on your gangsa." : {
       "localizations" : {
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bilah"
+            "value" : "Ada yang mengirimimu kotekan! Hubungkan Apple ID-mu, nanti aku taruh di gangsamu."
           }
         }
       }
     },
-    "Bluetooth" : {
+    "This link is empty" : {
       "localizations" : {
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bluetooth"
+            "value" : "Tautan ini kosong"
           }
         }
       }
     },
-    "Bluetooth tells the app" : {
+    "Waiting for you" : {
       "localizations" : {
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bluetooth memberi tahu aplikasi"
-          }
-        }
-      }
-    },
-    "Controller" : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Controller"
-          }
-        }
-      }
-    },
-    "Every strike makes the bilah vibrate. That vibration is what Kotek reads." : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Setiap pukulan membuat bilah bergetar. Getaran itulah yang dibaca Kotek."
-          }
-        }
-      }
-    },
-    "How the sensors work" : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cara kerja sensor"
-          }
-        }
-      }
-    },
-    "It vibrates, the same way it always has." : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bilah bergetar, seperti biasanya."
-          }
-        }
-      }
-    },
-    "One piezo disc under each bilah" : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Satu cakram piezo di bawah tiap bilah"
-          }
-        }
-      }
-    },
-    "One small disc under each bilah turns that vibration into a signal." : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cakram kecil di bawah tiap bilah mengubah getaran itu jadi sinyal."
-          }
-        }
-      }
-    },
-    "What the disc feels" : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yang dirasakan cakram"
-          }
-        }
-      }
-    },
-    "You strike the bilah" : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kamu memukul bilah"
+            "value" : "Menunggumu"
           }
         }
       }
@@ -755,6 +675,16 @@
         }
       }
     },
+    "A controller sends your phone which bilah you hit, and when." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller memberi tahu ponselmu bilah mana yang kamu pukul, dan kapan."
+          }
+        }
+      }
+    },
     "A good start." : {
       "localizations" : {
         "id" : {
@@ -784,6 +714,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Kotekan adalah jalinan nada yang terlalu cepat untuk dimainkan sendirian, jadi dibagi dua. Masing-masing bagian belum jadi melodi. Melodinya baru muncul saat keduanya dimainkan bersama."
+          }
+        }
+      }
+    },
+    "A mallet strikes a bilah. The piezo disc under it feels the vibration, and a signal runs along its wire to a controller, which sends it to the phone by Bluetooth." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panggul memukul bilah. Cakram piezo di bawahnya merasakan getarannya, lalu sinyal mengalir lewat kabelnya ke controller, yang mengirimnya ke ponsel lewat Bluetooth."
+          }
+        }
+      }
+    },
+    "A piezo disc feels it" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cakram piezo merasakannya"
           }
         }
       }
@@ -1141,6 +1091,16 @@
         }
       }
     },
+    "Bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilah"
+          }
+        }
+      }
+    },
     "Bilah %lld" : {
       "localizations" : {
         "id" : {
@@ -1213,6 +1173,16 @@
         }
       }
     },
+    "Bluetooth" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        }
+      }
+    },
     "Bluetooth is off" : {
       "comment" : "Error message when Bluetooth is off.",
       "isCommentAutoGenerated" : true,
@@ -1233,6 +1203,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Izin Bluetooth ditolak"
+          }
+        }
+      }
+    },
+    "Bluetooth tells the app" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth memberi tahu aplikasi"
           }
         }
       }
@@ -1644,6 +1624,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Masuk sebagai tamu"
+          }
+        }
+      }
+    },
+    "Controller" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller"
           }
         }
       }
@@ -2341,6 +2331,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Semua bilah sudah punya sensor."
+          }
+        }
+      }
+    },
+    "Every strike makes the bilah vibrate. That vibration is what Kotek reads." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Setiap pukulan membuat bilah bergetar. Getaran itulah yang dibaca Kotek."
           }
         }
       }
@@ -3070,6 +3070,16 @@
         }
       }
     },
+    "How the sensors work" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cara kerja sensor"
+          }
+        }
+      }
+    },
     "How to fit the sensors" : {
       "localizations" : {
         "id" : {
@@ -3188,6 +3198,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Jalinan Nadanya"
+          }
+        }
+      }
+    },
+    "It vibrates, the same way it always has." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bilah bergetar, seperti biasanya."
           }
         }
       }
@@ -4436,6 +4456,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Satu melodi, dua pemain"
+          }
+        }
+      }
+    },
+    "One piezo disc under each bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satu cakram piezo di bawah tiap bilah"
+          }
+        }
+      }
+    },
+    "One small disc under each bilah turns that vibration into a signal." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cakram kecil di bawah tiap bilah mengubah getaran itu jadi sinyal."
           }
         }
       }
@@ -5783,6 +5823,50 @@
         }
       }
     },
+    "Share: broken link" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiriman: tautan rusak"
+          }
+        }
+      }
+    },
+    "Share: no gangsa" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiriman: tanpa gangsa"
+          }
+        }
+      }
+    },
+    "Share: regular" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiriman: biasa"
+          }
+        }
+      }
+    },
+    "Share: sign in with Apple" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kiriman: masuk dengan Apple"
+          }
+        }
+      }
+    },
     "Shared with you" : {
       "localizations" : {
         "id" : {
@@ -5998,16 +6082,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ada yang mengirimimu kotekan"
-          }
-        }
-      }
-    },
-    "Someone shared a kotekan with you. Link an Apple ID to add it to your gangsa and keep it on every device." : {
-      "localizations" : {
-        "id" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ada yang membagikan kotekan untukmu. Hubungkan Apple ID untuk menambahkannya ke gangsamu dan menyimpannya di semua perangkat."
           }
         }
       }
@@ -7182,6 +7256,16 @@
         }
       }
     },
+    "What the disc feels" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yang dirasakan cakram"
+          }
+        }
+      }
+    },
     "Where it slipped" : {
       "comment" : "Text describing the results of a session showing where each stroke of the cycle went on average.",
       "isCommentAutoGenerated" : true,
@@ -7402,6 +7486,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Hari ini kamu memainkan %lld siklus. Pasang sensor lain kali, nanti aku bisa tunjukkan setiap pukulanmu."
+          }
+        }
+      }
+    },
+    "You strike the bilah" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kamu memukul bilah"
           }
         }
       }

@@ -20,6 +20,15 @@ extension AppState {
         pendingShare = id
     }
 
+    #if DEBUG
+        /// Settings › Debug: the share screen in `preview`'s state. The id is
+        /// never looked up — `AddSharedKotekanViewModel` reads the preview.
+        func openSharePreview(_ preview: SharePreview) {
+            sharePreview = preview
+            pendingShare = "preview-\(preview)"
+        }
+    #endif
+
     /// Copy the shared figure onto `instrument`, switch to that gangsa and land
     /// on the copy in the picker. Throws so the dialog can stay up and say so.
     func addSharedKotekan(id: String, to instrument: InstrumentProfile) async throws {

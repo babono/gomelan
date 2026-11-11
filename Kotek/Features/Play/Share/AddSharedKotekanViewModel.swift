@@ -36,7 +36,10 @@ final class AddSharedKotekanViewModel {
     }
 
     var gangsa: [InstrumentProfile] {
-        app.savedProfiles
+        #if DEBUG
+            if app.sharePreview == .noGangsa { return [] }
+        #endif
+        return app.savedProfiles
     }
 
     var kotekan: Kotekan? {
@@ -53,6 +56,12 @@ final class AddSharedKotekanViewModel {
 
     /// Called from `.task(id:)`, so leaving the screen cancels it.
     func load() async {
+        #if DEBUG
+            if let preview = app.sharePreview {
+                phase = preview == .brokenLink ? .notFound : .ready(Kotekan.bundled[0])
+                return
+            }
+        #endif
         phase = .loading
         do {
             let remote = try await repository.shared(id: id)
@@ -67,6 +76,10 @@ final class AddSharedKotekanViewModel {
 
     func add() {
         guard canAdd, let instrument = chosen else { return }
+        #if DEBUG
+            // A preview's figure is bundled, not shared: nothing to copy.
+            if app.sharePreview != nil { return close() }
+        #endif
         addTask?.cancel()
         isAdding = true
         addFailed = false
@@ -84,6 +97,9 @@ final class AddSharedKotekanViewModel {
 
     /// A gangsa first, then the link again — Kipli says so.
     func addGangsa() {
+        #if DEBUG
+            if app.sharePreview != nil { return close() }
+        #endif
         close()
         app.addNewInstrument()
     }
@@ -91,6 +107,9 @@ final class AddSharedKotekanViewModel {
     func close() {
         addTask?.cancel()
         app.pendingShare = nil
+        #if DEBUG
+            app.sharePreview = nil
+        #endif
     }
 
     // MARK: - Kipli
