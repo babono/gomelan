@@ -45,13 +45,13 @@ final class ChooseKotekanViewModel {
         self.cue = cue
         // Land on the figure last chosen — or just created — rather than the
         // first card.
-        if let id = app.selectedKotekan?.id, let i = app.kotekans.firstIndex(where: { $0.id == id }) {
+        if let id = app.selectedKotekan?.id, let i = kotekans.firstIndex(where: { $0.id == id }) {
             position = Double(i)
         }
     }
 
     var kotekans: [Kotekan] {
-        app.kotekans.filter(filter.includes)
+        app.kotekansOnGangsa.filter(filter.includes)
     }
 
     /// The rail wraps round, except when filtered: two matches looped
@@ -222,6 +222,17 @@ final class ChooseKotekanViewModel {
               let i = kotekans.firstIndex(where: { $0.id == id })
         else { return }
         position = Double(i)
+    }
+
+    /// Another of the player's gangsa to copy a figure onto — the card menu
+    /// offers it only when there is one.
+    var canCopy: Bool {
+        app.savedProfiles.contains { $0.id != app.profile.id }
+    }
+
+    func copy(_ k: Kotekan) {
+        stopPreview()
+        app.copyingKotekan = k
     }
 
     func share(_ k: Kotekan) {

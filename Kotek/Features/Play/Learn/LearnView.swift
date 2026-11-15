@@ -65,17 +65,20 @@ private struct LearnWatchView: View {
             .padding(.vertical, 6)
 
             CoopStage(lanes: vm.lanes, voicedKeys: vm.voicedKeys, damp: app.dampGuide)
-                // Kipli says what the caption under the strip used to, flying
-                // about over the stage under the Polos / Sangsih pills
-                // (`.flying`). First he sat in the header beside the strip,
-                // then parked at the stage's top-left; both looked like part
-                // of the layout.
-                .overlay {
+                // Kipli says what the caption under the strip used to, parked
+                // at the stage's top-left under the Polos / Sangsih pills, as
+                // he sits on the waterfall. He flew about the stage's top for
+                // a while (`.flying`, Nov 2026) so he read as a guide over the
+                // layout rather than part of it, but players found a Kipli
+                // wandering about with nothing to say distracting: he stays
+                // in one safe corner now. Before that he sat in the header
+                // beside the strip.
+                .overlay(alignment: .topLeading) {
                     KipliGuide(
                         message: "Polos on the left, sangsih on the right. Next when you have the shape of it.",
-                        style: .flying
+                        style: .quiet
                     )
-                    .padding(.horizontal, 24)
+                    .padding(.leading, 24)
                     .padding(.top, CoopStage.laneHeader + 8)
                 }
         }

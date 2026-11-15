@@ -127,8 +127,8 @@ final class KotekanDraft {
     var bpm = 100
     private(set) var notes: [DraftNote] = []
 
-    /// Which cycle runs under the figure. A saved figure's hits are not read
-    /// back into it (see `load`), so an opened one starts on the 4-beat one.
+    /// Which cycle runs under the figure. An opened figure starts on the one
+    /// it was saved with (see `load`).
     var template = ColotomicTemplate.four
 
     /// The colotomic cycle under the figure, one beat at a time.
@@ -360,11 +360,13 @@ final class KotekanDraft {
     ///
     /// A saved figure keeps only slots and milliseconds per slot. A slot comes
     /// back as a quarter of a beat, and a damp point as that many slots. Its
-    /// colotomic line is not read back: the cycle is laid under it again from
-    /// its length.
+    /// colotomic line comes back as the template it was laid from — only the
+    /// 8-beat one has a gong — and is laid again from that; it used to open
+    /// on the 4-beat one whatever it was saved with.
     func load(_ k: Kotekan) {
         name = k.name
         source = k.source
+        template = k.colotomic.contains { $0.instrument == .gong } ? .eight : .four
         let slot = Subdivision.quarter.ticks
         bpm = Self.bpm(strokeMs: k.strokeMs, slotTicks: slot).clamped(
             to: Self.bpmRange.lowerBound,

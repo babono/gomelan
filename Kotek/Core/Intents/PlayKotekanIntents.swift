@@ -43,7 +43,7 @@ struct KotekanQuery: EntityStringQuery {
 
     @MainActor
     func entities(matching string: String) async throws -> [KotekanEntity] {
-        app.kotekans.filter {
+        app.kotekansOnGangsa.filter {
             $0.name.localizedCaseInsensitiveContains(string)
         }.map(KotekanEntity.init)
     }
@@ -51,7 +51,7 @@ struct KotekanQuery: EntityStringQuery {
     /// Only what fits the gangsa in use, as the picker shows it.
     @MainActor
     func suggestedEntities() async throws -> [KotekanEntity] {
-        app.kotekans.filter { app.kotekan($0, playableOn: app.profile) }.map(KotekanEntity.init)
+        app.kotekansOnGangsa.filter { app.kotekan($0, playableOn: app.profile) }.map(KotekanEntity.init)
     }
 }
 

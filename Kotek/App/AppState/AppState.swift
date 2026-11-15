@@ -225,6 +225,13 @@ final class AppState {
     /// A kotekan someone shared, from the link that opened the app, waiting
     /// on `AddSharedKotekanView`. See `AppState+Share`.
     var pendingShare: String?
+    /// A figure of the player's own on its way to another gangsa, from the
+    /// picker's card menu, on the same screen as a shared one
+    /// (`AddSharedKotekanView`). See `copyKotekan`.
+    var copyingKotekan: Kotekan?
+    /// What Kipli says on the picker once a copy has gone: "Copied … to …".
+    /// Cleared as the picker closes.
+    var copiedNotice: LocalizedStringResource?
     #if DEBUG
         /// The share screen opened from Settings › Debug, not from a link.
         var sharePreview: SharePreview?

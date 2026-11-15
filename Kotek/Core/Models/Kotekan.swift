@@ -121,8 +121,12 @@ struct Kotekan: Identifiable, Codable, Equatable {
     /// Gong, kempur, klentong and kajar strokes a player wrote into their own figure.
     /// Empty for every built-in.
     ///
-    /// ponytail: only the kajar is played from here. The engine still lays the
-    /// gong and kempur under every figure itself and ignores the rest.
+    /// A player's figure is played with all of them, as Studio sounded it
+    /// (`Song.colotomic`). A built-in carries only its kajar, and the engine
+    /// lays its own gong and kempur under it. Until Nov 2026 the engine did
+    /// that under every figure and played only the kajar from here: Studio's
+    /// 8-beat cycle, gong on beat 5, came out with the gong on beat 1, a
+    /// kempur on 5 and no klentong.
     var colotomic: [ColotomicHit] = []
     /// Where the hand stops each stroke, slot by slot like `polos` and
     /// `sangsih`: how many slots it rings before it is damped. nil — the whole
@@ -134,6 +138,19 @@ struct Kotekan: Identifiable, Codable, Equatable {
     /// (`KotekanStore`) has no key for them, and must still decode.
     var polosDamp: [Int?]?
     var sangsihDamp: [Int?]?
+    /// The gangsa a player's own figure is filed on (`kotekan.instrument_id`):
+    /// the picker shows it on that gangsa only. Nil on the built-ins, which
+    /// are on every gangsa, and on a figure made on a gangsa that was never
+    /// uploaded — or cached (`KotekanStore`) before this was kept, until the
+    /// next fetch fills it in.
+    var instrumentID: String?
+
+    /// Whether the picker shows this figure on `gangsa`. Ids are compared as
+    /// UUIDs: the database hands them back upper-case.
+    func isFiled(on gangsa: InstrumentProfile) -> Bool {
+        guard source != .builtin, let instrumentID else { return true }
+        return instrumentID.caseInsensitiveCompare(gangsa.id) == .orderedSame
+    }
 
     ///    static let strokesPerCycle = 16
     var slotsPerCycle: Int {
@@ -255,7 +272,8 @@ struct Kotekan: Identifiable, Codable, Equatable {
             requiredKeys: requiredKeys,
             durationMs: duration,
             notes: notes,
-            kajarBeats: colotomic.filter { $0.instrument == .kajar }.map(\.slot)
+            kajarBeats: colotomic.filter { $0.instrument == .kajar }.map(\.slot),
+            colotomic: source == .builtin || colotomic.isEmpty ? nil : colotomic
         )
     }
 }

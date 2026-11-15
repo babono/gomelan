@@ -83,6 +83,16 @@ struct RootView: View {
                     .id(id)
             }
         }
+        // Copying a figure of the player's own to another gangsa: the same
+        // screen, from the picker's card menu.
+        .overlay {
+            if let k = app.copyingKotekan {
+                AddSharedKotekanView(copying: k, app: app)
+                    .id(k.id)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: app.copyingKotekan?.id)
         .onOpenURL { app.openSharedKotekan($0) }
         // Account work can start on several screens — welcome, Settings, the
         // results screen's save prompt — so its scrim and the switch question

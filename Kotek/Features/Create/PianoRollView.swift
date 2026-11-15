@@ -19,7 +19,10 @@
 //
 //  Under the rows runs a colotomic lane: the gong cycle the draft lays under
 //  the figure (`KotekanDraft.colotomic`), drawn as circles on the line each
-//  sounds on, the way a gamelan score video marks them.
+//  sounds on, the way a gamelan score video marks them. It is pinned to the
+//  bottom of the roll (`PianoRollLane`) and only scrolls sideways, with the
+//  time: it was the roll's last row, and zoomed in it scrolled away below the
+//  bilah being written, just when the gong was wanted to write against.
 //
 //  Rows are key INDICES from the active instrument, top row highest — never
 //  pitches, same as everywhere else (PRD §7).
@@ -197,6 +200,9 @@ private struct PianoRollGrid: View {
     /// Where the scroll view is, kept out of Observation: written on every
     /// scroll frame, and only read when the line changes bar.
     @State private var offset = ScrollOffset()
+    /// The same sideways offset, observed — by the pinned lane only, so a
+    /// scroll frame redraws the lane and not the roll.
+    @State private var laneScroll = LaneScroll()
 
     private let labelWidth: CGFloat = 28
     private let rulerHeight: CGFloat = 22
@@ -240,9 +246,9 @@ private struct PianoRollGrid: View {
             let rowHeight = compact ? fitRows : max(10, fitRows, Self.rowHeight * zoom)
 
             // Vertical outside horizontal, so the key labels scroll up and
-            // down with their rows but stay put sideways.
-            // shortcut: the ruler scrolls off with the rows; pin it if that
-            // gets in the way.
+            // down with their rows but stay put sideways. The ruler and the
+            // colotomic lane are pinned above and below, following the rows
+            // sideways only: zoomed in, both scrolled away with the rows.
             ScrollView(.vertical) {
                 HStack(alignment: .top, spacing: 0) {
                     VStack(spacing: 0) {
@@ -250,35 +256,11 @@ private struct PianoRollGrid: View {
                         // read, it left the rows with nothing to say which
                         // bilah each was. Set smaller to fit instead.
                         keyLabels(rows: rows, rowHeight: rowHeight)
-                        Image(systemName: "circle.circle")
-                            .font(.symbol(11, weight: .semibold))
-                            .foregroundStyle(Theme.stone)
-                            .frame(height: laneHeight)
-                            .accessibilityLabel("Gong, kempur, klentong and kajar")
                     }
-                    .padding(.top, rulerHeight)
                     .frame(width: labelWidth)
 
                     ScrollView(.horizontal) {
                         VStack(spacing: 0) {
-                            PianoRollRuler(bars: KotekanDraft.timelineBars, pxPerTick: pxPerTick)
-                                .frame(height: rulerHeight)
-                                .padding(.leading, lead)
-                                .contentShape(Rectangle())
-                                // Scrubs from the first touch: a tap puts the
-                                // line there, a drag carries it. The roll
-                                // still scrolls from the grid below.
-                                .gesture(
-                                    DragGesture(minimumDistance: 0).onChanged { value in
-                                        viewModel.seek(toTick: Int((value.location.x - lead) / pxPerTick))
-                                    }
-                                )
-                                .accessibilityElement()
-                                .accessibilityLabel("Playhead")
-                                .accessibilityAdjustableAction { direction in
-                                    let step = direction == .increment ? snap.ticks : -snap.ticks
-                                    viewModel.seek(toTick: Int(viewModel.playhead) + step)
-                                }
                             PianoRollCanvas(
                                 notes: notes,
                                 colotomic: colotomic,
@@ -287,11 +269,11 @@ private struct PianoRollGrid: View {
                                 snapTicks: snap.ticks,
                                 writing: writing,
                                 rows: rows,
-                                laneHeight: laneHeight,
+                                laneHeight: 0,
                                 lead: lead,
                                 pxPerTick: pxPerTick
                             )
-                            .frame(height: rowHeight * CGFloat(rows) + laneHeight)
+                            .frame(height: rowHeight * CGFloat(rows))
                             // Inside the tap below, so a tap on a grip still
                             // reaches it and takes the stroke out.
                             .overlay(alignment: .topLeading) {
@@ -323,7 +305,8 @@ private struct PianoRollGrid: View {
                         }
                         .frame(width: width + lead)
                         .overlay(alignment: .topLeading) {
-                            PreviewPlayhead(viewModel: viewModel, pxPerTick: pxPerTick)
+                            // The line only: its flag is on the pinned ruler.
+                            PreviewPlayhead(viewModel: viewModel, pxPerTick: pxPerTick, flag: false)
                                 .padding(.leading, lead)
                         }
                     }
@@ -331,6 +314,7 @@ private struct PianoRollGrid: View {
                     .scrollPosition($scroll)
                     .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.x } action: { _, x in
                         offset.x = x
+                        laneScroll.x = x
                     }
                     // Keep the line on screen — playing, or stepping through a
                     // recording. Page by bar, as a DAW does, not glued to the line.
@@ -344,6 +328,43 @@ private struct PianoRollGrid: View {
             }
             .scrollDisabled(compact)
             .scrollBounceBehavior(.basedOnSize)
+
+            // The ruler and the colotomic lane, pinned over and under the rows
+            // however they are zoomed or scrolled — insets of the vertical
+            // scroll, so they take their room from it. In a VStack round it
+            // the lane was pushed off the bottom.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                HStack(spacing: 0) {
+                    Color.clear.frame(width: labelWidth)
+                    PinnedRuler(
+                        viewModel: viewModel,
+                        lead: lead,
+                        pxPerTick: pxPerTick,
+                        snapTicks: snap.ticks,
+                        scroll: laneScroll
+                    )
+                }
+                .frame(height: rulerHeight)
+                .background(Theme.deep.opacity(0.75))
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                HStack(spacing: 0) {
+                    Image(systemName: "circle.circle")
+                        .font(.symbol(11, weight: .semibold))
+                        .foregroundStyle(Theme.stone)
+                        .frame(width: labelWidth, height: laneHeight)
+                        .accessibilityLabel("Gong, kempur, klentong and kajar")
+                    PianoRollLane(
+                        colotomic: colotomic,
+                        patternTicks: length,
+                        lead: lead,
+                        pxPerTick: pxPerTick,
+                        scroll: laneScroll
+                    )
+                }
+                .frame(height: laneHeight)
+                .background(Theme.deep.opacity(0.75))
+            }
             // On the outer scroll view, not the horizontal one: there the
             // pinch lost to the scroll's own pan and the roll never zoomed.
             .simultaneousGesture(
@@ -556,17 +577,8 @@ struct PianoRollCanvas: View {
                 )
             }
 
-            // The colotomic lane.
-            let laneMid = rowsHeight + laneHeight / 2
-            ctx.fill(
-                Path(CGRect(x: 0, y: rowsHeight, width: size.width, height: 1)),
-                with: .color(Theme.cream.opacity(0.12))
-            )
-            // Then each written stroke: its line through the rows tinted, and
-            // its circle on that line in the lane. Gong outermost, so three on
-            // one beat nest instead of hiding each other.
-            let byTick = Dictionary(grouping: colotomic, by: \.tick)
-            for (tick, hits) in byTick {
+            // Each colotomic stroke's line through the rows, tinted.
+            for (tick, hits) in Dictionary(grouping: colotomic, by: \.tick) {
                 let x = CGFloat(tick) * pxPerTick
                 let instruments = Set(hits.map(\.instrument))
                 let loudest = ColotomicInstrument.allCases.first { instruments.contains($0) }!
@@ -574,11 +586,114 @@ struct PianoRollCanvas: View {
                     Path(CGRect(x: x - 1, y: 0, width: 2, height: rowsHeight)),
                     with: .color(loudest.color.opacity(0.45))
                 )
-                for instrument in instruments {
-                    ColotomicMark.draw(instrument, in: ctx, at: CGPoint(x: x, y: laneMid), scale: 1)
-                }
+            }
+            // The lane itself — the review's, under its rows. The editor pins
+            // its own (`PianoRollLane`) and passes no height.
+            if laneHeight > 0 {
+                Self.drawLane(ctx, colotomic: colotomic, top: rowsHeight, height: laneHeight, width: size.width, pxPerTick: pxPerTick)
             }
         }
+    }
+
+    /// The colotomic lane: a rule along its top, and each stroke's circle on
+    /// its line. Gong outermost, so three on one beat nest instead of hiding
+    /// each other.
+    static func drawLane(
+        _ ctx: GraphicsContext,
+        colotomic: [DraftColotomic],
+        top: CGFloat,
+        height: CGFloat,
+        width: CGFloat,
+        pxPerTick: CGFloat
+    ) {
+        ctx.fill(
+            Path(CGRect(x: 0, y: top, width: width, height: 1)),
+            with: .color(Theme.cream.opacity(0.12))
+        )
+        let mid = top + height / 2
+        for (tick, hits) in Dictionary(grouping: colotomic, by: \.tick) {
+            let x = CGFloat(tick) * pxPerTick
+            for instrument in Set(hits.map(\.instrument)) {
+                ColotomicMark.draw(instrument, in: ctx, at: CGPoint(x: x, y: mid), scale: 1)
+            }
+        }
+    }
+}
+
+/// The ruler pinned over the editor's rows, following the roll sideways by
+/// its offset, with the line's flag on it. Scrubs from the first touch: a tap
+/// puts the line there, a drag carries it. The roll still scrolls from the
+/// grid below.
+private struct PinnedRuler: View {
+    let viewModel: CreateKotekViewModel
+    let lead: CGFloat
+    let pxPerTick: CGFloat
+    let snapTicks: Int
+    let scroll: LaneScroll
+
+    var body: some View {
+        let x = scroll.x
+        // Hung on an empty view, not framed: the ruler is the whole timeline
+        // wide, and a `maxWidth: .infinity` frame round it took that width —
+        // the roll grew thousands of points wide and its rows were laid out
+        // off the screen.
+        Color.clear
+            .overlay(alignment: .topLeading) {
+                ZStack(alignment: .topLeading) {
+                    PianoRollRuler(bars: KotekanDraft.timelineBars, pxPerTick: pxPerTick)
+                    PreviewPlayhead(viewModel: viewModel, pxPerTick: pxPerTick, flag: true)
+                }
+                .frame(width: CGFloat(KotekanDraft.timelineTicks) * pxPerTick, alignment: .topLeading)
+                .offset(x: lead - x)
+            }
+            .clipped()
+        .contentShape(Rectangle())
+        // In the pinned frame's space, so the scroll offset is added back.
+        .gesture(
+            DragGesture(minimumDistance: 0).onChanged { value in
+                viewModel.seek(toTick: Int((value.location.x + x - lead) / pxPerTick))
+            }
+        )
+        .accessibilityElement()
+        .accessibilityLabel("Playhead")
+        .accessibilityAdjustableAction { direction in
+            let step = direction == .increment ? snapTicks : -snapTicks
+            viewModel.seek(toTick: Int(viewModel.playhead) + step)
+        }
+    }
+}
+
+/// The roll's horizontal scroll offset, for the pinned ruler and lane.
+@Observable
+private final class LaneScroll {
+    var x: CGFloat = 0
+}
+
+/// The colotomic lane pinned under the editor's rows, following the roll
+/// sideways by its offset — it sits outside the vertical scroll view, so it
+/// cannot be in the horizontal one. Shaded past the figure's end, as the
+/// rows are.
+private struct PianoRollLane: View {
+    let colotomic: [DraftColotomic]
+    let patternTicks: Int
+    let lead: CGFloat
+    let pxPerTick: CGFloat
+    let scroll: LaneScroll
+
+    var body: some View {
+        let x = scroll.x
+        Canvas { ctx, size in
+            ctx.translateBy(x: lead - x, y: 0)
+            let width = size.width + x
+            PianoRollCanvas.drawLane(ctx, colotomic: colotomic, top: 0, height: size.height, width: width, pxPerTick: pxPerTick)
+            let end = CGFloat(patternTicks) * pxPerTick
+            if end < width {
+                ctx.fill(Path(CGRect(x: end, y: 0, width: width - end, height: size.height)), with: .color(.black.opacity(0.28)))
+                ctx.fill(Path(CGRect(x: end - 1, y: 0, width: 2.5, height: size.height)), with: .color(Theme.gold))
+            }
+        }
+        .clipped()
+        .allowsHitTesting(false)
     }
 }
 
@@ -731,16 +846,20 @@ private final class ScrollOffset {
 struct PreviewPlayhead: View {
     let viewModel: CreateKotekViewModel
     let pxPerTick: CGFloat
+    /// The flag, on the ruler; false draws the line alone, through the rows.
+    var flag = true
 
     private static let flagWidth: CGFloat = 14
 
     var body: some View {
         let color = viewModel.recording ? Theme.miss : Theme.cream
         VStack(spacing: 0) {
-            PlayheadFlag()
-                .fill(color)
-                .frame(width: Self.flagWidth, height: 16)
-                .padding(.top, 3)
+            if flag {
+                PlayheadFlag()
+                    .fill(color)
+                    .frame(width: Self.flagWidth, height: 16)
+                    .padding(.top, 3)
+            }
             Rectangle()
                 .fill(color)
                 .frame(width: 2)
