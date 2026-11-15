@@ -32,11 +32,15 @@ final nonisolated class CueMixer: @unchecked Sendable {
     enum Group { case key, colotomic }
 
     static let fadeSeconds = 0.02
+    /// A hand damping a ringing bilah: quick, but a choke rather than a cut —
+    /// at `fadeSeconds` it clicked like a sample stopping, not bronze stopped.
+    static let dampSeconds = 0.08
     private static let capacity = 48
 
     private enum Command {
         case play(AVAudioPCMBuffer, source: Int, group: Group, gainL: Float, gainR: Float)
         case fade(Group?)
+        case damp(source: Int)
         case clear
     }
 
@@ -58,6 +62,7 @@ final nonisolated class CueMixer: @unchecked Sendable {
 
     let sampleRate: Double
     private let fadeStep: Float
+    private let dampStep: Float
     private let slots: UnsafeMutablePointer<Voice>
     private var keepAlive = [AVAudioPCMBuffer?](repeating: nil, count: capacity)
 
@@ -69,6 +74,7 @@ final nonisolated class CueMixer: @unchecked Sendable {
     init(sampleRate: Double) {
         self.sampleRate = sampleRate
         fadeStep = Float(1 / max(1, sampleRate * Self.fadeSeconds))
+        dampStep = Float(1 / max(1, sampleRate * Self.dampSeconds))
         slots = .allocate(capacity: Self.capacity)
         let empty = Voice(samples: UnsafePointer(bitPattern: 1)!)
         slots.initialize(repeating: empty, count: Self.capacity)
@@ -109,6 +115,11 @@ final nonisolated class CueMixer: @unchecked Sendable {
     /// Fade out one group, or everything for nil.
     func fade(_ group: Group?) {
         pending.withLock { $0.append(.fade(group)) }
+    }
+
+    /// Stop whatever `source` is ringing, as a hand on the bilah would.
+    func damp(source: Int) {
+        pending.withLock { $0.append(.damp(source: source)) }
     }
 
     /// Drop every voice at once. Only for a stopped engine, where no audio is
@@ -158,6 +169,10 @@ final nonisolated class CueMixer: @unchecked Sendable {
                 for s in 0 ..< Self.capacity where slots[s].active && (group == nil || slots[s].group == group) {
                     beginFade(s)
                 }
+            case let .damp(source):
+                for s in 0 ..< Self.capacity where slots[s].active && slots[s].source == source {
+                    beginFade(s, step: dampStep)
+                }
             case .clear:
                 for s in 0 ..< Self.capacity {
                     slots[s].active = false
@@ -168,8 +183,8 @@ final nonisolated class CueMixer: @unchecked Sendable {
         scratch.removeAll(keepingCapacity: true)
     }
 
-    private func beginFade(_ s: Int) {
-        if slots[s].fadeStep == 0 { slots[s].fadeStep = fadeStep }
+    private func beginFade(_ s: Int, step: Float? = nil) {
+        if slots[s].fadeStep == 0 { slots[s].fadeStep = step ?? fadeStep }
     }
 
     private func start(_ buffer: AVAudioPCMBuffer, source: Int, group: Group, gainL: Float, gainR: Float) {

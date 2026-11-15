@@ -404,11 +404,30 @@ final class CreateKotekViewModel {
     private func sound(from: Double, to: Double) {
         guard to > from else { return }
         let range = from ..< to
+        // The damps first, where the roll draws them: a stroke stops ringing
+        // at its damp cap, not when its two-second sample runs out. Before the
+        // strikes, so a damp and the next stroke in one frame never stop the
+        // new one. Each half is its own source in the mixer (`partner`), so
+        // one half's damp leaves the other's stroke on the same bilah ringing.
+        let length = max(1, draft.lengthTicks)
+        let rings = KotekanDraft.rings(draft.notes, patternTicks: length)
+        for note in draft.notes {
+            guard let ring = rings[note.id], ring.damps else { continue }
+            let at = note.tick + ring.ticks
+            if range.contains(Double(recording ? at : at % length)) {
+                cue.dampKey(index: note.key, partner: note.half == .sangsih)
+            }
+        }
         for note in draft.notes where range.contains(Double(note.tick)) {
             // A hit written on the line the take starts on was heard as it
             // was played; the line leaving it must not strike it again.
             if recording, note.half == writing, take.contains(note.tick) { continue }
-            cue.playKeySample(index: note.key, pan: note.half == .polos ? -0.3 : 0.3, volume: 0.8)
+            cue.playKeySample(
+                index: note.key,
+                pan: note.half == .polos ? -0.3 : 0.3,
+                volume: 0.8,
+                partner: note.half == .sangsih
+            )
         }
         // By beat, not from `draft.colotomic`: a recording runs past the end
         // of the figure, where the draft lays no cycle yet.

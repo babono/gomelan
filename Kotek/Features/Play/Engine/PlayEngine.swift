@@ -270,6 +270,10 @@ final class PlayEngine {
     // The partner's half: sounded by the app, never judged (§7).
     private var partnerNotes: [Note] = []
     private var partnerFired: [Bool] = []
+    /// Damps owed to bilah the guide and the partner have sounded, by the
+    /// clock (`currentTimeMs`) they fall due on. Kept apart from the pass:
+    /// the last stroke of one pass is damped in the next.
+    private var pendingDamps: [(atMs: Double, key: Int, partner: Bool)] = []
     /// The two voices you can silence — see `AppState` for which starts where
     /// and why. Defaults here match: your half on, the partner off.
     ///
@@ -455,6 +459,7 @@ final class PlayEngine {
         partnerNotes = (partner?.notes ?? []).sorted { $0.timeMs < $1.timeMs }
         partnerSongID = partner?.id
         partnerFired = Array(repeating: false, count: partnerNotes.count)
+        pendingDamps = []
     }
 
     /// `hostTime` is for engines that must share one clock — the two lanes of
@@ -813,6 +818,7 @@ final class PlayEngine {
             tickUserTurnCue(patternTime: patternTime, beatMs: beatMs, states: &states)
             tickGuide(patternTime: patternTime)
         }
+        tickDamps()
 
         renderStates = states
         dueKey = phase.isUserPlaying ? nearestOpenKey(patternTime: patternTime) : nil
@@ -1033,8 +1039,32 @@ final class PlayEngine {
             if until <= 0, until > -60 {
                 guideFired[i] = true
                 cue?.playKeySample(index: notes[i].keyIndex, pan: yourPan)
+                oweDamp(notes, i, partner: false)
             }
         }
+    }
+
+    /// The damp the waterfall draws under stroke `i` — `Note.damped`, else
+    /// whether the half's next stroke moves to another bilah — owed to the
+    /// audio at the end of its ring.
+    private func oweDamp(_ list: [Note], _ i: Int, partner: Bool) {
+        let note = list[i]
+        let next = i + 1 < list.count ? list[i + 1] : list[0]
+        guard note.damped ?? (next.keyIndex != note.keyIndex) else { return }
+        let at = patternOriginMs + scaledTime(note) + Double(note.durationMs) / tempoScale
+        pendingDamps.append((at, note.keyIndex, partner))
+    }
+
+    /// Damps the bilah whose ring has run out. One far ahead of the clock
+    /// was owed before a jump back (a restart): dropped, or it would stop a
+    /// fresh stroke.
+    private func tickDamps() {
+        guard !pendingDamps.isEmpty else { return }
+        pendingDamps.removeAll { $0.atMs - currentTimeMs > patternMs }
+        for d in pendingDamps where d.atMs <= currentTimeMs {
+            cue?.dampKey(index: d.key, partner: d.partner)
+        }
+        pendingDamps.removeAll { $0.atMs <= currentTimeMs }
     }
 
     /// The partner's half — sounded, never judged and never cued on the bilah:
@@ -1045,7 +1075,8 @@ final class PlayEngine {
             let until = scaledTime(partnerNotes[i]) - patternTime
             if until <= 0, until > -60 {
                 partnerFired[i] = true
-                cue?.playKeySample(index: partnerNotes[i].keyIndex, pan: partnerPan, volume: 0.85)
+                cue?.playKeySample(index: partnerNotes[i].keyIndex, pan: partnerPan, volume: 0.85, partner: true)
+                oweDamp(partnerNotes, i, partner: true)
             }
         }
     }

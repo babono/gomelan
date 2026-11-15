@@ -49,7 +49,10 @@ final class CuePlayer {
     /// R --------------------------------------------------------------------
     private var mixer: CueMixer? // R
 
-    private enum Voice { case key(Int), gong, kempur, klentong, kajar } // R
+    /// `partnerKey`: the other half's bilah, its own source so damping one
+    /// player's stroke never stops the other's on the same bilah — two
+    /// gangsa, two hands.
+    private enum Voice { case key(Int), partnerKey(Int), gong, kempur, klentong, kajar } // R
 
     /// What a re-strike replaces: each key, and each colotomic sound, is its own.
     private func play(_ buffer: AVAudioPCMBuffer, as voice: Voice, pan: Float = 0, volume: Float = 1) { // R
@@ -57,6 +60,7 @@ final class CuePlayer {
         let group: CueMixer.Group
         switch voice {
         case let .key(i): (source, group) = (i, .key)
+        case let .partnerKey(i): (source, group) = (Self.partnerSource + i, .key)
         case .gong: (source, group) = (100, .colotomic)
         case .kempur: (source, group) = (101, .colotomic)
         case .klentong: (source, group) = (102, .colotomic)
@@ -235,10 +239,22 @@ final class CuePlayer {
     /// A gangsa key. `pan` places the voice in the stereo field — your own half
     /// on one side, your partner's on the other, the way two players sit facing
     /// each other across the pair (§7).
-    func playKeySample(index: Int, pan: Float = 0, volume: Float = 1) {
+    func playKeySample(index: Int, pan: Float = 0, volume: Float = 1, partner: Bool = false) {
         guard ensureLive(), let buf = keyBuffers[index] else { return }
-        play(buf, as: .key(index), pan: pan, volume: volume) // R
+        play(buf, as: partner ? .partnerKey(index) : .key(index), pan: pan, volume: volume) // R
     }
+
+    /// The hand stopping a bilah: what `playKeySample` left ringing on it
+    /// dies away (`CueMixer.dampSeconds`). Without it every stroke rang its
+    /// whole sample, two seconds, through the damp the waterfall showed.
+    func dampKey(index: Int, partner: Bool = false) {
+        guard started, engine.isRunning else { return }
+        mixer?.damp(source: (partner ? Self.partnerSource : 0) + index)
+    }
+
+    /// Where the partner's bilah sources start; clear of the keys and the
+    /// colotomic sounds (100…103).
+    private static let partnerSource = 200
 
     func playGong() {
         guard ensureLive(), let buf = gongBuffer else { return }
