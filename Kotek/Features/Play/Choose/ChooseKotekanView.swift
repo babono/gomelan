@@ -5,7 +5,9 @@
 //  Pick the interlocking figure to learn. A swipe or a tap on a side card
 //  brings it to the middle and plays it; a tap on the centred card starts it
 //  — alone, or into the coop setup when the corner menu says Co-op — and a
-//  long press there lifts it for Edit / Delete.
+//  long press there lifts it for Edit / Delete, and Copy to another gangsa:
+//  a player's own figure is filed on the gangsa it was made on, and shown on
+//  that one only.
 //
 //  Start, bottom right, was the one way on for a while, because a tap on the
 //  focused card used to start the session and a tap meant to hear a figure
@@ -57,7 +59,8 @@ private struct ChooseKotekanContentView: View {
             // Kipli in the gap between the header and the rail, his bubble
             // opening to his right. In the bottom row the filter pills covered
             // it; among the header's controls it dropped onto the subtitle.
-            KipliGuide(message: "Swipe to hear each kotekan. Tap one to play it.", style: .quiet)
+            // After a copy he says where it went, then goes back to his line.
+            KipliGuide(message: app.copiedNotice ?? "Swipe to hear each kotekan. Tap one to play it.", style: .quiet)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 // Above the rail, which is drawn after him.
                 .zIndex(1)
@@ -127,7 +130,10 @@ private struct ChooseKotekanContentView: View {
             }
         }
         .onAppear { vm.onAppear() }
-        .onDisappear { vm.onDisappear() }
+        .onDisappear {
+            vm.onDisappear()
+            app.copiedNotice = nil
+        }
         // The figure, not the slot: a filter can change what sits in the
         // focused slot without the slot moving.
         .onChange(of: vm.current?.id) { _, _ in vm.onSlotChanged() }
@@ -156,6 +162,9 @@ private struct ChooseKotekanContentView: View {
         // Built-ins are on every phone already.
         if k.source != .builtin {
             items.append(CardMenuItem(title: "Share", systemImage: "square.and.arrow.up") { vm.share(k) })
+            if vm.canCopy {
+                items.append(CardMenuItem(title: "Copy to another gangsa", systemImage: "doc.on.doc") { vm.copy(k) })
+            }
             items.append(CardMenuItem(title: "Edit", systemImage: "pencil") { vm.edit(k) })
             items
                 .append(CardMenuItem(title: "Delete", systemImage: "trash", destructive: true) { vm.pendingDelete = k })

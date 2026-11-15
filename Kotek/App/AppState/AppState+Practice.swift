@@ -11,6 +11,15 @@ import OSLog
 extension AppState {
     // MARK: - Kotekan Catalogue
 
+    /// The figures the picker shows on the gangsa in play: the built-ins and
+    /// the player's own filed on it. They used to be the account's, every
+    /// figure on every gangsa — one made for a seven-bilah gangsa turned up on
+    /// the ten-bilah one too. A figure is moved across by copying it
+    /// (`copyKotekan`).
+    var kotekansOnGangsa: [Kotekan] {
+        kotekans.filter { $0.isFiled(on: profile) }
+    }
+
     /// Swap in the database's catalogue, if it has one.
     func refreshCatalogue() async {
         do {
@@ -36,8 +45,10 @@ extension AppState {
     /// An edit has the same id as the figure it came from, so it replaces that
     /// figure — on the server (`saveKotekan` upserts) and in the rail.
     func saveKotekan(_ k: Kotekan) async throws {
+        var k = k
         let instrument = profile
         let instrumentID = UUID(uuidString: instrument.id) == nil ? nil : instrument.id
+        k.instrumentID = instrumentID
         // R The instrument goes up first, as it does before a practice
         // R session: `kotekan.instrument_id` points at `instruments`, and a
         // R player who writes a figure before ever finishing a session has
@@ -53,6 +64,24 @@ extension AppState {
         editingKotekan = nil
         selectedKotekan = k
         screen = .chooseKotekan
+    }
+
+    /// A copy of one of the player's own figures on another of their gangsa:
+    /// a new id, so the two go their own ways after — editing one leaves the
+    /// other. Stays on the gangsa in play; Kipli says where it went.
+    func copyKotekan(_ k: Kotekan, to instrument: InstrumentProfile) async throws {
+        guard k.source != .builtin else { return }
+        var copy = k
+        copy.id = UUID().uuidString.lowercased()
+        copy.instrumentID = UUID(uuidString: instrument.id) == nil ? nil : instrument.id
+        // Up first, as in `saveKotekan`: `kotekan.instrument_id` points at
+        // `instruments`, and that gangsa may never have been uploaded.
+        if copy.instrumentID != nil { try await instrumentRemote.saveInstrument(instrument) }
+        try await kotekanRepo.saveKotekan(RemoteKotekan(copy, source: copy.source, instrumentID: copy.instrumentID))
+        kotekans.append(copy)
+        KotekanStore.save(kotekans)
+        copyingKotekan = nil
+        copiedNotice = "Copied \(k.name) to \(instrument.name). It's on that gangsa's rail now."
     }
 
     /// One of the player's own figures, from the server and the rail. Its

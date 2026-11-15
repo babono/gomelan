@@ -140,7 +140,8 @@ extension Kotekan {
             strokeMs: Int((60000.0 / Double(r.bpm)).rounded()),
             colotomic: r.source == .builtin ? Kotekan.builtinKajar(slots: r.polos.count) : r.colotomic,
             polosDamp: r.polosDamp,
-            sangsihDamp: r.sangsihDamp
+            sangsihDamp: r.sangsihDamp,
+            instrumentID: r.instrumentID
         )
     }
 

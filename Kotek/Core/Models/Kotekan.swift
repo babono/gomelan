@@ -134,6 +134,19 @@ struct Kotekan: Identifiable, Codable, Equatable {
     /// (`KotekanStore`) has no key for them, and must still decode.
     var polosDamp: [Int?]?
     var sangsihDamp: [Int?]?
+    /// The gangsa a player's own figure is filed on (`kotekan.instrument_id`):
+    /// the picker shows it on that gangsa only. Nil on the built-ins, which
+    /// are on every gangsa, and on a figure made on a gangsa that was never
+    /// uploaded — or cached (`KotekanStore`) before this was kept, until the
+    /// next fetch fills it in.
+    var instrumentID: String?
+
+    /// Whether the picker shows this figure on `gangsa`. Ids are compared as
+    /// UUIDs: the database hands them back upper-case.
+    func isFiled(on gangsa: InstrumentProfile) -> Bool {
+        guard source != .builtin, let instrumentID else { return true }
+        return instrumentID.caseInsensitiveCompare(gangsa.id) == .orderedSame
+    }
 
     ///    static let strokesPerCycle = 16
     var slotsPerCycle: Int {

@@ -7,6 +7,10 @@
 //  on the right as Choose your gangsa shows them, then Add. A guest is asked
 //  to link an Apple ID first — sharing is between accounts.
 //
+//  The same screen copies one of the player's own figures onto another of
+//  their gangsa, from the picker's card menu — the only differences are the
+//  words and that a copy needs no sign-in.
+//
 //  It was a dialog laid out like `ConfirmDialog`, choosing the gangsa from a
 //  menu of names. A full screen on the paper ground, with the cards, reads as
 //  the rest of the app does, and a gangsa is known by its picture first.
@@ -19,11 +23,15 @@ struct AddSharedKotekanView: View {
     @State private var viewModel: AddSharedKotekanViewModel
 
     init(id: String, app: AppState) {
-        _viewModel = State(initialValue: AddSharedKotekanViewModel(id: id, app: app))
+        _viewModel = State(initialValue: AddSharedKotekanViewModel(source: .shared(id), app: app))
+    }
+
+    init(copying k: Kotekan, app: AppState) {
+        _viewModel = State(initialValue: AddSharedKotekanViewModel(source: .copy(k), app: app))
     }
 
     var body: some View {
-        if app.account == .guest || signInPreview {
+        if !viewModel.isCopy, app.account == .guest || signInPreview {
             // A preview's Apple button only closes: the account on this phone
             // may well be linked already.
             ShareSignInView(origin: app.screen, linksAccount: !signInPreview, onClose: viewModel.close)
@@ -42,11 +50,17 @@ struct AddSharedKotekanView: View {
 
     private var screen: some View {
         VStack(spacing: 0) {
-            TopBar(
-                title: viewModel.phase == .notFound ? "Kotekan not found" : "Add a shared kotekan",
-                subtitle: viewModel.phase == .notFound ? nil : "Someone sent you a kotekan",
-                onBack: viewModel.close
-            )
+            Group {
+                if viewModel.isCopy {
+                    TopBar(title: "Copy to another gangsa", subtitle: "From \(app.profile.name)", onBack: viewModel.close)
+                } else {
+                    TopBar(
+                        title: viewModel.phase == .notFound ? "Kotekan not found" : "Add a shared kotekan",
+                        subtitle: viewModel.phase == .notFound ? nil : "Someone sent you a kotekan",
+                        onBack: viewModel.close
+                    )
+                }
+            }
 
             // The shared card, the arrow and the chosen gangsa, centred as one
             // group. The rail starts at the chosen card and runs on to the
@@ -123,12 +137,23 @@ struct AddSharedKotekanView: View {
             // No gangsa: the empty slot holds "Add a gangsa".
             if !viewModel.gangsa.isEmpty {
                 // Just "Add": the gold card already says which gangsa.
-                AppButton(
-                    title: viewModel.isAdding ? "Adding…" : "Add",
-                    systemImage: "plus",
-                    prominence: .primary,
-                    action: viewModel.add
-                )
+                Group {
+                    if viewModel.isCopy {
+                        AppButton(
+                            title: viewModel.isAdding ? "Copying…" : "Copy",
+                            systemImage: "doc.on.doc",
+                            prominence: .primary,
+                            action: viewModel.add
+                        )
+                    } else {
+                        AppButton(
+                            title: viewModel.isAdding ? "Adding…" : "Add",
+                            systemImage: "plus",
+                            prominence: .primary,
+                            action: viewModel.add
+                        )
+                    }
+                }
                 .disabled(!viewModel.canAdd)
             }
         }

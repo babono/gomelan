@@ -34,6 +34,86 @@
         }
       }
     },
+    "Choose the gangsa to copy %@ to. The copy is its own, so changing one leaves the other." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pilih gangsa tujuan salinan %@. Salinannya berdiri sendiri, jadi mengubah yang satu tidak mengubah yang lain."
+          }
+        }
+      }
+    },
+    "Copied %@ to %@. It's on that gangsa's rail now." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ sudah disalin ke %2$@. Sekarang ada di deretan kotekan gangsa itu."
+          }
+        }
+      }
+    },
+    "Copy" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salin"
+          }
+        }
+      }
+    },
+    "Copy to another gangsa" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salin ke gangsa lain"
+          }
+        }
+      }
+    },
+    "Copying it to %@…" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sedang menyalin ke %@…"
+          }
+        }
+      }
+    },
+    "Copying…" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menyalin…"
+          }
+        }
+      }
+    },
+    "Couldn't copy it. Check your connection and try again." : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Belum berhasil menyalinnya. Cek koneksimu, lalu coba lagi, ya."
+          }
+        }
+      }
+    },
+    "From %@" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dari %@"
+          }
+        }
+      }
+    },
     "Its name and notes open once you're signed in." : {
       "localizations" : {
         "id" : {
