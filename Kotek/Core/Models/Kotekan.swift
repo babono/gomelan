@@ -121,8 +121,12 @@ struct Kotekan: Identifiable, Codable, Equatable {
     /// Gong, kempur, klentong and kajar strokes a player wrote into their own figure.
     /// Empty for every built-in.
     ///
-    /// ponytail: only the kajar is played from here. The engine still lays the
-    /// gong and kempur under every figure itself and ignores the rest.
+    /// A player's figure is played with all of them, as Studio sounded it
+    /// (`Song.colotomic`). A built-in carries only its kajar, and the engine
+    /// lays its own gong and kempur under it. Until Nov 2026 the engine did
+    /// that under every figure and played only the kajar from here: Studio's
+    /// 8-beat cycle, gong on beat 5, came out with the gong on beat 1, a
+    /// kempur on 5 and no klentong.
     var colotomic: [ColotomicHit] = []
     /// Where the hand stops each stroke, slot by slot like `polos` and
     /// `sangsih`: how many slots it rings before it is damped. nil — the whole
@@ -268,7 +272,8 @@ struct Kotekan: Identifiable, Codable, Equatable {
             requiredKeys: requiredKeys,
             durationMs: duration,
             notes: notes,
-            kajarBeats: colotomic.filter { $0.instrument == .kajar }.map(\.slot)
+            kajarBeats: colotomic.filter { $0.instrument == .kajar }.map(\.slot),
+            colotomic: source == .builtin || colotomic.isEmpty ? nil : colotomic
         )
     }
 }

@@ -43,4 +43,9 @@ struct Song: Codable, Equatable, Identifiable {
     /// Beats within one cycle that sound a kajar. nil for a song with none
     /// written; the engine no longer lays a kajar of its own under a figure.
     var kajarBeats: [Int]?
+    /// The gong, kempur, klentong and kajar a player's figure carries — the
+    /// cycle Studio laid under it — slot by slot. Played as written, instead
+    /// of the engine's own gong and kempur. nil for a built-in, and for a
+    /// figure saved with none, which keep the engine's.
+    var colotomic: [ColotomicHit]?
 }

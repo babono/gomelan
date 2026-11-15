@@ -205,8 +205,15 @@ final class PlayEngine {
         durationMs: 0,
         notes: []
     ) {
-        didSet { kajarSlots = Set(song.kajarBeats ?? []) }
+        didSet {
+            kajarSlots = Set(song.kajarBeats ?? [])
+            figureColotomic = song.colotomic.map { Dictionary(grouping: $0, by: \.slot).mapValues { $0.map(\.instrument) } }
+        }
     }
+
+    /// A player's figure's own cycle, by slot (`Song.colotomic`): played as
+    /// written, gong and kempur included, in place of the engine's.
+    private var figureColotomic: [Int: [ColotomicInstrument]]?
 
     /// Where in the cycle the figure's own kajar falls. Only what the figure
     /// carries is sounded: a kajar laid under it by the engine was a second,
@@ -838,6 +845,18 @@ final class PlayEngine {
     /// keeps the pulse, and a click on top of it was a second, synthetic
     /// beat competing with the real one.
     private func soundColotomic(beat: Int) {
+        if let figureColotomic {
+            let slot = ((beat - introBeats) % cycleBeats + cycleBeats) % cycleBeats
+            for instrument in figureColotomic[slot] ?? [] {
+                switch instrument {
+                case .gong: cue?.playGong()
+                case .kempur: cue?.playKempur()
+                case .klentong: cue?.playKlentong()
+                case .kajar: cue?.playKajar()
+                }
+            }
+            return
+        }
         if isKajar(beat: beat) { cue?.playKajar() }
         switch colotomicIndex(forBeat: beat) {
         case 0: cue?.playGong()
