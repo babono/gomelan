@@ -8,10 +8,12 @@
 //  a sensor hit is. With no sensor to record from, each tap is written where
 //  the line is and moves it on a step (`CreateKotekViewModel.step`).
 //
-//  Sized as on the play screen (`WaterfallPlayView`), 150pt, with the near
-//  third of it sunk below the bottom of the view — it carries nothing, and
-//  the roll above gets the height. The play screen sinks half, to the glass;
-//  a played gangsa needs more bar above the home indicator to hit.
+//  Sized on its own, not by the play screen (`WaterfallPlayView`), which sinks
+//  its gangsa off the glass and draws the tiles at their own ratio. Here the
+//  strip is a fixed `shown` tall, ending at the safe area where a finger can
+//  hit (the roll above keeps its height), and the tiles stretch to its bottom
+//  (`GangsaLayout.stretches`). Their width is the lane a `laneHeight` gangsa
+//  would have, capped by the screen width, so a 14-bilah gangsa is narrower.
 //
 
 import SwiftUI
@@ -26,27 +28,31 @@ struct TouchGangsa: View {
 
     /// How long a tapped bar shows struck — the engine's flash length.
     private static let flash = 0.3
-    private static let height: CGFloat = 150
-    private static let sunkFraction: CGFloat = 0.3
-    /// Room above for the end posts, which stand `postRise` over the rail —
-    /// under 16pt at this height.
-    private static let postRoom: CGFloat = 16
+    /// Sets the lane (71pt), so the tile width, not the strip's length.
+    private static let laneHeight: CGFloat = 185
+    private static let shown: CGFloat = 120
+    /// Room above for the end posts, which stand `postRise` over the tiles —
+    /// under 20pt at the tallest lane (71pt).
+    private static let postRoom: CGFloat = 20
 
-    /// What shows above the bottom of the view; the rest runs on below it.
-    static let visibleHeight = postRoom + height * (1 - sunkFraction)
+    /// The whole strip, down to the safe area.
+    static let visibleHeight = postRoom + shown
 
     var body: some View {
         GeometryReader { geo in
             let keys = viewModel.keyCount
             let layout = GangsaLayout(
                 keyCount: keys,
-                width: GangsaLayout.width(keyCount: keys, height: Self.height, fitting: geo.size.width - 40)
+                width: GangsaLayout.width(keyCount: keys, height: Self.laneHeight, fitting: geo.size.width - 40),
+                stretches: true,
+                // Past the safe area and the 4pt under the strip, to the glass.
+                postBleed: 80
             )
 
             TimelineView(.animation(paused: struck == nil)) { timeline in
                 GangsaView(layout: layout, cues: cues(at: timeline.date), tilted: false)
             }
-            .frame(width: layout.frameWidth, height: Self.height)
+            .frame(width: layout.frameWidth, height: Self.shown)
             .contentShape(Rectangle())
             // shortcut: one finger at a time (one DragGesture); per-bar
             // gestures if both mallets ever need to play at once.
@@ -68,7 +74,6 @@ struct TouchGangsa: View {
                 }
             }
             .padding(.top, Self.postRoom)
-            // Taller than this view: the rest hangs off the screen.
             .frame(maxWidth: .infinity, alignment: .top)
         }
         .frame(height: Self.visibleHeight)

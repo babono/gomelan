@@ -24,6 +24,14 @@ struct GangsaLayout {
     let keyCount: Int
     /// Width of the playing area — the lanes, not the frame around them.
     let width: CGFloat
+    /// Tiles run on to the bottom of the view instead of stopping at their
+    /// 1.25 ratio: Studio's gangsa is played, so it is as long as the room
+    /// above the safe area allows, not cut off by it like the play screen's.
+    var stretches = false
+    /// How far the end posts run on below the view's bottom: Studio's reach
+    /// the glass, past the safe area the tiles stop at. They overflow the
+    /// frame, so nothing is laid out by it.
+    var postBleed: CGFloat = 0
 
     var lane: CGFloat {
         width / CGFloat(max(1, keyCount))
@@ -220,13 +228,18 @@ struct GangsaView: View {
     /// which a drawing group would clip.
     private func frame(height: CGFloat) -> some View {
         let postWidth = u * 58.5
+        let post = layout.stretches ? Tile.playPost : Self.post
         let shape = UnevenRoundedRectangle(topLeadingRadius: u * 16.3, topTrailingRadius: u * 16.3)
-        return HStack(spacing: 0) {
-            shape.fill(Self.post).frame(width: postWidth)
+        let tall = height + layout.postRise
+        // The frame sets the size the canvas beside it is laid out by, so the
+        // bleed overflows it: posts taller than the frame would stretch the
+        // tiles, which run to the bottom of the view, down with them.
+        return HStack(alignment: .top, spacing: 0) {
+            shape.fill(post).frame(width: postWidth, height: tall + layout.postBleed)
             Spacer(minLength: 0)
-            shape.fill(Self.post).frame(width: postWidth)
+            shape.fill(post).frame(width: postWidth, height: tall + layout.postBleed)
         }
-        .frame(width: layout.frameWidth, height: height + layout.postRise)
+        .frame(width: layout.frameWidth, height: tall, alignment: .top)
         .offset(y: -layout.postRise)
     }
 
@@ -245,6 +258,14 @@ struct GangsaView: View {
         static let struck = Color(hex: 0xD4703A)
         static let damped = Color(hex: 0xBEC1CB)
         static let dampedLine = Color(hex: 0x8F93A0)
+        // Studio's (`GangsaLayout.stretches`): the same hues, fuller. Nothing
+        // is translucent, but the pale tile and its tan number washed out on
+        // the cream canvas, and a bar you aim a finger at has to be seen.
+        static let playFill = Color(hex: 0xF2CF73)
+        static let playEdge = Color(hex: 0xD9B25A)
+        static let playLine = Color(hex: 0xD2A94F)
+        static let playNumber = Color(hex: 0xC96A2B)
+        static let playPost = Color(hex: 0xDD6F55)
     }
 
     /// The bar a hand is over: its two bars, blended by how far along it is.
@@ -264,7 +285,10 @@ struct GangsaView: View {
             x: layout.framePad + layout.laneCenter(key) - w / 2,
             y: layout.barTop,
             width: w,
-            height: max(0, min(layout.barHeight, height - layout.barTop))
+            // Less the edge under a tile (`drawBar`), so it is not cut.
+            height: max(0, layout.stretches
+                ? height - layout.barTop - w * 0.08
+                : min(layout.barHeight, height - layout.barTop))
         )
     }
 
@@ -301,18 +325,22 @@ struct GangsaView: View {
         }
         let tile = Path(roundedRect: rect, cornerRadius: corner)
         let line = max(0.5, w * 0.022)
+        let played = layout.stretches
         ctx.fill(
             Path(roundedRect: rect.offsetBy(dx: 0, dy: w * 0.078), cornerRadius: corner),
-            with: .color(Tile.edge)
+            with: .color(played ? Tile.playEdge : Tile.edge)
         )
-        ctx.fill(tile, with: .color(Tile.fill))
-        ctx.stroke(tile, with: .color(Tile.line), lineWidth: line)
-        // Low on the tile, where the mallet lands (`GangsaHands.strikeDepth`).
+        ctx.fill(tile, with: .color(played ? Tile.playFill : Tile.fill))
+        ctx.stroke(tile, with: .color(played ? Tile.playLine : Tile.line), lineWidth: line)
+        // High on the tile, above where the mallet lands
+        // (`GangsaHands.strikeDepth`): a tile is played over its lower part,
+        // by a finger in Studio or the mallet on the play screen, and either
+        // would cover a number sitting there. It was low on the tile.
         ctx.draw(
             Text("\(key + 1)")
                 .font(.system(size: max(10, w * 0.29), weight: .medium, design: .rounded))
-                .foregroundStyle(Tile.number),
-            at: CGPoint(x: rect.midX, y: rect.minY + rect.height * 0.66)
+                .foregroundStyle(played ? Tile.playNumber : Tile.number),
+            at: CGPoint(x: rect.midX, y: rect.minY + w * 0.42)
         )
         // `damp` eases in and out, so the slate blends over the tile.
         if cue.damp > 0 {
