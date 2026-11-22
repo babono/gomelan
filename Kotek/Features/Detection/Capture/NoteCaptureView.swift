@@ -68,7 +68,8 @@ private struct NoteCaptureContentView: View {
                     phase: viewModel.phase,
                     onSelect: { viewModel.inspect($0) }
                 )
-                .frame(maxHeight: .infinity, alignment: .top)
+                // Centred in the space left: on an iPad's taller screen, top-aligned tiles sat high.
+                .frame(maxHeight: .infinity)
 
                 footer
             }

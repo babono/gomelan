@@ -139,7 +139,7 @@ struct CoopStage: View {
                     .padding(.top, CoopStageLayout.header + 18)
             }
         }
-        // Down to the glass, as the solo waterfall does, so the sunk half
+        // Down to the glass, as the solo waterfall does, so the sunk part
         // of each gangsa is measured from the edge of the screen.
         .ignoresSafeArea(.container, edges: .bottom)
     }
@@ -157,15 +157,16 @@ struct CoopStage: View {
                 layout: layout,
                 voiced: voicedKeys,
                 yourHalf: lane.player.half,
-                damp: damp
+                damp: damp,
+                autoStrikes: true
             )
             .frame(width: layout.width, height: stage.canvasHeight)
             // Play-along: nothing is sensed, so the bars ring for every stroke.
             GangsaStage(engine: lane.engine, layout: layout, tilted: false, damp: damp, autoStrikes: true)
                 .frame(width: layout.frameWidth, height: stage.gangsaHeight)
         }
-        // Taller than the stage by the sunk half of the gangsa; aligned to the
-        // top, that half hangs off the bottom of the screen.
+        // Taller than the stage by the sunk part of the gangsa; aligned to the
+        // top, that part hangs off the bottom of the screen.
         .frame(width: stage.columnWidth, height: stage.size.height, alignment: .top)
     }
 }
@@ -180,8 +181,6 @@ private struct CoopStageLayout {
     /// Wide enough to read as a gap the bands cross, not a seam.
     static let gap: CGFloat = 36
     static let header: CGFloat = 40
-    /// How much of each gangsa sits below the screen edge, as in solo.
-    static let sunkFraction: CGFloat = 0.5
 
     var columnWidth: CGFloat {
         max(0, (size.width - Self.outerPad * 2 - Self.gap) / 2)
@@ -201,7 +200,10 @@ private struct CoopStageLayout {
     }
 
     var canvasHeight: CGFloat {
-        max(0, size.height - Self.header - gangsaHeight * (1 - Self.sunkFraction))
+        // Room for the taller of the two rows of tiles; the rest sinks below
+        // the glass, as in solo (`GangsaLayout.shownHeight`).
+        let shown = keyCounts.indices.map { layout($0).shownHeight }.max() ?? 0
+        return max(0, size.height - Self.header - shown)
     }
 
     /// Sized from the gangsa's height for a properly proportioned bar, and
@@ -295,7 +297,7 @@ private struct UnisonBands: View {
                 guard let b = right.first(where: { abs($0.msAhead - a.msAhead) < 1 }) else { continue }
                 // Through the middle of the two stroke pills.
                 let pill = WaterfallCanvas.strikeHeight(barWidth: leftLayout.barWidth)
-                let y = CoopStageLayout.header + height - a.msAhead * pxPerMs - pill / 2
+                let y = CoopStageLayout.header + height - GangsaLayout.lineInset - a.msAhead * pxPerMs - pill / 2
                 guard y > CoopStageLayout.header else { continue }
                 let from = stage.canvasX(0) + leftLayout.laneCenter(a.keyIndex) + leftLayout.barWidth / 2
                 let to = stage.canvasX(1) + rightLayout.laneCenter(b.keyIndex) - rightLayout.barWidth / 2
