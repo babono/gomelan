@@ -94,7 +94,7 @@ struct ResultsView: View {
                 onRetry: { app.retry() }
             )
         }
-        .padding(.horizontal, 40)
+        .padding(.horizontal, Theme.headerInset)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

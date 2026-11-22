@@ -32,10 +32,9 @@ private struct SettingsContentView: View {
         VStack(spacing: 0) {
             TopBar(
                 title: "Settings",
-                // Top right, where iOS puts Done on a sheet — Settings is
-                // dismissed, not navigated back from.
-                trailingTitle: "Done",
-                onTrailing: { app.closeSettings() }
+                // R Was a trailing "Done", as iOS puts it on a sheet. Every other
+                // screen leaves by the chevron at the leading edge, so Settings does.
+                onBack: { app.closeSettings() }
             )
 
             HStack(alignment: .top, spacing: 16) {
@@ -54,7 +53,7 @@ private struct SettingsContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Theme.deep.opacity(0.6), in: RoundedRectangle(cornerRadius: 22))
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Theme.headerInset)
             .padding(.bottom, 16)
         }
         .onChange(of: app.profile.id) { _, _ in

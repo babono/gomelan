@@ -36,7 +36,7 @@ struct PianoRollView: View {
     var body: some View {
         let draft = viewModel.draft
 
-        VStack(spacing: 6) {
+        VStack(spacing: 0) {
             // The transport where the title was: the bottom of the screen is
             // the gangsa's, and "New Kotek" said nothing the screen didn't.
             ZStack {
@@ -49,49 +49,55 @@ struct PianoRollView: View {
                         .disabled(draft.isEmpty)
                 }
             }
-            .frame(minHeight: 50)
+            .headerBar()
 
-            // Tight: on a phone the row only just holds every control (see
-            // `PianoRollControls`).
-            HStack(spacing: 6) {
-                PianoRollControls(viewModel: viewModel)
-                // The figure's own tempo, saved with it. Tempo beside it is
-                // only how fast the preview plays it back.
-                BPMField(bpm: Bindable(draft).bpm)
-                AppMenuPicker<Double>.tempo($viewModel.tempoScale)
-                // The gong cycle under the figure. Its own control, not a
-                // tool: the colotomic line is laid, never drawn by hand.
-                AppMenuPicker(
-                    options: ColotomicTemplate.allCases,
-                    selection: Bindable(draft).template,
-                    title: \.title,
-                    label: "Gong cycle",
-                    systemImage: "circle.circle"
-                )
-                // Under Next, where it sat before the transport took it.
-                AppMenuPicker(
-                    options: Subdivision.denominators.map(Subdivision.init(denominator:)),
-                    selection: $viewModel.snap,
-                    title: \.label,
-                    label: "Snap",
-                    systemImage: "squareshape.split.3x3"
-                )
-            }
+            VStack(spacing: 6) {
+                // Tight: on a phone the row only just holds every control (see
+                // `PianoRollControls`).
+                HStack(spacing: 6) {
+                    PianoRollControls(viewModel: viewModel)
+                    // The figure's own tempo, saved with it. Tempo beside it is
+                    // only how fast the preview plays it back.
+                    BPMField(bpm: Bindable(draft).bpm)
+                    AppMenuPicker<Double>.tempo($viewModel.tempoScale)
+                    // The gong cycle under the figure. Its own control, not a
+                    // tool: the colotomic line is laid, never drawn by hand.
+                    AppMenuPicker(
+                        options: ColotomicTemplate.allCases,
+                        selection: Bindable(draft).template,
+                        title: \.title,
+                        label: "Gong cycle",
+                        systemImage: "circle.circle"
+                    )
+                    // Under Next, where it sat before the transport took it.
+                    AppMenuPicker(
+                        options: Subdivision.denominators.map(Subdivision.init(denominator:)),
+                        selection: $viewModel.snap,
+                        title: \.label,
+                        label: "Snap",
+                        systemImage: "squareshape.split.3x3"
+                    )
+                }
 
-            if viewModel.showsGangsa {
-                PianoRollGrid(viewModel: viewModel, compact: true)
-                // Inside the safe area, unlike the play screen's: there the
-                // gangsa is only watched, here it is played, and bars sunk to
-                // the glass sat under the home indicator, where a tap went
-                // to the system's swipe instead of the bilah.
-                TouchGangsa(viewModel: viewModel)
-                    .padding(.bottom, 4)
-                    // A swipe off a bar must not go home on the first try.
-                    .defersSystemGestures(on: .bottom)
-            } else {
-                PianoRollGrid(viewModel: viewModel, compact: false)
-                    .padding(.bottom, 4)
+                if viewModel.showsGangsa {
+                    PianoRollGrid(viewModel: viewModel, compact: true)
+                    // Inside the safe area, unlike the play screen's: there the
+                    // gangsa is only watched, here it is played, and bars sunk to
+                    // the glass sat under the home indicator, where a tap went
+                    // to the system's swipe instead of the bilah.
+                    TouchGangsa(viewModel: viewModel)
+                        .padding(.bottom, 4)
+                        // A swipe off a bar must not go home on the first try.
+                        .defersSystemGestures(on: .bottom)
+                } else {
+                    PianoRollGrid(viewModel: viewModel, compact: false)
+                        .padding(.bottom, 4)
+                }
             }
+            // On top of the safe area, not instead of it: the landscape inset
+            // already clears the notch and home indicator. Tight both ways: the
+            // tools row needs the width, and fourteen bilah rows need the height.
+            .padding(.horizontal, 8)
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.showsGangsa)
         // The count before a take, as the play screen counts back in from a
@@ -108,11 +114,6 @@ struct PianoRollView: View {
             }
         }
         .animation(.easeOut(duration: 0.15), value: viewModel.countIn)
-        // On top of the safe area, not instead of it: the landscape inset
-        // already clears the notch and home indicator. Tight both ways: the
-        // tools row needs the width, and fourteen bilah rows need the height.
-        .padding(.horizontal, 8)
-        .padding(.top, 4)
     }
 }
 

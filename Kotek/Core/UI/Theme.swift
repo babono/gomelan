@@ -198,6 +198,16 @@ enum Theme {
     /// ours — Sign in with Apple — sits at the same height beside it.
     static let buttonHeight: CGFloat = 52
 
+    // The header's one set of metrics (`headerBar()`), so the back button sits
+    // at the same x and y on every screen. It was 24, 8, 40 and 0 from the edge
+    // and 4, 6, 10, 12, 14 and 18 from the top, depending on who drew the bar.
+    // 10 + 44 + 8 = 62: the play screens' old total (6 + 50 + 6), so the stage
+    // under a bar does not resize.
+    static let headerInset: CGFloat = 24
+    static let headerTop: CGFloat = 10
+    static let headerBottom: CGFloat = 8
+    static let headerHeight: CGFloat = AppButtonSize.regular.height
+
     /// The main action's label weight, shared so the buttons cannot drift
     /// apart. Bold, in sentence case: "Next", as the redesign draws it. It was
     /// Black, uppercase and tracked ("NEXT") on the brown design.

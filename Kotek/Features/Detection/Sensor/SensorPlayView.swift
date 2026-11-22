@@ -32,8 +32,7 @@ struct SensorPlayView: View {
 
         VStack(spacing: 0) {
             header(vm: vm)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
+                .headerBar()
 
             HStack(alignment: .top, spacing: 16) {
                 VStack(spacing: 12) {
@@ -44,7 +43,7 @@ struct SensorPlayView: View {
                 .frame(maxWidth: .infinity)
                 hitLog(sensor: vm.sensor).frame(width: 220)
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Theme.headerInset)
             .frame(maxHeight: .infinity)
 
             NotesRiver(
@@ -75,7 +74,7 @@ struct SensorPlayView: View {
         @Bindable var bindableVM = vm
 
         return HStack(spacing: 12) {
-            AppButton(title: "Back", systemImage: "chevron.left", size: .compact) {
+            AppIconButton(systemImage: "chevron.left", label: "Back") {
                 app.closeSensorTest()
             }
             statusPill(sensor: vm.sensor)
@@ -91,8 +90,7 @@ struct SensorPlayView: View {
             .tint(Theme.gold)
             AppButton(
                 title: vm.running ? "Stop" : "Play",
-                systemImage: vm.running ? "stop.fill" : "play.fill",
-                size: .compact
+                systemImage: vm.running ? "stop.fill" : "play.fill"
             ) {
                 vm.toggleSession(app: app)
             }

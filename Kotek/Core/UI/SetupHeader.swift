@@ -61,7 +61,7 @@ struct SetupHeader: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text("Step \(step) of \(total)"))
         }
-        .padding(.top, 14)
+        .headerBar()
     }
 
     /// The design system's plain "Skip": words in Merah tua, not a button, so

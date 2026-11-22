@@ -41,28 +41,26 @@ private struct LearnWatchView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 14) {
-                AppIconButton(systemImage: "chevron.left", label: "Back to the patterns", size: .compact) {
+                AppIconButton(systemImage: "chevron.left", label: "Back to the patterns") {
                     vm.teardown()
                     app.exitLearn()
                 }
                 LearnStrip(stage: .watch)
                 Spacer(minLength: 0)
                 if LearnProgress.learnedAny {
-                    AppButton(title: "Free play", size: .compact) {
+                    AppButton(title: "Free play") {
                         vm.teardown()
                         app.skipLearn()
                     }
                     .fixedSize()
                 }
-                AppButton(title: "Next", trailingSystemImage: "chevron.right", prominence: .primary, size: .compact) {
+                AppButton(title: "Next", trailingSystemImage: "chevron.right", prominence: .primary) {
                     vm.teardown()
                     app.advanceLearn()
                 }
                 .fixedSize()
             }
-            .frame(height: 50)
-            .padding(.horizontal, 24)
-            .padding(.vertical, 6)
+            .headerBar()
 
             CoopStage(lanes: vm.lanes, voicedKeys: vm.voicedKeys, damp: app.dampGuide)
                 // Kipli says what the caption under the strip used to, parked

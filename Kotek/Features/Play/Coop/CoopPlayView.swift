@@ -39,9 +39,7 @@ private struct CoopPlayContentView: View {
         // the pause screen and a 3, 2, 1 back in.
         VStack(spacing: 0) {
             topBar(tempo: $bindableApp.tempoScale)
-                .frame(height: 50)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 6)
+                .headerBar()
                 .frame(maxWidth: .infinity)
                 .background {
                     if vm.paused {
