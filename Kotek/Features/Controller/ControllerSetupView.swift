@@ -48,7 +48,6 @@ private struct ControllerSetupContent: View {
                     onInfo: { vm.app.openGuide(guide) },
                     infoLabel: infoLabel
                 )
-                .padding(.horizontal, 24)
             } else {
                 TopBar(
                     title: "Sensor controller",
@@ -68,7 +67,7 @@ private struct ControllerSetupContent: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.horizontal, 40)
+            .padding(.horizontal, Theme.headerInset)
             .padding(.bottom, Theme.footerBottom)
         }
         .onAppear {

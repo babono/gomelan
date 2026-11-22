@@ -122,7 +122,7 @@ struct AddSharedKotekanView: View {
                 Spacer(minLength: 0)
                 footerButton
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Theme.headerInset)
             .padding(.bottom, Theme.footerBottom)
         }
         .background { PatternBackground().ignoresSafeArea() }

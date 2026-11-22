@@ -9,9 +9,10 @@
 import SwiftUI
 
 /// One size per bar: every control in a bar — labelled, icon-only and the
-/// primary alike — takes the same size. Flow-screen footers and headers are
-/// `.regular`; the compact strips over the camera feed are `.compact`; `.large`
-/// is for a lone hero button, never a bar that holds other controls.
+/// primary alike — takes the same size. Flow-screen footers and every header
+/// (`headerBar()`) are `.regular`; `.compact` is for utilities inside a card or
+/// a panel, never a screen's header; `.large` is for a lone hero button, never
+/// a bar that holds other controls.
 enum AppButtonSize {
     /// Top-bar chips, dialog buttons, utilities inside a card.
     case compact

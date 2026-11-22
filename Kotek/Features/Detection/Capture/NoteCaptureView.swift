@@ -41,15 +41,12 @@ private struct NoteCaptureContentView: View {
                     trailingTitle: viewModel.isReview ? nil : "Skip",
                     onTrailing: app.closeNoteCapture
                 )
-                .padding(.horizontal, 24)
             } else {
                 TopBar(
                     title: "Capture note clips",
-                    backTitle: "Back",
                     onBack: app.closeNoteCapture,
                     trailingText: "\(viewModel.keysWithClips.count) / \(app.profile.keys.count)",
-                    accent: Theme.copper,
-                    compact: true
+                    accent: Theme.copper
                 )
             }
 
@@ -73,7 +70,7 @@ private struct NoteCaptureContentView: View {
 
                 footer
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Theme.headerInset)
             .padding(.top, 14)
             .padding(.bottom, Theme.footerBottom)
         }

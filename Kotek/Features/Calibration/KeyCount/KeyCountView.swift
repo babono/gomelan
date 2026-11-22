@@ -30,14 +30,12 @@ struct KeyCountView: View {
             // Adding a gangsa is three steps, and says so; editing one is not.
             if app.isAddingNewInstrument {
                 SetupHeader(step: 1, leadingTitle: "Cancel", onLeading: { app.cancelInstrumentSetup() })
-                    .padding(.horizontal, 40)
             } else {
+                // The one slim bar (`headerBar()`): a taller one took a fifth of
+                // a landscape phone and pushed Next off the bottom.
                 TopBar(
                     title: "Set up your gangsa",
-                    onBack: { app.cancelInstrumentSetup() },
-                    // Slim: at full size the header alone took a fifth of a
-                    // landscape phone and pushed Next off the bottom.
-                    compact: true
+                    onBack: { app.cancelInstrumentSetup() }
                 )
             }
 
@@ -79,7 +77,7 @@ struct KeyCountView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.leading, 32)
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, Theme.headerInset)
             .frame(maxHeight: .infinity)
 
             HStack {
@@ -94,7 +92,7 @@ struct KeyCountView: View {
                     app.keyCountChosen(count, name: name, photo: photo)
                 }
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, Theme.headerInset)
             .padding(.bottom, Theme.footerBottom)
         }
         // The keyboard eats half a landscape phone and has no Done key of its

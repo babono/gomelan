@@ -31,17 +31,20 @@ struct KotekanCardView: View {
     static let maxHeight: CGFloat = 210
 
     var body: some View {
-        let nearness: CGFloat = max(0, 1 - min(abs(CGFloat(offset)), 1.6) / 1.6)
+        // 0 on the centred card, 1 from one card away.
+        let away = min(abs(CGFloat(offset)), 1)
 
         // The centred card is the selected one: gold, edged, tumpal — see
-        // `pickerCard`. The rest fade with their distance from it, as the
-        // design system draws them pale; the face stays white.
+        // `pickerCard`. The rest fade as the gangsa rail's do
+        // (`InstrumentCardView`): the content to 0.55, then the whole card by up
+        // to 0.55 again, so the pair read as one design.
         return content
-            .opacity(0.4 + 0.6 * nearness)
+            .opacity(1 - 0.45 * away)
             .padding(16)
             .frame(width: Self.cardWidth, height: height, alignment: .topLeading)
             .pickerCard(selected: abs(offset) < 0.5)
-            .scaleEffect(1 - (1 - sideScale) * min(abs(CGFloat(offset)), 1))
+            .scaleEffect(1 - (1 - sideScale) * away)
+            .opacity(1 - 0.55 * away)
     }
 
     private var content: some View {

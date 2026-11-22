@@ -157,7 +157,9 @@ enum GangsaHands {
 
     /// Against the art's own scale. 0.75 read as a toy beside the bar.
     private static let malletScale: CGFloat = 1.1
-    /// Where the round end lands, down the bar from its top, in art units: the
-    /// bar's number (100 of the bar's 110-wide drawing units, 0.4 art units each).
-    private static let strikeDepth: CGFloat = 40.2
+    /// Where the round end lands, down the bar from its top, in art units:
+    /// the middle of the tile, a little below its number, which sits above
+    /// (`GangsaView.drawBar`). It was 40.2, the number's old place low on the
+    /// tile, and read as the bar's bottom rather than its middle.
+    private static let strikeDepth: CGFloat = 32
 }

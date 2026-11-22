@@ -99,6 +99,19 @@ extension View {
 
 // MARK: - Top bar
 
+extension View {
+    /// The row every screen's header controls sit in: one height, one inset
+    /// from the edge, one top. `TopBar` and `SetupHeader` use it, and so does
+    /// any screen that draws its own bar (Learn, the waterfall, the editor), so
+    /// Back lands in the same place on all of them.
+    func headerBar() -> some View {
+        frame(height: Theme.headerHeight)
+            .padding(.horizontal, Theme.headerInset)
+            .padding(.top, Theme.headerTop)
+            .padding(.bottom, Theme.headerBottom)
+    }
+}
+
 /// The consistent screen header: optional back affordance, centred display
 /// title, optional trailing status text. `tint` is the strong text colour for
 /// the surface; supporting text is derived from it.
@@ -142,8 +155,6 @@ struct TopBar: View {
     var status: (color: Color, label: String)?
     var tint: Color = Theme.heading
     var accent: Color = Theme.description
-    /// Slimmer header with no divider — used over full-bleed camera screens.
-    var compact: Bool = false
     /// Folds the gear and the strike-controller status into one ⋯ menu, as the
     /// pickers draw it: the status is worth a glance, not a corner of its own.
     var showsMenu: Bool = false
@@ -151,9 +162,6 @@ struct TopBar: View {
     /// menu. It was a Co-op button, first a gold primary, which shouted over
     /// the carousel it sits above; keep whatever goes here secondary.
     var accessory: AnyView?
-    /// Space between the controls and the safe-area edge. The pickers pass 0 so
-    /// the buttons sit in the corners, on the line their carousel ends at.
-    var edgeInset: CGFloat = 24
 
     var body: some View {
         VStack(spacing: 0) {
@@ -216,10 +224,9 @@ struct TopBar: View {
                     }
                 }
             }
-            .padding(.horizontal, edgeInset)
-            .padding(.top, compact ? 10 : 18)
+            .headerBar()
             // Room for the subtitle, which hangs below the row.
-            .padding(.bottom, (compact ? 8 : 12) + (subtitle == nil ? 0 : 16))
+            .padding(.bottom, subtitle == nil ? 0 : 16)
         }
     }
 
@@ -228,7 +235,7 @@ struct TopBar: View {
     /// the widest side, and still read off-centre. Leading, in sentence case,
     /// it only has to stop where the controls start.
     private var titleBlock: some View {
-        let size: CGFloat = compact ? 22 : 28
+        let size: CGFloat = 28
         return Text(title)
             .font(.serif(size))
             .foregroundStyle(tint)

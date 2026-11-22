@@ -115,7 +115,7 @@ struct ProfileSetupView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.leading, 32)
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, Theme.headerInset)
             .frame(maxHeight: .infinity)
         }
         // The landscape keyboard covers most of the screen and a plain text

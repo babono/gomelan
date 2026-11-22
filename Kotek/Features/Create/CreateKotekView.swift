@@ -67,6 +67,6 @@ struct CreateTopBar<Leading: View, Trailing: View>: View {
                 trailing
             }
         }
-        .frame(minHeight: 50)
+        .headerBar()
     }
 }

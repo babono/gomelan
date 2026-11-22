@@ -71,7 +71,7 @@ struct CoopSetupView: View {
                         .fixedSize()
                 }
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, Theme.headerInset)
             .frame(maxHeight: .infinity)
 
             footer
@@ -98,7 +98,7 @@ struct CoopSetupView: View {
             }
             .disabled(!playable)
         }
-        .padding(.horizontal, 28)
+        .padding(.horizontal, Theme.headerInset)
         .padding(.bottom, Theme.footerBottom)
     }
 }

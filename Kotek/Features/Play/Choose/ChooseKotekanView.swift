@@ -52,8 +52,7 @@ private struct ChooseKotekanContentView: View {
                 showsMenu: true,
                 accessory: AnyView(HStack(spacing: 14) { SensorChip()
                     modeMenu
-                }),
-                edgeInset: 0
+                })
             )
 
             // Kipli in the gap between the header and the rail, his bubble
@@ -62,6 +61,7 @@ private struct ChooseKotekanContentView: View {
             // After a copy he says where it went, then goes back to his line.
             KipliGuide(message: app.copiedNotice ?? "Swipe to hear each kotekan. Tap one to play it.", style: .quiet)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Theme.headerInset)
                 // Above the rail, which is drawn after him.
                 .zIndex(1)
 
@@ -73,6 +73,9 @@ private struct ChooseKotekanContentView: View {
                 }
             }
             .frame(maxHeight: .infinity)
+            // The rail, the pills and the top bar all start and end on the one
+            // inset (`headerInset`); the side cards size themselves to the rail.
+            .padding(.horizontal, Theme.headerInset)
 
             filterBar
         }
@@ -185,8 +188,8 @@ private struct ChooseKotekanContentView: View {
         .fixedSize()
     }
 
-    /// The pills bottom left, + bottom right, flush to the safe-area edge
-    /// where the top bar's buttons and the rail's outer cards end.
+    /// The pills bottom left, + bottom right, on the inset where the top bar's
+    /// buttons and the rail's outer cards end.
     private var filterBar: some View {
         @Bindable var vm = viewModel
         return HStack(spacing: 10) {
@@ -200,6 +203,7 @@ private struct ChooseKotekanContentView: View {
             Spacer(minLength: 0)
             AppIconButton(systemImage: "plus", label: "Create kotek") { vm.create() }
         }
+        .padding(.horizontal, Theme.headerInset)
         .padding(.bottom, Theme.footerBottom)
     }
 

@@ -28,7 +28,7 @@ struct ReviewKotekView: View {
     var body: some View {
         @Bindable var draft = viewModel.draft
 
-        VStack(spacing: 10) {
+        VStack(spacing: 0) {
             CreateTopBar(
                 title: String(localized: "Review"),
                 subtitle: "\(draft.bpm) BPM · \(String(localized: "\(draft.bars) bars")) · \(draft.source == .automatic ? String(localized: "Recorded") : String(localized: "Tapped in"))"
@@ -38,43 +38,45 @@ struct ReviewKotekView: View {
                 EmptyView()
             }
 
-            HStack {
-                Spacer()
-                ReviewLegend()
+            VStack(spacing: 10) {
+                HStack {
+                    Spacer()
+                    ReviewLegend()
+                }
+
+                PatternOverview(viewModel: viewModel)
+
+                HStack(spacing: 12) {
+                    AppIconButton(systemImage: "stop.fill", label: "Back to start") {
+                        viewModel.stopPreview()
+                    }
+                    AppIconButton(
+                        systemImage: viewModel.playing ? "pause.fill" : "play.fill",
+                        label: viewModel.playing ? "Pause" : "Play",
+                        prominence: .primary
+                    ) { viewModel.togglePlay() }
+                    PlayheadClock(viewModel: viewModel)
+                        .padding(.leading, 4)
+
+                    Spacer(minLength: 12)
+
+                    if let error = viewModel.saveError {
+                        Text(error)
+                            .font(.sans(13, weight: .medium))
+                            .foregroundStyle(Theme.miss)
+                            .lineLimit(2)
+                    }
+                    AppButton(title: "Edit") { viewModel.back() }
+                    AppButton(title: viewModel.saving ? "Saving…" : "Save", prominence: .primary) {
+                        viewModel.pause()
+                        naming = true
+                    }
+                    .disabled(!viewModel.canSave)
+                }
             }
-
-            PatternOverview(viewModel: viewModel)
-
-            HStack(spacing: 12) {
-                AppIconButton(systemImage: "stop.fill", label: "Back to start") {
-                    viewModel.stopPreview()
-                }
-                AppIconButton(
-                    systemImage: viewModel.playing ? "pause.fill" : "play.fill",
-                    label: viewModel.playing ? "Pause" : "Play",
-                    prominence: .primary
-                ) { viewModel.togglePlay() }
-                PlayheadClock(viewModel: viewModel)
-                    .padding(.leading, 4)
-
-                Spacer(minLength: 12)
-
-                if let error = viewModel.saveError {
-                    Text(error)
-                        .font(.sans(13, weight: .medium))
-                        .foregroundStyle(Theme.miss)
-                        .lineLimit(2)
-                }
-                AppButton(title: "Edit") { viewModel.back() }
-                AppButton(title: viewModel.saving ? "Saving…" : "Save", prominence: .primary) {
-                    viewModel.pause()
-                    naming = true
-                }
-                .disabled(!viewModel.canSave)
-            }
+            .padding(.horizontal, Theme.headerInset)
+            .padding(.bottom, 10)
         }
-        .padding(.horizontal, 40)
-        .padding(.vertical, 10)
         // The system alert with a text field was tried first. In landscape
         // the keyboard turns it into a full-screen entry sheet with its button
         // drawn on its side, so this is a card of our own, pinned near the top

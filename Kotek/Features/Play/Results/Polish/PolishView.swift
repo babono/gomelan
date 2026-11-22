@@ -62,7 +62,7 @@ struct PolishView: View {
                 )
             )
             roll
-                .padding(.horizontal, 24)
+                .padding(.horizontal, Theme.headerInset)
                 .padding(.bottom, Theme.footerBottom)
         }
     }

@@ -47,8 +47,7 @@ struct ChooseInstrumentView: View {
                 title: app.savedProfiles.isEmpty ? "Your gangsa" : "Choose your gangsa",
                 subtitle: app.savedProfiles.isEmpty ? nil : "Which one are you playing today?",
                 onBack: { app.screen = .welcome },
-                settingsAction: { app.openSettings() },
-                edgeInset: 0
+                settingsAction: { app.openSettings() }
             )
 
             if app.savedProfiles.isEmpty {
@@ -57,12 +56,14 @@ struct ChooseInstrumentView: View {
             } else {
                 rail
                     .frame(maxHeight: .infinity)
-                // Bottom right, flush to the safe-area edge, as on the kotekan picker.
+                    .padding(.horizontal, Theme.headerInset)
+                // Bottom right, on the top bar's inset, as on the kotekan picker.
                 HStack(alignment: .bottom) {
                     KipliGuide(message: "Tap your gangsa to begin.")
                     Spacer()
                     AppIconButton(systemImage: "plus", label: "Add gangsa") { app.addNewInstrument() }
                 }
+                .padding(.horizontal, Theme.headerInset)
                 .padding(.bottom, Theme.footerBottom)
             }
         }

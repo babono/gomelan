@@ -45,7 +45,7 @@ struct PracticeHistoryView: View {
                             HistoryRowView(row: row, kotekanName: kotekanName(row.kotekanID))
                         }
                     }
-                    .padding(.horizontal, 40)
+                    .padding(.horizontal, Theme.headerInset)
                     .padding(.vertical, 20)
                 }
             }

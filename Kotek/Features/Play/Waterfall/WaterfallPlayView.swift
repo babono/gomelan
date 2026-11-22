@@ -41,9 +41,7 @@ private struct WaterfallContentView: View {
             // than the playing title, and when the bar grew the stage under
             // it shrank — the whole gangsa visibly resized on every pause.
             topBar(tempo: $bindableApp.tempoScale)
-                .frame(height: 50)
-                .padding(.horizontal, 24)
-                .padding(.vertical, 6)
+                .headerBar()
                 // The pause dim's top half, behind the paused controls, so
                 // together with `PauseStage` it covers the whole screen. It
                 // stopped at the top bar, which left a bright band across the
@@ -322,10 +320,10 @@ private struct WaterfallContentView: View {
                 voiceMark
                 // Step's taps let notes go, so pausing needs a button there.
                 if case .step = lesson {
-                    AppIconButton(systemImage: "pause.fill", label: "Pause", size: .compact, action: vm.pause)
+                    AppIconButton(systemImage: "pause.fill", label: "Pause", action: vm.pause)
                 }
                 if case .listen = lesson {
-                    AppButton(title: "Next", trailingSystemImage: "chevron.right", size: .compact, action: vm.nextStep)
+                    AppButton(title: "Next", trailingSystemImage: "chevron.right", action: vm.nextStep)
                         .fixedSize()
                 }
             }
