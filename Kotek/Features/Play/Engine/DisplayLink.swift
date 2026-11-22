@@ -9,7 +9,8 @@
 import QuartzCore
 
 final class DisplayLink {
-    /// Called each frame on the main thread with the current host time (seconds).
+    /// Called each frame on the main thread with the host time (seconds) the
+    /// frame will be on screen.
     var onFrame: ((Double) -> Void)?
 
     private var link: CADisplayLink?
@@ -17,7 +18,14 @@ final class DisplayLink {
 
     func start() {
         guard link == nil else { return }
-        proxy.onFrame = { [weak self] in self?.onFrame?(CACurrentMediaTime()) }
+        // When the frame will be SHOWN, not when the callback happens to run.
+        // It was `CACurrentMediaTime()`, and the callback's place in the frame
+        // moves whenever ProMotion changes rate — as it does for any SwiftUI
+        // animation, such as the cycle number ticking over in the title — so
+        // for a few frames every note was drawn for the wrong instant: the
+        // falling notes jumped at the turn of every cycle. The simulator has
+        // one fixed rate and never showed it.
+        proxy.onFrame = { [weak self] time in self?.onFrame?(time) }
         let link = CADisplayLink(target: proxy, selector: #selector(Proxy.step))
         // Cap at 60Hz to avoid redundant redraws on ProMotion screens.
         link.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
@@ -33,9 +41,9 @@ final class DisplayLink {
     /// Keeps the CADisplayLink target off the owning object to avoid a retain
     /// cycle (CADisplayLink retains its target).
     private final class Proxy: NSObject {
-        var onFrame: (() -> Void)?
-        @objc func step() {
-            onFrame?()
+        var onFrame: ((Double) -> Void)?
+        @objc func step(_ link: CADisplayLink) {
+            onFrame?(link.targetTimestamp)
         }
     }
 }

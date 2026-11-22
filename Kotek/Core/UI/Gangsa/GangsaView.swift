@@ -2,18 +2,18 @@
 //  GangsaView.swift
 //  Kotek
 //
-//  The instrument, drawn: two end posts, a rail, and bronze bilah hung on a
-//  red cord. Every bar the same size — the graduated lengths of a real gangsa
-//  were dropped as visual noise; the numbers say low → high well enough. The
-//  bottom of the instrument sinks off the screen (see WaterfallPlayView), so
-//  it costs less of the stage. The waterfall lands on the top of the rail, so
-//  both read their geometry from `GangsaLayout` and a lane is exactly one
-//  bilah wide.
+//  The instrument, drawn: two end posts and a row of flat bilah tiles. Every
+//  bar the same size — the graduated lengths of a real gangsa were dropped as
+//  visual noise; the numbers say low → high well enough. The bottom of the
+//  view sinks off the screen (see WaterfallPlayView), so it costs less of the
+//  stage. The waterfall lands just above the tiles, so both read their
+//  geometry from `GangsaLayout` and a lane is exactly one bilah wide.
 //
-//  Proportions and colours are the design team's drawings
-//  (`gangsa_frame.svg`, `gangsa_key_default/dimmed/striked.svg`), kept in
-//  that drawing's units — a bar is 110 of them wide — so the whole thing
-//  scales with the lane and the frame grows with the key count.
+//  Proportions are the design team's drawings (`gangsa_frame.svg`,
+//  `gangsa_key_default/dimmed/striked.svg`), kept in that drawing's units — a
+//  bar is 110 of them wide — so the whole thing scales with the lane and the
+//  frame grows with the key count. The look is the play screen of November
+//  2026, which swapped those drawings' bronze bars, cord and rail for tiles.
 //
 
 import SwiftUI
@@ -77,6 +77,32 @@ struct GangsaLayout {
         return max(0, min(lane(forHeight: height) * n, available * n / (n + padInLanes)))
     }
 
+    /// How far above the waterfall's bottom edge its hit line sits, so the
+    /// pads on it are drawn whole: they straddle the line, and below the edge
+    /// is this view. Coop's bands read it to land on the same line.
+    static let lineInset: CGFloat = 4
+
+    /// Where the tiles hang from: the drawing's gap below the hit line, clear
+    /// of it even with a halo on. Less the line's inset, which the gap used
+    /// to be measured on top of — the line sat 4 pt too high over the tiles.
+    var barTop: CGFloat {
+        max(0, unit * 33.7 - Self.lineInset)
+    }
+
+    /// A tile is 1.25 of its width tall.
+    var barHeight: CGFloat {
+        barWidth * 1.25
+    }
+
+    /// How much of the instrument has to be on screen: the tiles whole, the
+    /// edge under them, and a little room before the glass. What is below it
+    /// — the posts' feet, the hands' wrists — can sink off the screen. It
+    /// used to be a fixed half of the view, from when the bars were long
+    /// bronze ones whose near ends carried nothing; that cut the tiles.
+    var shownHeight: CGFloat {
+        barTop + barHeight + barWidth * 0.3
+    }
+
     func laneCenter(_ key: Int) -> CGFloat {
         (CGFloat(key) + 0.5) * lane
     }
@@ -91,6 +117,8 @@ struct BilahCue: Equatable {
     var struckAge: Double?
     /// 0…1, the left hand should be pinching this bar.
     var damp: Double = 0
+    /// Seconds since the pinch began, for its shiver, while it plays out.
+    var dampAge: Double?
     /// The bar to strike next (Learn's Step): a dashed gold ring around it,
     /// its glow at this point of its pulse, 0…1. Nil on every other bar.
     var next: Double?
@@ -128,7 +156,6 @@ struct GangsaView: View {
             ZStack(alignment: .topLeading) {
                 frame(height: geo.size.height)
                 Canvas { ctx, size in
-                    drawCord(ctx)
                     if let damper {
                         GangsaHands.palm(ctx, bar: handBar(damper, height: size.height), pinch: damper.pose)
                     }
@@ -182,106 +209,42 @@ struct GangsaView: View {
 
     // MARK: - Frame
 
-    /// The redesign's frame: the landing gangsa's orange (`gangsa-table`),
-    /// shaded a step darker. It was carved teak, 0x7E4127 / 0x5A2E1B. Its own
-    /// value, not `Theme.primary`: the artwork kept its orange when the
-    /// primary became Merah, and the drawn gangsa has to match the artwork.
-    private static let wood = Color(hex: 0xDF6D2F)
-    private static let woodShade = Color(hex: 0xB9541F)
+    /// The end posts, in a soft Merah (the play redesign, November 2026).
+    /// They were the landing gangsa's orange (`gangsa-table`) with a shaded
+    /// strip facing the bars, and carved teak before that. There is no rail
+    /// any more: the one line to hit on is the waterfall's (`WaterfallCanvas`),
+    /// and a rail under it made two.
+    private static let post = Color(hex: 0xE09A88)
 
-    /// End posts and the rail. Views, not Canvas, because the posts stand
-    /// above the view's top edge, which a drawing group would clip.
+    /// Views, not Canvas, because the posts stand above the view's top edge,
+    /// which a drawing group would clip.
     private func frame(height: CGFloat) -> some View {
         let postWidth = u * 58.5
-        return ZStack(alignment: .topLeading) {
-            // The rail spans the lanes exactly; its top is the landing line.
-            Rectangle()
-                .fill(Self.wood)
-                .frame(width: layout.width, height: u * 13.4)
-                .offset(x: layout.framePad)
-            HStack(spacing: 0) {
-                post(width: postWidth, shadeOn: .trailing)
-                Spacer(minLength: 0)
-                post(width: postWidth, shadeOn: .leading)
-            }
-            .frame(width: layout.frameWidth, height: height + layout.postRise)
-            .offset(y: -layout.postRise)
-        }
-    }
-
-    /// The shaded strip faces the bars, as on the drawing.
-    private func post(width: CGFloat, shadeOn edge: HorizontalAlignment) -> some View {
         let shape = UnevenRoundedRectangle(topLeadingRadius: u * 16.3, topTrailingRadius: u * 16.3)
-        return shape
-            .fill(Self.wood)
-            .overlay(alignment: Alignment(horizontal: edge, vertical: .center)) {
-                Rectangle().fill(Self.woodShade).frame(width: u * 11)
-            }
-            .clipShape(shape)
-            .frame(width: width)
-    }
-
-    /// The cord the bars hang on, centre of the first bar to centre of the
-    /// last; only the bits between bars show.
-    private func drawCord(_ ctx: GraphicsContext) {
-        let y = barTop + u * 70
-        var line = Path()
-        line.move(to: CGPoint(x: layout.framePad + layout.laneCenter(0), y: y))
-        line.addLine(to: CGPoint(x: layout.framePad + layout.laneCenter(layout.keyCount - 1), y: y))
-        ctx.stroke(
-            line,
-            with: .color(Color(hex: 0x96561A)),
-            style: StrokeStyle(lineWidth: u * 12.5, lineCap: .round)
-        )
+        return HStack(spacing: 0) {
+            shape.fill(Self.post).frame(width: postWidth)
+            Spacer(minLength: 0)
+            shape.fill(Self.post).frame(width: postWidth)
+        }
+        .frame(width: layout.frameWidth, height: height + layout.postRise)
+        .offset(y: -layout.postRise)
     }
 
     // MARK: - Bars
 
-    /// Bars hang a little below the rail, clear of it even with a halo on.
-    private var barTop: CGFloat {
-        u * 33.7
-    }
-
-    /// The three looks of a bar from the drawings: at rest, pinched (dimmed),
-    /// and struck, which also carries a rim and a glow around the bar. In the
-    /// redesign's gold (`Theme.secondary`, the landing gangsa's bilah), where
-    /// they were bronze on a brown ground.
-    private struct Skin {
-        var top: Color
-        var bottom: Color
-        var ridge: Color
-        var ridgeWidth: CGFloat // units
-        var pegs: Color
-        var number: Color
-        var rim: Color = .clear
-        var glow: Color = .clear
-
-        static let rest = Skin(
-            top: Color(hex: 0xE7B142),
-            bottom: Color(hex: 0xC9932E),
-            ridge: Color(hex: 0xEFC468),
-            ridgeWidth: 42.3,
-            pegs: Color(hex: 0x2F2F2F),
-            number: Color(hex: 0x6B4A12)
-        )
-        static let dimmed = Skin(
-            top: Color(hex: 0x9C7A3C),
-            bottom: Color(hex: 0x9C7A3C),
-            ridge: Color(hex: 0xB28E4E),
-            ridgeWidth: 42.3,
-            pegs: Color(hex: 0x2F2F2F),
-            number: Color(hex: 0x2F2F2F)
-        )
-        static let struck = Skin(
-            top: Color(hex: 0xF3D29C),
-            bottom: Color(hex: 0xF3D29C),
-            ridge: Color(hex: 0xEFC468),
-            ridgeWidth: 56.3,
-            pegs: Color(hex: 0x2F2F2F),
-            number: Color(hex: 0x6B4A12),
-            rim: Color(hex: 0xFFFFFF),
-            glow: Color(hex: 0xFFFFFF, alpha: 0.4)
-        )
+    /// The bilah as flat tiles (the designer's play screen, November 2026):
+    /// Kayu on a darker edge, the number low on the tile; struck, Merah-orange
+    /// in a glowing gold ring; pinched, slate. They were bronze bars hung on
+    /// a red cord — a gradient, a ridge, two pegs, a white rim when struck —
+    /// long enough to run off the bottom of the screen.
+    private enum Tile {
+        static let fill = Color(hex: 0xF8E4B0)
+        static let edge = Color(hex: 0xE7D2A2)
+        static let line = Color(hex: 0xEED9A6)
+        static let number = Color(hex: 0xE8B784)
+        static let struck = Color(hex: 0xD4703A)
+        static let damped = Color(hex: 0xBEC1CB)
+        static let dampedLine = Color(hex: 0x8F93A0)
     }
 
     /// The bar a hand is over: its two bars, blended by how far along it is.
@@ -299,15 +262,16 @@ struct GangsaView: View {
         let w = layout.barWidth
         return CGRect(
             x: layout.framePad + layout.laneCenter(key) - w / 2,
-            y: barTop,
+            y: layout.barTop,
             width: w,
-            height: max(0, height - barTop)
+            height: max(0, min(layout.barHeight, height - layout.barTop))
         )
     }
 
     private func drawBar(_ ctx: GraphicsContext, key: Int, height: CGFloat) {
         let cue = cues[key] ?? BilahCue()
         let w = layout.barWidth
+        let corner = w * 0.155
         var rect = barRect(key, height: height)
 
         if let pulse = cue.next {
@@ -318,74 +282,45 @@ struct GangsaView: View {
             // Struck: the bar rings. A sideways shake that dies away fast,
             // like the bronze settling after the mallet.
             rect.origin.x += Self.ring(age: age) * w
-            let skin = Skin.struck
-            ctx.fill(
-                Path(roundedRect: rect.insetBy(dx: -u * 13, dy: -u * 13), cornerRadius: u * 34.9),
-                with: .color(skin.glow)
+            var ring = ctx
+            ring.addFilter(.shadow(color: Theme.gold.opacity(0.75), radius: w * 0.13))
+            ring.fill(
+                Path(roundedRect: rect.insetBy(dx: -w * 0.045, dy: -w * 0.045), cornerRadius: corner * 1.15),
+                with: .color(Theme.gold)
             )
-            ctx.fill(
-                Path(roundedRect: rect.insetBy(dx: -u * 8.3, dy: -u * 8.3), cornerRadius: u * 30.2),
-                with: .color(skin.rim)
-            )
-            drawSkin(ctx, skin, rect: rect, key: key)
+            ctx.fill(Path(roundedRect: rect, cornerRadius: corner * 0.85), with: .color(Tile.struck))
             return
         }
 
-        // Pinched: the bar shrinks a little and goes dark, as a damped bar
-        // falls silent. `damp` eases in and out, so both blend.
-        let d = CGFloat(cue.damp)
-        rect = CGRect(
-            x: rect.minX + d * w * 0.055,
-            y: rect.minY + d * u * 6,
-            width: rect.width - d * w * 0.11,
-            height: rect.height - d * u * 6
-        )
-        // The ground-coloured edge from the drawing, which also cuts the cord
-        // short of each bar.
+        // Pinched: one last shiver that dies at once, and the tile held down
+        // a hair. It used to shrink a little and go dark, the bronze falling
+        // silent.
+        if let age = cue.dampAge, !reduceMotion {
+            rect.origin.x += 0.031 * w * sin(2 * .pi * 28 * age) * exp(-age / 0.05)
+            rect.origin.y += 0.033 * w * min(1, age / 0.08)
+        }
+        let tile = Path(roundedRect: rect, cornerRadius: corner)
+        let line = max(0.5, w * 0.022)
         ctx.fill(
-            Path(roundedRect: rect.insetBy(dx: -u * 4.2, dy: -u * 4.2), cornerRadius: u * 26),
-            with: .color(Theme.ground)
+            Path(roundedRect: rect.offsetBy(dx: 0, dy: w * 0.078), cornerRadius: corner),
+            with: .color(Tile.edge)
         )
-        drawSkin(ctx, .rest, rect: rect, key: key)
-        if d > 0 {
-            var c = ctx
-            c.opacity = Double(d)
-            drawSkin(c, .dimmed, rect: rect, key: key)
-        }
-    }
-
-    private func drawSkin(_ ctx: GraphicsContext, _ skin: Skin, rect: CGRect, key: Int) {
-        ctx.fill(Path(roundedRect: rect, cornerRadius: u * 21.9), with: .linearGradient(
-            Gradient(colors: [skin.top, skin.bottom]),
-            startPoint: CGPoint(x: rect.midX, y: rect.minY + u * 20),
-            endPoint: CGPoint(x: rect.midX, y: rect.minY + u * 210)
-        ))
-
-        let ridgeW = u * skin.ridgeWidth * rect.width / layout.barWidth
-        let ridge = CGRect(
-            x: rect.midX - ridgeW / 2,
-            y: rect.minY + u * 10.4,
-            width: ridgeW,
-            height: rect.height - u * 20.8
-        )
-        ctx.fill(Path(roundedRect: ridge, cornerRadius: ridgeW * 0.345), with: .color(skin.ridge))
-
-        // Pegs through the two cord holes.
-        let r = u * 9.07
-        for y in [rect.minY + u * 40.2, rect.maxY - u * 40.2] {
-            ctx.fill(
-                Path(ellipseIn: CGRect(x: rect.midX - r, y: y - r, width: r * 2, height: r * 2)),
-                with: .color(skin.pegs)
-            )
-        }
-
-        // Key number, high on the bar — the near end is below the screen edge.
+        ctx.fill(tile, with: .color(Tile.fill))
+        ctx.stroke(tile, with: .color(Tile.line), lineWidth: line)
+        // Low on the tile, where the mallet lands (`GangsaHands.strikeDepth`).
         ctx.draw(
             Text("\(key + 1)")
-                .font(.system(size: max(11, layout.barWidth * 0.36), weight: .bold, design: .default))
-                .foregroundStyle(skin.number),
-            at: CGPoint(x: rect.midX, y: rect.minY + u * 100)
+                .font(.system(size: max(10, w * 0.29), weight: .medium, design: .rounded))
+                .foregroundStyle(Tile.number),
+            at: CGPoint(x: rect.midX, y: rect.minY + rect.height * 0.66)
         )
+        // `damp` eases in and out, so the slate blends over the tile.
+        if cue.damp > 0 {
+            var c = ctx
+            c.opacity = cue.damp
+            c.fill(tile, with: .color(Tile.damped))
+            c.stroke(tile, with: .color(Tile.dampedLine), lineWidth: line)
+        }
     }
 
     /// The bar to strike next: a soft gold glow that breathes with `pulse`,

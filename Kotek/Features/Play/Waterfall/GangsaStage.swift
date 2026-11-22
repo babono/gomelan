@@ -75,15 +75,17 @@ struct GangsaStage: View {
                     struck(note.keyIndex, age: -note.msAhead / 1000)
                 }
             }
-            for note in notes {
-                guard note.dampsAfter, damp.showsHand else { continue }
-                let hold = min(max(note.durationMs, 90), 400)
+            for note in damp.showsHand ? Self.pinches(notes) : [] {
+                let hold = Self.pinchHold(note)
                 let held = -(note.msAhead + note.durationMs)
                 damps.append((note.keyIndex, note.msAhead + note.durationMs, hold))
                 // Eased over 90 ms each way so the bar visibly shrinks
                 // into the pinch and back, instead of popping, and the thumb's
                 // turn onto it can be seen (60 ms was a blink).
                 let damp = min(1, held / 90, (hold - held) / 90)
+                if held >= 0, held < WaterfallCanvas.dampEffectMs {
+                    cues[note.keyIndex, default: BilahCue()].dampAge = held / 1000
+                }
                 if damp > 0 {
                     let earlier = cues[note.keyIndex]?.damp ?? 0
                     cues[note.keyIndex, default: BilahCue()].damp = max(earlier, damp)
@@ -142,7 +144,41 @@ struct GangsaStage: View {
         if let sensed = sensedStrike(engine.renderNow) {
             struck(sensed.key, age: sensed.age)
         }
+        // A damp after a stroke hides the struck look, still fading, which
+        // hid the grey — as on the line (`WaterfallCanvas`). A stroke as the
+        // bar is damped (a repeated note) is the new one, and keeps it.
+        for (key, cue) in cues {
+            if let struck = cue.struckAge, let damped = cue.dampAge, struck > damped + 0.01 {
+                cues[key]?.struckAge = nil
+            }
+        }
         return (cues, mallet, damper)
+    }
+
+    /// The damps to show, in order: where two fall due at the same instant,
+    /// only the older note's (struck first) — there is one left hand, and it
+    /// goes to the bar that has rung longest. Damps that only overlap are all
+    /// kept: dropping the later of those left bars ringing with no damp shown.
+    /// Shared with the line (`WaterfallCanvas`), so the grey pad, the bar and
+    /// the thumb agree.
+    static func pinches(_ notes: [FallingNote]) -> [FallingNote] {
+        let ordered = notes.filter(\.dampsAfter).sorted {
+            ($0.msAhead + $0.durationMs, $0.msAhead) < ($1.msAhead + $1.durationMs, $1.msAhead)
+        }
+        var kept: [FallingNote] = []
+        for note in ordered {
+            // Within a millisecond: one clock, so a tie is only float error.
+            if let last = kept.last, abs(note.msAhead + note.durationMs - (last.msAhead + last.durationMs)) < 1 {
+                continue
+            }
+            kept.append(note)
+        }
+        return kept
+    }
+
+    /// How long a pinch holds its bar: the note's own length, 90…400 ms.
+    static func pinchHold(_ note: FallingNote) -> Double {
+        min(max(note.durationMs, 90), 400)
     }
 
     /// A hand between two timed strokes: the last one at or before now and the
@@ -150,6 +186,12 @@ struct GangsaStage: View {
     /// the last `travelMs` before it (or the gap, if shorter, less `hold`, the
     /// time the last stroke keeps it there — so a run of fast notes never
     /// stops, and a pinch is never dragged along the bars).
+    ///
+    /// Always with at least half the gap to cross in, though, even if that
+    /// cuts the hold short — the bar stays pinched, the hand just sets off.
+    /// The floor was 40 ms: at speed a damp's hold is nearly the whole gap
+    /// (a note rings to the next stroke), so the thumb sat on its bar and
+    /// then jumped. The mallet has no hold, so it is never cut.
     ///
     /// The mallet was a copy per bar, fading in over each note and out after,
     /// and the damp hand likewise; they read as things blinking on, not as a
@@ -168,8 +210,8 @@ struct GangsaStage: View {
             // Nothing before it: waiting over the first bar.
             return (n.key, n.key, max(0, 1 - n.ms / GangsaHands.travelMs), nil, nil, nil)
         case let (p?, n?):
-            let crossing = max(40, min(n.ms - p.ms - p.hold, GangsaHands.travelMs))
             let gap = n.ms - p.ms
+            let crossing = min(GangsaHands.travelMs, max(gap - p.hold, gap / 2))
             return (p.key, n.key, n.ms < crossing ? 1 - n.ms / crossing : 0, -p.ms, -p.ms / gap, gap)
         }
     }

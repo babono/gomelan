@@ -343,7 +343,9 @@ final class PlayEngine {
     /// note, and the longest an unplayed note is ever left open. Both are
     /// really `strokeGap(around:)`; this is only the cap for a sparse figure.
     private let maxWindowMs: Double = 500
-    let flashDuration: Double = 0.3
+    /// Long enough for the hit's flare on the line to bloom and fade
+    /// (`WaterfallCanvas.drawHit`); it was 0.3 s while the hit was a column.
+    let flashDuration: Double = 0.5
 
     /// The count-in, in beats.
     ///
@@ -741,7 +743,11 @@ final class PlayEngine {
         // R Monotonic, so this falls to nil exactly once and never returns — the
         // R cue cannot reappear at the top of a loop.
         let firstNoteAt = introMs + (notes.first.map(scaledTime) ?? 0)
-        msUntilFirstNote = currentTimeMs < firstNoteAt ? firstNoteAt - currentTimeMs : nil
+        let untilFirst = currentTimeMs < firstNoteAt ? firstNoteAt - currentTimeMs : nil
+        // Only when it changes, like everything observed below: an @Observable
+        // property notifies on every assignment, equal or not, and a view
+        // reading it was rebuilt sixty times a second.
+        if msUntilFirstNote != untilFirst { msUntilFirstNote = untilFirst }
         // R Only assign when something actually expired. `floaters` is observed,
         // R and rewriting an identical array sixty times a second would
         // R invalidate the overlay every frame for nothing.
@@ -754,19 +760,25 @@ final class PlayEngine {
         let previousPhase = phase // R
 
         // phase and loop bookkeeping
+        // Assigned only on a change. Every tick, they notified every reader
+        // each frame — `WaterfallPlayView` reads `loopIndex` in its body for
+        // its onChange, so the whole play screen was rebuilt every frame, and
+        // the turn of a cycle, with its own work on top, dropped frames: the
+        // falling notes jumped at every loop.
         if currentTimeMs < introMs {
-            phase = .countIn
-            loopIndex = 0
-            patternOriginMs = introMs
+            if phase != .countIn { phase = .countIn }
+            if loopIndex != 0 { loopIndex = 0 }
+            if patternOriginMs != introMs { patternOriginMs = introMs }
         } else {
             let sinceIntro = currentTimeMs - introMs
             let idx = Int((sinceIntro / patternMs).rounded(.down))
-            loopIndex = idx
-            patternOriginMs = introMs + Double(idx) * patternMs
+            if loopIndex != idx { loopIndex = idx }
+            let origin = introMs + Double(idx) * patternMs
+            if patternOriginMs != origin { patternOriginMs = origin }
             // R The demo and the hand-over used to be two loops of one session,
             // R which meant sitting through the whole figure before playing a
             // R note. They are separate screens now, so the role decides.
-            phase = .userTurn
+            if phase != .userTurn { phase = .userTurn }
 
             if idx != lastLoopIndex {
                 // R Close the pass that just ended BEFORE the arrays are wiped —
@@ -784,7 +796,10 @@ final class PlayEngine {
                 outcomes = Array(repeating: nil, count: notes.count)
                 guideFired = Array(repeating: false, count: notes.count)
                 partnerFired = Array(repeating: false, count: partnerNotes.count)
-                flashes = [:]
+                // Flashes are left to expire on their own. They were wiped
+                // here, which cut the last stroke's flare on the line — and
+                // the first stroke's, struck a touch early — at every turn
+                // of the cycle: a stutter on the loop.
             }
         }
         _ = previousPhase
@@ -799,7 +814,7 @@ final class PlayEngine {
         flashes = flashes.filter { now <= $0.value.expiry }
 
         let beatIndex = Int(currentTimeMs / beatMs)
-        currentBeatIndex = max(0, beatIndex)
+        if currentBeatIndex != max(0, beatIndex) { currentBeatIndex = max(0, beatIndex) }
         if beatIndex != lastBeatIndex, currentTimeMs >= 0 {
             lastBeatIndex = beatIndex
             // R Unconditional — but for coop's second engine, see

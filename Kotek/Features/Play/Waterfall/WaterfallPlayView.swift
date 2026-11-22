@@ -62,12 +62,12 @@ private struct WaterfallContentView: View {
                 // stretching to fill the width. The frame scales with the bars,
                 // so its length follows the key count.
                 //
-                // More than half of it hangs off the bottom of the screen. The near
-                // ends of the bars carry nothing — notes land on the top edge —
-                // so sinking them buys waterfall height without making the
-                // bars any smaller.
+                // Everything below the tiles hangs off the bottom of the
+                // screen (`GangsaLayout.shownHeight`): the tiles show whole,
+                // and the rest buys waterfall height. It was more than half of
+                // the view while the bars were long bronze ones, whose near
+                // ends carried nothing.
                 let gangsaHeight = min(150, geo.size.height * 0.44)
-                let sunk = gangsaHeight * Self.sunkFraction
                 let layout = GangsaLayout(
                     keyCount: vm.keyCount,
                     width: GangsaLayout.width(
@@ -76,6 +76,7 @@ private struct WaterfallContentView: View {
                         fitting: geo.size.width - 40
                     )
                 )
+                let sunk = max(0, gangsaHeight - layout.shownHeight)
                 let lanesWidth = layout.width
 
                 VStack(spacing: 0) {
@@ -85,7 +86,8 @@ private struct WaterfallContentView: View {
                             layout: layout,
                             voiced: vm.voicedKeys,
                             yourHalf: app.chosenHalf,
-                            damp: app.dampGuide
+                            damp: app.dampGuide,
+                            autoStrikes: autoStrikes
                         )
                         StartCaption(engine: vm.engine)
                             .padding(.top, 18)
@@ -389,9 +391,6 @@ private struct WaterfallContentView: View {
         case .off: return nil
         }
     }
-
-    /// How much of the instrument sits below the screen edge.
-    private static let sunkFraction: CGFloat = 0.5
 
     private var swipeToTilt: some Gesture {
         DragGesture(minimumDistance: 24)
