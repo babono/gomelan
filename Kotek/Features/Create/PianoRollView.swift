@@ -227,7 +227,10 @@ private struct PianoRollGrid: View {
         let notes = draft.notes
         let colotomic = draft.colotomic
         let length = draft.lengthTicks
-        let timeline = KotekanDraft.timelineTicks
+        // The figure and one empty bar to tap into, which grows it. Past that
+        // too while a recording runs on beyond the end.
+        let rollBars = max(draft.bars, viewModel.playheadBar + 1) + 1
+        let timeline = rollBars * KotekanDraft.ticksPerBar
         let snap = viewModel.snap
         let writing = viewModel.writing
         let rows = viewModel.keyCount
@@ -235,7 +238,7 @@ private struct PianoRollGrid: View {
 
         GeometryReader { geo in
             let visible = max(1, geo.size.width - labelWidth)
-            let fitAll = visible / CGFloat(KotekanDraft.timelineBars * 4)
+            let fitAll = visible / CGFloat(rollBars * 4)
             let ppq = max(fitAll, Self.pointsPerQuarter * zoom)
             let pxPerTick = ppq / CGFloat(KotekanDraft.ticksPerQuarter)
             let width = CGFloat(timeline) * pxPerTick
@@ -342,7 +345,8 @@ private struct PianoRollGrid: View {
                         lead: lead,
                         pxPerTick: pxPerTick,
                         snapTicks: snap.ticks,
-                        scroll: laneScroll
+                        scroll: laneScroll,
+                        bars: rollBars
                     )
                 }
                 .frame(height: rulerHeight)
@@ -510,7 +514,8 @@ struct PianoRollCanvas: View {
     let notes: [DraftNote]
     let colotomic: [DraftColotomic]
     let lengthTicks: Int
-    /// Where the figure ends. The timeline runs on past it, shaded.
+    /// Where the figure ends: the last stroke rings to here. The roll runs one
+    /// bar on past it, shaded — a note there stretches the figure.
     let patternTicks: Int
     let snapTicks: Int
     /// The half being written, drawn on top; the other is dimmed. nil draws
@@ -550,15 +555,16 @@ struct PianoRollCanvas: View {
                 vline(tick, Theme.gold.opacity(0.55), 1.5)
             }
 
-            // Past the end of the figure: still writable — a note there
-            // stretches the figure to reach it — but shaded, so the loop point
-            // is never a guess.
+            // The empty bar past the figure: still writable — a note there
+            // stretches the figure to reach it — but shaded, so it never reads
+            // as used before something is in it.
             let end = CGFloat(patternTicks) * pxPerTick
-            ctx.fill(
-                Path(CGRect(x: end, y: 0, width: size.width - end, height: size.height)),
-                with: .color(.black.opacity(0.28))
-            )
-            ctx.fill(Path(CGRect(x: end - 1, y: 0, width: 2.5, height: size.height)), with: .color(Theme.gold))
+            if end < size.width {
+                ctx.fill(
+                    Path(CGRect(x: end, y: 0, width: size.width - end, height: size.height)),
+                    with: .color(.black.opacity(0.28))
+                )
+            }
 
             // The half you are not writing goes underneath, dimmed — visible
             // enough to interlock against, never mistaken for your own.
@@ -631,6 +637,7 @@ private struct PinnedRuler: View {
     let pxPerTick: CGFloat
     let snapTicks: Int
     let scroll: LaneScroll
+    let bars: Int
 
     var body: some View {
         let x = scroll.x
@@ -641,10 +648,10 @@ private struct PinnedRuler: View {
         Color.clear
             .overlay(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) {
-                    PianoRollRuler(bars: KotekanDraft.timelineBars, pxPerTick: pxPerTick)
+                    PianoRollRuler(bars: bars, pxPerTick: pxPerTick)
                     PreviewPlayhead(viewModel: viewModel, pxPerTick: pxPerTick, flag: true)
                 }
-                .frame(width: CGFloat(KotekanDraft.timelineTicks) * pxPerTick, alignment: .topLeading)
+                .frame(width: CGFloat(bars * KotekanDraft.ticksPerBar) * pxPerTick, alignment: .topLeading)
                 .offset(x: lead - x)
             }
             .clipped()
@@ -672,8 +679,8 @@ private final class LaneScroll {
 
 /// The colotomic lane pinned under the editor's rows, following the roll
 /// sideways by its offset — it sits outside the vertical scroll view, so it
-/// cannot be in the horizontal one. Shaded past the figure's end, as the
-/// rows are.
+/// cannot be in the horizontal one. Shaded past the figure's end, as the rows
+/// are.
 private struct PianoRollLane: View {
     let colotomic: [DraftColotomic]
     let patternTicks: Int
@@ -690,7 +697,6 @@ private struct PianoRollLane: View {
             let end = CGFloat(patternTicks) * pxPerTick
             if end < width {
                 ctx.fill(Path(CGRect(x: end, y: 0, width: width - end, height: size.height)), with: .color(.black.opacity(0.28)))
-                ctx.fill(Path(CGRect(x: end - 1, y: 0, width: 2.5, height: size.height)), with: .color(Theme.gold))
             }
         }
         .clipped()
