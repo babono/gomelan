@@ -24,7 +24,7 @@ enum FreePlayTour {
         var line: LocalizedStringResource {
             switch self {
             case .cycle: "This counts your cycles. One cycle is the whole pattern, once round."
-            case .gangsa: "Strike each bilah as its note lands on the rail. Swipe up on the gangsa to tilt it."
+            case .gangsa: "Strike each bilah as its note lands on the rail."
             case .sensor: "Sensor on: I can feel every hit, so your results can show the details."
             case .voice: "Hands busy? Turn on voice commands when paused, then say “slower”, “faster” or “pause”."
             case .pause: "Need a break? Tap anywhere to pause. Tempo, your half and this tour are there."

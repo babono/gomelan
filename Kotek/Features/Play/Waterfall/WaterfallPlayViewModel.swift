@@ -67,11 +67,6 @@ final class WaterfallPlayViewModel {
     private(set) var resumeCount: Int?
     private var resumeTask: Task<Void, Never>?
     private var pauseStartedAt: Double = 0
-    /// Flat (top-down) or tilted towards the player. Remembered, because the
-    /// view you like is the one you want next time.
-    var tilted: Bool = Defaults.bool("waterfallTilted", false) {
-        didSet { UserDefaults.standard.set(tilted, forKey: "waterfallTilted") }
-    }
 
     /// Voice commands, for when both hands are on the panggul. Off until
     /// turned on from the pause screen — it asks for the microphone, and the

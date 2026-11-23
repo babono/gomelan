@@ -50,7 +50,7 @@ struct TouchGangsa: View {
             )
 
             TimelineView(.animation(paused: struck == nil)) { timeline in
-                GangsaView(layout: layout, cues: cues(at: timeline.date), tilted: false)
+                GangsaView(layout: layout, cues: cues(at: timeline.date))
             }
             .frame(width: layout.frameWidth, height: Self.shown)
             .contentShape(Rectangle())

@@ -13,7 +13,6 @@ import SwiftUI
 struct GangsaStage: View {
     let engine: PlayEngine
     let layout: GangsaLayout
-    let tilted: Bool
     /// The bar a sensor fired on and how long ago, given the engine's
     /// `renderNow` — nil when none did in the last moment. A closure,
     /// evaluated in this body, so the per-frame read stays in here too.
@@ -28,7 +27,7 @@ struct GangsaStage: View {
 
     var body: some View {
         let figure = figure
-        GangsaView(layout: layout, cues: figure.cues, mallet: figure.mallet, damper: figure.damper, tilted: tilted)
+        GangsaView(layout: layout, cues: figure.cues, mallet: figure.mallet, damper: figure.damper)
     }
 
     private var figure: (cues: [Int: BilahCue], mallet: HandCue?, damper: HandCue?) {
