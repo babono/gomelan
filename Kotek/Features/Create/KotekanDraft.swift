@@ -19,8 +19,15 @@
 //  The gong, kempur, klentong and kajar are not written. They were — armed as
 //  tools and tapped onto the roll — and every figure ended up with the same
 //  line drawn by hand. Now `colotomic` lays a cycle under whatever is
+<<<<<<< Updated upstream
 //  written, from one of two templates (`ColotomicTemplate`), and the figure
 //  runs to whole cycles of it so each pass ends where the cycle does.
+=======
+//  written — gong, kempur, klentong, kempur 2, 4 or 8 beats apart, the kajar on
+//  every beat — from one of three templates (`ColotomicTemplate`). The figure
+//  is as long as it is written, and the cycle starts again with it; it once
+//  ran to whole cycles, which made it 8 to 32 bars.
+>>>>>>> Stashed changes
 //
 
 import Foundation
@@ -111,9 +118,12 @@ final class KotekanDraft {
     static let ticksPerBar = ticksPerQuarter * 4
     /// One BPM beat: the value labelled 1.
     static let ticksPerBeat = ticksPerBar
+<<<<<<< Updated upstream
     /// How far the piano roll scrolls. The figure itself is `bars` long and
     /// grows when a note is written past its end; this is just the room.
     static let timelineBars = 32
+=======
+>>>>>>> Stashed changes
     static let bpmRange = 1 ... 999
 
     /// Empty until the player names it on Save; `kotekan(id:)` falls back to
@@ -150,19 +160,36 @@ final class KotekanDraft {
     private var undoStack: [Snapshot] = []
     private var redoStack: [Snapshot] = []
 
+<<<<<<< Updated upstream
     /// Whole bars up to the last thing written. Not set by hand: a Bars stepper
     /// was one more control for something the notes already say, and it cut
     /// notes off when stepped down.
+=======
+    /// Whole bars up to the last thing written — one beat written is a one-beat
+    /// figure, two a two-beat one — and an empty figure shows one. Not set by
+    /// hand: a Bars stepper was one more control for something the notes
+    /// already say, and it cut notes off when stepped down. Taking the last
+    /// note out shrinks the figure again.
+    ///
+    /// It was rounded up to whole colotomic cycles, so each pass ended where the
+    /// gong cycle did. With the cycle 8 to 32 beats long that made a one-note
+    /// figure 8 to 32 bars and shaded the rest of a 32-bar roll; the figure is
+    /// as long as it is written, and the cycle starts again with it.
+>>>>>>> Stashed changes
     var bars: Int {
         // A note's end counts too, so one dragged across a bar line takes the
         // figure with it.
         // A ringing stroke does not: it would run the figure on forever.
         let last = notes.map { $0.tick + ($0.length ?? 1) - 1 }.max() ?? 0
+<<<<<<< Updated upstream
         let written = last / Self.ticksPerBar + 1
         // Up to whole cycles: a 2-beat figure over the 8-beat template looped
         // back to its start before the gong ever came round.
         let cycle = template.cycle.count
         return (written + cycle - 1) / cycle * cycle
+=======
+        return last / Self.ticksPerBar + 1
+>>>>>>> Stashed changes
     }
 
     var lengthTicks: Int {

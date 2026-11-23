@@ -65,6 +65,8 @@ struct KipliGuide: View {
     var detail: LocalizedStringKey?
     var style = Style.hint
     var mood = Mood.happy
+    /// Told when the bubble opens or closes, for a screen that clears room for it.
+    var onSpeaking: ((Bool) -> Void)?
 
     @State private var speaking = true
     /// Bumped each time he starts a line: restarts the talking and, for the
@@ -120,6 +122,9 @@ struct KipliGuide: View {
                 withAnimation(.easeInOut(duration: 0.2)) { speaking = true }
                 said += 1
             }
+            .onAppear { onSpeaking?(speaking) }
+            .onChange(of: speaking) { _, now in onSpeaking?(now) }
+            .onDisappear { onSpeaking?(false) }
     }
 
     private var laidOut: some View {

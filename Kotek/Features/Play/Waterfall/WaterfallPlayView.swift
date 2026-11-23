@@ -27,6 +27,9 @@ private struct WaterfallContentView: View {
     let app: AppState
     @Environment(\.scenePhase) private var scenePhase
     @State private var vm: WaterfallPlayViewModel
+    /// Kipli's bubble is open: the title gives it the room.
+    @State private var kipliSpeaking = false
+    private static let isPad = UIDevice.current.userInterfaceIdiom == .pad
 
     init(app: AppState) {
         self.app = app
@@ -36,23 +39,10 @@ private struct WaterfallContentView: View {
     var body: some View {
         @Bindable var bindableApp = app
 
-        VStack(spacing: 0) {
-            // One fixed height for both states. The paused panel is taller
-            // than the playing title, and when the bar grew the stage under
-            // it shrank — the whole gangsa visibly resized on every pause.
-            topBar(tempo: $bindableApp.tempoScale)
-                .headerBar()
-                // The pause dim's top half, behind the paused controls, so
-                // together with `PauseStage` it covers the whole screen. It
-                // stopped at the top bar, which left a bright band across the
-                // top of a paused screen.
-                .frame(maxWidth: .infinity)
-                .background {
-                    if vm.paused, vm.tourIndex == nil {
-                        Color.black.opacity(PauseStage.dim).ignoresSafeArea(edges: [.top, .horizontal])
-                    }
-                }
-
+        // The stage runs up to the top of the screen and the bar floats over
+        // it, so the notes are behind the title (and its blur) rather than
+        // under a band of empty ground.
+        ZStack(alignment: .top) {
             GeometryReader { geo in
                 // The instrument is sized from its HEIGHT and the lane width
                 // follows from a bronze bar's own proportions (`GangsaLayout`),
@@ -87,8 +77,10 @@ private struct WaterfallContentView: View {
                             damp: app.dampGuide,
                             autoStrikes: autoStrikes
                         )
+                        // Below the bar: the stage runs up behind it, and the
+                        // count sat under the title and its blur.
                         StartCaption(engine: vm.engine)
-                            .padding(.top, 18)
+                            .padding(.top, Theme.headerBand + 18)
                     }
                     .frame(width: lanesWidth)
                     .frame(maxHeight: .infinity)
@@ -123,37 +115,65 @@ private struct WaterfallContentView: View {
                         .padding(.trailing, 24)
                         .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
                 }
-                // Kipli, guiding Learn and cheering free play: top left, under
-                // the bar, where the notes have only just appeared — not down
-                // by the gangsa, where the eye is on them landing. His bubble
-                // opens at his right and closes itself.
-                .overlay(alignment: .topLeading) {
-                    // Not over the tour, where he is talking already.
-                    if let kipli = vm.kipli, vm.tourIndex == nil {
-                        KipliGuide(message: kipli.line, style: .quiet, mood: kipli.mood)
-                            .padding(.leading, 16)
-                            .padding(.top, 8)
-                    }
-                }
             }
             // Down to the physical edge of the screen, so "sunk" is measured
-            // from the glass and not from the home indicator's inset.
-            .ignoresSafeArea(.container, edges: .bottom)
-            // Over the stage only: the session controls are in the top bar
-            // while paused, and they have to stay reachable.
+            // from the glass and not from the home indicator's inset; up to the top
+            // for the notes to run behind the bar.
+            .ignoresSafeArea(.container, edges: [.top, .bottom])
+            // The bar is above this in the stack, so the session controls it
+            // holds while paused stay reachable.
             .overlay {
                 if vm.paused, vm.tourIndex == nil {
                     PauseStage(
                         resumeCount: vm.resumeCount,
                         onResume: vm.resume,
                         onQuit: vm.end,
-                        actions: pauseActions
+                        actions: pauseActions,
+                        topInset: Theme.headerBand
                     )
                 }
             }
-            .overlay(alignment: .top) {
-                VoiceCaption(text: voiceCaptionText)
-                    .padding(.top, 8)
+
+            // Not paused: the dim covers the whole screen then, and the strip
+            // sat over it as a bright band, with Kipli on top of both.
+            if !vm.paused {
+                TitleBlur()
+                    .transition(.opacity)
+            }
+
+            // One fixed height for both states. The paused panel is taller
+            // than the playing title, and when the bar grew the stage under
+            // it shrank — the whole gangsa visibly resized on every pause.
+            VStack(spacing: 0) {
+                topBar(tempo: $bindableApp.tempoScale)
+                    .headerBar()
+                    .frame(maxWidth: .infinity)
+                ZStack(alignment: .top) {
+                    VoiceCaption(text: voiceCaptionText)
+                        .padding(.top, 8)
+                    // Kipli on iPad: top left, under the bar, where the notes
+                    // have only just appeared. His bubble opens at his right.
+                    if Self.isPad, !vm.paused, let kipli = vm.kipli, vm.tourIndex == nil {
+                        KipliGuide(message: kipli.line, style: .quiet, mood: kipli.mood)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 16)
+                            .padding(.top, 8)
+                    }
+                }
+            }
+        }
+        // Kipli, guiding Learn and cheering free play: in the top left corner,
+        // in the header's band, so his bubble opens over the bar's empty
+        // space and not over the notes falling below it. The title steps
+        // aside while the bubble is open (`kipliSpeaking`). iPad keeps him in
+        // the corner under the bar (with the bar, above): there is room there.
+        .overlay(alignment: .topLeading) {
+            // Not over the tour, where he is talking already, nor over the
+            // pause screen, where he would sit on its dim.
+            if !Self.isPad, !vm.paused, let kipli = vm.kipli, vm.tourIndex == nil {
+                KipliGuide(message: kipli.line, style: .quiet, mood: kipli.mood) { kipliSpeaking = $0 }
+                    .padding(.leading, Theme.headerInset)
+                    .padding(.top, Theme.headerTop)
             }
         }
         .background(Theme.ground.ignoresSafeArea())
@@ -261,14 +281,19 @@ private struct WaterfallContentView: View {
             .transition(.opacity)
         } else {
             HStack(spacing: 10) {
-                SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: false)
-                    .tourTarget(.cycle)
+                if !(kipliSpeaking && vm.kipli != nil) {
+                    SessionTitle(name: app.selectedKotekan?.name ?? "", engine: vm.engine, showsScore: false)
+                        .tourTarget(.cycle)
+                        // The system's blur, not a hard cut, as the bubble takes the room.
+                        .transition(.blurReplace)
+                }
                 sensorDot
                     .tourTarget(.sensor)
                 voiceMark
                     .tourTarget(.voice)
             }
             .frame(minHeight: 34)
+            .animation(.easeInOut(duration: 0.3), value: kipliSpeaking)
             .transition(.opacity)
         }
     }
@@ -521,7 +546,9 @@ struct SessionTitle: View {
             .foregroundStyle(Theme.cream)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            .contentTransition(.numericText())
+            // Not `.numericText()`: it rolls the digit upward as the cycle ticks
+            // over, and over the notes that read as the number drifting up.
+            .contentTransition(.opacity)
             .animation(.snappy(duration: 0.25), value: engine.loopIndex)
     }
 }
@@ -535,39 +562,45 @@ struct PauseStage: View {
     let onQuit: () -> Void
     /// Between Resume and Quit: Learn's ways on, or free play's way into Learn.
     var actions: [PauseAction] = []
+    /// Room kept clear at the top for a bar floating over the stage: the
+    /// dim still covers it, the buttons centre in what is below.
+    var topInset: CGFloat = 0
 
     static let dim = 0.35
 
     var body: some View {
         ZStack {
             Color.black.opacity(Self.dim).ignoresSafeArea()
-            if let n = resumeCount {
-                Text("\(n)")
-                    .font(.serif(96))
-                    .foregroundStyle(Theme.cream)
-                    .shadow(color: .black.opacity(0.6), radius: 8)
-                    .id(n)
-                    .transition(.scale.combined(with: .opacity))
-            } else {
-                VStack(spacing: 22) {
-                    AppIconButton(
-                        systemImage: "play.fill",
-                        label: "Resume",
-                        prominence: .primary,
-                        size: .large,
-                        action: onResume
-                    )
-                    ForEach(actions) { a in
-                        AppButton(title: a.title, systemImage: a.systemImage, action: a.action)
+            Group {
+                if let n = resumeCount {
+                    Text("\(n)")
+                        .font(.serif(96))
+                        .foregroundStyle(Theme.cream)
+                        .shadow(color: .black.opacity(0.6), radius: 8)
+                        .id(n)
+                        .transition(.scale.combined(with: .opacity))
+                } else {
+                    VStack(spacing: 22) {
+                        AppIconButton(
+                            systemImage: "play.fill",
+                            label: "Resume",
+                            prominence: .primary,
+                            size: .large,
+                            action: onResume
+                        )
+                        ForEach(actions) { a in
+                            AppButton(title: a.title, systemImage: a.systemImage, action: a.action)
+                        }
+                        AppButton(
+                            title: "Quit the session",
+                            trailingSystemImage: "rectangle.portrait.and.arrow.right",
+                            action: onQuit
+                        )
                     }
-                    AppButton(
-                        title: "Quit the session",
-                        trailingSystemImage: "rectangle.portrait.and.arrow.right",
-                        action: onQuit
-                    )
+                    .transition(.opacity)
                 }
-                .transition(.opacity)
             }
+            .padding(.top, topInset)
         }
         .animation(.snappy(duration: 0.25), value: resumeCount)
     }

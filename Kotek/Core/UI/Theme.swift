@@ -207,6 +207,8 @@ enum Theme {
     static let headerTop: CGFloat = 10
     static let headerBottom: CGFloat = 8
     static let headerHeight: CGFloat = AppButtonSize.regular.height
+    /// The whole band a bar takes, for a screen whose stage runs up behind it.
+    static let headerBand: CGFloat = headerTop + headerHeight + headerBottom
 
     /// The main action's label weight, shared so the buttons cannot drift
     /// apart. Bold, in sentence case: "Next", as the redesign draws it. It was
