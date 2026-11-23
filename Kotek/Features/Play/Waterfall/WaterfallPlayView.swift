@@ -7,11 +7,6 @@
 //  Strikes come from this gangsa's piezo sensors (`GangsaSensor`), when it
 //  has a controller; without one the figure plays and nothing is scored.
 //
-//  Two views of the same instrument — flat, straight down from above, and
-//  tilted towards the player for depth. Swipe up on the gangsa to flip
-//  between them (down also flattens it, because that is where a hand goes to
-//  undo an upward swipe).
-//
 
 import SwiftUI
 
@@ -89,32 +84,15 @@ private struct WaterfallContentView: View {
                     GangsaStage(
                         engine: vm.engine,
                         layout: layout,
-                        tilted: vm.tilted,
                         sensedStrike: vm.sensedStrike,
                         damp: app.dampGuide,
                         autoStrikes: autoStrikes
                     )
                     .frame(width: layout.frameWidth, height: gangsaHeight)
                     .tourTarget(.gangsa)
-                    .contentShape(Rectangle())
-                    .gesture(swipeToTilt)
-                    .accessibilityElement()
-                    .accessibilityLabel(vm.tilted ? "Gangsa, tilted view" : "Gangsa, flat view")
-                    .accessibilityHint("Swipe up to change the view")
-                    .accessibilityAction(named: vm.tilted ? "Flat view" : "Tilted view") {
-                        toggleTilt()
-                    }
                     .padding(.bottom, -sunk)
                 }
                 .frame(maxWidth: .infinity)
-                // The hint can no longer sit under the gangsa — that is off the
-                // screen now — so it sits in the empty corner just above it,
-                // clear of the frame in both views (the tilt widens the frame).
-                .overlay(alignment: .bottomTrailing) {
-                    TiltHint(engine: vm.engine, tilted: vm.tilted)
-                        .padding(.trailing, 24)
-                        .padding(.bottom, gangsaHeight - sunk + layout.postRise + 10)
-                }
             }
             // Down to the physical edge of the screen, so "sunk" is measured
             // from the glass and not from the home indicator's inset; up to the top
@@ -414,19 +392,6 @@ private struct WaterfallContentView: View {
         case .off: return nil
         }
     }
-
-    private var swipeToTilt: some Gesture {
-        DragGesture(minimumDistance: 24)
-            .onEnded { value in
-                let dy = value.translation.height
-                guard abs(dy) > abs(value.translation.width), abs(dy) > 40 else { return }
-                if dy < 0 { toggleTilt() } else if vm.tilted { toggleTilt() }
-            }
-    }
-
-    private func toggleTilt() {
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { vm.tilted.toggle() }
-    }
 }
 
 /// "Get ready…" then 3, 2, 1 — written over the empty waterfall rather than
@@ -469,30 +434,6 @@ private struct VoiceCaption: View {
             }
         }
         .animation(.snappy(duration: 0.2), value: text)
-        .allowsHitTesting(false)
-    }
-}
-
-/// "Swipe up to tilt", during the count-in only. It stayed up the whole
-/// session and pulled the eye off the falling notes; the count-in is the one
-/// stretch with nothing to play, so that is when it gets read.
-///
-/// Its own view, like `StartCaption`, so reading the clock redraws this label
-/// and not the screen around it.
-private struct TiltHint: View {
-    let engine: PlayEngine
-    let tilted: Bool
-
-    var body: some View {
-        Group {
-            if engine.msUntilFirstNote != nil {
-                Label(tilted ? "Swipe up for flat" : "Swipe up to tilt", systemImage: "chevron.up")
-                    .font(.sans(11, weight: .medium))
-                    .foregroundStyle(Theme.cream.opacity(0.35))
-                    .transition(.opacity)
-            }
-        }
-        .animation(.easeOut(duration: 0.4), value: engine.msUntilFirstNote == nil)
         .allowsHitTesting(false)
     }
 }

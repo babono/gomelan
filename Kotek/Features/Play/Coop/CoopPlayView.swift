@@ -160,7 +160,7 @@ struct CoopStage: View {
             )
             .frame(width: layout.width, height: stage.canvasHeight)
             // Play-along: nothing is sensed, so the bars ring for every stroke.
-            GangsaStage(engine: lane.engine, layout: layout, tilted: false, damp: damp, autoStrikes: true)
+            GangsaStage(engine: lane.engine, layout: layout, damp: damp, autoStrikes: true)
                 .frame(width: layout.frameWidth, height: stage.gangsaHeight)
         }
         // Taller than the stage by the sunk part of the gangsa; aligned to the

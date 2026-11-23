@@ -152,7 +152,6 @@ struct GangsaView: View {
     let cues: [Int: BilahCue]
     var mallet: HandCue?
     var damper: HandCue?
-    let tilted: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var u: CGFloat {
@@ -202,16 +201,6 @@ struct GangsaView: View {
                 }
                 .drawingGroup()
             }
-            // Tilted about the TOP edge: points on the rotation axis do not
-            // move, so the landing line stays exactly where the waterfall
-            // ends while the near end of the instrument swings towards you.
-            .rotation3DEffect(
-                .degrees(tilted ? 48 : 0),
-                axis: (x: 1, y: 0, z: 0),
-                anchor: .top,
-                perspective: 0.55
-            )
-            .shadow(color: .black.opacity(tilted ? 0.55 : 0), radius: 18, y: 14)
         }
     }
 
