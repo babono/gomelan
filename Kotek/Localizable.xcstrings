@@ -735,6 +735,16 @@
     "0000" : {
       "shouldTranslate" : false
     },
+    "2 beats" : {
+      "localizations" : {
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "2 ketukan"
+          }
+        }
+      }
+    },
     "4 beats" : {
       "localizations" : {
         "id" : {

@@ -19,8 +19,10 @@
 //  The gong, kempur, klentong and kajar are not written. They were — armed as
 //  tools and tapped onto the roll — and every figure ended up with the same
 //  line drawn by hand. Now `colotomic` lays a cycle under whatever is
-//  written, from one of two templates (`ColotomicTemplate`), and the figure
-//  runs to whole cycles of it so each pass ends where the cycle does.
+//  written — gong, kempur, klentong, kempur 2, 4 or 8 beats apart, the kajar on
+//  every beat — from one of three templates (`ColotomicTemplate`). The figure
+//  is as long as it is written, four bars at least, and the cycle starts
+//  again with it; it once ran to whole cycles, which made it 8 to 32 bars.
 //
 
 import Foundation
@@ -73,26 +75,39 @@ struct DraftRing: Equatable {
     var damps: Bool
 }
 
-/// The colotomic cycle the player picks in Studio, one instrument per beat.
+/// The colotomic cycle the player picks in Studio: how far apart its strokes
+/// fall. Gong, kempur, klentong, kempur, each that many beats after the last,
+/// then the gong again as the cycle comes round; the kajar keeps every beat.
+/// Two beats apart is an 8-beat cycle, four a 16-beat one, eight a 32-beat one.
 enum ColotomicTemplate: String, CaseIterable, Identifiable {
-    /// Four beats: kempur, kajar, klentong, kajar.
+    case two
     case four
-    /// Eight beats: four kajar, then gong, kempur, kajar, kempur.
     case eight
 
     var id: String {
         rawValue
     }
 
-    var cycle: [ColotomicInstrument] {
+    /// Beats between one stroke and the next.
+    var spacing: Int {
         switch self {
-        case .four: [.kempur, .kajar, .klentong, .kajar]
-        case .eight: [.kajar, .kajar, .kajar, .kajar, .gong, .kempur, .kajar, .kempur]
+        case .two: 2
+        case .four: 4
+        case .eight: 8
+        }
+    }
+
+    /// What sounds on each beat of one cycle.
+    var cycle: [[ColotomicInstrument]] {
+        let strokes: [ColotomicInstrument] = [.gong, .kempur, .klentong, .kempur]
+        return (0 ..< spacing * strokes.count).map { beat in
+            beat % spacing == 0 ? [strokes[beat / spacing], .kajar] : [.kajar]
         }
     }
 
     var title: String {
         switch self {
+        case .two: String(localized: "2 beats")
         case .four: String(localized: "4 beats")
         case .eight: String(localized: "8 beats")
         }
@@ -111,9 +126,9 @@ final class KotekanDraft {
     static let ticksPerBar = ticksPerQuarter * 4
     /// One BPM beat: the value labelled 1.
     static let ticksPerBeat = ticksPerBar
-    /// How far the piano roll scrolls. The figure itself is `bars` long and
-    /// grows when a note is written past its end; this is just the room.
-    static let timelineBars = 32
+    /// The shortest a figure is, however little is written: what a new one
+    /// shows. There is no longest — it grows with the notes.
+    static let minBars = 4
     static let bpmRange = 1 ... 999
 
     /// Empty until the player names it on Save; `kotekan(id:)` falls back to
@@ -123,13 +138,13 @@ final class KotekanDraft {
     /// Beats per minute, a beat being the value labelled 1. Four grid slots to
     /// the beat, so the database's per-slot `bpm` is four times this.
     /// Typed in Studio's controls row (`BPMField`); a new figure starts at
-    /// 100, an opened one at the tempo it was saved at.
-    var bpm = 100
+    /// 60, an opened one at the tempo it was saved at.
+    var bpm = 60
     private(set) var notes: [DraftNote] = []
 
     /// Which cycle runs under the figure. An opened figure starts on the one
     /// it was saved with (see `load`).
-    var template = ColotomicTemplate.four
+    var template = ColotomicTemplate.two
 
     /// The colotomic cycle under the figure, one beat at a time.
     var colotomic: [DraftColotomic] {
@@ -142,7 +157,7 @@ final class KotekanDraft {
     /// on past the end of the figure.
     func colotomic(atBeat beat: Int) -> [ColotomicInstrument] {
         let cycle = template.cycle
-        return [cycle[beat % cycle.count]]
+        return cycle[beat % cycle.count]
     }
 
     /// What the figure looked like before each edit, newest last. The name is
@@ -150,27 +165,25 @@ final class KotekanDraft {
     private var undoStack: [Snapshot] = []
     private var redoStack: [Snapshot] = []
 
-    /// Whole bars up to the last thing written. Not set by hand: a Bars stepper
-    /// was one more control for something the notes already say, and it cut
-    /// notes off when stepped down.
+    /// Whole bars up to the last thing written, and never under `minBars`. Not
+    /// set by hand: a Bars stepper was one more control for something the notes
+    /// already say, and it cut notes off when stepped down. Taking the last
+    /// note out shrinks the figure again.
+    ///
+    /// It was rounded up to whole colotomic cycles, so each pass ended where the
+    /// gong cycle did. With the cycle 8 to 32 beats long that made a one-note
+    /// figure 8 to 32 bars and shaded the rest of a 32-bar roll; the figure is
+    /// as long as it is written, and the cycle starts again with it.
     var bars: Int {
         // A note's end counts too, so one dragged across a bar line takes the
         // figure with it.
         // A ringing stroke does not: it would run the figure on forever.
         let last = notes.map { $0.tick + ($0.length ?? 1) - 1 }.max() ?? 0
-        let written = last / Self.ticksPerBar + 1
-        // Up to whole cycles: a 2-beat figure over the 8-beat template looped
-        // back to its start before the gong ever came round.
-        let cycle = template.cycle.count
-        return (written + cycle - 1) / cycle * cycle
+        return max(Self.minBars, last / Self.ticksPerBar + 1)
     }
 
     var lengthTicks: Int {
         bars * Self.ticksPerBar
-    }
-
-    static var timelineTicks: Int {
-        timelineBars * ticksPerBar
     }
 
     /// No strokes: nothing to save, and nothing to play.
@@ -195,6 +208,10 @@ final class KotekanDraft {
     ///
     /// Writing past the end of the figure stretches it to the bar the note is
     /// in, the way a DAW region grows when you draw beyond it.
+    ///
+    /// The stroke is written as long as the snap — a quarter, half or whole
+    /// beat — and damped there. It used to ring until the half's next stroke,
+    /// and a note tapped in with nothing after it rang for who knew how long.
     func toggle(half: KotekanHalf, key: Int, at position: Int, snap: Subdivision) {
         if let hit = notes.firstIndex(where: {
             $0.half == half && $0.key == key && $0.tick <= position && position < $0.tick + snap.ticks
@@ -203,16 +220,17 @@ final class KotekanDraft {
             return
         }
         let tick = position / snap.ticks * snap.ticks
-        guard tick < Self.timelineTicks else { return }
-        set(half: half, tick: tick, key: key)
+        set(half: half, tick: tick, key: key, length: snap.ticks)
     }
 
-    /// Write `key` (or a rest) at exactly `tick`. Used by the review grid and
-    /// the sensors, which both write at a given place rather than a tap's.
-    func set(half: KotekanHalf, tick: Int, key: Int?) {
+    /// Write `key` (or a rest) at exactly `tick`, damped `length` ticks on —
+    /// the snap it was written at; nil rings to the half's next stroke. Used
+    /// by the sensors and step entry, which write at a given place rather than
+    /// a tap's.
+    func set(half: KotekanHalf, tick: Int, key: Int?, length: Int? = nil) {
         notes.removeAll { $0.half == half && $0.tick == tick }
         guard let key else { return }
-        notes.append(DraftNote(half: half, key: key, tick: tick))
+        notes.append(DraftNote(half: half, key: key, tick: tick, length: length))
     }
 
     /// The damp grip's step, and the shortest a stroke rings: one block, a
@@ -360,14 +378,19 @@ final class KotekanDraft {
     ///
     /// A saved figure keeps only slots and milliseconds per slot. A slot comes
     /// back as a quarter of a beat, and a damp point as that many slots. Its
-    /// colotomic line comes back as the template it was laid from — only the
-    /// 8-beat one has a gong — and is laid again from that; it used to open
-    /// on the 4-beat one whatever it was saved with.
+    /// colotomic line comes back as the template it was laid from — told by
+    /// the beat of its first kempur, which is the stroke spacing — and is laid
+    /// again from that. A figure saved before the spacing templates has its
+    /// kempur off those beats: it opens on the 8-beat template if it has a
+    /// gong, the 4-beat one if not, as it was then.
     func load(_ k: Kotekan) {
         name = k.name
         source = k.source
-        template = k.colotomic.contains { $0.instrument == .gong } ? .eight : .four
         let slot = Subdivision.quarter.ticks
+        let slotsPerBeat = Self.ticksPerBeat / slot
+        let firstKempur = k.colotomic.filter { $0.instrument == .kempur }.map(\.slot).min() ?? 0
+        template = ColotomicTemplate.allCases.first { $0.spacing == firstKempur / slotsPerBeat }
+            ?? (k.colotomic.contains { $0.instrument == .gong } ? .eight : .four)
         bpm = Self.bpm(strokeMs: k.strokeMs, slotTicks: slot).clamped(
             to: Self.bpmRange.lowerBound,
             Self.bpmRange.upperBound
@@ -391,7 +414,7 @@ final class KotekanDraft {
     }
 
     private static func bpm(strokeMs: Int, slotTicks: Int) -> Int {
-        guard strokeMs > 0 else { return 100 }
+        guard strokeMs > 0 else { return 60 }
         return Int((60000.0 * Double(slotTicks) / (Double(ticksPerBeat) * Double(strokeMs))).rounded())
     }
 
