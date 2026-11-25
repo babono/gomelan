@@ -205,15 +205,18 @@ struct PolishView: View {
         let spot = spots[i]
         let slot = slot(of: spot)
         let home = grid.point(key: spot.keyIndex, slot: slot)
+        // Kuning is ~1.8:1 on the roll's white, so gold alone vanished into it.
+        // Black rings fixed that and shouted; `goldText` (Kuning deepened with
+        // Ireng, the one gold that reads) keeps it all one hue, gold on gold.
         let dashed = pill(.clear, grid)
-            .overlay(Capsule().strokeBorder(Theme.gold, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])))
+            .overlay(Capsule().strokeBorder(Theme.goldText, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3])))
         let settled = selected == i && slid
 
         switch spot.kind {
         case .missed:
             dashed
                 .padding(6)
-                .background(Theme.gold.opacity(0.18), in: .capsule)
+                .background(Theme.gold.opacity(0.4), in: .capsule)
                 .position(home)
         case .late, .early, .wrongBilah:
             let off: CGPoint = switch spot.kind {
@@ -231,6 +234,7 @@ struct PolishView: View {
                     : CGPoint(x: home.x, y: (home.y + off.y) / 2))
                 .opacity(settled ? 0 : 1)
             pill(Theme.gold, grid)
+                .overlay(Capsule().strokeBorder(Theme.goldText, lineWidth: 1.5))
                 .position(settled ? home : off)
         }
 
