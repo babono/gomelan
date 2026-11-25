@@ -19,6 +19,8 @@ struct PolishView: View {
     let kotekan: Kotekan
     let half: KotekanHalf
     let spots: [PolishSpot]
+    /// Every bilah on the gangsa in play, drawn when the roll has height for them.
+    let keyCount: Int
     let onBack: () -> Void
 
     @State private var selected: Int?
@@ -33,17 +35,24 @@ struct PolishView: View {
     private static let labelWidth: CGFloat = 28
     private static let edgeWidth: CGFloat = 16
     private static let headerHeight: CGFloat = 22
+    private static let minRow: CGFloat = 30
 
     private var voice: Color {
         half == .polos ? Theme.polosVoice : Theme.sangsihVoice
     }
 
     /// The figure's own bilah, and any struck instead of them, top to bottom
-    /// highest first — as the gangsa is drawn on the waterfall.
-    private var rows: [Int] {
+    /// highest first — as the gangsa is drawn on the waterfall. The whole
+    /// gangsa when each of its bilah would still get `minRow` points: an iPad's
+    /// taller roll has the room, a phone's does not and keeps to the figure.
+    private func rows(height: CGFloat) -> [Int] {
         let struck = spots.compactMap { if case let .wrongBilah(k) = $0.kind { k } else { nil } }
-        let low = min(kotekan.voicedKeyRange.lowerBound, struck.min() ?? .max)
-        let high = max(kotekan.voicedKeyRange.upperBound, struck.max() ?? .min)
+        var low = min(kotekan.voicedKeyRange.lowerBound, struck.min() ?? .max)
+        var high = max(kotekan.voicedKeyRange.upperBound, struck.max() ?? .min)
+        if (height - Self.headerHeight - 8) / CGFloat(max(1, keyCount)) >= Self.minRow {
+            low = 0
+            high = max(high, keyCount - 1)
+        }
         return Array((low ... high).reversed())
     }
 
@@ -87,7 +96,7 @@ struct PolishView: View {
     /// R roll away under them; a column beside it cut every pill at a line.
     private var roll: some View {
         GeometryReader { geo in
-            let grid = Grid(height: geo.size.height, slots: kotekan.slotsPerCycle, rows: rows)
+            let grid = Grid(height: geo.size.height, slots: kotekan.slotsPerCycle, rows: rows(height: geo.size.height))
             let visible = geo.size.width - Self.labelWidth - Self.edgeWidth
             ScrollView(.horizontal) {
                 ZStack(alignment: .topLeading) {
@@ -218,7 +227,7 @@ struct PolishView: View {
                 .font(.symbol(13, weight: .bold))
                 .foregroundStyle(Theme.goldText)
                 .position(spot.kind == .late || spot.kind == .early
-                    ? CGPoint(x: (home.x + off.x) / 2, y: home.y - grid.row * 0.45)
+                    ? CGPoint(x: (home.x + off.x) / 2, y: home.y - grid.tight * 0.45)
                     : CGPoint(x: home.x, y: (home.y + off.y) / 2))
                 .opacity(settled ? 0 : 1)
             pill(Theme.gold, grid)
@@ -238,7 +247,7 @@ struct PolishView: View {
         }
         .buttonStyle(.appPlain)
         .accessibilityLabel(Text(verbatim: spot.title))
-        .position(x: home.x + grid.column * 0.55, y: home.y - grid.row * 0.4)
+        .position(x: home.x + grid.column * 0.55, y: home.y - grid.tight * 0.4)
     }
 
     /// From where it went towards where it belongs. Higher bilah are drawn
@@ -284,7 +293,7 @@ struct PolishView: View {
 
     private func bilahNumbers(_ grid: Grid) -> some View {
         ZStack(alignment: .topLeading) {
-            ForEach(rows, id: \.self) { key in
+            ForEach(grid.rows, id: \.self) { key in
                 Text("\(key + 1)")
                     .font(.sans(11, weight: .semibold))
                     .foregroundStyle(Theme.stone)
@@ -325,6 +334,12 @@ struct PolishView: View {
 
         var row: CGFloat {
             (height - PolishView.headerHeight - 8) / CGFloat(max(1, rows.count))
+        }
+
+        /// `row` capped, for what hangs off a pill (number, arrow): a tall roll
+        /// with few bilah spread them a row apart from the pill they belong to.
+        var tight: CGFloat {
+            min(row, PolishView.minRow)
         }
 
         var pillWidth: CGFloat {

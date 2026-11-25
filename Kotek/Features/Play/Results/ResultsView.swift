@@ -33,6 +33,7 @@ struct ResultsView: View {
                         kotekan: k,
                         half: app.chosenHalf,
                         spots: spots,
+                        keyCount: app.profile.keys.count,
                         onBack: { showingDetails = false }
                     )
                 } else {
