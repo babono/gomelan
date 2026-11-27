@@ -226,14 +226,6 @@ final class CuePlayer {
         schedule(tone(frequency: hz, durationMs: 180, gain: 0.18))
     }
 
-    func playHit() {
-        schedule(tone(frequency: 880, durationMs: 90, gain: 0.2))
-    }
-
-    func playMiss() {
-        schedule(tone(frequency: 180, durationMs: 120, gain: 0.2))
-    }
-
     // MARK: - Recorded-sample cues
 
     /// A gangsa key. `pan` places the voice in the stereo field — your own half
