@@ -1128,7 +1128,7 @@ final class PlayEngine {
             if patternTime > scaledTime(notes[i]) + strokeGap(around: i) {
                 judged[i] = true
                 outcomes[i] = .miss
-                record(.miss, at: notes[i].keyIndex, stroke: i, now: now, playSound: true)
+                record(.miss, at: notes[i].keyIndex, stroke: i, now: now)
             }
         }
         // Upcoming fills + strike-now, plus reference-tone one beat ahead.
@@ -1291,11 +1291,11 @@ final class PlayEngine {
                 leniency: leniency
             )
             outcomes[i] = result
-            record(result, at: keyIndex, stroke: i, now: hostTime, playSound: true, timingErrorMs: err)
+            record(result, at: keyIndex, stroke: i, now: hostTime, timingErrorMs: err)
         } else {
             // Correct timing, wrong key: no verdict on the bar (see `record`).
             outcomes[i] = .wrongKey
-            record(.wrongKey, at: keyIndex, stroke: i, now: hostTime, playSound: true, timingErrorMs: err)
+            record(.wrongKey, at: keyIndex, stroke: i, now: hostTime, timingErrorMs: err)
         }
     }
 
@@ -1410,7 +1410,6 @@ final class PlayEngine {
         at key: Int,
         stroke: Int,
         now: Double,
-        playSound: Bool,
         timingErrorMs: Double = 0,
         storeResult: Bool = true
     ) {
@@ -1446,11 +1445,6 @@ final class PlayEngine {
         // R than "the note was elsewhere". The sensor's struck look is all it
         // R gets; the miss cue and the floater carry the rest.
         if result != .wrongKey { flash(at: key, result: result, now: now) }
-        if result.isHit {
-            if playSound { cue?.playHit() }
-        } else if playSound {
-            cue?.playMiss()
-        }
     }
 
     private func call(_ label: FloaterLabel, at key: Int, now: Double) {
